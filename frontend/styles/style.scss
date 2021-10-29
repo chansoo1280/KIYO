@@ -1,0 +1,120 @@
+#__next {
+    background: #e4e6e9;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+.l_loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+.l_transition-wrap {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    perspective: 500px;
+}
+.l_transition {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.l_wrap {
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    background: #e4e6e9;
+    width: 100%;
+    height: 100%;
+}
+// .l_main {
+//     display: flex;
+//     flex-direction: column;
+//     width: 100%;
+//     height: 100%;
+//     flex: 1;
+//     box-sizing: border-box;
+// }
+.c3 > svg > defs > clipPath:first-child > rect {
+    width: 9999px !important;
+}
+.c3-axis {
+    font-size: 12px;
+}
+.c3-chart-text {
+    font-size: 12px;
+}
+.c3-texts > .c3-text:last-child {
+    font-weight: bold !important;
+    fill: #9f2c2c !important;
+}
+.c3-axis-x line {
+    stroke: none !important;
+}
+.c3-line {
+    stroke-width: 3px !important;
+}
+
+.swiper-slide {
+    overflow-y: hidden !important;
+    &-active {
+        overflow-y: auto !important;
+    }
+}
+
+.popup-enter {
+    z-index: 10;
+    transform: rotateY(10deg) translate3d(100%, 0, 0);
+}
+.popup-enter-active {
+    transition: all 0.3s ease-in-out;
+    transform: rotateY(0) translate3d(0, 0, 0);
+}
+.popup-exit {
+    z-index: 10;
+    transition: all 0.3s ease-in-out;
+}
+.popup-exit-active {
+    transform: rotateY(10deg) translate3d(100%, 0, 0);
+}
+// \/info\/From\/
+.\/info\/From\/.slide-enter {
+    z-index: 10;
+    transform: translate3d(100%, 0, 0);
+}
+.\/info\/From\/.slide-enter-active {
+    transition: all 0.3s ease-in-out;
+    transform: translate3d(0, 0, 0);
+}
+.\/From\/info.slide-exit {
+    z-index: 10;
+    transition: all 0.3s ease-in-out;
+}
+.\/From\/info.slide-exit-active {
+    transform: translate3d(100%, 0, 0);
+}
+
+.enter {
+    z-index: 9;
+    // transform: rotateY(-5deg) translate3d(-6%, 0, 0);
+    filter: brightness(90%);
+}
+.enter-active {
+    transition: all 0.3s ease-in-out;
+    // transform: rotateY(0) translate3d(0, 0, 0);
+    filter: brightness(100%);
+}
+.exit {
+    z-index: 9;
+    transition: all 0.3s ease-in-out;
+}
+.exit-active {
+    // transform: rotateY(-5deg) translate3d(-6%, 0, 0);
+    filter: brightness(90%);
+}

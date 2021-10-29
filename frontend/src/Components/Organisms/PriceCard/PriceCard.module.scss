@@ -1,0 +1,59 @@
+.price-card {
+    width: 100%;
+    border-radius: 24px;
+    border: none;
+    box-shadow: -2px -3px 6px rgba(255, 255, 255, 1), 0px 3px 6px rgba(0, 0, 0, 0.16);
+    word-break: keep-all;
+    &__con {
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        height: 96px;
+        color: #4b4b4b;
+    }
+    &__header {
+        margin-right: auto;
+    }
+    &__title {
+        margin-bottom: 10px;
+        font-size: 26px;
+    }
+    &__unit {
+        font-size: 16px;
+        font-weight: 500;
+    }
+    &__price-unit {
+        font-size: 17px;
+        font-weight: 400;
+    }
+    &__price {
+        margin-bottom: 7px;
+        display: block;
+        font-size: 24px;
+        font-weight: 500;
+        text-align: right;
+    }
+    &__price-change {
+        display: flex;
+        align-items: center;
+        font-size: 22px;
+        font-weight: 500;
+        text-align: right;
+        color: #f12222;
+        &--minus {
+            color: #2259f1;
+        }
+    }
+
+    &__chart {
+        width: 100%;
+        overflow: hidden;
+        transition: height 0.3s;
+        height: 0;
+        &--show {
+            height: 260px;
+        }
+    }
+}

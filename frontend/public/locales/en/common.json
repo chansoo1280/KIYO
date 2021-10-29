@@ -1,0 +1,22 @@
+{
+    "김찬수": "chansoo kim",
+    "박진구": "박진구",
+    "header": {
+        "title": {
+            "setting": "setting"
+        },
+        "back": "back"
+    },
+    "setting": {
+        "usability": "usability",
+        "langage": "langage",
+        "app-info": "info of app",
+        "data-provider": "data provider",
+        "producer": "producer",
+        "version-info": "version",
+        "developer": "developer",
+        "designer": "designer",
+        "policy": "policy",
+        "privacy-policy": "privacy policy"
+    }
+}

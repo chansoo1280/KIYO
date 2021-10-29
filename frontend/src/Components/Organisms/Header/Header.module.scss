@@ -1,0 +1,28 @@
+.header {
+    z-index: 9999;
+    transition: transform 0.3s;
+    position: sticky;
+    top: 0;
+    margin-bottom: 20px;
+    padding: 0 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 60px;
+    flex: none;
+    background: #ecedef;
+    box-shadow: 1px 2px 24px rgba(0, 0, 0, 0.08);
+    &--hide {
+        transform: translate(0, -100%);
+    }
+}
+.header__title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    font-weight: 700;
+    color: #070707;
+    text-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
+}

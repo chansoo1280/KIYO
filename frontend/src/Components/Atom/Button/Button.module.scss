@@ -1,0 +1,35 @@
+$btn-prefix: "btn";
+.#{$btn-prefix} {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: 36px;
+    border: 1px solid #d0d9e4;
+    border-radius: 2px;
+    background: #fff;
+    &:focus {
+        outline: none;
+    }
+    &--hide {
+        display: none;
+    }
+    &--icon-only {
+        padding: 0;
+        width: 36px;
+        border: none;
+        background: transparent;
+        &.#{$btn-prefix}--default {
+            background: #fff;
+            border: 1px solid #d0d9e4;
+            border-radius: 50%;
+            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
+        }
+    }
+    &--block {
+        display: block;
+    }
+    &--primary {
+        background: hsl(204, 100%, 63%);
+        color: #fff;
+    }
+}

@@ -1,0 +1,10 @@
+.chart {
+    margin-bottom: 20px;
+    display: flex;
+    width: 100%;
+
+    & > .c3 > svg > defs:first-child > clipPath:first-child > rect {
+        width: 3000px;
+        transform: translate(-50%, 0);
+    }
+}
