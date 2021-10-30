@@ -4,6 +4,9 @@ import * as RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {
+  ToastAndroid,
+} from 'react-native';
+import {
   WebViewWrapper,
   readDir,
   readFile,
@@ -45,12 +48,14 @@ const App = () => {
             console.log(RN_API.SET_COPY);
             const {text } = req?.data;
             Clipboard.setString(text);
+            console.log(text)
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_COPY,
                 data: true,
               }),
             );
+            ToastAndroid.show('클립보드에 복사되었습니다.', ToastAndroid.SHORT);
             break;
           }
           case RN_API.GET_FILENAME: {

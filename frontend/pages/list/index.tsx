@@ -95,6 +95,13 @@ const Page = (): JSX.Element => {
                 )
                 break
             }
+            case RN_API.SET_COPY: {
+                if (data === false) {
+                    alert("복사 실패")
+                    return
+                }
+                break
+            }
 
             default: {
                 break
