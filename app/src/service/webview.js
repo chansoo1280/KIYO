@@ -1,18 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as RNFS from 'react-native-fs';
 import {
   BackHandler,
-  Platform,
   ToastAndroid,
-  PermissionsAndroid,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 export const WebViewWrapper = props => {
   const { webview, onMessage, canGoBack } = props;
   let exitAppTimeout = null;
   let exitApp = false;
-  const url = 'http://172.30.1.9:3000/';
-  // const url = 'https://am.chansoo1280.site/';
+  const url = __DEV__ ? 'http://172.30.1.9:3000/' : 'https://am.chansoo1280.site/';
   //   const requestPermissions = async function () {
   //     if (Platform.OS === 'ios') {
   //       Geolocation.requestAuthorization();
@@ -70,14 +66,6 @@ export const WebViewWrapper = props => {
       //   SetCanGoBack(navState.canGoBack);
       // }}
       injectedJavaScript={`
-      // const consoleLog = ( log) => window.ReactNativeWebView.postMessage(JSON.stringify({'type': 'Console', 'data': log}));
-      // console = {
-      //     log: (log) => consoleLog(log),
-      //     debug: (log) => consoleLog(log),
-      //     info: (log) => consoleLog(log),
-      //     warn: (log) => consoleLog(log),
-      //     error: (log) => consoleLog(log),
-      //   };
     (function() {
       function wrap(fn) {
         return function wrapper() {
