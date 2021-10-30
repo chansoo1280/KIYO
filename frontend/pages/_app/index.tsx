@@ -67,7 +67,7 @@ class WebApp extends App<AppWithStore> {
                             persistor={store.__persistor}
                             loading={
                                 <div className="l_loading">
-                                    <img src="/static/images/splash_bg.svg" alt="알고싶은 서울물가" />
+                                    <img src="/static/images/splash_bg.svg" alt="내가 기억할개" />
                                 </div>
                             }
                         >
