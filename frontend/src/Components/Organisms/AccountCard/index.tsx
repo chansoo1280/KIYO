@@ -26,9 +26,12 @@ const AccountCard = (props: Props): JSX.Element => {
     const { t } = useTranslation("common")
     return (
         <div className={styles["account-card"]}>
-            <div className={styles["account-card__header"]} onClick={e => {
-                setIsOpen(!isOpen)
-            }}>
+            <div
+                className={styles["account-card__header"]}
+                onClick={() => {
+                    setIsOpen(!isOpen)
+                }}
+            >
                 <h2 className={styles["account-card__title"]}>
                     {account.id} / {account.address}
                 </h2>
@@ -41,7 +44,8 @@ const AccountCard = (props: Props): JSX.Element => {
                 })}
             >
                 <span>최종 수정일: {account.modifiedAt}</span>
-                <Input type={"password"}
+                <Input
+                    type={"password"}
                     onClick={(e) => {
                         if (!isEditPw) {
                             if (navigator.clipboard && window.isSecureContext) {
@@ -53,21 +57,38 @@ const AccountCard = (props: Props): JSX.Element => {
                             }
                         }
                     }}
-                    onChange={(e) => { setNewPw(e.target.value || '') }} value={newPw} readOnly={!isEditPw} />
-                <Button onClick={() => {
-                    setNewPw(account.pw)
-                    setIsEditPw(!isEditPw)
-                }} show={isEditPw} icon={<i className="xi-close-circle"></i>}></Button>
-                <Button onClick={() => {
-                    onClickMod({
-                        ...account,
-                        pw: newPw
-                    })
-                    setIsEditPw(!isEditPw)
-                }} show={isEditPw} icon={<i className="xi-save"></i>}></Button>
-                <Button onClick={() => {
-                    setIsEditPw(!isEditPw)
-                }} show={!isEditPw} icon={<i className="xi-pen"></i>}></Button>
+                    onChange={(e) => {
+                        setNewPw(e.target.value || "")
+                    }}
+                    value={newPw}
+                    readOnly={!isEditPw}
+                />
+                <Button
+                    onClick={() => {
+                        setNewPw(account.pw)
+                        setIsEditPw(!isEditPw)
+                    }}
+                    show={isEditPw}
+                    icon={<i className="xi-close-circle"></i>}
+                ></Button>
+                <Button
+                    onClick={() => {
+                        onClickMod({
+                            ...account,
+                            pw: newPw,
+                        })
+                        setIsEditPw(!isEditPw)
+                    }}
+                    show={isEditPw}
+                    icon={<i className="xi-save"></i>}
+                ></Button>
+                <Button
+                    onClick={() => {
+                        setIsEditPw(!isEditPw)
+                    }}
+                    show={!isEditPw}
+                    icon={<i className="xi-pen"></i>}
+                ></Button>
             </div>
         </div>
     )

@@ -122,7 +122,9 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Space>
-                <Title flex as="h2">계정 목록</Title>
+                <Title flex as="h2">
+                    계정 목록
+                </Title>
                 <Button href="/setting">설정</Button>
             </Space>
             {!ac.list || ac.list.length === 0 ? (
@@ -133,14 +135,15 @@ const Page = (): JSX.Element => {
                         <AccountCard
                             account={account}
                             onClickDel={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation()
                                 if (confirm("삭제하시겠습니까?") === false) {
-                                    return;
+                                    return
                                 }
                                 deleteAccount(account)
-
                             }}
-                            onClickMod={(newAccount) => { modifyAccount(newAccount) }}
+                            onClickMod={(newAccount) => {
+                                modifyAccount(newAccount)
+                            }}
                         ></AccountCard>
                     )
                 })

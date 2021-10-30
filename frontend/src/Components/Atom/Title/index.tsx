@@ -18,12 +18,9 @@ interface Props {
 const Title = (props: Props): JSX.Element => {
     const { as = "h1", flex, ...rest } = props
     const TitleNode = `${as}` as keyof JSX.IntrinsicElements
-    const classes = classNames(
-        styles["title"],
-        {
-            [styles["title--flex"]]: flex,
-        },
-    )
+    const classes = classNames(styles["title"], {
+        [styles["title--flex"]]: flex,
+    })
     return <TitleNode className={classes} {...rest} />
 }
 export default Title

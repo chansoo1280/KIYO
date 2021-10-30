@@ -71,12 +71,14 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Space>
-                <Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min" ></i>}></Button>
+                <Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>
                 <Title as="h1">설정</Title>
             </Space>
             <SettingTitle as="h2">사용성</SettingTitle>
             <SettingList>
-                <SettingList.Item><Title as="h3">asd</Title></SettingList.Item>
+                <SettingList.Item>
+                    <Title as="h3">asd</Title>
+                </SettingList.Item>
             </SettingList>
         </>
     )

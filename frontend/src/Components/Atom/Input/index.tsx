@@ -26,14 +26,9 @@ const Input = (props: Props): JSX.Element => {
     return (
         <div className={styles["input-wrap"]}>
             <input
-                type={
-                    type === "password" ?
-                        isShowPw ?
-                            "text" : "password"
-                        : type
-                }
+                type={type === "password" ? (isShowPw ? "text" : "password") : type}
                 className={classNames(styles["input"], {
-                    [styles["input--readOnly"]]: readOnly
+                    [styles["input--readOnly"]]: readOnly,
                 })}
                 readOnly={readOnly}
                 {...rest}
@@ -43,11 +38,12 @@ const Input = (props: Props): JSX.Element => {
             <Button
                 className={styles["input__btn-eye"]}
                 onClick={() => setIsShowPw(!isShowPw)}
-                icon={<i className={(isShowPw ? "xi-eye-off" : "xi-eye")} >
-                    <span className="ir">{isShowPw ? "패스워드 가리기" : "패스워드 보기"}</span>
-                </i>}>
-
-            </Button>
+                icon={
+                    <i className={isShowPw ? "xi-eye-off" : "xi-eye"}>
+                        <span className="ir">{isShowPw ? "패스워드 가리기" : "패스워드 보기"}</span>
+                    </i>
+                }
+            ></Button>
         </div>
     )
 }
