@@ -3,7 +3,7 @@ import { useEffect } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Button, AccountCard } from "@Components"
+import { Title, Space, Button, AccountCard } from "@Components"
 import { RootState, AcActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -19,11 +19,6 @@ declare global {
     }
 }
 
-// window.ReactNativeWebView.postMessage(
-//     JSON.stringify({
-//         type: RN_API_GET_STAR,
-//     }),
-// )
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -47,13 +42,31 @@ const Page = (): JSX.Element => {
             }),
         )
     }
+    const modifyAccount = (account: Account) => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        const newList = ac.list.filter((acInfo) => {
+            return acInfo.address !== account.address || acInfo.id !== account.id
+        })
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.SET_FILE,
+                data: {
+                    contents: [...newList, { ...account, modifiedAt: new Date() }],
+                    pincode: ac.pincode,
+                },
+            }),
+        )
+    }
     const deleteAccount = ({ address, id }: Account) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
         const newList = ac.list.filter((account) => {
-            return account.address !== address && account.id !== id
+            return account.address !== address || account.id !== id
         })
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
@@ -108,7 +121,10 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Title as="h2">계정 목록</Title>
+            <Space>
+                <Title flex as="h2">계정 목록</Title>
+                <Button href="/setting">설정</Button>
+            </Space>
             {!ac.list || ac.list.length === 0 ? (
                 <span>계정이 없습니다!</span>
             ) : (
@@ -116,9 +132,15 @@ const Page = (): JSX.Element => {
                     return (
                         <AccountCard
                             account={account}
-                            onClickDel={() => {
+                            onClickDel={(e) => {
+                                e.stopPropagation();
+                                if (confirm("삭제하시겠습니까?") === false) {
+                                    return;
+                                }
                                 deleteAccount(account)
+
                             }}
+                            onClickMod={(newAccount) => { modifyAccount(newAccount) }}
                         ></AccountCard>
                     )
                 })

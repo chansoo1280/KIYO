@@ -1,4 +1,5 @@
 // #region Global Imports
+import classNames from "classnames"
 import React, { MouseEventHandler } from "react"
 // #endregion Global Imports
 
@@ -11,11 +12,18 @@ interface Props {
     as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
     className?: string
     onClick?: MouseEventHandler
+    flex?: boolean
 }
 
 const Title = (props: Props): JSX.Element => {
-    const { as = "h1", ...rest } = props
+    const { as = "h1", flex, ...rest } = props
     const TitleNode = `${as}` as keyof JSX.IntrinsicElements
-    return <TitleNode className={styles["title"]} {...rest} />
+    const classes = classNames(
+        styles["title"],
+        {
+            [styles["title--flex"]]: flex,
+        },
+    )
+    return <TitleNode className={classes} {...rest} />
 }
 export default Title

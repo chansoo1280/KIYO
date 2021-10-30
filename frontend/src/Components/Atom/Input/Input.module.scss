@@ -1,0 +1,10 @@
+.input{
+    width:auto;
+    height:30px;
+    font-size:18px;
+    &--readOnly{
+        background:rgb(214, 214, 214);
+    }
+    &__btn-eye{position:absolute;right:5px;}
+}
+.input-wrap{position:relative;}
