@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import Share from 'react-native-share';
 import * as RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Clipboard from '@react-native-clipboard/clipboard';
 import {
   WebViewWrapper,
   readDir,
@@ -11,6 +12,7 @@ import {
 } from '@Service';
 
 const RN_API = {
+  SET_COPY: "SET_COPY",
   GET_FILENAME: 'GET_FILENAME',
   GET_FILE: 'GET_FILE',
   SHARE_FILE: 'SHARE_FILE',
@@ -37,6 +39,18 @@ const App = () => {
         switch (req.type) {
           case 'Console': {
             console.info(`[Console] ${JSON.stringify(req?.data)}`);
+            break;
+          }
+          case RN_API.SET_COPY: {
+            console.log(RN_API.SET_COPY);
+            const {text } = req?.data;
+            Clipboard.setString(text);
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.SET_COPY,
+                data: true,
+              }),
+            );
             break;
           }
           case RN_API.GET_FILENAME: {

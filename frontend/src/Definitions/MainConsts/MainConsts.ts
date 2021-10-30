@@ -1,4 +1,5 @@
 export const RN_API = {
+    SET_COPY: "SET_COPY",
     GET_FILENAME: "GET_FILENAME",
     GET_FILE: "GET_FILE",
     SHARE_FILE: "SHARE_FILE",

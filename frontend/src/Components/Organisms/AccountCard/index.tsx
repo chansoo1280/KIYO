@@ -8,6 +8,7 @@ import { Button, Input } from "@Components"
 import classNames from "classnames"
 import { useTranslation } from "next-i18next"
 import { Account } from "@Interfaces"
+import { RN_API } from "@Definitions"
 
 // #endregion Local Imports
 interface Props {
@@ -48,15 +49,27 @@ const AccountCard = (props: Props): JSX.Element => {
                     type={"password"}
                     onClick={(e) => {
                         if (!isEditPw) {
-                            if (navigator.clipboard && window.isSecureContext) {
-                                navigator.clipboard.writeText(account.pw).then(() => {
-                                    alert("copy!")
-                                }).catch((e)=>{
-                                    alert(e)
-                                })
-                            } else {
-                                alert("navigator.clipboard 메소드가 없습니다.")
+                            if (!window.ReactNativeWebView) {
+                                alert("ReactNativeWebView 객체가 없습니다.")
+                                return
                             }
+                            window.ReactNativeWebView.postMessage(
+                                JSON.stringify({
+                                    type: RN_API.SET_COPY,
+                                    data: {
+                                        text: account.pw,
+                                    },
+                                }),
+                            )
+                            // if (navigator.clipboard && window.isSecureContext) {
+                            //     navigator.clipboard.writeText(account.pw).then(() => {
+                            //         alert("copy!")
+                            //     }).catch((e)=>{
+                            //         alert(e)
+                            //     })
+                            // } else {
+                            //     alert("navigator.clipboard 메소드가 없습니다.")
+                            // }
                         }
                     }}
                     onChange={(e) => {
