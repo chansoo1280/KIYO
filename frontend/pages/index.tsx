@@ -31,7 +31,6 @@ const Page = (): JSX.Element => {
         app: appReducer,
         ac: acReducer,
     }))
-    const [filename, setFilename] = useState("")
     const [pincode, setPincode] = useState("")
 
     const getFile = () => {
@@ -68,7 +67,12 @@ const Page = (): JSX.Element => {
                     alert("파일이 없습니다.")
                     router.replace("/create", "/create")
                 } else {
-                    setFilename(data)
+                    dispatch(
+                        AcActions.setInfo({
+                            filename: data,
+                            pincode: "",
+                        }),
+                    )
                 }
                 break
             }

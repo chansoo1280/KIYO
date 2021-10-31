@@ -104,6 +104,9 @@ const Page = (): JSX.Element => {
             <Button onClick={() => reqCreateFile()} type="primary">
                 제출
             </Button>
+            <Button onClick={() => router.push("/files", "/files")} type="primary">
+                파일이 이미 있습니다.
+            </Button>
         </>
     )
 }

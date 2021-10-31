@@ -18,6 +18,7 @@ import {
 const RN_API = {
   SET_COPY: "SET_COPY",
   SET_FILENAME: "SET_FILENAME",
+  SET_SEL_FILENAME: "SET_SEL_FILENAME",
   GET_FILENAME: 'GET_FILENAME',
   GET_FILE: 'GET_FILE',
   SHARE_FILE: 'SHARE_FILE',
@@ -60,6 +61,22 @@ const App = () => {
             ToastAndroid.show('클립보드에 복사되었습니다.', ToastAndroid.SHORT);
             break;
           }
+          
+          case RN_API.SET_SEL_FILENAME: {
+            console.log(RN_API.SET_SEL_FILENAME);
+            const {filename} = req?.data
+            AsyncStorage.setItem(
+              'filename',
+              filename
+            );
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.SET_SEL_FILENAME,
+                data: true,
+              }),
+            );
+            break;
+          }
           case RN_API.SET_FILENAME: {
             console.log(RN_API.SET_FILENAME);
             const {myFilename, pincode} = req?.data
@@ -95,6 +112,7 @@ const App = () => {
             console.log(filename);
             const files = await readDir(RNFS.DocumentDirectoryPath);
             const isExist = files.find(file => file.name === filename);
+            console.log(isExist)
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILENAME,
@@ -106,10 +124,14 @@ const App = () => {
           case RN_API.GET_FILE_LIST: {
             console.log(RN_API.GET_FILE_LIST);
             const files = await readDir(RNFS.DocumentDirectoryPath);
+            console.log(files)
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILE_LIST,
-                data: files,
+                data: {
+                  dirpath: RNFS.DocumentDirectoryPath,
+                  list: files
+                },
               }),
             );
             break;
@@ -208,13 +230,19 @@ const App = () => {
           }
           case RN_API.DELETE_FILE: {
             console.log(RN_API.DELETE_FILE);
-            const filename = await AsyncStorage.getItem(
+            const {filename} = req?.data;
+            const filepath = RNFS.DocumentDirectoryPath + '/' + filename;
+            const result = await deleteFile(filepath);
+            const curFilename = await AsyncStorage.getItem(
               'filename',
               (err, result) => result,
             );
-            const filepath = RNFS.DocumentDirectoryPath + '/' + filename;
-            const result = await deleteFile(filepath);
-            AsyncStorage.removeItem('filename');
+            if(curFilename === filename){
+              AsyncStorage.setItem(
+                'filename',
+                ""
+              );
+            }
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.DELETE_FILE,

@@ -1,15 +1,14 @@
 // #region Global Imports
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Space, Button, AccountCard, SettingList, SettingTitle } from "@Components"
-import { RootState, AcActions } from "@Redux"
+import { Title, Space, Button, FileList } from "@Components"
+import { RootState } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
-import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
-import { Account } from "@Interfaces"
+import { Ac } from "@Interfaces"
 import { RN_API } from "@Definitions"
 // #endregion Local Imports
 
@@ -27,23 +26,83 @@ const Page = (): JSX.Element => {
         app: appReducer,
         ac: acReducer,
     }))
+    const [dirpath, setDirpath] = useState("")
+    const [selFile, setSelFile] = useState(null)
+    const [fileList, setFileList] = useState<any>([])
+
+    const getFileList = () => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.GET_FILE_LIST,
+            }),
+        )
+    }
+    const changeFile = () => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        if (selFile === null) {
+            alert("파일을 선택해주세요.")
+            return
+        }
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.SET_SEL_FILENAME,
+                data: {
+                    filename: selFile,
+                },
+            }),
+        )
+    }
+    const deleteFile = (filename: Ac["filename"]) => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.DELETE_FILE,
+                data: {
+                    filename,
+                },
+            }),
+        )
+    }
 
     const listener = (event: any) => {
         const { data, type } = JSON.parse(event.data)
         switch (type) {
-            // case RN_API.SET_FILE: {
-            //     // alert(data + "/" + typeof data)
-            //     if (data === false) {
-            //         alert("파일 수정 실패")
-            //         return
-            //     }
-            //     dispatch(
-            //         AcActions.setInfo({
-            //             list: data,
-            //         }),
-            //     )
-            //     break
-            // }
+            case RN_API.GET_FILE_LIST: {
+                // alert(data + "/" + typeof data)
+                setDirpath(data.dirpath || "")
+                setFileList(
+                    data.list.map((file: any) => ({
+                        ...file,
+                        timer: null,
+                        isAction: false,
+                    })) || [],
+                )
+                break
+            }
+            case RN_API.SET_SEL_FILENAME: {
+                // alert(data)
+                if (data === true) {
+                    router.replace("/", "/")
+                }
+                break
+            }
+            case RN_API.DELETE_FILE: {
+                if (data === true) {
+                    alert("삭제되었습니다.")
+                    getFileList()
+                }
+                break
+            }
 
             default: {
                 break
@@ -51,6 +110,7 @@ const Page = (): JSX.Element => {
         }
     }
     useEffect(() => {
+        getFileList()
         if (window.ReactNativeWebView) {
             /** android */
             document.addEventListener("message", listener)
@@ -71,15 +131,45 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Space>
-                <Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>
-                <Title as="h1">설정</Title>
+                <Button onClick={() => router.replace("/setting", "/setting")} icon={<i className="xi-angle-left-min"></i>}></Button>
+                <Title flex as="h1">
+                    파일목록
+                </Title>
+                <Button
+                    onClick={() => {
+                        changeFile()
+                    }}
+                >
+                    선택
+                </Button>
             </Space>
-            <SettingTitle as="h2">사용성</SettingTitle>
-            <SettingList>
-                <SettingList.Item>
-                    <Title as="h3">asd</Title>
-                </SettingList.Item>
-            </SettingList>
+            {dirpath}
+            <FileList>
+                {fileList.map((file: any) => {
+                    return (
+                        <FileList.Item
+                            isChecked={file.name === selFile}
+                            onClick={() => {
+                                setSelFile(file.name === selFile ? null : file.name)
+                            }}
+                            onTouchStart={(e) => {
+                                file.timer = setTimeout(() => {
+                                    if (confirm("삭제하시겠습니까?") === false) return
+                                    deleteFile(file.name)
+                                }, 300)
+                            }}
+                            onMouseUp={(e) => {
+                                if (file.timer !== null) clearTimeout(file.timer)
+                            }}
+                        >
+                            <Title flex as="h2">
+                                {file.name}
+                            </Title>
+                            {file.mTime}
+                        </FileList.Item>
+                    )
+                })}
+            </FileList>
         </>
     )
 }

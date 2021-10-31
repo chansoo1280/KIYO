@@ -1,0 +1,23 @@
+$file-list-prefix: "file-list";
+.#{$file-list-prefix} {
+    width: 100%;
+}
+.#{$file-list-prefix}__item {
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 52px;
+    box-shadow: 1px 2px 12px rgba(0, 0, 0, 0.08);
+    background: #ecedef;
+    font-size: 18px;
+    color: #000000;
+    &--checked{
+        background:#9e9e9e;
+    }
+}
+.#{$file-list-prefix}__text {
+    font-weight: 700;
+    color: #347ebf;
+}
