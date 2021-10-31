@@ -27,7 +27,7 @@ const RN_API = {
   SET_FILE: 'SET_FILE',
   DELETE_FILE: 'DELETE_FILE',
 };
-const extension = '.ACJSON';
+const extension = '.txt';
 const App = () => {
   const webview = useRef(null);
   const [canGoBack, SetCanGoBack] = useState(false);
@@ -169,10 +169,7 @@ const App = () => {
             console.log(filepath);
             const result = await Share.open({
               url: 'file://' + filepath,
-              title: 'React Native FILE SHARE',
-              message:
-                'React Native | A framework for building native apps using React',
-              type: 'text/plain',
+              title: '내가 기억할게 파일 내보내기',
             }).catch(err => {
               err && console.log(err);
               return err;
