@@ -9,7 +9,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
-import { Ac, Account } from "@Interfaces"
+import { Account } from "@Interfaces"
 import { RN_API } from "@Definitions"
 // #endregion Local Imports
 
@@ -28,55 +28,22 @@ const Page = (): JSX.Element => {
         ac: acReducer,
     }))
 
-    const editFilename = (filename: Ac["filename"]) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILENAME,
-                data: {
-                    myFilename: filename,
-                    pincode: ac.pincode,
-                },
-            }),
-        )
-    }
-
-    const shareFile = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SHARE_FILE,
-            }),
-        )
-    }
-
     const listener = (event: any) => {
         const { data, type } = JSON.parse(event.data)
         switch (type) {
-            case RN_API.SET_FILENAME: {
-                // alert(data + "/" + typeof data)
-                if (data === false) {
-                    alert("파일 수정 실패")
-                    return
-                }
-                alert(data)
-                dispatch(
-                    AcActions.setInfo({
-                        filename: data,
-                    }),
-                )
-                break
-            }
-            case RN_API.SHARE_FILE: {
-                // alert(data)
-                break
-            }
+            // case RN_API.SET_FILE: {
+            //     // alert(data + "/" + typeof data)
+            //     if (data === false) {
+            //         alert("파일 수정 실패")
+            //         return
+            //     }
+            //     dispatch(
+            //         AcActions.setInfo({
+            //             list: data,
+            //         }),
+            //     )
+            //     break
+            // }
 
             default: {
                 break
@@ -109,25 +76,8 @@ const Page = (): JSX.Element => {
             </Space>
             <SettingTitle as="h2">사용성</SettingTitle>
             <SettingList>
-                <SettingList.Item
-                    onClick={() => {
-                        const newFilename = prompt("파일이름 입력")
-                        editFilename(newFilename)
-                    }}
-                >
-                    <Title as="h3">파일이름변경</Title>
-                </SettingList.Item>
-                <SettingList.Item onClick={() => shareFile()}>
-                    <Title as="h3">파일 내보내기(공유)</Title>
-                </SettingList.Item>
                 <SettingList.Item>
-                    <Title as="h3">파일 가져오기</Title>
-                </SettingList.Item>
-                <SettingList.Item>
-                    <Title as="h3">초기화</Title>
-                </SettingList.Item>
-                <SettingList.Item>
-                    <Title as="h3">개발자</Title>
+                    <Title as="h3">asd</Title>
                 </SettingList.Item>
             </SettingList>
         </>

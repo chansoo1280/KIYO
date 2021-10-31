@@ -10,12 +10,14 @@ import {
   WebViewWrapper,
   readDir,
   readFile,
+  editFilename,
   createFile,
   deleteFile,
 } from '@Service';
 
 const RN_API = {
   SET_COPY: "SET_COPY",
+  SET_FILENAME: "SET_FILENAME",
   GET_FILENAME: 'GET_FILENAME',
   GET_FILE: 'GET_FILE',
   SHARE_FILE: 'SHARE_FILE',
@@ -56,6 +58,32 @@ const App = () => {
               }),
             );
             ToastAndroid.show('클립보드에 복사되었습니다.', ToastAndroid.SHORT);
+            break;
+          }
+          case RN_API.SET_FILENAME: {
+            console.log(RN_API.SET_FILENAME);
+            const {myFilename, pincode} = req?.data
+            const newFilename = myFilename + extension;
+            const filename = await AsyncStorage.getItem(
+              'filename',
+              (err, result) => result,
+            );
+            const filepath = RNFS.DocumentDirectoryPath + '/' + filename;
+            const newFilepath = RNFS.DocumentDirectoryPath + '/' + newFilename;
+            const result = await editFilename(filepath, newFilepath, pincode);
+            if(result !== false){
+              AsyncStorage.setItem(
+                'filename',
+                newFilename
+              );
+              ToastAndroid.show('파일이름이 변경되었습니다.', ToastAndroid.SHORT);
+            }
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.SET_FILENAME,
+                data: result?newFilename:false,
+              }),
+            );
             break;
           }
           case RN_API.GET_FILENAME: {

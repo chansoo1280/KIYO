@@ -31,6 +31,25 @@ export const readFile = (filepath, pincode) => {
       return false;
     });
 };
+export const editFilename = async (filepath, newFilepath, pincode) => {
+  const contents = await readFile(filepath, pincode);
+  console.log(filepath, newFilepath, pincode)
+  return createFile(
+    newFilepath,
+    JSON.stringify(contents),
+    pincode,
+    ).then((success)=>{
+    return deleteFile(filepath)
+  })
+    .then(success => {
+      console.log('FILENAME CHANGED!');
+      return true;
+    })
+    .catch(err => {
+      console.log(err.message);
+      return false;
+    });
+};
 export const createFile = (filepath, contents, pincode) => {
   return RNFS.writeFile(
     filepath,

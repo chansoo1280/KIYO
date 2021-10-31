@@ -142,6 +142,7 @@ const Page = (): JSX.Element => {
             >
                 새로 만들기
             </Button>
+            <span>{ac.filename}</span>
             <span>{ac.pincode}</span>
         </>
     )
