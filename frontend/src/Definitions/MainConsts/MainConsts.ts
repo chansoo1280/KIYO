@@ -9,4 +9,5 @@ export const RN_API = {
     CREATE_FILE: "CREATE_FILE",
     SET_FILE: "SET_FILE",
     DELETE_FILE: "DELETE_FILE",
+    SET_PINCODE: "SET_PINCODE"
 } as const

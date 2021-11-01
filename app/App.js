@@ -26,6 +26,7 @@ const RN_API = {
   CREATE_FILE: 'CREATE_FILE',
   SET_FILE: 'SET_FILE',
   DELETE_FILE: 'DELETE_FILE',
+  SET_PINCODE: 'SET_PINCODE'
 };
 const extension = '.txt';
 const filedir = RNFS.ExternalStorageDirectoryPath + '/acApp/';
@@ -270,6 +271,29 @@ const App = () => {
               JSON.stringify({
                 type: RN_API.SET_FILE,
                 data: result ? contents : false,
+              }),
+            );
+            break;
+          }
+          case RN_API.SET_PINCODE: {
+            console.log(RN_API.SET_PINCODE);
+            const {pincode, newPincode} = req?.data;
+            const filename = await AsyncStorage.getItem(
+              'filename',
+              (err, result) => result,
+            );
+            const filepath = filedir + '/' + filename;
+            const contents = await readFile(filepath, pincode);
+            console.log(contents);
+            const result = await createFile(
+              filepath,
+              JSON.stringify(contents),
+              newPincode,
+            );
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.SET_PINCODE,
+                data: result ? newPincode : false,
               }),
             );
             break;

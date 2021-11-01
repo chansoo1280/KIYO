@@ -55,6 +55,22 @@ const Page = (): JSX.Element => {
         )
     }
 
+    const setPincode = (newPincode: Ac["pincode"]) => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.SET_PINCODE,
+                data: {
+                    newPincode,
+                    pincode: ac.pincode,
+                },
+            }),
+        )
+    }
+
     const resetFile = () => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
@@ -104,6 +120,18 @@ const Page = (): JSX.Element => {
                 dispatch(
                     AcActions.setInfo({
                         list: data,
+                    }),
+                )
+                break
+            }
+            case RN_API.SET_PINCODE: {
+                if (data === false) {
+                    alert("pincode 수정 실패")
+                    return
+                }
+                dispatch(
+                    AcActions.setInfo({
+                        pincode: data,
                     }),
                 )
                 break
@@ -165,12 +193,21 @@ const Page = (): JSX.Element => {
                 </SettingList.Item>
                 <SettingList.Item
                     onClick={() => {
+                        const newPincode = prompt("새로운 핀코드 입력")
+                        setPincode(newPincode)
+                    }}
+                >
+                    <Title as="h3">pincode 변경</Title>
+                </SettingList.Item>
+                <SettingList.Item
+                    onClick={() => {
                         if (confirm("초기화하시겠습니까?") === false) return
                         resetFile()
                     }}
                 >
                     <Title as="h3">초기화</Title>
                 </SettingList.Item>
+
                 <SettingList.Item>
                     <Title as="h3">개발자</Title>
                 </SettingList.Item>

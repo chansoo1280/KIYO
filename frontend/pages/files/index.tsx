@@ -81,11 +81,13 @@ const Page = (): JSX.Element => {
                 // alert(data + "/" + typeof data)
                 setDirpath(data.dirpath || "")
                 setFileList(
-                    data.list.filter((file: any)=>file.name.slice(-4, file.name.length) === ".txt").map((file: any) => ({
-                        ...file,
-                        timer: null,
-                        isAction: false,
-                    })) || [],
+                    data.list
+                        .filter((file: any) => file.name.slice(-4, file.name.length) === ".txt")
+                        .map((file: any) => ({
+                            ...file,
+                            timer: null,
+                            isAction: false,
+                        })) || [],
                 )
                 break
             }
