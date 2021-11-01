@@ -28,7 +28,7 @@ const RN_API = {
   DELETE_FILE: 'DELETE_FILE',
 };
 const extension = '.txt';
-const filedir = RNFS.ExternalStorageDirectoryPath + '/acApp';
+const filedir = RNFS.ExternalStorageDirectoryPath + '/acApp/';
 const App = () => {
   const webview = useRef(null);
   const [canGoBack, SetCanGoBack] = useState(false);
@@ -132,22 +132,9 @@ const App = () => {
             const folder =
               folderDir.find(file => file.name === 'acApp') || false;
             if (folder === false) {
-              const granted = await PermissionsAndroid.request(
-                PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-                {
-                  title: 'Permissions for write access',
-                  message: 'Give permission to your storage to write a file',
-                  buttonPositive: 'ok',
-                },
-              );
-              if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-                await RNFS.mkdir(filedir).catch(e => {
-                  console.log(e);
-                });
-              } else {
-                console.log('permission denied');
-                return;
-              }
+              await RNFS.mkdir(filedir).catch(e => {
+                alert(e);
+              });
             }
             // console.log(folderDir);
             // const docFiles = await readDir(RNFS.DocumentDirectoryPath);
@@ -156,7 +143,6 @@ const App = () => {
             // if (docFile) {
             //   await moveFile(docFile.path, filedir + '/' + docFile.name);
             // }
-
             const files = await readDir(filedir).catch(e => {
               console.log('filedir' + e);
             });
