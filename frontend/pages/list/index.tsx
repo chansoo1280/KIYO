@@ -158,9 +158,11 @@ const Page = (): JSX.Element => {
             <Button
                 onClick={() => {
                     const address = prompt("address 입력")
+                    if (address === null) return
                     const id = prompt("id 입력")
+                    if (id === null) return
                     const pw = prompt("pw 입력")
-                    if (address === null || id === null || pw === null) return
+                    if (pw === null) return
                     createAccount({ address, id, pw })
                 }}
                 type="primary"
