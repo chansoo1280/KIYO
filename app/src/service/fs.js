@@ -11,7 +11,7 @@ export const readDir = dirpath => {
       return files;
     })
     .catch(err => {
-      console.log(err.message, err.code);
+      console.log(err);
       return [];
     });
 };

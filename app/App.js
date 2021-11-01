@@ -4,7 +4,7 @@ import * as RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
-import {ToastAndroid} from 'react-native';
+import {ToastAndroid, PermissionsAndroid} from 'react-native';
 import {
   WebViewWrapper,
   readDir,
@@ -28,11 +28,29 @@ const RN_API = {
   DELETE_FILE: 'DELETE_FILE',
 };
 const extension = '.txt';
-const filedir = RNFS.DownloadDirectoryPath + '/acApp';
+const filedir = RNFS.ExternalStorageDirectoryPath + '/acApp';
 const App = () => {
   const webview = useRef(null);
   const [canGoBack, SetCanGoBack] = useState(false);
-  useEffect(() => {}, []);
+  const getGranted = async () => {
+    const granted = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+      PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+    ]);
+    const readGranted = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+    );
+    const writeGranted = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+    );
+    if (!readGranted || !writeGranted) {
+      alert('Read and write permissions have not been granted');
+      return;
+    }
+  };
+  useEffect(() => {
+    getGranted();
+  }, []);
 
   return (
     <WebViewWrapper
@@ -109,21 +127,39 @@ const App = () => {
             );
             console.log(filename);
 
-            // const folderDir = await readDir(RNFS.DownloadDirectoryPath);
-            // const folder =
-            //   folderDir.find(file => file.name === 'acApp') || false;
-            // if (folder === false) {
-            //   await RNFS.mkdir(filedir);
-            // }
-            // console.log(folderDir);
-            const docFiles = await readDir(RNFS.DocumentDirectoryPath);
-            const docFile =
-              docFiles.find(file => file.name === filename) || false;
-            if (docFile) {
-              await moveFile(docFile.path, filedir + '/' + docFile.name);
+            const folderDir = await readDir(RNFS.ExternalStorageDirectoryPath);
+            console.log(folderDir);
+            const folder =
+              folderDir.find(file => file.name === 'acApp') || false;
+            if (folder === false) {
+              const granted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+                {
+                  title: 'Permissions for write access',
+                  message: 'Give permission to your storage to write a file',
+                  buttonPositive: 'ok',
+                },
+              );
+              if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                await RNFS.mkdir(filedir).catch(e => {
+                  console.log(e);
+                });
+              } else {
+                console.log('permission denied');
+                return;
+              }
             }
+            // console.log(folderDir);
+            // const docFiles = await readDir(RNFS.DocumentDirectoryPath);
+            // const docFile =
+            //   docFiles.find(file => file.name === filename) || false;
+            // if (docFile) {
+            //   await moveFile(docFile.path, filedir + '/' + docFile.name);
+            // }
 
-            const files = await readDir(filedir);
+            const files = await readDir(filedir).catch(e => {
+              console.log('filedir' + e);
+            });
             const isExist = files.find(file => file.name === filename) || false;
             console.log(isExist);
             webview.current.postMessage(
