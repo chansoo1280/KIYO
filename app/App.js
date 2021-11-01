@@ -267,6 +267,7 @@ const App = () => {
               JSON.stringify(contents),
               pincode,
             );
+            ToastAndroid.show('파일 정보가 변경되었습니다.', ToastAndroid.SHORT);
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_FILE,
@@ -290,6 +291,7 @@ const App = () => {
               JSON.stringify(contents),
               newPincode,
             );
+            ToastAndroid.show('핀코드가 수정되었습니다.', ToastAndroid.SHORT);
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_PINCODE,

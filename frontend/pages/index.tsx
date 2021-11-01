@@ -131,7 +131,7 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Title as="h2">핀번호 입력</Title>
-            <input value={pincode} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} type="number" />
+            <input value={pincode} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} type="password" />
             <Button onClick={() => getFile()} type="primary">
                 제출
             </Button>
@@ -147,7 +147,7 @@ const Page = (): JSX.Element => {
                 새로 만들기
             </Button>
             <span>{ac.filename}</span>
-            <span>{ac.pincode}</span>
+            {/* <span>{ac.pincode}</span> */}
         </>
     )
 }
