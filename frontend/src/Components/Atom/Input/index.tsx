@@ -9,30 +9,33 @@ import styles from "./Input.module.scss"
 // #endregion Local Imports
 interface Props {
     children?: ReactNode
-    type?: "text" | "password"
+    type?: "text" | "password" | "search"
     onClick?: MouseEventHandler
     value?: string
     setValue?: Dispatch<SetStateAction<string>>
     onChange?: (e: ChangeEvent<HTMLInputElement>) => void
     onEnter?: KeyboardEventHandler
+    onReset?: () => void
     readOnly?: boolean
     ref?: RefObject<HTMLInputElement>
+    className?: string
 }
 
 const Input = (props: Props): JSX.Element => {
-    const { ref, onClick, setValue, onChange, onEnter, type, readOnly, ...rest } = props
+    const { className, ref, value, onClick, setValue, onChange, onEnter, onReset, type, readOnly, ...rest } = props
     const [isShowPw, setIsShowPw] = useState(type !== "password")
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setValue!(e.target.value || "")
+        setValue && setValue(e.target.value || "")
     }, [])
     return (
-        <div className={styles["input-wrap"]}>
+        <div className={classNames(className, styles["input-wrap"])}>
             <input
                 ref={ref}
                 type={type === "password" ? (isShowPw ? "text" : "password") : type}
                 className={classNames(styles["input"], {
                     [styles["input--readOnly"]]: readOnly,
                 })}
+                value={value}
                 readOnly={readOnly}
                 onChange={onChange || onChangeInput}
                 onClick={onClick}
@@ -44,12 +47,25 @@ const Input = (props: Props): JSX.Element => {
                 {...rest}
             />
             <Button
-                className={styles["input__btn-eye"]}
+                className={styles["input__btn"]}
                 show={type === "password"}
                 onClick={() => setIsShowPw(!isShowPw)}
                 icon={
                     <i className={isShowPw ? "xi-eye-off" : "xi-eye"}>
                         <span className="ir">{isShowPw ? "패스워드 가리기" : "패스워드 보기"}</span>
+                    </i>
+                }
+            ></Button>
+            <Button
+                className={styles["input__btn"]}
+                show={type === "search" && value !== ""}
+                onClick={() => {
+                    onReset && onReset()
+                    setValue && setValue("")
+                }}
+                icon={
+                    <i className="xi-close-circle">
+                        <span className="ir">내용 지우기</span>
                     </i>
                 }
             ></Button>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Title, Space, Button, AccountCard } from "@Components"
+import { Header, Search, Title, Space, Button, AccountCard } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -27,6 +27,8 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
+    const [search, setSearch] = useState("")
+    const [filterText, setFilterText] = useState("")
     const [dragAccount, setDragAccount] = useState<Account | null>(null)
 
     const createAccount = ({ address, id, pw }: Pick<Account, "address" | "id" | "pw">) => {
@@ -140,11 +142,61 @@ const Page = (): JSX.Element => {
                     }
                 ></Button>
             </Header>
+            <Search
+                value={search}
+                setValue={setSearch}
+                onSearch={() => {
+                    setFilterText(search)
+                }}
+                onReset={() => {
+                    setFilterText("")
+                }}
+            />
             <Space direction="column" padding="10px">
                 {!acFile.list || acFile.list.length === 0 ? (
-                    <span>계정이 없습니다!</span>
+                    filterText === "" ? (
+                        <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
+                    ) : (
+                        <span>검색된 계정 정보가 없습니다!</span>
+                    )
                 ) : (
-                    acFile.list.map((account: any) => {
+                    acFile.list
+                        .filter(({ address, id }: Account) => {
+                            if (filterText === "") return true
+                            return address.includes(filterText) === true || id.includes(filterText) === true
+                        })
+                        .map((account: Account) => {
+                            return (
+                                <AccountCard
+                                    account={account}
+                                    onClickDel={(e) => {
+                                        e.stopPropagation()
+                                        if (confirm("삭제하시겠습니까?") === false) {
+                                            return
+                                        }
+                                        deleteAccount(account)
+                                    }}
+                                    onClickMod={(newAccount) => {
+                                        modifyAccount(newAccount)
+                                    }}
+                                ></AccountCard>
+                            )
+                        })
+                )}
+                {/* {[
+                    {
+                        id: "123",
+                        pw: "12341312",
+                        address: "asdasd",
+                        modifiedAt: String(new Date()),
+                        createdAt: String(new Date()),
+                    },
+                ]
+                    .filter(({ address, id }: Account) => {
+                        if (filterText === "") return true
+                        return address.includes(filterText) === true || id.includes(filterText) === true
+                    })
+                    .map((account: any) => {
                         return (
                             <AccountCard
                                 account={account}
@@ -160,33 +212,7 @@ const Page = (): JSX.Element => {
                                 }}
                             ></AccountCard>
                         )
-                    })
-                )}
-                {/* {[
-                    {
-                        id: "123",
-                        pw: "12341312",
-                        address: "asdasd",
-                        modifiedAt: String(new Date()),
-                        createdAt: String(new Date()),
-                    },
-                ].map((account: any) => {
-                    return (
-                        <AccountCard
-                            account={account}
-                            onClickDel={(e) => {
-                                e.stopPropagation()
-                                if (confirm("삭제하시겠습니까?") === false) {
-                                    return
-                                }
-                                deleteAccount(account)
-                            }}
-                            onClickMod={(newAccount) => {
-                                modifyAccount(newAccount)
-                            }}
-                        ></AccountCard>
-                    )
-                })} */}
+                    })} */}
             </Space>
             <Button
                 onClick={() => {
