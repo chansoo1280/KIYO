@@ -36,7 +36,14 @@ const AccountCard = (props: Props): JSX.Element => {
                 <h2 className={styles["account-card__title"]}>
                     {account.id} / {account.address}
                 </h2>
-                <Button onClick={onClickDel}>delete</Button>
+                <Button
+                    onClick={onClickDel}
+                    icon={
+                        <i className="xi-trash">
+                            <span className="ir">delete</span>
+                        </i>
+                    }
+                ></Button>
             </div>
             <div
                 className={classNames({
@@ -46,7 +53,7 @@ const AccountCard = (props: Props): JSX.Element => {
             >
                 <span>최종 수정일: {account.modifiedAt}</span>
                 <Input
-                    type={"password"}
+                    type="password"
                     onClick={(e) => {
                         if (!isEditPw) {
                             if (!window.ReactNativeWebView) {
