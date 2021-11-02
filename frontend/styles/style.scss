@@ -19,11 +19,23 @@
     perspective: 500px;
 }
 .l_transition {
+    z-index: 1;
     width: 100%;
     height: 100%;
     position: absolute;
     top: 0;
     left: 0;
+}
+.l_transition::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
 }
 .l_wrap {
     overflow-y: auto;
@@ -32,6 +44,7 @@
     background: #e4e6e9;
     width: 100%;
     height: 100%;
+    transition: all 0.3s ease-in-out;
 }
 // .l_main {
 //     display: flex;
@@ -68,53 +81,87 @@
     }
 }
 
-.popup-enter {
+// .popup-enter {
+//     z-index: 10;
+//     transform: rotateY(10deg) translate3d(100%, 0, 0);
+// }
+// .popup-enter-active {
+//     transition: all .3s ease-in-out;
+//     transform: rotateY(0) translate3d(0, 0, 0);
+// }
+// .popup-exit {
+//     z-index: 10;
+//     transition: all .3s ease-in-out;
+// }
+// .popup-exit-active {
+//     transform: rotateY(10deg) translate3d(100%, 0, 0);
+// }
+
+$main: "\\/";
+$files: "\\/files";
+$list: "\\/list";
+$setting: "\\/setting";
+
+// #{$files}\/From#{$main}
+.l_transition.#{$files}\/From#{$main}.slide-enter {
     z-index: 10;
-    transform: rotateY(10deg) translate3d(100%, 0, 0);
 }
-.popup-enter-active {
-    transition: all 0.3s ease-in-out;
-    transform: rotateY(0) translate3d(0, 0, 0);
+.l_transition.#{$files}\/From#{$main}.slide-enter::before {
+    opacity: 0;
 }
-.popup-exit {
-    z-index: 10;
-    transition: all 0.3s ease-in-out;
-}
-.popup-exit-active {
-    transform: rotateY(10deg) translate3d(100%, 0, 0);
-}
-// \/info\/From\/
-.\/info\/From\/.slide-enter {
+.l_transition.#{$files}\/From#{$main}.slide-enter > .l_wrap {
     z-index: 10;
     transform: translate3d(100%, 0, 0);
 }
-.\/info\/From\/.slide-enter-active {
-    transition: all 0.3s ease-in-out;
+.l_transition.#{$files}\/From#{$main}.slide-enter-active::before {
+    opacity: 1;
+}
+.l_transition.#{$files}\/From#{$main}.slide-enter-active > .l_wrap {
     transform: translate3d(0, 0, 0);
 }
-.\/From\/info.slide-exit {
-    z-index: 10;
-    transition: all 0.3s ease-in-out;
+
+.l_transition.#{$main}From#{$files}.slide-exit::before {
+    opacity: 1;
 }
-.\/From\/info.slide-exit-active {
+.l_transition.#{$main}From#{$files}.slide-exit > .l_wrap {
+    z-index: 10;
+    transform: translate3d(0, 0, 0);
+}
+.l_transition.#{$main}From#{$files}.slide-exit-active::before {
+    opacity: 0;
+}
+.l_transition.#{$main}From#{$files}.slide-exit-active > .l_wrap {
     transform: translate3d(100%, 0, 0);
 }
 
-.enter {
-    z-index: 9;
-    // transform: rotateY(-5deg) translate3d(-6%, 0, 0);
-    filter: brightness(90%);
+// #{$setting}\/From#{$list}
+.l_transition.#{$setting}\/From#{$list}.slide-enter {
+    z-index: 10;
 }
-.enter-active {
-    transition: all 0.3s ease-in-out;
-    // transform: rotateY(0) translate3d(0, 0, 0);
-    filter: brightness(100%);
+.l_transition.#{$setting}\/From#{$list}.slide-enter::before {
+    opacity: 0;
 }
-.exit {
-    z-index: 9;
-    transition: all 0.3s ease-in-out;
+.l_transition.#{$setting}\/From#{$list}.slide-enter > .l_wrap {
+    z-index: 10;
+    transform: translate3d(100%, 0, 0);
 }
-.exit-active {
-    // transform: rotateY(-5deg) translate3d(-6%, 0, 0);
-    filter: brightness(90%);
+.l_transition.#{$setting}\/From#{$list}.slide-enter-active::before {
+    opacity: 1;
+}
+.l_transition.#{$setting}\/From#{$list}.slide-enter-active > .l_wrap {
+    transform: translate3d(0, 0, 0);
+}
+
+.l_transition.#{$list}\/From#{$setting}.slide-exit::before {
+    opacity: 1;
+}
+.l_transition.#{$list}\/From#{$setting}.slide-exit > .l_wrap {
+    z-index: 10;
+    transform: translate3d(0, 0, 0);
+}
+.l_transition.#{$list}\/From#{$setting}.slide-exit-active::before {
+    opacity: 0;
+}
+.l_transition.#{$list}\/From#{$setting}.slide-exit-active > .l_wrap {
+    transform: translate3d(100%, 0, 0);
 }

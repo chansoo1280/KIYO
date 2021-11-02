@@ -21,6 +21,10 @@ $btn-prefix: "btn";
         width: 36px;
         border: none;
         background: transparent;
+        font-size: 24px;
+        &.#{$btn-prefix}--lg {
+            width: 48px;
+        }
         &.#{$btn-prefix}--default {
             background: #fff;
             border: 1px solid #d0d9e4;
@@ -29,10 +33,30 @@ $btn-prefix: "btn";
         }
     }
     &--block {
+        margin: 0 auto 10px;
         display: block;
+        width: 100%;
+        max-width: 420px;
+    }
+    &--fixed {
+        position: fixed;
+        bottom: 40px;
+        right: 20px;
     }
     &--primary {
         background: hsl(204, 100%, 63%);
         color: #fff;
+    }
+    &--link {
+        background: transparent;
+        text-decoration: underline;
+        border: none;
+    }
+    &--circle {
+        border-radius: 50%;
+    }
+    &--lg {
+        height: 48px;
+        font-size: 30px;
     }
 }

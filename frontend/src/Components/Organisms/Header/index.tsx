@@ -8,12 +8,13 @@ import styles from "./Header.module.scss"
 
 // #endregion Local Imports
 interface Props {
-    title?: string
+    title?: React.ReactNode
     children?: React.ReactNode
     centerTitle?: boolean
+    noMargin?: boolean
 }
 const Header = (props: Props): JSX.Element => {
-    const { title, children } = props
+    const { title, noMargin, children } = props
     const [ScrollToTop, setScrollToTop] = useState(0)
     const [isScrollToTop, setIsScrollToTop] = useState(false)
     const refContainer = useRef(null)
@@ -35,6 +36,7 @@ const Header = (props: Props): JSX.Element => {
             className={classNames({
                 [styles["header"]]: true,
                 [styles["header--hide"]]: 100 < ScrollToTop && isScrollToTop === false,
+                [styles["header--no-margin"]]: noMargin,
             })}
         >
             <h1 className={styles["header__title"]}>{title}</h1>

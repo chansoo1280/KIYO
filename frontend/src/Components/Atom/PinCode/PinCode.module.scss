@@ -1,0 +1,12 @@
+.pin-code {
+    margin: 0 auto;
+    padding: 30px 0;
+    flex: 1;
+    display: flex;
+    font-size: 30px;
+    font-weight: 700;
+    &__num {
+        display: block;
+        width: 20px;
+    }
+}

@@ -3,13 +3,13 @@ import { useEffect } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Space, Button, AccountCard } from "@Components"
+import { Header, Title, Space, Button, AccountCard } from "@Components"
 import { RootState, AcActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
-import { Account } from "@Interfaces"
+import { Ac, Account } from "@Interfaces"
 import { RN_API } from "@Definitions"
 // #endregion Local Imports
 
@@ -128,10 +128,7 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Space>
-                <Title flex as="h2">
-                    계정 목록
-                </Title>
+            <Header title="계정 목록">
                 <Button
                     href="/setting"
                     icon={
@@ -140,11 +137,38 @@ const Page = (): JSX.Element => {
                         </i>
                     }
                 ></Button>
-            </Space>
-            {!ac.list || ac.list.length === 0 ? (
-                <span>계정이 없습니다!</span>
-            ) : (
-                ac.list.map((account) => {
+            </Header>
+            <Space direction="column" padding="10px">
+                {!ac.list || ac.list.length === 0 ? (
+                    <span>계정이 없습니다!</span>
+                ) : (
+                    ac.list.map((account: any) => {
+                        return (
+                            <AccountCard
+                                account={account}
+                                onClickDel={(e) => {
+                                    e.stopPropagation()
+                                    if (confirm("삭제하시겠습니까?") === false) {
+                                        return
+                                    }
+                                    deleteAccount(account)
+                                }}
+                                onClickMod={(newAccount) => {
+                                    modifyAccount(newAccount)
+                                }}
+                            ></AccountCard>
+                        )
+                    })
+                )}
+                {/* {[
+                    {
+                        id: "123",
+                        pw: "12341312",
+                        address: "asdasd",
+                        modifiedAt: String(new Date()),
+                        createdAt: String(new Date()),
+                    },
+                ].map((account: any) => {
                     return (
                         <AccountCard
                             account={account}
@@ -160,8 +184,8 @@ const Page = (): JSX.Element => {
                             }}
                         ></AccountCard>
                     )
-                })
-            )}
+                })} */}
+            </Space>
             <Button
                 onClick={() => {
                     const address = prompt("address 입력")
@@ -173,9 +197,15 @@ const Page = (): JSX.Element => {
                     createAccount({ address, id, pw })
                 }}
                 type="primary"
-            >
-                새로 만들기
-            </Button>
+                shape="circle"
+                size="lg"
+                fixed
+                icon={
+                    <i className="xi-plus-min">
+                        <span className="ir">새로 만들기</span>
+                    </i>
+                }
+            ></Button>
         </>
     )
 }

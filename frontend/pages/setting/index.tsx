@@ -3,7 +3,7 @@ import { useEffect } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Space, Button, SettingList, SettingTitle } from "@Components"
+import { Title, Header, Space, Button, SettingList, SettingTitle } from "@Components"
 import { RootState, AcActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -171,17 +171,21 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Space>
-                <Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>
-                <Title as="h1">설정</Title>
-            </Space>
+            <Header
+                title={
+                    <>
+                        <Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>
+                        <span>설정</span>
+                    </>
+                }
+                noMargin
+            ></Header>
             <SettingTitle as="h2">사용성</SettingTitle>
             <SettingList>
                 <SettingList.Item
                     onClick={() => {
                         const newFilename = prompt("파일이름 입력")
                         if (!newFilename) {
-                            alert("파일이름을 입력해주세요.")
                             return
                         }
                         editFilename(newFilename)
@@ -199,7 +203,6 @@ const Page = (): JSX.Element => {
                     onClick={() => {
                         const newPincode = prompt("새로운 핀코드 입력")
                         if (!newPincode) {
-                            alert("새로운 핀코드를 입력해주세요.")
                             return
                         }
                         setPincode(newPincode)
@@ -226,6 +229,7 @@ const Page = (): JSX.Element => {
 export const getStaticProps = async ({ locale }: { locale: string }): Promise<any> => ({
     props: {
         // ...(await serverSideTranslations(locale, ["common"])),
+        transition: "slide",
     },
 })
 export default Page

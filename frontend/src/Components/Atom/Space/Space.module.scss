@@ -1,8 +1,12 @@
 .space {
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 10px;
     &--cover {
         width: 100%;
+    }
+    &--flex {
+        flex: 1;
     }
 }

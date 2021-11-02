@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Space, Button, FileList } from "@Components"
+import { Header, Title, Space, Button, FileList } from "@Components"
 import { RootState } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -132,11 +132,14 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Space>
-                <Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>
-                <Title flex as="h1">
-                    파일목록
-                </Title>
+            <Header
+                title={
+                    <>
+                        <Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>
+                        <span>파일목록</span>
+                    </>
+                }
+            >
                 <Button
                     onClick={() => {
                         changeFile()
@@ -147,8 +150,11 @@ const Page = (): JSX.Element => {
                         </i>
                     }
                 ></Button>
+            </Header>
+            <Space>
+                아래 경로로 .txt 파일을 옮겨주세요. <br />
+                {dirpath}
             </Space>
-            {dirpath}
             <FileList>
                 {fileList.map((file: any) => {
                     return (
@@ -177,7 +183,7 @@ const Page = (): JSX.Element => {
             </FileList>
             <Button
                 onClick={() => {
-                    router.replace("/create", "/create")
+                    router.push("/create", "/create")
                 }}
                 type="primary"
             >
@@ -189,6 +195,7 @@ const Page = (): JSX.Element => {
 export const getStaticProps = async ({ locale }: { locale: string }): Promise<any> => ({
     props: {
         // ...(await serverSideTranslations(locale, ["common"])),
+        transition: "slide",
     },
 })
 export default Page

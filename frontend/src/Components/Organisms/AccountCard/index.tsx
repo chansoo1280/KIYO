@@ -22,11 +22,27 @@ const AccountCard = (props: Props): JSX.Element => {
     const { account, children, onClick, onClickDel, onClickMod } = props
     const [newPw, setNewPw] = useState(account.pw)
     const [isOpen, setIsOpen] = useState(false)
+    const [isDrag, setIsDrag] = useState(false)
+    let timer: NodeJS.Timeout | null = null
 
     const [isEditPw, setIsEditPw] = useState(false)
     const { t } = useTranslation("common")
     return (
-        <div className={styles["account-card"]}>
+        <div
+            onTouchStart={(e) => {
+                timer = setTimeout(() => {
+                    setIsDrag(true)
+                }, 300)
+            }}
+            onTouchEnd={(e) => {
+                if (timer !== null) clearTimeout(timer)
+                setIsDrag(false)
+            }}
+            style={{
+                position: isDrag ? "fixed" : undefined,
+            }}
+            className={styles["account-card"]}
+        >
             <div
                 className={styles["account-card__header"]}
                 onClick={() => {

@@ -3,13 +3,14 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Button, Input, Space } from "@Components"
+import { Header, KeyPad, PinCode, Title, Button, Input, Space } from "@Components"
 import { RootState, AcActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { RN_API } from "@Definitions"
+import { Ac } from "@Interfaces"
 // #endregion Local Imports
 
 declare global {
@@ -31,7 +32,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         ac: acReducer,
     }))
-    const [pincode, setPincode] = useState("")
+    const [pincode, setPincode] = useState<Ac["pincode"]>("")
 
     const getFile = () => {
         if (!window.ReactNativeWebView) {
@@ -130,27 +131,14 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Space gap="20px" direction="column" cover>
-                <Title as="h2">{ac.filename} - 핀번호 입력</Title>
-                <Input value={pincode} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} type="password" onEnter={() => getFile()} />
-                <Button onClick={() => getFile()} type="primary">
-                    제출
-                </Button>
-                <Button onClick={() => shareFile()} type="primary">
-                    파일공유
-                </Button>
-                <Button
-                    onClick={() => {
-                        router.replace("/create", "/create")
-                    }}
-                    type="primary"
-                >
-                    새로 만들기
-                </Button>
-                <Button onClick={() => router.push("/files", "/files")} type="primary">
-                    파일이 이미 있습니다.
+            <Header title={ac.filename ? ac.filename + " - 핀번호 입력" : "핀번호 입력"}></Header>
+            <PinCode value={pincode || ""} length={6}></PinCode>
+            <Space align="flex-end">
+                <Button type="link" onClick={() => router.push("/files", "/files")}>
+                    파일 목록으로 이동
                 </Button>
             </Space>
+            <KeyPad maxLength={6} onEnter={() => getFile()} value={pincode || ""} setValue={setPincode}></KeyPad>
         </>
     )
 }
