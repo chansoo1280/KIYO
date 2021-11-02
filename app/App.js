@@ -26,7 +26,7 @@ const RN_API = {
   CREATE_FILE: 'CREATE_FILE',
   SET_FILE: 'SET_FILE',
   DELETE_FILE: 'DELETE_FILE',
-  SET_PINCODE: 'SET_PINCODE'
+  SET_PINCODE: 'SET_PINCODE',
 };
 const extension = '.txt';
 const filedir = RNFS.ExternalStorageDirectoryPath + '/acApp/';
@@ -49,9 +49,7 @@ const App = () => {
       return;
     }
   };
-  useEffect(() => {
-    getGranted();
-  }, []);
+  useEffect(() => {}, []);
 
   return (
     <WebViewWrapper
@@ -122,6 +120,8 @@ const App = () => {
           }
           case RN_API.GET_FILENAME: {
             console.log(RN_API.GET_FILENAME);
+            await getGranted();
+
             const filename = await AsyncStorage.getItem(
               'filename',
               (err, result) => result,
@@ -133,6 +133,13 @@ const App = () => {
             const folder =
               folderDir.find(file => file.name === 'acApp') || false;
             if (folder === false) {
+              const writeGranted = await PermissionsAndroid.check(
+                PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+              );
+              if (!writeGranted) {
+                alert('권한이 없습니다. WRITE_EXTERNAL_STORAGE');
+                return;
+              }
               await RNFS.mkdir(filedir).catch(e => {
                 alert(e);
               });
@@ -267,7 +274,10 @@ const App = () => {
               JSON.stringify(contents),
               pincode,
             );
-            ToastAndroid.show('파일 정보가 변경되었습니다.', ToastAndroid.SHORT);
+            ToastAndroid.show(
+              '파일 정보가 변경되었습니다.',
+              ToastAndroid.SHORT,
+            );
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_FILE,
