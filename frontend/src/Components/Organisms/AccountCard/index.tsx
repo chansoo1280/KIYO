@@ -36,7 +36,9 @@ const AccountCard = (props: Props): JSX.Element => {
             }}
             onTouchEnd={(e) => {
                 if (timer !== null) clearTimeout(timer)
-                setIsOpen(false)
+                if (isDrag === true) {
+                    setIsOpen(false)
+                }
                 setIsDrag(false)
             }}
             className={styles["account-card"]}

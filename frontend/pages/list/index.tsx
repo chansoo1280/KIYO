@@ -190,7 +190,7 @@ const Page = (): JSX.Element => {
             </Space>
             <Button
                 onClick={() => {
-                    const address = prompt("address 입력")
+                    const address = prompt("사이트명 입력")
                     if (address === null) return
                     const id = prompt("id 입력")
                     if (id === null) return
