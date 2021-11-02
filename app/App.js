@@ -48,6 +48,7 @@ const App = () => {
       alert('Read and write permissions have not been granted');
       return false;
     }
+    return true;
   };
   useEffect(() => {}, []);
 
@@ -121,7 +122,7 @@ const App = () => {
           case RN_API.GET_FILENAME: {
             console.log(RN_API.GET_FILENAME);
             const granted = await getGranted();
-            if (!granted) {
+            if (granted === false) {
               return;
             }
             const filename = await AsyncStorage.getItem(
