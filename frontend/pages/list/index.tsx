@@ -132,7 +132,14 @@ const Page = (): JSX.Element => {
                 <Title flex as="h2">
                     계정 목록
                 </Title>
-                <Button href="/setting">설정</Button>
+                <Button
+                    href="/setting"
+                    icon={
+                        <i className="xi-cog">
+                            <span className="ir">설정</span>
+                        </i>
+                    }
+                ></Button>
             </Space>
             {!ac.list || ac.list.length === 0 ? (
                 <span>계정이 없습니다!</span>

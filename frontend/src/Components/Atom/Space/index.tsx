@@ -26,9 +26,11 @@ const Space = (props: Props): JSX.Element => {
         className,
     )
     return (
-        <div style={{ gap, padding, flexDirection: direction }} className={classes}>
-            {children}
-        </div>
+        <>
+            <div style={{ gap, padding, flexDirection: direction }} className={classes}>
+                {children}
+            </div>
+        </>
     )
 }
 export default Space

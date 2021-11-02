@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Button } from "@Components"
+import { Title, Button, Input, Space } from "@Components"
 import { RootState, AcActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -130,24 +130,27 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Title as="h2">핀번호 입력</Title>
-            <input value={pincode} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} type="password" />
-            <Button onClick={() => getFile()} type="primary">
-                제출
-            </Button>
-            <Button onClick={() => shareFile()} type="primary">
-                파일공유
-            </Button>
-            <Button
-                onClick={() => {
-                    router.replace("/create", "/create")
-                }}
-                type="primary"
-            >
-                새로 만들기
-            </Button>
-            <span>{ac.filename}</span>
-            {/* <span>{ac.pincode}</span> */}
+            <Space gap="20px" direction="column" cover>
+                <Title as="h2">{ac.filename} - 핀번호 입력</Title>
+                <Input value={pincode} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} type="password" onEnter={() => getFile()} />
+                <Button onClick={() => getFile()} type="primary">
+                    제출
+                </Button>
+                <Button onClick={() => shareFile()} type="primary">
+                    파일공유
+                </Button>
+                <Button
+                    onClick={() => {
+                        router.replace("/create", "/create")
+                    }}
+                    type="primary"
+                >
+                    새로 만들기
+                </Button>
+                <Button onClick={() => router.push("/files", "/files")} type="primary">
+                    파일이 이미 있습니다.
+                </Button>
+            </Space>
         </>
     )
 }

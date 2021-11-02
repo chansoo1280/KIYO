@@ -29,7 +29,7 @@ const RN_API = {
   SET_PINCODE: 'SET_PINCODE',
 };
 const extension = '.txt';
-const filedir = RNFS.ExternalStorageDirectoryPath + '/acApp/';
+const filedir = RNFS.ExternalDirectoryPath + '/acApp';
 const App = () => {
   const webview = useRef(null);
   const [canGoBack, SetCanGoBack] = useState(false);
@@ -46,7 +46,7 @@ const App = () => {
     );
     if (!readGranted || !writeGranted) {
       alert('Read and write permissions have not been granted');
-      return;
+      return false;
     }
   };
   useEffect(() => {}, []);
@@ -120,26 +120,21 @@ const App = () => {
           }
           case RN_API.GET_FILENAME: {
             console.log(RN_API.GET_FILENAME);
-            await getGranted();
-
+            const granted = await getGranted();
+            if (!granted) {
+              return;
+            }
             const filename = await AsyncStorage.getItem(
               'filename',
               (err, result) => result,
             );
             console.log(filename);
 
-            const folderDir = await readDir(RNFS.ExternalStorageDirectoryPath);
+            const folderDir = await readDir(RNFS.ExternalDirectoryPath);
             console.log(folderDir);
             const folder =
               folderDir.find(file => file.name === 'acApp') || false;
             if (folder === false) {
-              const writeGranted = await PermissionsAndroid.check(
-                PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-              );
-              if (!writeGranted) {
-                alert('권한이 없습니다. WRITE_EXTERNAL_STORAGE');
-                return;
-              }
               await RNFS.mkdir(filedir).catch(e => {
                 alert(e);
               });

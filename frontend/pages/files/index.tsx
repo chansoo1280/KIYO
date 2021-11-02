@@ -133,7 +133,7 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Space>
-                <Button onClick={() => router.replace("/setting", "/setting")} icon={<i className="xi-angle-left-min"></i>}></Button>
+                <Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>
                 <Title flex as="h1">
                     파일목록
                 </Title>
@@ -141,9 +141,12 @@ const Page = (): JSX.Element => {
                     onClick={() => {
                         changeFile()
                     }}
-                >
-                    선택
-                </Button>
+                    icon={
+                        <i className="xi-log-in">
+                            <span className="ir">선택</span>
+                        </i>
+                    }
+                ></Button>
             </Space>
             {dirpath}
             <FileList>
@@ -172,6 +175,14 @@ const Page = (): JSX.Element => {
                     )
                 })}
             </FileList>
+            <Button
+                onClick={() => {
+                    router.replace("/create", "/create")
+                }}
+                type="primary"
+            >
+                새로 만들기
+            </Button>
         </>
     )
 }

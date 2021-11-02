@@ -180,6 +180,10 @@ const Page = (): JSX.Element => {
                 <SettingList.Item
                     onClick={() => {
                         const newFilename = prompt("파일이름 입력")
+                        if (!newFilename) {
+                            alert("파일이름을 입력해주세요.")
+                            return
+                        }
                         editFilename(newFilename)
                     }}
                 >
@@ -194,6 +198,10 @@ const Page = (): JSX.Element => {
                 <SettingList.Item
                     onClick={() => {
                         const newPincode = prompt("새로운 핀코드 입력")
+                        if (!newPincode) {
+                            alert("새로운 핀코드를 입력해주세요.")
+                            return
+                        }
                         setPincode(newPincode)
                     }}
                 >
@@ -201,7 +209,7 @@ const Page = (): JSX.Element => {
                 </SettingList.Item>
                 <SettingList.Item
                     onClick={() => {
-                        if (confirm("초기화하시겠습니까?") === false) return
+                        if (!confirm("초기화하시겠습니까?")) return
                         resetFile()
                     }}
                 >

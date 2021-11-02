@@ -1,9 +1,9 @@
 // #region Global Imports
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Button, SlideTab, IconList, MainHeader } from "@Components"
+import { Title, Button, Input, SlideTab, IconList, MainHeader } from "@Components"
 import { AppActions, RootState, AcActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -28,6 +28,7 @@ const Page = (): JSX.Element => {
     }))
     const [pincode, setPincode] = useState<Ac["pincode"]>("")
     const [filename, setFilename] = useState<Ac["filename"]>("")
+    const pincodeInput = useRef<HTMLInputElement>(null)
 
     const reqCreateFile = () => {
         if (!window.ReactNativeWebView) {
@@ -97,15 +98,12 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Title as="h2">파일 생성</Title>
-            핀번호
-            <input value={pincode || ""} onChange={(e: any) => setPincode(e.target.value.slice(0, 4))} type="number" />
             파일이름
-            <input value={filename || ""} onChange={(e: any) => setFilename(e.target.value.slice(0, 20))} type="text" />
+            <Input value={filename || ""} onChange={(e: any) => setFilename(e.target.value.slice(0, 20))} onEnter={() => pincodeInput?.current?.focus()} type="text" />
+            핀번호
+            <Input ref={pincodeInput} type="password" value={pincode || ""} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} onEnter={() => reqCreateFile()} />
             <Button onClick={() => reqCreateFile()} type="primary">
                 제출
-            </Button>
-            <Button onClick={() => router.push("/files", "/files")} type="primary">
-                파일이 이미 있습니다.
             </Button>
         </>
     )
