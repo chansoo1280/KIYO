@@ -41,25 +41,19 @@ const KeyPad = (props: Props): JSX.Element => {
                     className={classNames(styles["key-pad__btn"], {
                         [styles["key-pad__btn--active"]]: key === activeKey,
                     })}
-                    onClick={() => {
+                    onTouchStart={() => {
                         if (key === "입력") {
                             onEnter && onEnter()
+                            setActiveKey(key)
                         } else if (key === "delete") {
                             setValue && setValue((value && value.slice(0, -1)) || "")
+                            setActiveKey(key)
                         } else {
                             const newValue = value + String(key)
                             setValue && setValue(newValue.slice(0, maxLength))
-                        }
-                        onChange && onChange()
-                    }}
-                    onTouchStart={() => {
-                        if (key === "입력") {
-                            setActiveKey(key)
-                        } else if (key === "delete") {
-                            setActiveKey(key)
-                        } else {
                             setActiveKey(String(Math.floor(Math.random() * 10)))
                         }
+                        onChange && onChange()
                     }}
                     onTouchEnd={() => {
                         setActiveKey("")
