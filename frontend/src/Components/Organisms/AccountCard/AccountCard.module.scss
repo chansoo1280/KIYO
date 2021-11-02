@@ -12,6 +12,9 @@
         justify-content: space-between;
         align-items: center;
         color: #4b4b4b;
+        &--ghost {
+            opacity: 0.2;
+        }
     }
     &__title {
         font-size: 26px;

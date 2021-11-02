@@ -36,15 +36,15 @@ const AccountCard = (props: Props): JSX.Element => {
             }}
             onTouchEnd={(e) => {
                 if (timer !== null) clearTimeout(timer)
+                setIsOpen(false)
                 setIsDrag(false)
-            }}
-            style={{
-                position: isDrag ? "fixed" : undefined,
             }}
             className={styles["account-card"]}
         >
             <div
-                className={styles["account-card__header"]}
+                className={classNames(styles["account-card__header"], {
+                    [styles["account-card__header--ghost"]]: isDrag,
+                })}
                 onClick={() => {
                     setIsOpen(!isOpen)
                 }}
@@ -64,7 +64,7 @@ const AccountCard = (props: Props): JSX.Element => {
             <div
                 className={classNames({
                     [styles["account-card__con"]]: true,
-                    [styles["account-card__con--show"]]: isOpen,
+                    [styles["account-card__con--show"]]: isOpen && !isDrag,
                 })}
             >
                 <span>최종 수정일: {account.modifiedAt}</span>

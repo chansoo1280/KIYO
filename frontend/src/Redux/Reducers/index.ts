@@ -4,15 +4,15 @@ import { combineReducers } from "redux"
 
 // #region Local Imports
 import appReducer from "./app"
-import acReducer from "./ac"
+import acFileReducer from "./acFile"
 // #endregion Local Imports
 
 export * from "./app"
-export * from "./ac"
+export * from "./acFile"
 
 const rootReducer = combineReducers({
     appReducer,
-    acReducer,
+    acFileReducer,
 })
 
 export default rootReducer

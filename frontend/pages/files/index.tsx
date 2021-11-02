@@ -8,7 +8,7 @@ import { RootState } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
-import { Ac } from "@Interfaces"
+import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 // #endregion Local Imports
 
@@ -22,9 +22,9 @@ const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
     const dispatch = useDispatch()
-    const { app, ac } = useSelector(({ appReducer, acReducer }: RootState) => ({
+    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
         app: appReducer,
-        ac: acReducer,
+        acFile: acFileReducer,
     }))
     const [dirpath, setDirpath] = useState("")
     const [selFile, setSelFile] = useState(null)
@@ -59,7 +59,7 @@ const Page = (): JSX.Element => {
             }),
         )
     }
-    const deleteFile = (filename: Ac["filename"]) => {
+    const deleteFile = (filename: AcFile["filename"]) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return

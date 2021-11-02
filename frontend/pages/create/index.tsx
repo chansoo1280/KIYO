@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react"
 
 // #region Local Imports
 import { Header, PinCode, Space, KeyPad, Title, Button, Input, SlideTab, IconList, MainHeader } from "@Components"
-import { AppActions, RootState, AcActions } from "@Redux"
+import { AppActions, RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
-import { Ac } from "@Interfaces"
+import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 // #endregion Local Imports
 
@@ -29,13 +29,13 @@ const Page = (): JSX.Element => {
     const [step, setStep] = useState<STEP>(STEP.INPUT_PINCODE)
     const router = useRouter()
     const dispatch = useDispatch()
-    const { app, ac } = useSelector(({ appReducer, acReducer }: RootState) => ({
+    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
         app: appReducer,
-        ac: acReducer,
+        acFile: acFileReducer,
     }))
-    const [pincode, setPincode] = useState<Ac["pincode"]>("")
-    const [pincodeConfirm, setPincodeConfirm] = useState<Ac["pincode"]>("")
-    const [filename, setFilename] = useState<Ac["filename"]>("my-list")
+    const [pincode, setPincode] = useState<AcFile["pincode"]>("")
+    const [pincodeConfirm, setPincodeConfirm] = useState<AcFile["pincode"]>("")
+    const [filename, setFilename] = useState<AcFile["filename"]>("my-list")
     const pincodeInput = useRef<HTMLInputElement>(null)
 
     const reqCreateFile = () => {
@@ -79,7 +79,7 @@ const Page = (): JSX.Element => {
                     return
                 }
                 dispatch(
-                    AcActions.setInfo({
+                    AcFileActions.setInfo({
                         ...data,
                     }),
                 )

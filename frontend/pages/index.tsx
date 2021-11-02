@@ -4,13 +4,13 @@ import { useEffect, useState } from "react"
 
 // #region Local Imports
 import { Header, KeyPad, PinCode, Title, Button, Input, Space } from "@Components"
-import { RootState, AcActions } from "@Redux"
+import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { RN_API } from "@Definitions"
-import { Ac } from "@Interfaces"
+import { AcFile } from "@Interfaces"
 // #endregion Local Imports
 
 declare global {
@@ -28,11 +28,11 @@ const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
     const dispatch = useDispatch()
-    const { app, ac } = useSelector(({ appReducer, acReducer }: RootState) => ({
+    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
         app: appReducer,
-        ac: acReducer,
+        acFile: acFileReducer,
     }))
-    const [pincode, setPincode] = useState<Ac["pincode"]>("")
+    const [pincode, setPincode] = useState<AcFile["pincode"]>("")
 
     const getFile = () => {
         if (!window.ReactNativeWebView) {
@@ -69,7 +69,7 @@ const Page = (): JSX.Element => {
                     router.replace("/create", "/create")
                 } else {
                     dispatch(
-                        AcActions.setInfo({
+                        AcFileActions.setInfo({
                             filename: data,
                             pincode: "",
                         }),
@@ -84,7 +84,7 @@ const Page = (): JSX.Element => {
                 }
                 // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
                 dispatch(
-                    AcActions.setInfo({
+                    AcFileActions.setInfo({
                         pincode: data.pincode,
                         filename: data.filename,
                         list: data.contents || [],
@@ -131,7 +131,7 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Header title={ac.filename ? ac.filename + " - 핀번호 입력" : "핀번호 입력"}></Header>
+            <Header title={acFile.filename ? acFile.filename + " - 핀번호 입력" : "핀번호 입력"}></Header>
             <PinCode value={pincode || ""} length={6}></PinCode>
             <Space align="flex-end">
                 <Button type="link" onClick={() => router.push("/files", "/files")}>

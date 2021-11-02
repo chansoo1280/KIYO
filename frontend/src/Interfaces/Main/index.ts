@@ -6,7 +6,7 @@ export interface Account {
     createdAt: string
 }
 
-export interface Ac {
+export interface AcFile {
     filename: string | null
     pincode: string | null
     list: Account[]

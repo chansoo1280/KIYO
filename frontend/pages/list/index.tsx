@@ -1,15 +1,15 @@
 // #region Global Imports
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
 import { Header, Title, Space, Button, AccountCard } from "@Components"
-import { RootState, AcActions } from "@Redux"
+import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
-import { Ac, Account } from "@Interfaces"
+import { AcFile, Account } from "@Interfaces"
 import { RN_API } from "@Definitions"
 // #endregion Local Imports
 
@@ -23,10 +23,12 @@ const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
     const dispatch = useDispatch()
-    const { app, ac } = useSelector(({ appReducer, acReducer }: RootState) => ({
+    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
         app: appReducer,
-        ac: acReducer,
+        acFile: acFileReducer,
     }))
+    const [dragAccount, setDragAccount] = useState<Account | null>(null)
+
     const createAccount = ({ address, id, pw }: Pick<Account, "address" | "id" | "pw">) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
@@ -36,8 +38,8 @@ const Page = (): JSX.Element => {
             JSON.stringify({
                 type: RN_API.SET_FILE,
                 data: {
-                    contents: [...ac.list, { address, id, pw, modifiedAt: new Date(), createdAt: new Date() }],
-                    pincode: ac.pincode,
+                    contents: [...acFile.list, { address, id, pw, modifiedAt: new Date(), createdAt: new Date() }],
+                    pincode: acFile.pincode,
                 },
             }),
         )
@@ -47,7 +49,7 @@ const Page = (): JSX.Element => {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
-        const newList = ac.list.filter((acInfo) => {
+        const newList = acFile.list.filter((acInfo) => {
             return acInfo.address !== account.address || acInfo.id !== account.id
         })
         window.ReactNativeWebView.postMessage(
@@ -55,7 +57,7 @@ const Page = (): JSX.Element => {
                 type: RN_API.SET_FILE,
                 data: {
                     contents: [...newList, { ...account, modifiedAt: new Date() }],
-                    pincode: ac.pincode,
+                    pincode: acFile.pincode,
                 },
             }),
         )
@@ -65,7 +67,7 @@ const Page = (): JSX.Element => {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
-        const newList = ac.list.filter((account) => {
+        const newList = acFile.list.filter((account) => {
             return account.address !== address || account.id !== id
         })
         window.ReactNativeWebView.postMessage(
@@ -73,7 +75,7 @@ const Page = (): JSX.Element => {
                 type: RN_API.SET_FILE,
                 data: {
                     contents: newList,
-                    pincode: ac.pincode,
+                    pincode: acFile.pincode,
                 },
             }),
         )
@@ -89,7 +91,7 @@ const Page = (): JSX.Element => {
                     return
                 }
                 dispatch(
-                    AcActions.setInfo({
+                    AcFileActions.setInfo({
                         list: data,
                     }),
                 )
@@ -139,10 +141,10 @@ const Page = (): JSX.Element => {
                 ></Button>
             </Header>
             <Space direction="column" padding="10px">
-                {!ac.list || ac.list.length === 0 ? (
+                {!acFile.list || acFile.list.length === 0 ? (
                     <span>계정이 없습니다!</span>
                 ) : (
-                    ac.list.map((account: any) => {
+                    acFile.list.map((account: any) => {
                         return (
                             <AccountCard
                                 account={account}
