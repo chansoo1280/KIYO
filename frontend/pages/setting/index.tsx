@@ -205,6 +205,10 @@ const Page = (): JSX.Element => {
                         if (!newPincode) {
                             return
                         }
+                        if (newPincode.replace(/[^0-9]/g, "").length !== 6) {
+                            alert("6자리의 숫자로 핀코드를 입력해주세요.")
+                            return
+                        }
                         setPincode(newPincode)
                     }}
                 >

@@ -1,6 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
 import Share from 'react-native-share';
-import * as RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
@@ -238,7 +237,7 @@ const App = () => {
               });
             const result = await Share.open({
               url: 'file://' + targetPath,
-              title: '내가 기억할게 파일 내보내기',
+              title: '내가 기억할개 파일 내보내기',
             }).catch(err => {
               err && console.log(err);
               return err;

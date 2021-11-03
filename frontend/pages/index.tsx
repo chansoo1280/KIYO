@@ -39,6 +39,10 @@ const Page = (): JSX.Element => {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
+        if (!pincode || pincode.length !== 6) {
+            alert("핀코드를 입력해주세요.")
+            return
+        }
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
                 type: RN_API.GET_FILE,
@@ -80,6 +84,7 @@ const Page = (): JSX.Element => {
             case RN_API.GET_FILE: {
                 if (data.contents === false) {
                     alert("올바르지 않은 핀번호입니다.")
+                    setPincode("")
                     return
                 }
                 // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)

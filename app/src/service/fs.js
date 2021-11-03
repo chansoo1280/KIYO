@@ -1,4 +1,4 @@
-import * as RNFS from 'react-native-fs';
+// import * as RNFS from 'react-native-fs';
 import CryptoJS from 'react-native-crypto-js';
 import {StorageAccessFramework} from 'expo-file-system';
 
