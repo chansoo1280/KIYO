@@ -17,6 +17,8 @@ import {
 import * as FileSystem from 'expo-file-system';
 const {StorageAccessFramework} = FileSystem;
 
+var RNGRP = require('react-native-get-real-path');
+
 const RN_API = {
   CHANGE_DIR: 'CHANGE_DIR',
   SET_COPY: 'SET_COPY',
@@ -162,6 +164,7 @@ const App = () => {
               'filepath',
               (err, result) => result,
             );
+
             const filename = getFilename(filepath);
 
             const isExist = files.find(file => file === filepath) || false;
@@ -225,10 +228,10 @@ const App = () => {
               (err, result) => result,
             );
             console.log(filepath);
+            const realPath = await RNGRP.getRealPathFromURI(filepath);
+            const targetPath = realPath.replace(extension, '.zip');
 
-            const targetPath = filepath.replace(extension, '.zip');
-
-            await zip(filepath, targetPath)
+            await zip(realPath, targetPath)
               .then(path => {
                 console.log(`zip completed at ${path}`);
               })
