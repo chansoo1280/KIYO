@@ -54,12 +54,12 @@ const Page = (): JSX.Element => {
             JSON.stringify({
                 type: RN_API.SET_SEL_FILENAME,
                 data: {
-                    filename: selFile,
+                    filepath: selFile,
                 },
             }),
         )
     }
-    const deleteFile = (filename: AcFile["filename"]) => {
+    const deleteFile = (filepath: string) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
@@ -68,7 +68,7 @@ const Page = (): JSX.Element => {
             JSON.stringify({
                 type: RN_API.DELETE_FILE,
                 data: {
-                    filename,
+                    filepath,
                 },
             }),
         )
@@ -79,15 +79,20 @@ const Page = (): JSX.Element => {
         switch (type) {
             case RN_API.GET_FILE_LIST: {
                 // alert(data + "/" + typeof data)
-                setDirpath(data.dirpath || "")
+                const dirpathList = data.dirpath.split("%3A")
+                setDirpath("/" + ((dirpathList && dirpathList[dirpathList.length - 1]) || "") + "/")
                 setFileList(
                     data.list
-                        .filter((file: any) => file.name.slice(-4, file.name.length) === ".txt")
-                        .map((file: any) => ({
-                            ...file,
-                            timer: null,
-                            isAction: false,
-                        })) || [],
+                        // .filter((file: any) => file.name.slice(-4, file.name.length) === ".txt")
+                        .map((file: any) => {
+                            const fileList = decodeURI(file).split("%2F")
+                            return {
+                                filepath: file,
+                                name: (fileList && fileList[fileList.length - 1]) || "",
+                                timer: null,
+                                isAction: false,
+                            }
+                        }) || [],
                 )
                 break
             }
@@ -159,14 +164,14 @@ const Page = (): JSX.Element => {
                 {fileList.map((file: any) => {
                     return (
                         <FileList.Item
-                            isChecked={file.name === selFile}
+                            isChecked={file.filepath === selFile}
                             onClick={() => {
-                                setSelFile(file.name === selFile ? null : file.name)
+                                setSelFile(file.filepath === selFile ? null : file.filepath)
                             }}
                             onTouchStart={(e) => {
                                 file.timer = setTimeout(() => {
                                     if (confirm("삭제하시겠습니까?") === false) return
-                                    deleteFile(file.name)
+                                    deleteFile(file.filepath)
                                 }, 300)
                             }}
                             onMouseUp={(e) => {

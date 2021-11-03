@@ -1,12 +1,13 @@
 import * as RNFS from 'react-native-fs';
 import CryptoJS from 'react-native-crypto-js';
+import {StorageAccessFramework} from 'expo-file-system';
 
 //readDir(dirpath: string)
 const filetype = 'utf8';
 
-export const readDir = dirpath => {
-  console.log(dirpath);
-  return RNFS.readDir(dirpath)
+export const readDir = directoryUri => {
+  console.log(directoryUri);
+  return StorageAccessFramework.readDirectoryAsync(directoryUri)
     .then(files => {
       return files;
     })
@@ -17,7 +18,10 @@ export const readDir = dirpath => {
 };
 export const readFile = (filepath, pincode) => {
   console.log(filepath, pincode);
-  return RNFS.readFile(filepath, filetype)
+  // return RNFS.readFile(filepath, filetype)
+  return StorageAccessFramework.readAsStringAsync(filepath, {
+    encoding: filetype,
+  })
     .then(contents => {
       console.log(contents);
       const originalText = CryptoJS.AES.decrypt(contents, pincode).toString(
@@ -31,31 +35,70 @@ export const readFile = (filepath, pincode) => {
       return false;
     });
 };
-export const editFilename = async (filepath, newFilepath, pincode) => {
+export const editFilename = async (
+  directoryUri,
+  filepath,
+  newFilename,
+  pincode,
+) => {
   const contents = await readFile(filepath, pincode);
-  console.log(filepath, newFilepath, pincode);
-  return createFile(newFilepath, JSON.stringify(contents), pincode)
-    .then(success => {
-      return deleteFile(filepath);
+  console.log(contents);
+  console.log(directoryUri, filepath, newFilename, pincode);
+  const newFilepath = await createFile(
+    directoryUri,
+    newFilename,
+    JSON.stringify(contents),
+    pincode,
+  );
+  if (newFilepath) {
+    await deleteFile(filepath);
+  }
+  return newFilepath;
+};
+export const editPincode = async (filepath, pincode, newPincode) => {
+  const contents = await readFile(filepath, pincode);
+  const newFilepath = await modifyFile(
+    filepath,
+    JSON.stringify(contents),
+    newPincode,
+  );
+  return newFilepath;
+};
+export const createFile = (directoryUri, fileName, contents, pincode) => {
+  console.log(directoryUri, fileName, contents, pincode);
+  return StorageAccessFramework.createFileAsync(
+    directoryUri,
+    fileName,
+    'text/plain',
+  )
+    .then(filepath => {
+      return StorageAccessFramework.writeAsStringAsync(
+        filepath,
+        CryptoJS.AES.encrypt(contents, pincode).toString(),
+        {encoding: filetype},
+      ).then(() => {
+        return filepath;
+      });
     })
-    .then(success => {
-      console.log('FILENAME CHANGED!');
-      return true;
+    .then(filepath => {
+      console.log('FILE CREATED!');
+      return filepath;
     })
     .catch(err => {
       console.log(err.message);
       return false;
     });
 };
-export const createFile = (filepath, contents, pincode) => {
-  return RNFS.writeFile(
+export const modifyFile = (filepath, contents, pincode) => {
+  // console.log(filepath, contents, pincode);
+  return StorageAccessFramework.writeAsStringAsync(
     filepath,
     CryptoJS.AES.encrypt(contents, pincode).toString(),
-    filetype,
+    {encoding: filetype},
   )
-    .then(success => {
-      console.log('FILE CREATED!');
-      return true;
+    .then(() => {
+      console.log('FILE MODIFIED!');
+      return filepath;
     })
     .catch(err => {
       console.log(err.message);
@@ -63,10 +106,8 @@ export const createFile = (filepath, contents, pincode) => {
     });
 };
 
-export const moveFile = RNFS.moveFile;
-
 export const deleteFile = filepath => {
-  return RNFS.unlink(filepath)
+  return StorageAccessFramework.deleteAsync(filepath)
     .then(success => {
       console.log('FILE DELETED!');
       return true;
