@@ -82,17 +82,19 @@ const Page = (): JSX.Element => {
                 const dirpathList = data.dirpath.split("%3A")
                 setDirpath("/" + ((dirpathList && dirpathList[dirpathList.length - 1]) || "") + "/")
                 setFileList(
-                    data.list
-                        // .filter((file: any) => file.name.slice(-4, file.name.length) === ".txt")
-                        .map((file: any) => {
-                            const fileList = decodeURI(file).split("%2F")
-                            return {
-                                filepath: file,
-                                name: (fileList && fileList[fileList.length - 1]) || "",
-                                timer: null,
-                                isAction: false,
-                            }
-                        }) || [],
+                    (data.list &&
+                        data.list
+                            .map((file: any) => {
+                                const fileList = decodeURI(file).split("%2F")
+                                return {
+                                    filepath: file,
+                                    name: (fileList && fileList[fileList.length - 1]) || "",
+                                    timer: null,
+                                    isAction: false,
+                                }
+                            })
+                            .filter((file: any) => file.name.slice(-4, file.name.length) === ".txt")) ||
+                        [],
                 )
                 break
             }
