@@ -1,5 +1,5 @@
 // #region Global Imports
-import { MouseEventHandler, ReactNode, useState } from "react"
+import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, TouchEventHandler, useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -12,36 +12,54 @@ import { RN_API } from "@Definitions"
 
 // #endregion Local Imports
 interface Props {
+    idx: number
+    isHover: boolean
+    moveItemIdx: (idx: number) => void
     children?: ReactNode
     onClick?: MouseEventHandler
     onClickDel: MouseEventHandler
     onClickMod: (arg0: Account) => void
     account: Account
+    dragAccount: number | null
+    setDragAccount: Dispatch<SetStateAction<number | null>>
+    setMoveY: Dispatch<SetStateAction<number>>
 }
 const AccountCard = (props: Props): JSX.Element => {
-    const { account, children, onClick, onClickDel, onClickMod } = props
+    const { idx, isHover, account, moveItemIdx, children, onClick, onClickDel, onClickMod, dragAccount, setDragAccount, setMoveY } = props
     const [newPw, setNewPw] = useState(account.pw)
     const [isOpen, setIsOpen] = useState(false)
-    const [isDrag, setIsDrag] = useState(false)
+    const getIsDrag = () => dragAccount === idx
+    const [isDrag, setIsDrag] = useState(getIsDrag())
     let timer: NodeJS.Timeout | null = null
 
     const [isEditPw, setIsEditPw] = useState(false)
     const { t } = useTranslation("common")
+    useEffect(() => {
+        setIsDrag(getIsDrag())
+    }, [dragAccount])
     return (
         <div
             onTouchStart={(e) => {
                 timer = setTimeout(() => {
-                    setIsDrag(true)
+                    setDragAccount(idx)
                 }, 300)
+            }}
+            onTouchMove={(e: any) => {
+                const itemHeight = 56 + 10
+                setMoveY(Math.floor((e.touches[0].pageY - e.target.offsetTop) / itemHeight))
             }}
             onTouchEnd={(e) => {
                 if (timer !== null) clearTimeout(timer)
                 if (isDrag === true) {
                     setIsOpen(false)
+                    moveItemIdx(idx)
                 }
-                setIsDrag(false)
+                setDragAccount(null)
             }}
-            className={styles["account-card"]}
+            className={classNames(styles["account-card"], {
+                [styles["account-card--drag-hover"]]: !isDrag && isHover,
+                [styles["account-card--drag"]]: isDrag,
+            })}
         >
             <div
                 className={classNames(styles["account-card__header"], {
@@ -64,9 +82,8 @@ const AccountCard = (props: Props): JSX.Element => {
                 ></Button>
             </div>
             <div
-                className={classNames({
-                    [styles["account-card__con"]]: true,
-                    [styles["account-card__con--show"]]: isOpen && !isDrag,
+                className={classNames(styles["account-card__con"], {
+                    [styles["account-card__con--show"]]: isOpen && dragAccount === null,
                 })}
             >
                 <span>최종 수정일: {account.modifiedAt}</span>

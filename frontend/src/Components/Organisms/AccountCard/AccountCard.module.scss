@@ -1,11 +1,18 @@
 .account-card {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     width: 100%;
     border-radius: 4px;
     border: none;
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
     background: #f3f5f7;
     word-break: keep-all;
+    &--drag{
+        pointer-events:none;
+        touch-action:none;
+    }
+    &--drag-hover{
+        border-top:1px solid;
+    }
     &__header {
         padding: 10px;
         display: flex;
