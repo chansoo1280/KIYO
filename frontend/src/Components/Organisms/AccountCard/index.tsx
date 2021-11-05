@@ -1,5 +1,5 @@
 // #region Global Imports
-import { MouseEventHandler, ReactNode, useState } from "react"
+import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, TouchEventHandler, useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -12,36 +12,75 @@ import { RN_API } from "@Definitions"
 
 // #endregion Local Imports
 interface Props {
+    idx: number
+    isHover: boolean
+    isHoverTop: boolean
+    moveItemIdx: (idx: number) => void
     children?: ReactNode
     onClick?: MouseEventHandler
     onClickDel: MouseEventHandler
     onClickMod: (arg0: Account) => void
     account: Account
+    dragAccount: number | null
+    setDragAccount: Dispatch<SetStateAction<number | null>>
+    setMousePos: Dispatch<
+        SetStateAction<{
+            x: number
+            y: number
+        }>
+    >
+    setMoveY: Dispatch<SetStateAction<number>>
 }
 const AccountCard = (props: Props): JSX.Element => {
-    const { account, children, onClick, onClickDel, onClickMod } = props
+    const { idx, isHover, isHoverTop, account, moveItemIdx, children, onClick, onClickDel, onClickMod, dragAccount, setDragAccount, setMoveY, setMousePos } = props
     const [newPw, setNewPw] = useState(account.pw)
     const [isOpen, setIsOpen] = useState(false)
-    const [isDrag, setIsDrag] = useState(false)
-    let timer: NodeJS.Timeout | null = null
+    const getIsDrag = () => dragAccount === idx
+    const [isDrag, setIsDrag] = useState(getIsDrag())
+    const [timer, setTimer] = useState<NodeJS.Timeout | null>(null)
 
     const [isEditPw, setIsEditPw] = useState(false)
     const { t } = useTranslation("common")
+    useEffect(() => {
+        setIsDrag(getIsDrag())
+    }, [dragAccount])
     return (
         <div
             onTouchStart={(e) => {
-                timer = setTimeout(() => {
-                    setIsDrag(true)
-                }, 300)
+                setMousePos({
+                    x: e.touches[0].pageX,
+                    y: e.touches[0].pageY,
+                })
+                setTimer(
+                    setTimeout(() => {
+                        setDragAccount(idx)
+                        setTimer(null)
+                    }, 300),
+                )
+            }}
+            onTouchMove={(e: any) => {
+                setMousePos({
+                    x: e.touches[0].pageX,
+                    y: e.touches[0].pageY,
+                })
+                const itemHeight = 56 + 10
+                setMoveY(Math.floor((e.touches[0].pageY - e.target.parentElement.offsetTop + itemHeight / 2) / itemHeight))
             }}
             onTouchEnd={(e) => {
-                if (timer !== null) clearTimeout(timer)
+                if (timer !== null) {
+                    clearTimeout(timer)
+                    setTimer(null)
+                }
                 if (isDrag === true) {
                     setIsOpen(false)
+                    moveItemIdx(idx)
                 }
-                setIsDrag(false)
+                setDragAccount(null)
             }}
-            className={styles["account-card"]}
+            className={classNames(styles["account-card"], {
+                [styles["account-card--drag-hover"]]: !isDrag && isHover && dragAccount !== idx - 1,
+                [styles["account-card--drag-hover-last"]]: !isDrag && isHoverTop,
+            })}
         >
             <div
                 className={classNames(styles["account-card__header"], {
@@ -64,9 +103,8 @@ const AccountCard = (props: Props): JSX.Element => {
                 ></Button>
             </div>
             <div
-                className={classNames({
-                    [styles["account-card__con"]]: true,
-                    [styles["account-card__con--show"]]: isOpen && !isDrag,
+                className={classNames(styles["account-card__con"], {
+                    [styles["account-card__con--show"]]: isOpen && dragAccount === null,
                 })}
             >
                 <span>최종 수정일: {account.modifiedAt}</span>

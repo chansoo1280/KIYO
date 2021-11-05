@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Title, Space, Button, AccountCard } from "@Components"
+import { Header, Search, Title, Space, Button, AccountCard, DragCard } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -29,7 +29,43 @@ const Page = (): JSX.Element => {
     }))
     const [search, setSearch] = useState("")
     const [filterText, setFilterText] = useState("")
-    const [dragAccount, setDragAccount] = useState<Account | null>(null)
+    const [dragAccount, setDragAccount] = useState<number | null>(null)
+    const [moveY, setMoveY] = useState<number>(0)
+    const [mousePos, setMousePos] = useState({
+        x: 0,
+        y: 0,
+    })
+
+    const testList = [
+        {
+            id: "123",
+            pw: "12341312",
+            address: "1",
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            address: "2",
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            address: "3",
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            address: "4",
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+    ]
 
     const createAccount = ({ address, id, pw }: Pick<Account, "address" | "id" | "pw">) => {
         if (!window.ReactNativeWebView) {
@@ -81,6 +117,54 @@ const Page = (): JSX.Element => {
                 },
             }),
         )
+    }
+
+    const moveItemIdx = (idx: number) => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        if (dragAccount === null) return
+        const moveIdx = (() => {
+            const newIdx = dragAccount + moveY
+            if (newIdx < 0) return 0
+            if (acFile.list.length <= newIdx) return acFile.list.length - 1
+            if (idx < newIdx) return newIdx - 1
+            return newIdx
+        })()
+        // console.log(idx, moveIdx)
+        if (idx === moveIdx) return
+        const account = getShowAccountList(acFile.list)[idx]
+        const moveAccount = getShowAccountList(acFile.list)[moveIdx]
+
+        const fromIdx = acFile.list.findIndex(({ address, id }) => address === account.address && id === account.id)
+        const toIdx = acFile.list.findIndex(({ address, id }) => address === moveAccount.address && id === moveAccount.id)
+        const moved = function (from: number, to: number, [...array]: any[], on = 1) {
+            array.splice(to, 0, ...array.splice(from, on))
+            return array
+        }
+        // console.log(moved(fromIdx, toIdx, acFile.list))
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.SET_FILE,
+                data: {
+                    contents: moved(fromIdx, toIdx, acFile.list),
+                    pincode: acFile.pincode,
+                },
+            }),
+        )
+    }
+    const getShowAccountList = (list: Account[]) => {
+        return list.filter(({ address, id }: Account) => {
+            if (filterText === "") return true
+            return address.includes(filterText) === true || id.includes(filterText) === true
+        })
+    }
+    const isHover = (idx: number) => {
+        if (dragAccount === null) return false
+        const newIdx = dragAccount + moveY
+        if (newIdx < 0) return 0 === idx
+        return newIdx === idx
     }
 
     const listener = (event: any) => {
@@ -153,53 +237,24 @@ const Page = (): JSX.Element => {
                 }}
             />
             <Space direction="column" padding="10px">
-                {!acFile.list || acFile.list.length === 0 ? (
+                {/* {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
                     ) : (
                         <span>검색된 계정 정보가 없습니다!</span>
                     )
                 ) : (
-                    acFile.list
-                        .filter(({ address, id }: Account) => {
-                            if (filterText === "") return true
-                            return address.includes(filterText) === true || id.includes(filterText) === true
-                        })
-                        .map((account: Account) => {
-                            return (
-                                <AccountCard
-                                    account={account}
-                                    onClickDel={(e) => {
-                                        e.stopPropagation()
-                                        if (confirm("삭제하시겠습니까?") === false) {
-                                            return
-                                        }
-                                        deleteAccount(account)
-                                    }}
-                                    onClickMod={(newAccount) => {
-                                        modifyAccount(newAccount)
-                                    }}
-                                ></AccountCard>
-                            )
-                        })
-                )}
-                {/* {[
-                    {
-                        id: "123",
-                        pw: "12341312",
-                        address: "asdasd",
-                        modifiedAt: String(new Date()),
-                        createdAt: String(new Date()),
-                    },
-                ]
-                    .filter(({ address, id }: Account) => {
-                        if (filterText === "") return true
-                        return address.includes(filterText) === true || id.includes(filterText) === true
-                    })
-                    .map((account: any) => {
+                    getShowAccountList(acFile.list).map((account: Account, idx: number) => {
                         return (
                             <AccountCard
+                                idx={idx}
+                                isHover={isHover(idx)}
+                                isHoverTop={isHover(idx + 1)}
+                                moveItemIdx={moveItemIdx}
                                 account={account}
+                                setMoveY={setMoveY}
+                                dragAccount={dragAccount}
+                                setDragAccount={setDragAccount}
                                 onClickDel={(e) => {
                                     e.stopPropagation()
                                     if (confirm("삭제하시겠습니까?") === false) {
@@ -212,8 +267,36 @@ const Page = (): JSX.Element => {
                                 }}
                             ></AccountCard>
                         )
-                    })} */}
+                    })
+                )} */}
+
+                {getShowAccountList(testList).map((account: Account, idx: number) => {
+                    return (
+                        <AccountCard
+                            idx={idx}
+                            isHover={isHover(idx)}
+                            isHoverTop={isHover(idx + 1) && idx === getShowAccountList(testList).length - 1}
+                            moveItemIdx={moveItemIdx}
+                            account={account}
+                            setMoveY={setMoveY}
+                            dragAccount={dragAccount}
+                            setDragAccount={setDragAccount}
+                            setMousePos={setMousePos}
+                            onClickDel={(e) => {
+                                e.stopPropagation()
+                                if (confirm("삭제하시겠습니까?") === false) {
+                                    return
+                                }
+                                deleteAccount(account)
+                            }}
+                            onClickMod={(newAccount) => {
+                                modifyAccount(newAccount)
+                            }}
+                        ></AccountCard>
+                    )
+                })}
             </Space>
+            <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
                 onClick={() => {
                     const address = prompt("사이트명 입력")

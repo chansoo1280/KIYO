@@ -1,11 +1,31 @@
 .account-card {
-    margin-bottom: 20px;
+    position: relative;
     width: 100%;
     border-radius: 4px;
     border: none;
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
     background: #f3f5f7;
     word-break: keep-all;
+    &:before{
+        content:"";
+        opacity:0;
+        position:absolute;
+        top:0;
+        left:50%;
+        transform: translate(-50%,-6px);
+        display: block;
+        width:80%;
+        height:2px;
+        background: #fabd78;
+    }
+    &--drag-hover:before{
+        opacity:1;
+    }
+    &--drag-hover-last:before{
+        opacity:1;
+        top:100%;
+        transform: translate(-50%,6px);
+    }
     &__header {
         padding: 10px;
         display: flex;
