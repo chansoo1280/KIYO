@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
 import {ToastAndroid, PermissionsAndroid} from 'react-native';
+import getPath from '@flyerhq/react-native-android-uri-path'
 import {
   WebViewWrapper,
   readDir,
@@ -187,13 +188,14 @@ const App = () => {
               (err, result) => result,
             );
             const files = await readDir(directoryUri);
-            console.log(files);
+            const fileList = await Promise.all(files.map((file)=>RNGRP.getRealPathFromURI(file)))
+            console.log(fileList);
             webview.current.postMessage(
-              JSON.stringify({
+              JSON.stringify({ 
                 type: RN_API.GET_FILE_LIST,
                 data: {
                   dirpath: directoryUri,
-                  list: files,
+                  list: fileList,
                 },
               }),
             );

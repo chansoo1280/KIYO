@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Title, Space, Button, AccountCard } from "@Components"
+import { Header, Search, Title, Space, Button, AccountCard, DragCard } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -31,6 +31,10 @@ const Page = (): JSX.Element => {
     const [filterText, setFilterText] = useState("")
     const [dragAccount, setDragAccount] = useState<number | null>(null)
     const [moveY, setMoveY] = useState<number>(0)
+    const [mousePos, setMousePos] = useState({
+        x: 0,
+        y: 0,
+    })
 
     const testList = [
         {
@@ -116,25 +120,39 @@ const Page = (): JSX.Element => {
     }
 
     const moveItemIdx = (idx: number) => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
         if (dragAccount === null) return
         const moveIdx = (() => {
             const newIdx = dragAccount + moveY
             if (newIdx < 0) return 0
+            if (acFile.list.length <= newIdx) return acFile.list.length - 1
             if (idx < newIdx) return newIdx - 1
             return newIdx
         })()
-        console.log(idx, moveIdx)
+        // console.log(idx, moveIdx)
         if (idx === moveIdx) return
-        const account = getShowAccountList(testList)[idx]
-        const moveAccount = getShowAccountList(testList)[moveIdx]
+        const account = getShowAccountList(acFile.list)[idx]
+        const moveAccount = getShowAccountList(acFile.list)[moveIdx]
 
-        const fromIdx = testList.findIndex(({ address, id }) => address === account.address && id === account.id)
-        const toIdx = testList.findIndex(({ address, id }) => address === moveAccount.address && id === moveAccount.id)
-        function moved(from: number, to: number, [...array]: any[], on = 1) {
+        const fromIdx = acFile.list.findIndex(({ address, id }) => address === account.address && id === account.id)
+        const toIdx = acFile.list.findIndex(({ address, id }) => address === moveAccount.address && id === moveAccount.id)
+        const moved = function (from: number, to: number, [...array]: any[], on = 1) {
             array.splice(to, 0, ...array.splice(from, on))
             return array
         }
-        console.log(moved(fromIdx, toIdx, testList))
+        // console.log(moved(fromIdx, toIdx, acFile.list))
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.SET_FILE,
+                data: {
+                    contents: moved(fromIdx, toIdx, acFile.list),
+                    pincode: acFile.pincode,
+                },
+            }),
+        )
     }
     const getShowAccountList = (list: Account[]) => {
         return list.filter(({ address, id }: Account) => {
@@ -219,7 +237,7 @@ const Page = (): JSX.Element => {
                 }}
             />
             <Space direction="column" padding="10px">
-                {!acFile.list || acFile.list.length === 0 ? (
+                {/* {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
                     ) : (
@@ -231,6 +249,7 @@ const Page = (): JSX.Element => {
                             <AccountCard
                                 idx={idx}
                                 isHover={isHover(idx)}
+                                isHoverTop={isHover(idx + 1)}
                                 moveItemIdx={moveItemIdx}
                                 account={account}
                                 setMoveY={setMoveY}
@@ -249,17 +268,20 @@ const Page = (): JSX.Element => {
                             ></AccountCard>
                         )
                     })
-                )}
+                )} */}
+
                 {getShowAccountList(testList).map((account: Account, idx: number) => {
                     return (
                         <AccountCard
                             idx={idx}
                             isHover={isHover(idx)}
+                            isHoverTop={isHover(idx + 1) && idx === getShowAccountList(testList).length - 1}
                             moveItemIdx={moveItemIdx}
                             account={account}
                             setMoveY={setMoveY}
                             dragAccount={dragAccount}
                             setDragAccount={setDragAccount}
+                            setMousePos={setMousePos}
                             onClickDel={(e) => {
                                 e.stopPropagation()
                                 if (confirm("삭제하시겠습니까?") === false) {
@@ -274,6 +296,7 @@ const Page = (): JSX.Element => {
                     )
                 })}
             </Space>
+            <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
                 onClick={() => {
                     const address = prompt("사이트명 입력")

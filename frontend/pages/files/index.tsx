@@ -79,13 +79,12 @@ const Page = (): JSX.Element => {
         switch (type) {
             case RN_API.GET_FILE_LIST: {
                 // alert(data + "/" + typeof data)
-                const dirpathList = data.dirpath.split("%3A")
-                setDirpath("/" + ((dirpathList && dirpathList[dirpathList.length - 1]) || "") + "/")
+                setDirpath(decodeURIComponent(data.dirpath))
                 setFileList(
                     (data.list &&
                         data.list
                             .map((file: any) => {
-                                const fileList = decodeURI(file).split("%2F")
+                                const fileList = decodeURIComponent(file).split("/")
                                 return {
                                     filepath: file,
                                     name: (fileList && fileList[fileList.length - 1]) || "",
