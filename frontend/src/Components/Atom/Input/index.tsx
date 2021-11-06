@@ -19,13 +19,15 @@ interface Props {
     readOnly?: boolean
     ref?: RefObject<HTMLInputElement>
     className?: string
+    id?: string
 }
 
 const Input = (props: Props): JSX.Element => {
     const { className, ref, value, onClick, setValue, onChange, onEnter, onReset, type, readOnly, ...rest } = props
     const [isShowPw, setIsShowPw] = useState(type !== "password")
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setValue && setValue(e.target.value || "")
+        const value: string = e.target.value || ""
+        setValue && setValue(value)
     }, [])
     return (
         <div className={classNames(className, styles["input-wrap"])}>

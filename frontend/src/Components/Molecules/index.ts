@@ -1,4 +1,5 @@
 export { default as Tab } from "./Tab"
+export { default as Tag } from "./Tag"
 export { default as SlideTab } from "./SlideTab"
 export { default as IconList } from "./IconList"
 export { default as Chart } from "./Chart"

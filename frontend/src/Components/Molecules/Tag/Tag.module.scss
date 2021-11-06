@@ -1,0 +1,21 @@
+$tag-prefix: "tag";
+
+.#{$tag-prefix} {
+    margin: 0 auto 16px;
+    display: inline-flex;
+    flex-wrap:wrap;
+    justify-content: center;
+    align-items: center;
+    gap:4px;
+    border-radius: 12px;
+}
+.#{$tag-prefix}__btn {
+    padding: 0 0 0 14px;
+    display:flex;
+    align-items:center;
+    height: 40px;
+    border: 1px solid #d0d9e4;
+    border-radius:20px;
+    white-space: nowrap;
+    background:#fff;
+}
