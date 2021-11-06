@@ -46,7 +46,7 @@ const AccountCard = (props: Props): JSX.Element => {
     }, [dragAccount])
     return (
         <div
-            onTouchStart={(e) => {
+            onTouchStart={(e: any) => {
                 setMousePos({
                     x: e.touches[0].pageX,
                     y: e.touches[0].pageY,
@@ -55,6 +55,8 @@ const AccountCard = (props: Props): JSX.Element => {
                     setTimeout(() => {
                         setDragAccount(idx)
                         setTimer(null)
+                        const itemHeight = 56 + 10
+                        setMoveY(Math.floor((e.touches[0].pageY - e.target.parentElement.offsetTop + itemHeight / 2) / itemHeight))
                     }, 300),
                 )
             }}
