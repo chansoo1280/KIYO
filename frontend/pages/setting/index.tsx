@@ -90,13 +90,6 @@ const Page = (): JSX.Element => {
     const listener = (event: any) => {
         const { data, type } = JSON.parse(event.data)
         switch (type) {
-            case RN_API.GET_FILENAME: {
-                if (data === false) {
-                    alert("파일이 없습니다.")
-                    router.replace("/create", "/create")
-                }
-                break
-            }
             case RN_API.SET_FILENAME: {
                 // alert(data + "/" + typeof data)
                 if (data === false) {
@@ -148,11 +141,6 @@ const Page = (): JSX.Element => {
     }
     useEffect(() => {
         if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(
-                JSON.stringify({
-                    type: RN_API.GET_FILENAME,
-                }),
-            )
             /** android */
             document.addEventListener("message", listener)
             /** ios */

@@ -5,7 +5,7 @@ $btn-prefix: "btn";
     justify-content: center;
     align-items: center;
     min-width: 180px;
-    height: 36px;
+    min-height: 36px;
     border: 1px solid #d0d9e4;
     border-radius: 2px;
     background: #fff;
@@ -56,7 +56,7 @@ $btn-prefix: "btn";
         border-radius: 50%;
     }
     &--lg {
-        height: 48px;
+        min-height: 48px;
         font-size: 30px;
     }
 }
