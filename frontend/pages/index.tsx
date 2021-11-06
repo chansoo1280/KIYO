@@ -88,19 +88,19 @@ const Page = (): JSX.Element => {
                     return
                 }
                 // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
-                const list =
-                    data.contents.map((account: any) => {
-                        return {
-                            ...account,
-                            siteName: account.siteName || account.address,
-                            tags: account.tags || [],
-                        }
-                    }) || []
+                const list: Account[] =
+                    data.contents.map((account: any) => ({
+                        ...account,
+                        siteName: account.siteName || account.address,
+                        tags: account.tags || [],
+                    })) || []
+                const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
                 dispatch(
                     AcFileActions.setInfo({
                         pincode: data.pincode,
                         filename: data.filename,
                         list: list,
+                        tags: Array.from(new Set(tags)),
                     }),
                 )
                 router.push("/list", "/list")
@@ -151,7 +151,17 @@ const Page = (): JSX.Element => {
                     파일 목록으로 이동
                 </Button>
             </Space>
-            <KeyPad maxLength={6} onEnter={() => getFile()} value={pincode || ""} setValue={setPincode}></KeyPad>
+            <KeyPad
+                onChange={() => {
+                    if (pincode && pincode.length === 6) {
+                        getFile()
+                    }
+                }}
+                maxLength={6}
+                onEnter={() => getFile()}
+                value={pincode || ""}
+                setValue={setPincode}
+            ></KeyPad>
         </>
     )
 }

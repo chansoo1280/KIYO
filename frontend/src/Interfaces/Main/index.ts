@@ -11,5 +11,6 @@ export interface Account {
 export interface AcFile {
     filename: string | null
     pincode: string | null
+    tags: string[]
     list: Account[]
 }

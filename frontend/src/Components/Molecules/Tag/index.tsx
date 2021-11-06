@@ -9,24 +9,45 @@ import styles from "./Tag.module.scss"
 // #endregion Local Imports
 interface Props {
     children?: React.ReactNode
+    gap?: string
 }
 
 const InternalTag = (props: Props): JSX.Element => {
-    const { children } = props
-    return <ul className={styles["tag"]}>{children}</ul>
+    const { gap, children } = props
+    return (
+        <ul style={{ gap }} className={styles["tag"]}>
+            {children}
+        </ul>
+    )
 }
 interface InnerProps {
     onClick?: MouseEventHandler<HTMLLIElement>
+    onDelete?: () => void
     children?: ReactNode
+    isSelected?: boolean
 }
 const TagInner = (props: InnerProps): JSX.Element => {
-    const { children, onClick } = props
+    const { children, onClick, onDelete, isSelected } = props
     const classes = className({
         [styles["tag__btn"]]: true,
+        [styles["tag__btn--delete"]]: onDelete,
+        [styles["tag__btn--selected"]]: isSelected,
     })
     return (
         <li className={classes} onClick={onClick}>
             {children}
+            {onDelete ? (
+                <Button
+                    onClick={onDelete}
+                    icon={
+                        <i className="xi-close-min">
+                            <span className="ir">설정</span>
+                        </i>
+                    }
+                ></Button>
+            ) : (
+                ""
+            )}
         </li>
     )
 }
