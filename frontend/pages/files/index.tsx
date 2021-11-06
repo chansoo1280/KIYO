@@ -218,9 +218,15 @@ const Page = (): JSX.Element => {
                     router.push("/create", "/create")
                 }}
                 type="primary"
-            >
-                새로 만들기
-            </Button>
+                shape="circle"
+                size="lg"
+                fixed
+                icon={
+                    <i className="xi-plus-min">
+                        <span className="ir">새로 만들기</span>
+                    </i>
+                }
+            ></Button>
         </>
     )
 }
