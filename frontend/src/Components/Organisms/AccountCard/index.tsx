@@ -4,7 +4,7 @@ import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, TouchEventHandl
 
 // #region Local Imports
 import styles from "./AccountCard.module.scss"
-import { Button, Input } from "@Components"
+import { Button, Input, Space } from "@Components"
 import classNames from "classnames"
 import { useTranslation } from "next-i18next"
 import { Account } from "@Interfaces"
@@ -93,7 +93,7 @@ const AccountCard = (props: Props): JSX.Element => {
                 }}
             >
                 <h2 className={styles["account-card__title"]}>
-                    {account.id} / {account.address}
+                    {account.id} / {account.siteName}
                 </h2>
                 <Button
                     onClick={onClickDel}
@@ -109,66 +109,70 @@ const AccountCard = (props: Props): JSX.Element => {
                     [styles["account-card__con--show"]]: isOpen && dragAccount === null,
                 })}
             >
-                <span>최종 수정일: {account.modifiedAt}</span>
-                <Input
-                    type="password"
-                    onClick={(e) => {
-                        if (!isEditPw) {
-                            if (!window.ReactNativeWebView) {
-                                alert("ReactNativeWebView 객체가 없습니다.")
-                                return
-                            }
-                            window.ReactNativeWebView.postMessage(
-                                JSON.stringify({
-                                    type: RN_API.SET_COPY,
-                                    data: {
-                                        text: account.pw,
-                                    },
-                                }),
-                            )
-                            // if (navigator.clipboard && window.isSecureContext) {
-                            //     navigator.clipboard.writeText(account.pw).then(() => {
-                            //         alert("copy!")
-                            //     }).catch((e)=>{
-                            //         alert(e)
-                            //     })
-                            // } else {
-                            //     alert("navigator.clipboard 메소드가 없습니다.")
-                            // }
-                        }
-                    }}
-                    onChange={(e) => {
-                        setNewPw(e.target.value || "")
-                    }}
-                    value={newPw}
-                    readOnly={!isEditPw}
-                />
-                <Button
-                    onClick={() => {
-                        setNewPw(account.pw)
-                        setIsEditPw(!isEditPw)
-                    }}
-                    show={isEditPw}
-                    icon={<i className="xi-close-circle"></i>}
-                ></Button>
-                <Button
-                    onClick={() => {
-                        onClickMod({
-                            ...account,
-                            pw: newPw,
-                        })
-                        setIsEditPw(!isEditPw)
-                    }}
-                    show={isEditPw}
-                    icon={<i className="xi-save"></i>}
-                ></Button>
-                <Button
-                    onClick={() => {
-                        setIsEditPw(!isEditPw)
-                    }}
-                    show={!isEditPw}
-                    icon={<i className="xi-pen"></i>}
-                ></Button>
+                <Space vAlign="flex-start" direction="column" padding="10px">
+                    <span>최종 수정일: {account.modifiedAt}</span>
+                    <Space>
+                        <Input
+                            type="password"
+                            onClick={(e) => {
+                                if (!isEditPw) {
+                                    if (!window.ReactNativeWebView) {
+                                        alert("ReactNativeWebView 객체가 없습니다.")
+                                        return
+                                    }
+                                    window.ReactNativeWebView.postMessage(
+                                        JSON.stringify({
+                                            type: RN_API.SET_COPY,
+                                            data: {
+                                                text: account.pw,
+                                            },
+                                        }),
+                                    )
+                                    // if (navigator.clipboard && window.isSecureContext) {
+                                    //     navigator.clipboard.writeText(account.pw).then(() => {
+                                    //         alert("copy!")
+                                    //     }).catch((e)=>{
+                                    //         alert(e)
+                                    //     })
+                                    // } else {
+                                    //     alert("navigator.clipboard 메소드가 없습니다.")
+                                    // }
+                                }
+                            }}
+                            onChange={(e) => {
+                                setNewPw(e.target.value || "")
+                            }}
+                            value={newPw}
+                            readOnly={!isEditPw}
+                        />
+                        <Button
+                            onClick={() => {
+                                setNewPw(account.pw)
+                                setIsEditPw(!isEditPw)
+                            }}
+                            show={isEditPw}
+                            icon={<i className="xi-close-circle"></i>}
+                        ></Button>
+                        <Button
+                            onClick={() => {
+                                onClickMod({
+                                    ...account,
+                                    pw: newPw,
+                                })
+                                setIsEditPw(!isEditPw)
+                            }}
+                            show={isEditPw}
+                            icon={<i className="xi-save"></i>}
+                        ></Button>
+                        <Button
+                            onClick={() => {
+                                setIsEditPw(!isEditPw)
+                            }}
+                            show={!isEditPw}
+                            icon={<i className="xi-pen"></i>}
+                        ></Button>
+                    </Space>
+                </Space>
             </div>
         </div>
     )

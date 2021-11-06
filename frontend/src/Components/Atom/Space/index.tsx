@@ -13,13 +13,14 @@ interface Props {
     className?: string
     direction?: "row" | "row-reverse" | "column" | "column-reverse"
     align?: "flex-start" | "center" | "flex-end"
+    vAlign?: "flex-start" | "center" | "flex-end"
     gap?: string
     cover?: boolean
     flex?: boolean
 }
 
 const Space = (props: Props): JSX.Element => {
-    const { flex, gap, padding, direction, align, children, className, cover } = props
+    const { flex, gap, padding, direction, align, vAlign, children, className, cover } = props
     const classes = classNames(
         styles["space"],
         {
@@ -31,7 +32,7 @@ const Space = (props: Props): JSX.Element => {
     )
     return (
         <>
-            <div style={{ gap, padding, flexDirection: direction, justifyContent: align }} className={classes}>
+            <div style={{ gap, padding, flexDirection: direction, justifyContent: align, alignItems: vAlign }} className={classes}>
                 {children}
             </div>
         </>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Title, Space, Button, AccountCard, DragCard } from "@Components"
+import { Header, Search, Title, Space, Button, AccountCard, DragCard, ConfirmModal, Input, Tag } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -20,7 +20,7 @@ declare global {
 }
 
 const useAccount = (acFile: AcFile) => {
-    const createAccount = ({ address, id, pw }: Pick<Account, "address" | "id" | "pw">) => {
+    const createAccount = ({ siteName, siteLink, id, pw, tags }: Pick<Account, "siteName" | "siteLink" | "id" | "pw" | "tags">) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
@@ -29,7 +29,7 @@ const useAccount = (acFile: AcFile) => {
             JSON.stringify({
                 type: RN_API.SET_FILE,
                 data: {
-                    contents: [...acFile.list, { address, id, pw, modifiedAt: new Date(), createdAt: new Date() }],
+                    contents: [...acFile.list, { siteName, siteLink, id, pw, tags, modifiedAt: new Date(), createdAt: new Date() }],
                     pincode: acFile.pincode,
                 },
             }),
@@ -41,7 +41,7 @@ const useAccount = (acFile: AcFile) => {
             return
         }
         const newList = acFile.list.filter((acInfo) => {
-            return acInfo.address !== account.address || acInfo.id !== account.id
+            return acInfo.siteName !== account.siteName || acInfo.id !== account.id
         })
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
@@ -53,13 +53,13 @@ const useAccount = (acFile: AcFile) => {
             }),
         )
     }
-    const deleteAccount = ({ address, id }: Account) => {
+    const deleteAccount = ({ siteName, id }: Account) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
         const newList = acFile.list.filter((account) => {
-            return account.address !== address || account.id !== id
+            return account.siteName !== siteName || account.id !== id
         })
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
@@ -104,6 +104,19 @@ const Page = (): JSX.Element => {
     }))
     const [search, setSearch] = useState("")
     const [filterText, setFilterText] = useState("")
+    interface ModelCreateAccount extends Pick<Account, "siteName" | "siteLink" | "id" | "pw" | "tags"> {
+        show: boolean
+        inputTag: string
+    }
+    const [modelCreateAccount, setModelCreateAccount] = useState<ModelCreateAccount>({
+        show: false,
+        inputTag: "",
+        siteName: "",
+        siteLink: "",
+        id: "",
+        pw: "",
+        tags: [],
+    })
 
     const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile)
     const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList } = useDragable()
@@ -112,28 +125,32 @@ const Page = (): JSX.Element => {
     //     {
     //         id: "123",
     //         pw: "12341312",
-    //         address: "1",
+    //         siteName: "1",
+    //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
     //         id: "123",
     //         pw: "12341312",
-    //         address: "2",
+    //         siteName: "2",
+    //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
     //         id: "123",
     //         pw: "12341312",
-    //         address: "3",
+    //         siteName: "3",
+    //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
     //         id: "123",
     //         pw: "12341312",
-    //         address: "4",
+    //         siteName: "4",
+    //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
@@ -158,8 +175,8 @@ const Page = (): JSX.Element => {
         const moveAccount = getShowAccountList(acFile.list)[moveIdx]
         if (!account || !moveAccount) return
 
-        const fromIdx = acFile.list.findIndex(({ address, id }) => address === account.address && id === account.id)
-        const toIdx = acFile.list.findIndex(({ address, id }) => address === moveAccount.address && id === moveAccount.id)
+        const fromIdx = acFile.list.findIndex(({ siteName, id }) => siteName === account.siteName && id === account.id)
+        const toIdx = acFile.list.findIndex(({ siteName, id }) => siteName === moveAccount.siteName && id === moveAccount.id)
         // console.log(getMovedList(fromIdx, toIdx, acFile.list))
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
@@ -172,9 +189,9 @@ const Page = (): JSX.Element => {
         )
     }
     const getShowAccountList = (list: Account[]) => {
-        return list.filter(({ address, id }: Account) => {
+        return list.filter(({ siteName, id }: Account) => {
             if (filterText === "") return true
-            return address.includes(filterText) === true || id.includes(filterText) === true
+            return siteName.includes(filterText) === true || id.includes(filterText) === true
         })
     }
 
@@ -307,13 +324,23 @@ const Page = (): JSX.Element => {
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
                 onClick={() => {
-                    const address = prompt("사이트명 입력")
-                    if (address === null) return
-                    const id = prompt("id 입력")
-                    if (id === null) return
-                    const pw = prompt("pw 입력")
-                    if (pw === null) return
-                    createAccount({ address, id, pw })
+                    setModelCreateAccount({
+                        ...modelCreateAccount,
+                        show: true,
+                        inputTag: "",
+                        siteName: "",
+                        siteLink: "",
+                        id: "",
+                        pw: "",
+                        tags: [],
+                    })
+                    // const siteName = prompt("사이트명 입력")
+                    // if (siteName === null) return
+                    // const id = prompt("id 입력")
+                    // if (id === null) return
+                    // const pw = prompt("pw 입력")
+                    // if (pw === null) return
+                    // createAccount({ siteName, id, pw })
                 }}
                 type="primary"
                 shape="circle"
@@ -325,6 +352,187 @@ const Page = (): JSX.Element => {
                     </i>
                 }
             ></Button>
+            <ConfirmModal
+                show={modelCreateAccount.show}
+                title="계정 정보 생성"
+                onClickOk={() => {
+                    createAccount(modelCreateAccount)
+                    setModelCreateAccount({
+                        ...modelCreateAccount,
+                        show: false,
+                    })
+                }}
+                onClickCancel={() => {
+                    setModelCreateAccount({
+                        ...modelCreateAccount,
+                        show: false,
+                    })
+                }}
+            >
+                <Space direction="column" vAlign="flex-start" cover padding="20px 10px 0">
+                    <div>
+                        <label htmlFor="inputSiteName">사이트명</label>
+                        <Input
+                            id="inputSiteName"
+                            value={modelCreateAccount.siteName}
+                            onChange={(e) => {
+                                setModelCreateAccount({
+                                    ...modelCreateAccount,
+                                    siteName: e.target.value,
+                                })
+                            }}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="inputSiteLink">사이트링크</label>
+                        <Input
+                            id="inputSiteLink"
+                            value={modelCreateAccount.siteLink}
+                            onChange={(e) => {
+                                setModelCreateAccount({
+                                    ...modelCreateAccount,
+                                    siteLink: e.target.value,
+                                })
+                            }}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="inputId">아이디</label>
+                        <Input
+                            id="inputId"
+                            value={modelCreateAccount.id}
+                            onChange={(e) => {
+                                setModelCreateAccount({
+                                    ...modelCreateAccount,
+                                    id: e.target.value,
+                                })
+                            }}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="inputPw">비밀번호</label>
+                        <Input
+                            id="inputPw"
+                            value={modelCreateAccount.pw}
+                            onChange={(e) => {
+                                setModelCreateAccount({
+                                    ...modelCreateAccount,
+                                    pw: e.target.value,
+                                })
+                            }}
+                        />
+                    </div>
+                    <Button
+                        onClick={() => {
+                            const chars = ["0123456789", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "!@#$%^&*()-_=+"]
+                            const charsStr = chars.join("")
+                            const getRandomIdx = (length: number) => Math.floor(Math.random() * (length - 1))
+                            const length = 12
+                            const createdPw = ((): string => {
+                                const str = []
+                                for (let i = 0; i < chars.length; i++) {
+                                    const innerChars = chars[i]
+                                    str.push(innerChars[getRandomIdx(innerChars.length)])
+                                }
+                                for (let i = 0; i < chars.length; i++) {
+                                    const innerChars = chars[i]
+                                    str.push(innerChars[getRandomIdx(innerChars.length)])
+                                }
+                                const lestLen = length - str.length
+                                for (let i = 0; i < lestLen; i++) {
+                                    str.push(charsStr[getRandomIdx(charsStr.length)])
+                                }
+                                return str
+                                    .sort(() => {
+                                        return Math.random() - 0.5
+                                    })
+                                    .join("")
+                            })()
+                            setModelCreateAccount({
+                                ...modelCreateAccount,
+                                pw: createdPw,
+                            })
+                        }}
+                    >
+                        비밀번호 자동 생성
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            const charsStr = "0123456789".split("")
+                            const getRandomIdx = (length: number) => Math.floor(Math.random() * (length - 1))
+                            const length = 6
+                            const createdPw = ((): string => {
+                                const str = []
+                                for (let i = 0; i < length; i++) {
+                                    const idx = getRandomIdx(charsStr.length)
+                                    str.push(charsStr.splice(idx, 1))
+                                    console.log(charsStr)
+                                }
+                                return str
+                                    .sort(() => {
+                                        return Math.random() - 0.5
+                                    })
+                                    .join("")
+                            })()
+                            setModelCreateAccount({
+                                ...modelCreateAccount,
+                                pw: createdPw,
+                            })
+                        }}
+                    >
+                        핀번호
+                    </Button>
+                    <div>
+                        <label htmlFor="inputTag">태그</label>
+                        <Input
+                            id="inputTag"
+                            value={modelCreateAccount.inputTag}
+                            onChange={(e) => {
+                                setModelCreateAccount({
+                                    ...modelCreateAccount,
+                                    inputTag: e.target.value,
+                                })
+                            }}
+                            onEnter={() => {
+                                if (modelCreateAccount.inputTag === "") return
+                                const isExist = modelCreateAccount.tags.find((tag) => modelCreateAccount.inputTag === tag)
+                                if (isExist) return
+                                setModelCreateAccount({
+                                    ...modelCreateAccount,
+                                    tags: [...(modelCreateAccount.tags || []), modelCreateAccount.inputTag],
+                                    inputTag: "",
+                                })
+                            }}
+                        />
+                    </div>
+                    <div>
+                        <Tag>
+                            {modelCreateAccount.tags.map((tag, idx) => {
+                                return (
+                                    <Tag.Item>
+                                        {tag}
+                                        <Button
+                                            onClick={() => {
+                                                const list = modelCreateAccount.tags
+                                                list.splice(idx, 1)
+                                                setModelCreateAccount({
+                                                    ...modelCreateAccount,
+                                                    tags: list,
+                                                })
+                                            }}
+                                            icon={
+                                                <i className="xi-close-min">
+                                                    <span className="ir">설정</span>
+                                                </i>
+                                            }
+                                        ></Button>
+                                    </Tag.Item>
+                                )
+                            })}
+                        </Tag>
+                    </div>
+                </Space>
+            </ConfirmModal>
         </>
     )
 }

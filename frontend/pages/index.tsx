@@ -10,7 +10,7 @@ import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { RN_API } from "@Definitions"
-import { AcFile } from "@Interfaces"
+import { Account, AcFile } from "@Interfaces"
 // #endregion Local Imports
 
 declare global {
@@ -88,11 +88,19 @@ const Page = (): JSX.Element => {
                     return
                 }
                 // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
+                const list =
+                    data.contents.map((account: any) => {
+                        return {
+                            ...account,
+                            siteName: account.siteName || account.address,
+                            tags: account.tags || [],
+                        }
+                    }) || []
                 dispatch(
                     AcFileActions.setInfo({
                         pincode: data.pincode,
                         filename: data.filename,
-                        list: data.contents || [],
+                        list: list,
                     }),
                 )
                 router.push("/list", "/list")

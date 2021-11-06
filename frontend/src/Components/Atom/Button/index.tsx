@@ -24,6 +24,7 @@ interface BaseButtonProps {
     block?: boolean
     fixed?: boolean
 
+    flex?: boolean
     size?: "sm" | "lg"
     show?: boolean
     ghost?: boolean
@@ -52,7 +53,7 @@ type ButtonProps = Partial<AnchorButtonProps & NativeButtonProps>
 
 type Loading = number | boolean
 const Button = (props: ButtonProps): JSX.Element => {
-    const { href, icon, loading = false, show, htmlType = "button", size, type, shape, className, children, block, fixed, ...rest } = props
+    const { href, icon, flex, loading = false, show, htmlType = "button", size, type, shape, className, children, block, fixed, ...rest } = props
     const [innerLoading, setLoading] = React.useState<Loading>(!!loading)
     const handleClick = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement, MouseEvent>) => {
         const { onClick, disabled } = props
@@ -68,6 +69,7 @@ const Button = (props: ButtonProps): JSX.Element => {
         styles[`${prefixCls}`],
         {
             [styles[`${prefixCls}--hide`]]: show === false,
+            [styles[`${prefixCls}--flex`]]: flex,
             [styles[`${prefixCls}--${size}`]]: size,
             [styles[`${prefixCls}--${type}`]]: type,
             [styles[`${prefixCls}--${shape}`]]: shape,

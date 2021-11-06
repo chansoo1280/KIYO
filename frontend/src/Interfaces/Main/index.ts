@@ -1,7 +1,9 @@
 export interface Account {
+    siteName: string
+    siteLink?: string
     id: string
     pw: string
-    address: string
+    tags: string[]
     modifiedAt: string
     createdAt: string
 }

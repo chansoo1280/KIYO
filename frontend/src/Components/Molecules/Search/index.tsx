@@ -22,7 +22,7 @@ const Search = (props: Props): JSX.Element => {
     const { value, setValue, children, onSearch, onReset } = props
     const { t } = useTranslation("common")
     return (
-        <Space padding="0 20px" gap="5px" className={styles["search"]}>
+        <Space padding="0 10px" gap="5px" className={styles["search"]}>
             <Input className={styles["search__input"]} type="search" value={value} setValue={setValue} onReset={onReset} />
             <Button
                 onClick={onSearch}
