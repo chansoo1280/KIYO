@@ -121,12 +121,34 @@ const Page = (): JSX.Element => {
     const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile)
     const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList } = useDragable()
 
+    const [tagList, setTagList] = useState(
+        acFile.tags
+            .map((tag) => ({
+                name: tag,
+                isSelected: false,
+            }))
+            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+    )
+    useEffect(() => {
+        setTagList(
+            acFile.tags
+                .map((tag) => {
+                    const info = tagList.find(({ name }) => name === tag)
+                    return {
+                        name: tag,
+                        isSelected: (info && info.isSelected) || false,
+                    }
+                })
+                .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+        )
+    }, [acFile.tags])
+
     // const testList = [
     //     {
     //         id: "123",
     //         pw: "12341312",
     //         siteName: "1",
-    //         tags: [],
+    //         tags: ["금융"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
@@ -134,7 +156,7 @@ const Page = (): JSX.Element => {
     //         id: "123",
     //         pw: "12341312",
     //         siteName: "2",
-    //         tags: [],
+    //         tags: ["게임"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
@@ -189,10 +211,16 @@ const Page = (): JSX.Element => {
         )
     }
     const getShowAccountList = (list: Account[]) => {
-        return list.filter(({ siteName, id }: Account) => {
-            if (filterText === "") return true
-            return siteName.includes(filterText) === true || id.includes(filterText) === true
-        })
+        return list
+            .filter(({ siteName, id }: Account) => {
+                if (filterText === "") return true
+                return siteName.includes(filterText) === true || id.includes(filterText) === true
+            })
+            .filter(({ tags }: Account) => {
+                if (!tagList.find(({ isSelected }) => isSelected === true)) return true
+
+                return !tagList.find(({ name, isSelected }) => isSelected === true && !tags.includes(name))
+            })
     }
 
     const listener = (event: any) => {
@@ -204,9 +232,11 @@ const Page = (): JSX.Element => {
                     alert("파일 수정 실패")
                     return
                 }
+                const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
                 dispatch(
                     AcFileActions.setInfo({
                         list: data,
+                        tags: Array.from(new Set(tags)),
                     }),
                 )
                 break
@@ -264,6 +294,33 @@ const Page = (): JSX.Element => {
                     setFilterText("")
                 }}
             />
+            <Tag gap="10px">
+                {tagList.map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
+                    <Tag.Item
+                        key={name}
+                        onClick={() => {
+                            setTagList(
+                                tagList
+                                    .map((tagInfo) => ({
+                                        ...tagInfo,
+                                        isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
+                                    }))
+                                    .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+                            )
+                        }}
+                        onDelete={
+                            isSelected
+                                ? () => {
+                                      true
+                                  }
+                                : undefined
+                        }
+                        isSelected={isSelected}
+                    >
+                        {name}
+                    </Tag.Item>
+                ))}
+            </Tag>
             <Space direction="column" padding="10px">
                 {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
@@ -274,6 +331,7 @@ const Page = (): JSX.Element => {
                 ) : (
                     getShowAccountList(acFile.list).map((account: Account, idx: number) => (
                         <AccountCard
+                            key={account.siteName + "_" + account.id}
                             idx={idx}
                             isHover={isHover(idx)}
                             isHoverTop={isHover(idx + 1) && idx === getShowAccountList(acFile.list).length - 1}
@@ -482,50 +540,64 @@ const Page = (): JSX.Element => {
                     >
                         핀번호
                     </Button>
-                    <div>
+                    <Space direction="column" vAlign="flex-start" gap="0" margin="0">
                         <label htmlFor="inputTag">태그</label>
-                        <Input
-                            id="inputTag"
-                            value={modelCreateAccount.inputTag}
-                            onChange={(e) => {
-                                setModelCreateAccount({
-                                    ...modelCreateAccount,
-                                    inputTag: e.target.value,
-                                })
-                            }}
-                            onEnter={() => {
-                                if (modelCreateAccount.inputTag === "") return
-                                const isExist = modelCreateAccount.tags.find((tag) => modelCreateAccount.inputTag === tag)
-                                if (isExist) return
-                                setModelCreateAccount({
-                                    ...modelCreateAccount,
-                                    tags: [...(modelCreateAccount.tags || []), modelCreateAccount.inputTag],
-                                    inputTag: "",
-                                })
-                            }}
-                        />
-                    </div>
+                        <Space>
+                            <Input
+                                id="inputTag"
+                                value={modelCreateAccount.inputTag}
+                                onChange={(e) => {
+                                    setModelCreateAccount({
+                                        ...modelCreateAccount,
+                                        inputTag: e.target.value,
+                                    })
+                                }}
+                                onEnter={() => {
+                                    if (modelCreateAccount.inputTag === "") return
+                                    const isExist = modelCreateAccount.tags.find((tag) => modelCreateAccount.inputTag === tag)
+                                    if (isExist) return
+                                    setModelCreateAccount({
+                                        ...modelCreateAccount,
+                                        tags: [...(modelCreateAccount.tags || []), modelCreateAccount.inputTag],
+                                        inputTag: "",
+                                    })
+                                }}
+                            />
+                            <Button
+                                onClick={() => {
+                                    if (modelCreateAccount.inputTag === "") return
+                                    const isExist = modelCreateAccount.tags.find((tag) => modelCreateAccount.inputTag === tag)
+                                    if (isExist) return
+                                    setModelCreateAccount({
+                                        ...modelCreateAccount,
+                                        tags: [...(modelCreateAccount.tags || []), modelCreateAccount.inputTag],
+                                        inputTag: "",
+                                    })
+                                }}
+                                icon={
+                                    <i className="xi-tag">
+                                        <span className="ir">태그 추가</span>
+                                    </i>
+                                }
+                            ></Button>
+                        </Space>
+                    </Space>
                     <div>
                         <Tag>
                             {modelCreateAccount.tags.map((tag, idx) => {
                                 return (
-                                    <Tag.Item>
+                                    <Tag.Item
+                                        key={tag}
+                                        onDelete={() => {
+                                            const list = modelCreateAccount.tags
+                                            list.splice(idx, 1)
+                                            setModelCreateAccount({
+                                                ...modelCreateAccount,
+                                                tags: list,
+                                            })
+                                        }}
+                                    >
                                         {tag}
-                                        <Button
-                                            onClick={() => {
-                                                const list = modelCreateAccount.tags
-                                                list.splice(idx, 1)
-                                                setModelCreateAccount({
-                                                    ...modelCreateAccount,
-                                                    tags: list,
-                                                })
-                                            }}
-                                            icon={
-                                                <i className="xi-close-min">
-                                                    <span className="ir">설정</span>
-                                                </i>
-                                            }
-                                        ></Button>
                                     </Tag.Item>
                                 )
                             })}

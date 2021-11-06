@@ -128,15 +128,6 @@ const AccountCard = (props: Props): JSX.Element => {
                                             },
                                         }),
                                     )
-                                    // if (navigator.clipboard && window.isSecureContext) {
-                                    //     navigator.clipboard.writeText(account.pw).then(() => {
-                                    //         alert("copy!")
-                                    //     }).catch((e)=>{
-                                    //         alert(e)
-                                    //     })
-                                    // } else {
-                                    //     alert("navigator.clipboard 메소드가 없습니다.")
-                                    // }
                                 }
                             }}
                             onChange={(e) => {
@@ -172,6 +163,7 @@ const AccountCard = (props: Props): JSX.Element => {
                             icon={<i className="xi-pen"></i>}
                         ></Button>
                     </Space>
+                    <Space>{account.tags.map((tag, idx) => "#" + tag + " ")}</Space>
                 </Space>
             </div>
         </div>

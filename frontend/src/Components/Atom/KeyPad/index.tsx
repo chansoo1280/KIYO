@@ -1,7 +1,7 @@
 // #region Global Imports
 import { Button } from "@Components"
 import classNames from "classnames"
-import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useState } from "react"
+import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -33,6 +33,9 @@ const KeyPad = (props: Props): JSX.Element => {
             return list
         })(),
     )
+    useEffect(() => {
+        onChange && onChange()
+    }, [value])
     return (
         <div className={styles["key-pad"]}>
             {keyList.map((key) => (
@@ -53,7 +56,6 @@ const KeyPad = (props: Props): JSX.Element => {
                             setValue && setValue(newValue.slice(0, maxLength))
                             setActiveKey(String(Math.floor(Math.random() * 10)))
                         }
-                        onChange && onChange()
                     }}
                     onTouchEnd={() => {
                         setActiveKey("")

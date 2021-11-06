@@ -10,7 +10,7 @@ $tag-prefix: "tag";
     border-radius: 12px;
 }
 .#{$tag-prefix}__btn {
-    padding: 0 0 0 14px;
+    padding: 0 14px;
     display:flex;
     align-items:center;
     height: 40px;
@@ -18,4 +18,11 @@ $tag-prefix: "tag";
     border-radius:20px;
     white-space: nowrap;
     background:#fff;
+    &--delete{
+        padding-right:0;
+    }
+    &--selected{
+        background: rgb(67, 123, 197);
+        color:#fff;
+    }
 }

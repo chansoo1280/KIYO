@@ -10,6 +10,7 @@ import styles from "./Space.module.scss"
 interface Props {
     children?: ReactNode
     padding?: string
+    margin?: string
     className?: string
     direction?: "row" | "row-reverse" | "column" | "column-reverse"
     align?: "flex-start" | "center" | "flex-end"
@@ -20,7 +21,7 @@ interface Props {
 }
 
 const Space = (props: Props): JSX.Element => {
-    const { flex, gap, padding, direction, align, vAlign, children, className, cover } = props
+    const { flex, gap, padding, margin, direction, align, vAlign, children, className, cover } = props
     const classes = classNames(
         styles["space"],
         {
@@ -32,7 +33,7 @@ const Space = (props: Props): JSX.Element => {
     )
     return (
         <>
-            <div style={{ gap, padding, flexDirection: direction, justifyContent: align, alignItems: vAlign }} className={classes}>
+            <div style={{ gap, padding, margin, flexDirection: direction, justifyContent: align, alignItems: vAlign }} className={classes}>
                 {children}
             </div>
         </>
