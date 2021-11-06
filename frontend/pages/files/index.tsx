@@ -41,6 +41,17 @@ const Page = (): JSX.Element => {
             }),
         )
     }
+    const changeDir = () => {
+        if (!window.ReactNativeWebView) {
+            alert("ReactNativeWebView 객체가 없습니다.")
+            return
+        }
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: RN_API.CHANGE_DIR,
+            }),
+        )
+    }
     const changeFile = () => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
@@ -82,17 +93,25 @@ const Page = (): JSX.Element => {
                 setDirpath(decodeURIComponent(data.dirpath))
                 setFileList(
                     (data.list &&
-                        data.list
-                            .map((file: any) => {
-                                const fileList = decodeURIComponent(file).split("/")
-                                return {
-                                    filepath: file,
-                                    name: (fileList && fileList[fileList.length - 1]) || "",
-                                    timer: null,
-                                    isAction: false,
-                                }
-                            })
-                            .filter((file: any) => file.name.slice(-4, file.name.length) === ".txt")) ||
+                        data.list.map((fileInfo: any) => ({
+                            ...fileInfo,
+                            timer: null,
+                            isAction: false,
+                        }))) ||
+                        [],
+                )
+                break
+            }
+            case RN_API.CHANGE_DIR: {
+                // alert(data + "/" + typeof data)
+                setDirpath(decodeURIComponent(data.dirpath))
+                setFileList(
+                    (data.list &&
+                        data.list.map((fileInfo: any) => ({
+                            ...fileInfo,
+                            timer: null,
+                            isAction: false,
+                        }))) ||
                         [],
                 )
                 break
@@ -157,9 +176,16 @@ const Page = (): JSX.Element => {
                     }
                 ></Button>
             </Header>
-            <Space>
+            <Space direction="column">
                 아래 경로로 .txt 파일을 옮겨주세요. <br />
-                {dirpath}
+                <Button
+                    block
+                    onClick={() => {
+                        changeDir()
+                    }}
+                >
+                    {dirpath}
+                </Button>
             </Space>
             <FileList>
                 {fileList.map((file: any) => {
@@ -180,7 +206,7 @@ const Page = (): JSX.Element => {
                             }}
                         >
                             <Title flex as="h2">
-                                {file.name}
+                                {file.filename}
                             </Title>
                             {file.mTime}
                         </FileList.Item>

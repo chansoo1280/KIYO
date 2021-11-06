@@ -39,11 +39,17 @@ const App = () => {
   const webview = useRef(null);
   const [canGoBack, SetCanGoBack] = useState(false);
   const getDirectoryUri = async () => {
-    const directoryUri = await AsyncStorage.getItem(
-      'directoryUri',
+    const directoryUriEnd = await AsyncStorage.getItem(
+      'directoryUriEnd',
       (err, result) => result,
     );
-    if (directoryUri) return directoryUri;
+    if (directoryUriEnd) {
+      AsyncStorage.setItem('directoryUri', directoryUriEnd);
+      return directoryUriEnd;
+    };
+    return setDirectoryUri();
+  };
+  const setDirectoryUri = async () => {
     const permissions =
       await StorageAccessFramework.requestDirectoryPermissionsAsync();
     if (permissions.granted) {
@@ -53,21 +59,6 @@ const App = () => {
       return permissions.directoryUri;
     }
     return false;
-    // const granted = await PermissionsAndroid.requestMultiple([
-    //   PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-    //   PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-    // ]);
-    // const readGranted = await PermissionsAndroid.check(
-    //   PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-    // );
-    // const writeGranted = await PermissionsAndroid.check(
-    //   PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-    // );
-    // if (!readGranted || !writeGranted) {
-    //   alert('Read and write permissions have not been granted');
-    //   return false;
-    // }
-    // return true;
   };
   const getFilename = filepath => {
     const fileList = decodeURI(filepath).split('%2F');
@@ -107,6 +98,11 @@ const App = () => {
             console.log(RN_API.SET_SEL_FILENAME);
             const {filepath} = req?.data;
             AsyncStorage.setItem('filepath', filepath);
+            const directoryUri = await AsyncStorage.getItem(
+              'directoryUri',
+              (err, result) => result,
+            );
+            AsyncStorage.setItem('directoryUriEnd', directoryUri);
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_SEL_FILENAME,
@@ -123,10 +119,7 @@ const App = () => {
               'filepath',
               (err, result) => result,
             );
-            const directoryUri = await AsyncStorage.getItem(
-              'directoryUri',
-              (err, result) => result,
-            );
+            const directoryUri = await getDirectoryUri();
             const filename = getFilename(filepath);
             if (filename === newFilename) {
               ToastAndroid.show('동일한 파일명입니다.', ToastAndroid.SHORT);
@@ -155,28 +148,52 @@ const App = () => {
           }
           case RN_API.GET_FILENAME: {
             console.log(RN_API.GET_FILENAME);
-            const directoryUri = await getDirectoryUri();
-            if (directoryUri === false) {
-              return;
-            }
-            console.log(directoryUri);
-            const files = await readDir(directoryUri);
             const filepath = await AsyncStorage.getItem(
               'filepath',
               (err, result) => result,
             );
-
             const filename = getFilename(filepath);
+            const isExist = await (async()=>{
+              const directoryUri = await getDirectoryUri();
+              if (directoryUri === false) {
+                return false;
+              }
+              console.log(directoryUri);
+              const files = await readDir(directoryUri);
 
-            const isExist = files.find(file => file === filepath) || false;
-            if (!isExist) {
-              console.log(files);
-              console.log(filepath);
-            }
+              return files.find(file => file === filepath) || false;
+            })()
+            // if (!isExist) {
+            //   console.log("");
+            // }
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILENAME,
                 data: isExist ? filename : false,
+              }),
+            );
+            break;
+          }
+          case RN_API.CHANGE_DIR: {
+            console.log(RN_API.CHANGE_DIR);
+            const directoryUri = await setDirectoryUri();
+            if (directoryUri === false) {
+              return false;
+            }
+            const files = await readDir(directoryUri);
+            const filenames = await Promise.all(files.map((file)=>RNGRP.getRealPathFromURI(file)))
+            const fileList = files.map((file, idx)=>{
+              const fileList = decodeURIComponent(filenames[idx]).split("/")
+              return {filepath: file, filename: (fileList && fileList[fileList.length - 1]) || ""}
+            }).filter(({filename}) => filename.slice(-4, filename.length) === ".txt")
+            // console.log(fileList);
+            webview.current.postMessage(
+              JSON.stringify({ 
+                type: RN_API.CHANGE_DIR,
+                data: {
+                  dirpath: directoryUri,
+                  list: fileList,
+                },
               }),
             );
             break;
@@ -188,8 +205,12 @@ const App = () => {
               (err, result) => result,
             );
             const files = await readDir(directoryUri);
-            const fileList = await Promise.all(files.map((file)=>RNGRP.getRealPathFromURI(file)))
-            console.log(fileList);
+            const filenames = await Promise.all(files.map((file)=>RNGRP.getRealPathFromURI(file)))
+            const fileList = files.map((file, idx)=>{
+              const fileList = decodeURIComponent(filenames[idx]).split("/")
+              return {filepath: file, filename: (fileList && fileList[fileList.length - 1]) || ""}
+            }).filter(({filename}) => filename.slice(-4, filename.length) === ".txt")
+            // console.log(fileList);
             webview.current.postMessage(
               JSON.stringify({ 
                 type: RN_API.GET_FILE_LIST,
@@ -272,6 +293,7 @@ const App = () => {
               pincode,
             );
             if (filepath !== false) {
+              AsyncStorage.setItem('directoryUriEnd', directoryUri);
               AsyncStorage.setItem('filepath', filepath);
             }
             webview.current.postMessage(
