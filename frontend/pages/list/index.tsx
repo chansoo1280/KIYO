@@ -36,36 +36,36 @@ const Page = (): JSX.Element => {
         y: 0,
     })
 
-    const testList = [
-        {
-            id: "123",
-            pw: "12341312",
-            address: "1",
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            id: "123",
-            pw: "12341312",
-            address: "2",
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            id: "123",
-            pw: "12341312",
-            address: "3",
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            id: "123",
-            pw: "12341312",
-            address: "4",
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-    ]
+    // const testList = [
+    //     {
+    //         id: "123",
+    //         pw: "12341312",
+    //         address: "1",
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         id: "123",
+    //         pw: "12341312",
+    //         address: "2",
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         id: "123",
+    //         pw: "12341312",
+    //         address: "3",
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         id: "123",
+    //         pw: "12341312",
+    //         address: "4",
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    // ]
 
     const createAccount = ({ address, id, pw }: Pick<Account, "address" | "id" | "pw">) => {
         if (!window.ReactNativeWebView) {
@@ -237,7 +237,7 @@ const Page = (): JSX.Element => {
                 }}
             />
             <Space direction="column" padding="10px">
-                {/* {!acFile.list || acFile.list.length === 0 ? (
+                {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
                     ) : (
@@ -255,6 +255,7 @@ const Page = (): JSX.Element => {
                                 setMoveY={setMoveY}
                                 dragAccount={dragAccount}
                                 setDragAccount={setDragAccount}
+                                setMousePos={setMousePos}
                                 onClickDel={(e) => {
                                     e.stopPropagation()
                                     if (confirm("삭제하시겠습니까?") === false) {
@@ -268,9 +269,9 @@ const Page = (): JSX.Element => {
                             ></AccountCard>
                         )
                     })
-                )} */}
+                )}
 
-                {getShowAccountList(testList).map((account: Account, idx: number) => {
+                {/* {getShowAccountList(testList).map((account: Account, idx: number) => {
                     return (
                         <AccountCard
                             idx={idx}
@@ -294,7 +295,7 @@ const Page = (): JSX.Element => {
                             }}
                         ></AccountCard>
                     )
-                })}
+                })} */}
             </Space>
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
