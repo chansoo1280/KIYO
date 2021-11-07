@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, KeyPad, PinCode, Title, Button, Input, Space } from "@Components"
+import { Header, KeyPad, PinCode, Title, Button, Input, Space, AlertModal } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -19,11 +19,6 @@ declare global {
     }
 }
 
-// window.ReactNativeWebView.postMessage(
-//     JSON.stringify({
-//         type: RN_API_GET_STAR,
-//     }),
-// )
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -33,6 +28,7 @@ const Page = (): JSX.Element => {
         acFile: acFileReducer,
     }))
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
+    const [showDescBanner, setShowDescBanner] = useState(false)
 
     const getFile = () => {
         if (!window.ReactNativeWebView) {
@@ -52,25 +48,37 @@ const Page = (): JSX.Element => {
             }),
         )
     }
-    const shareFile = () => {
+    const setDir = () => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
-                type: RN_API.SHARE_FILE,
+                type: RN_API.SET_DIR,
             }),
         )
     }
+    // const shareFile = () => {
+    //     if (!window.ReactNativeWebView) {
+    //         alert("ReactNativeWebView 객체가 없습니다.")
+    //         return
+    //     }
+    //     window.ReactNativeWebView.postMessage(
+    //         JSON.stringify({
+    //             type: RN_API.SHARE_FILE,
+    //         }),
+    //     )
+    // }
 
     const listener = (event: any) => {
         const { data, type } = JSON.parse(event.data)
         switch (type) {
             case RN_API.GET_FILENAME: {
-                if (data === false) {
-                    alert("파일이 없습니다.")
-                    router.replace("/create", "/create")
+                if (data === "no-folder") {
+                    setShowDescBanner(true)
+                } else if (data === false) {
+                    router.replace("/files", "/files")
                 } else {
                     dispatch(
                         AcFileActions.setInfo({
@@ -81,6 +89,12 @@ const Page = (): JSX.Element => {
                 }
                 break
             }
+            case RN_API.SET_DIR: {
+                setShowDescBanner(false)
+                router.replace("/create", "/create")
+                break
+            }
+
             case RN_API.GET_FILE: {
                 if (data.contents === false) {
                     alert("올바르지 않은 핀번호입니다.")
@@ -162,6 +176,14 @@ const Page = (): JSX.Element => {
                 value={pincode || ""}
                 setValue={setPincode}
             ></KeyPad>
+            <AlertModal
+                show={showDescBanner}
+                onClick={() => {
+                    setDir()
+                }}
+            >
+                사용하실 폴더를 선택해주세요!
+            </AlertModal>
         </>
     )
 }

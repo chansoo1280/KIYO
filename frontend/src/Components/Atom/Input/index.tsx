@@ -9,7 +9,7 @@ import styles from "./Input.module.scss"
 // #endregion Local Imports
 interface Props {
     children?: ReactNode
-    type?: "text" | "password" | "search"
+    type?: "text" | "password" | "search" | "number"
     onClick?: MouseEventHandler
     value?: string
     setValue?: Dispatch<SetStateAction<string>>
