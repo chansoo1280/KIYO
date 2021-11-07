@@ -1,5 +1,6 @@
 $setting-list-prefix: "setting-list";
 .#{$setting-list-prefix} {
+    margin-bottom:10px;
     width: 100%;
 }
 .#{$setting-list-prefix}__item {

@@ -118,7 +118,7 @@ const Page = (): JSX.Element => {
                         <Button
                             onClick={() => {
                                 if (step === STEP.INPUT_PINCODE) {
-                                    router.back()
+                                    router.push("/files", "/files")
                                 } else if (step === STEP.CONFIRM_PINCODE) {
                                     setPincodeConfirm("")
                                     setStep(STEP.INPUT_PINCODE)

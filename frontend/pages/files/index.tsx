@@ -41,14 +41,14 @@ const Page = (): JSX.Element => {
             }),
         )
     }
-    const changeDir = () => {
+    const setDir = () => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
         }
         window.ReactNativeWebView.postMessage(
             JSON.stringify({
-                type: RN_API.CHANGE_DIR,
+                type: RN_API.SET_DIR,
             }),
         )
     }
@@ -102,7 +102,7 @@ const Page = (): JSX.Element => {
                 )
                 break
             }
-            case RN_API.CHANGE_DIR: {
+            case RN_API.SET_DIR: {
                 // alert(data + "/" + typeof data)
                 setDirpath(decodeURIComponent(data.dirpath))
                 setFileList(
@@ -167,24 +167,25 @@ const Page = (): JSX.Element => {
             >
                 <Button
                     onClick={() => {
-                        changeFile()
+                        router.push("/create", "/create")
                     }}
                     icon={
-                        <i className="xi-log-in">
-                            <span className="ir">선택</span>
+                        <i className="xi-plus-min">
+                            <span className="ir">새로 만들기</span>
                         </i>
                     }
                 ></Button>
             </Header>
-            <Space direction="column">
+            <Space direction="column" padding="10px">
                 아래 경로로 .txt 파일을 옮겨주세요. <br />
+                {dirpath}
                 <Button
                     block
                     onClick={() => {
-                        changeDir()
+                        setDir()
                     }}
                 >
-                    {dirpath}
+                    폴더변경
                 </Button>
             </Space>
             <FileList>
@@ -214,16 +215,15 @@ const Page = (): JSX.Element => {
                 })}
             </FileList>
             <Button
-                onClick={() => {
-                    router.push("/create", "/create")
-                }}
                 type="primary"
-                shape="circle"
                 size="lg"
                 fixed
+                onClick={() => {
+                    changeFile()
+                }}
                 icon={
-                    <i className="xi-plus-min">
-                        <span className="ir">새로 만들기</span>
+                    <i className="xi-log-in">
+                        <span className="ir">선택</span>
                     </i>
                 }
             ></Button>

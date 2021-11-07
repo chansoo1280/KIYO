@@ -1,9 +1,9 @@
 // #region Global Imports
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Header, Space, Button, SettingList, SettingTitle } from "@Components"
+import { Title, Header, Space, Button, SettingList, SettingTitle, ConfirmModal, Input } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -26,6 +26,11 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
+
+    const [modalSetPincode, setModalSetPincode] = useState({
+        show: false,
+        inputPincode: "",
+    })
 
     const editFilename = (filename: AcFile["filename"]) => {
         if (!window.ReactNativeWebView) {
@@ -168,7 +173,19 @@ const Page = (): JSX.Element => {
                 }
                 noMargin
             ></Header>
-            <SettingTitle as="h2">사용성</SettingTitle>
+            <SettingTitle as="h2">앱</SettingTitle>
+            <SettingList>
+                <SettingList.Item>
+                    <Title as="h3">앱 평가</Title>
+                </SettingList.Item>
+                <SettingList.Item>
+                    <Title as="h3">공지사항</Title>
+                </SettingList.Item>
+                <SettingList.Item>
+                    <Title as="h3">문의하기</Title>
+                </SettingList.Item>
+            </SettingList>
+            <SettingTitle as="h2">파일 관리</SettingTitle>
             <SettingList>
                 <SettingList.Item
                     onClick={() => {
@@ -189,18 +206,17 @@ const Page = (): JSX.Element => {
                 </SettingList.Item>
                 <SettingList.Item
                     onClick={() => {
-                        const newPincode = prompt("새로운 핀코드 입력")
-                        if (!newPincode) {
-                            return
-                        }
-                        if (newPincode.replace(/[^0-9]/g, "").length !== 6) {
-                            alert("6자리의 숫자로 핀코드를 입력해주세요.")
-                            return
-                        }
-                        setPincode(newPincode)
+                        setModalSetPincode({
+                            show: true,
+                            inputPincode: "",
+                        })
+                        // const newPincode = prompt("새로운 핀코드 입력")
+                        // if (!newPincode) {
+                        //     return
+                        // }
                     }}
                 >
-                    <Title as="h3">pincode 변경</Title>
+                    <Title as="h3">핀코드 변경</Title>
                 </SettingList.Item>
                 <SettingList.Item
                     onClick={() => {
@@ -210,11 +226,58 @@ const Page = (): JSX.Element => {
                 >
                     <Title as="h3">초기화</Title>
                 </SettingList.Item>
-
+            </SettingList>
+            <SettingList>
                 <SettingList.Item>
-                    <Title as="h3">개발자</Title>
+                    <Title as="h3">이용약관</Title>
+                </SettingList.Item>
+                <SettingList.Item>
+                    <Title as="h3">개인정보처리방침</Title>
                 </SettingList.Item>
             </SettingList>
+            <SettingTitle as="h2">앱정보</SettingTitle>
+            <SettingList>
+                <SettingList.Item>
+                    <Title as="h3">개발자</Title>
+                    김찬수
+                </SettingList.Item>
+                <SettingList.Item>
+                    <Title as="h3">앱버전</Title>
+                    0.0.1
+                </SettingList.Item>
+            </SettingList>
+            <ConfirmModal
+                title="핀코드 변경"
+                show={modalSetPincode.show}
+                onClickCancel={() => {
+                    setModalSetPincode({
+                        ...modalSetPincode,
+                        show: false,
+                    })
+                }}
+                onClickOk={() => {
+                    setModalSetPincode({
+                        ...modalSetPincode,
+                        show: false,
+                    })
+                    if (modalSetPincode.inputPincode.replace(/[^0-9]/g, "").length !== 6) {
+                        alert("6자리의 숫자로 핀코드를 입력해주세요.")
+                        return
+                    }
+                    setPincode(modalSetPincode.inputPincode)
+                }}
+            >
+                <Input
+                    type="number"
+                    value={modalSetPincode.inputPincode}
+                    onChange={(e) => {
+                        setModalSetPincode({
+                            ...modalSetPincode,
+                            inputPincode: e.target.value.slice(0, 6),
+                        })
+                    }}
+                ></Input>
+            </ConfirmModal>
         </>
     )
 }

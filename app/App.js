@@ -21,7 +21,7 @@ const {StorageAccessFramework} = FileSystem;
 var RNGRP = require('react-native-get-real-path');
 
 const RN_API = {
-  CHANGE_DIR: 'CHANGE_DIR',
+  SET_DIR: 'SET_DIR',
   SET_COPY: 'SET_COPY',
   SET_FILENAME: 'SET_FILENAME',
   SET_SEL_FILENAME: 'SET_SEL_FILENAME',
@@ -156,7 +156,7 @@ const App = () => {
             const isExist = await (async()=>{
               const directoryUri = await getDirectoryUri();
               if (directoryUri === false) {
-                return false;
+                return "no-folder";
               }
               console.log(directoryUri);
               const files = await readDir(directoryUri);
@@ -169,13 +169,13 @@ const App = () => {
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILENAME,
-                data: isExist ? filename : false,
+                data: isExist === 'no-folder'?isExist: isExist? filename : false,
               }),
             );
             break;
           }
-          case RN_API.CHANGE_DIR: {
-            console.log(RN_API.CHANGE_DIR);
+          case RN_API.SET_DIR: {
+            console.log(RN_API.SET_DIR);
             const directoryUri = await setDirectoryUri();
             if (directoryUri === false) {
               return false;
@@ -189,7 +189,7 @@ const App = () => {
             // console.log(fileList);
             webview.current.postMessage(
               JSON.stringify({ 
-                type: RN_API.CHANGE_DIR,
+                type: RN_API.SET_DIR,
                 data: {
                   dirpath: directoryUri,
                   list: fileList,
