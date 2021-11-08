@@ -57,6 +57,8 @@ const AccountCard = (props: Props): JSX.Element => {
     return (
         <div
             onTouchStart={(e: any) => {
+                const wrap = document.querySelector(".l_wrap") as HTMLDivElement
+                if (!wrap) return
                 setStartPos({
                     x: e.touches[0].pageX,
                     y: e.touches[0].pageY,
@@ -68,25 +70,29 @@ const AccountCard = (props: Props): JSX.Element => {
                 setTimer(
                     setTimeout(() => {
                         if (Math.abs(startPos.x - mousePos.x) > 50 || Math.abs(startPos.y - mousePos.y) > 50) return
+                        wrap.style.touchAction = "none"
                         setDragAccount(idx)
                         setTimer(null)
                         const itemHeight = 56 + 10
-                        setMoveY(Math.floor((e.touches[0].pageY - e.target.parentElement.offsetTop + itemHeight / 2) / itemHeight))
+                        const offsetTop = e.target.localName === "div" ? e.target.parentElement.offsetTop : e.target.parentElement.parentElement.offsetTop
+                        setMoveY(Math.floor((e.touches[0].pageY + wrap.scrollTop - offsetTop + itemHeight / 2) / itemHeight))
                     }, 300),
                 )
             }}
             onTouchMove={(e: any) => {
+                const wrap = document.querySelector(".l_wrap") as HTMLDivElement
+                if (!wrap) return
                 setMousePos({
                     x: e.touches[0].pageX,
                     y: e.touches[0].pageY,
                 })
                 if (dragAccount === null) return
-                const wrap = document.querySelector(".l_wrap")
                 const itemHeight = 56 + 10
-                setMoveY(Math.floor((e.touches[0].pageY + ((wrap && wrap.scrollTop) || 0) - e.target.parentElement.offsetTop + itemHeight / 2) / itemHeight))
+                const offsetTop = e.target.localName === "div" ? e.target.parentElement.offsetTop : e.target.parentElement.parentElement.offsetTop
+                setMoveY(Math.floor((e.touches[0].pageY + wrap.scrollTop - offsetTop + itemHeight / 2) / itemHeight))
 
                 if (wrap) {
-                    console.log(scroller, mousePos.y, window.outerHeight)
+                    console.log(scrollerState)
                     if (mousePos.y < window.outerHeight * 0.2) {
                         if (scrollerState !== 1) {
                             if (scroller !== null) {
@@ -135,13 +141,18 @@ const AccountCard = (props: Props): JSX.Element => {
                                 }, 10),
                             )
                         }
-                    } else if (scroller !== null) {
+                    } else if (scrollerState !== null) {
                         setScrollerState(null)
-                        clearInterval(scroller)
+                        if (scroller !== null) {
+                            clearInterval(scroller)
+                        }
                     }
                 }
             }}
             onTouchEnd={(e) => {
+                const wrap = document.querySelector(".l_wrap") as HTMLDivElement
+                if (!wrap) return
+                wrap.style.touchAction = ""
                 if (timer !== null) {
                     clearTimeout(timer)
                     setTimer(null)
