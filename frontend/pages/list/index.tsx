@@ -143,40 +143,136 @@ const Page = (): JSX.Element => {
         )
     }, [acFile.tags])
 
-    // const testList = [
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "1",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "2",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "3",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "4",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    // ]
+    const testList = [
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "1",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "2",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "3",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "4",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "1",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "2",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "3",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "4",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "1",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "2",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "3",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "4",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "1",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "2",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "3",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "4",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+    ]
 
     const moveItemIdx = (idx: number) => {
         if (!window.ReactNativeWebView) {
@@ -322,7 +418,7 @@ const Page = (): JSX.Element => {
                 ))}
             </Tag>
             <Space direction="column" padding="10px">
-                {!acFile.list || acFile.list.length === 0 ? (
+                {/* {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
                     ) : (
@@ -340,6 +436,7 @@ const Page = (): JSX.Element => {
                             setMoveY={setMoveY}
                             dragAccount={dragAccount}
                             setDragAccount={setDragAccount}
+                            mousePos={mousePos}
                             setMousePos={setMousePos}
                             onClickDel={(e) => {
                                 e.stopPropagation()
@@ -353,9 +450,9 @@ const Page = (): JSX.Element => {
                             }}
                         ></AccountCard>
                     ))
-                )}
+                )} */}
 
-                {/* {getShowAccountList(testList).map((account: Account, idx: number) => (
+                {getShowAccountList(testList).map((account: Account, idx: number) => (
                     <AccountCard
                         idx={idx}
                         isHover={isHover(idx)}
@@ -365,6 +462,7 @@ const Page = (): JSX.Element => {
                         setMoveY={setMoveY}
                         dragAccount={dragAccount}
                         setDragAccount={setDragAccount}
+                        mousePos={mousePos}
                         setMousePos={setMousePos}
                         onClickDel={(e) => {
                             e.stopPropagation()
@@ -377,7 +475,7 @@ const Page = (): JSX.Element => {
                             modifyAccount(newAccount)
                         }}
                     ></AccountCard>
-                ))} */}
+                ))}
             </Space>
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
