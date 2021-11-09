@@ -13,7 +13,7 @@ type AcFileReducer = AcFile
 const initialState: AcFileReducer = {
     filename: null,
     pincode: null,
-    tags: [],
+    tags: ["즐겨찾기"],
     list: [],
 }
 
