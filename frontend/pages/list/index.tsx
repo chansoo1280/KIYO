@@ -127,7 +127,8 @@ const Page = (): JSX.Element => {
                 name: tag,
                 isSelected: false,
             }))
-            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
+            .slice(0, 5),
     )
     useEffect(() => {
         setTagList(
@@ -139,7 +140,8 @@ const Page = (): JSX.Element => {
                         isSelected: (info && info.isSelected) || false,
                     }
                 })
-                .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+                .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
+                .slice(0, 5),
         )
     }, [acFile.tags])
 
@@ -402,7 +404,8 @@ const Page = (): JSX.Element => {
                                             ...tagInfo,
                                             isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
                                         }))
-                                        .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+                                        .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
+                                        .slice(0, 5),
                                 )
                             }}
                             onDelete={
