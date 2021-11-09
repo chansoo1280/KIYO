@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Title, Space, Button, AccountCard, DragCard, ConfirmModal, Input, Tag } from "@Components"
+import { Header, Search, Title, Space, Button, AccountCard, DragCard, ConfirmModal, Input, Tag, RecommendInput } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -390,33 +390,36 @@ const Page = (): JSX.Element => {
                     setFilterText("")
                 }}
             />
-            <Tag gap="10px">
-                {tagList.map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
-                    <Tag.Item
-                        key={name}
-                        onClick={() => {
-                            setTagList(
-                                tagList
-                                    .map((tagInfo) => ({
-                                        ...tagInfo,
-                                        isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
-                                    }))
-                                    .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
-                            )
-                        }}
-                        onDelete={
-                            isSelected
-                                ? () => {
-                                      true
-                                  }
-                                : undefined
-                        }
-                        isSelected={isSelected}
-                    >
-                        {name}
-                    </Tag.Item>
-                ))}
-            </Tag>
+            {acFile.list && acFile.list.length !== 0 && (
+                <Tag gap="10px">
+                    {tagList.map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
+                        <Tag.Item
+                            key={name}
+                            onClick={() => {
+                                setTagList(
+                                    tagList
+                                        .map((tagInfo) => ({
+                                            ...tagInfo,
+                                            isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
+                                        }))
+                                        .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)),
+                                )
+                            }}
+                            onDelete={
+                                isSelected
+                                    ? () => {
+                                          true
+                                      }
+                                    : undefined
+                            }
+                            isSelected={isSelected}
+                        >
+                            {name}
+                        </Tag.Item>
+                    ))}
+                </Tag>
+            )}
+
             <Space direction="column" padding="10px">
                 {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
@@ -528,16 +531,27 @@ const Page = (): JSX.Element => {
                 <Space direction="column" vAlign="flex-start" cover padding="20px 10px 0">
                     <div>
                         <label htmlFor="inputSiteName">사이트명</label>
-                        <Input
-                            id="inputSiteName"
-                            value={modelCreateAccount.siteName}
-                            onChange={(e) => {
+                        <RecommendInput
+                            onClick={(word) => {
                                 setModelCreateAccount({
                                     ...modelCreateAccount,
-                                    siteName: e.target.value,
+                                    siteName: word,
                                 })
                             }}
-                        />
+                            value={modelCreateAccount.siteName}
+                            recommendList={["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"]}
+                        >
+                            <Input
+                                id="inputSiteName"
+                                value={modelCreateAccount.siteName}
+                                onChange={(e) => {
+                                    setModelCreateAccount({
+                                        ...modelCreateAccount,
+                                        siteName: e.target.value,
+                                    })
+                                }}
+                            />
+                        </RecommendInput>
                     </div>
                     <div>
                         <label htmlFor="inputSiteLink">사이트링크</label>
@@ -641,26 +655,37 @@ const Page = (): JSX.Element => {
                     <Space direction="column" vAlign="flex-start" gap="0" margin="0">
                         <label htmlFor="inputTag">태그</label>
                         <Space>
-                            <Input
-                                id="inputTag"
+                            <RecommendInput
+                                onClick={(word) => {
+                                    setModelCreateAccount({
+                                        ...modelCreateAccount,
+                                        inputTag: word,
+                                    })
+                                }}
                                 value={modelCreateAccount.inputTag}
-                                onChange={(e) => {
-                                    setModelCreateAccount({
-                                        ...modelCreateAccount,
-                                        inputTag: e.target.value,
-                                    })
-                                }}
-                                onEnter={() => {
-                                    if (modelCreateAccount.inputTag === "") return
-                                    const isExist = modelCreateAccount.tags.find((tag) => modelCreateAccount.inputTag === tag)
-                                    if (isExist) return
-                                    setModelCreateAccount({
-                                        ...modelCreateAccount,
-                                        tags: [...(modelCreateAccount.tags || []), modelCreateAccount.inputTag],
-                                        inputTag: "",
-                                    })
-                                }}
-                            />
+                                recommendList={acFile.tags}
+                            >
+                                <Input
+                                    id="inputTag"
+                                    value={modelCreateAccount.inputTag}
+                                    onChange={(e) => {
+                                        setModelCreateAccount({
+                                            ...modelCreateAccount,
+                                            inputTag: e.target.value,
+                                        })
+                                    }}
+                                    onEnter={() => {
+                                        if (modelCreateAccount.inputTag === "") return
+                                        const isExist = modelCreateAccount.tags.find((tag) => modelCreateAccount.inputTag === tag)
+                                        if (isExist) return
+                                        setModelCreateAccount({
+                                            ...modelCreateAccount,
+                                            tags: [...(modelCreateAccount.tags || []), modelCreateAccount.inputTag],
+                                            inputTag: "",
+                                        })
+                                    }}
+                                />
+                            </RecommendInput>
                             <Button
                                 onClick={() => {
                                     if (modelCreateAccount.inputTag === "") return
