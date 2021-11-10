@@ -130,6 +130,7 @@ const Page = (): JSX.Element => {
             .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
             .slice(0, 5),
     )
+
     useEffect(() => {
         setTagList(
             acFile.tags
@@ -310,9 +311,9 @@ const Page = (): JSX.Element => {
     }
     const getShowAccountList = (list: Account[]) => {
         return list
-            .filter(({ siteName, id }: Account) => {
+            .filter(({ siteName }: Account) => {
                 if (filterText === "") return true
-                return siteName.includes(filterText) === true || id.includes(filterText) === true
+                return siteName.includes(filterText) === true
             })
             .filter(({ tags }: Account) => {
                 if (!tagList.find(({ isSelected }) => isSelected === true)) return true
@@ -382,16 +383,7 @@ const Page = (): JSX.Element => {
                     }
                 ></Button>
             </Header>
-            <Search
-                value={search}
-                setValue={setSearch}
-                onSearch={() => {
-                    setFilterText(search)
-                }}
-                onReset={() => {
-                    setFilterText("")
-                }}
-            />
+            <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText} />
             {acFile.list && acFile.list.length !== 0 && (
                 <Tag gap="10px">
                     {tagList.map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
@@ -542,7 +534,15 @@ const Page = (): JSX.Element => {
                                 })
                             }}
                             value={modelCreateAccount.siteName}
-                            recommendList={["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"]}
+                            recommendList={Array.from(
+                                new Set(
+                                    ["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"].concat(
+                                        acFile.list.map((account) => {
+                                            return account.siteName
+                                        }),
+                                    ),
+                                ),
+                            )}
                         >
                             <Input
                                 id="inputSiteName"
@@ -666,7 +666,7 @@ const Page = (): JSX.Element => {
                                     })
                                 }}
                                 value={modelCreateAccount.inputTag}
-                                recommendList={acFile.tags}
+                                recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
                             >
                                 <Input
                                     id="inputTag"
