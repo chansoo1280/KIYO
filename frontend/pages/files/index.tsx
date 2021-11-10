@@ -10,6 +10,7 @@ import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
 import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
+import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
 declare global {
@@ -30,130 +31,49 @@ const Page = (): JSX.Element => {
     const [selFile, setSelFile] = useState(null)
     const [fileList, setFileList] = useState<any>([])
 
-    const getFileList = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.GET_FILE_LIST,
-            }),
+    const getFileList = async () => {
+        const data = await WebViewMessage(RN_API.GET_FILE_LIST)
+        if (data === null) return
+        setDirpath(decodeURIComponent(data.dirpath))
+        setFileList(
+            (data.list &&
+                data.list.map((fileInfo: any) => ({
+                    ...fileInfo,
+                    timer: null,
+                    isAction: false,
+                }))) ||
+                [],
         )
     }
-    const setDir = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_DIR,
-            }),
-        )
+    const setDir = async () => {
+        const data = await WebViewMessage(RN_API.SET_DIR)
+        if (data === null) return
     }
-    const changeFile = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
+    const changeFile = async () => {
         if (selFile === null) {
             alert("파일을 선택해주세요.")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_SEL_FILENAME,
-                data: {
-                    filepath: selFile,
-                },
-            }),
-        )
-    }
-    const deleteFile = (filepath: string) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
+        const data = await WebViewMessage(RN_API.SET_SEL_FILENAME, {
+            filepath: selFile,
+        })
+        if (data === null) return
+        if (data === true) {
+            router.replace("/", "/")
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.DELETE_FILE,
-                data: {
-                    filepath,
-                },
-            }),
-        )
     }
-
-    const listener = (event: any) => {
-        const { data, type } = JSON.parse(event.data)
-        switch (type) {
-            case RN_API.GET_FILE_LIST: {
-                // alert(data + "/" + typeof data)
-                setDirpath(decodeURIComponent(data.dirpath))
-                setFileList(
-                    (data.list &&
-                        data.list.map((fileInfo: any) => ({
-                            ...fileInfo,
-                            timer: null,
-                            isAction: false,
-                        }))) ||
-                        [],
-                )
-                break
-            }
-            case RN_API.SET_DIR: {
-                // alert(data + "/" + typeof data)
-                setDirpath(decodeURIComponent(data.dirpath))
-                setFileList(
-                    (data.list &&
-                        data.list.map((fileInfo: any) => ({
-                            ...fileInfo,
-                            timer: null,
-                            isAction: false,
-                        }))) ||
-                        [],
-                )
-                break
-            }
-            case RN_API.SET_SEL_FILENAME: {
-                // alert(data)
-                if (data === true) {
-                    router.replace("/", "/")
-                }
-                break
-            }
-            case RN_API.DELETE_FILE: {
-                if (data === true) {
-                    alert("삭제되었습니다.")
-                    getFileList()
-                }
-                break
-            }
-
-            default: {
-                break
-            }
+    const deleteFile = async (filepath: string) => {
+        const data = await WebViewMessage(RN_API.DELETE_FILE, {
+            filepath,
+        })
+        if (data === null) return
+        if (data === true) {
+            alert("삭제되었습니다.")
+            await getFileList()
         }
     }
     useEffect(() => {
         getFileList()
-        if (window.ReactNativeWebView) {
-            /** android */
-            document.addEventListener("message", listener)
-            /** ios */
-            window.addEventListener("message", listener)
-        } else {
-            // 모바일이 아니라면 모바일 아님을 alert로 띄웁니다.
-            // alert("모바일이 아닙니다.")
-            console.log("모바일이 아닙니다.")
-        }
-        return () => {
-            /** android */
-            document.removeEventListener("message", listener)
-            /** ios */
-            window.removeEventListener("message", listener)
-        }
     }, [])
     return (
         <>

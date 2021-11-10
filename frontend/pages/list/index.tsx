@@ -11,6 +11,7 @@ import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { AcFile, Account } from "@Interfaces"
 import { RN_API } from "@Definitions"
+import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
 declare global {
@@ -18,58 +19,34 @@ declare global {
         ReactNativeWebView: any
     }
 }
+type SetFile = (arg0: Account[] | false) => void
 
-const useAccount = (acFile: AcFile) => {
-    const createAccount = ({ siteName, siteLink, id, pw, tags }: Pick<Account, "siteName" | "siteLink" | "id" | "pw" | "tags">) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILE,
-                data: {
-                    contents: [...acFile.list, { siteName, siteLink, id, pw, tags, modifiedAt: new Date(), createdAt: new Date() }],
-                    pincode: acFile.pincode,
-                },
-            }),
-        )
-    }
-    const modifyAccount = (account: Account) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        const newList = acFile.list.filter((acInfo) => {
-            return acInfo.siteName !== account.siteName || acInfo.id !== account.id
+const useAccount = (acFile: AcFile, setFile: SetFile) => {
+    const createAccount = async ({ siteName, siteLink, id, pw, tags }: Pick<Account, "siteName" | "siteLink" | "id" | "pw" | "tags">) => {
+        const data = await WebViewMessage(RN_API.SET_FILE, {
+            contents: [...acFile.list, { siteName, siteLink, id, pw, tags, modifiedAt: new Date(), createdAt: new Date() }],
+            pincode: acFile.pincode,
         })
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILE,
-                data: {
-                    contents: [...newList, { ...account, modifiedAt: new Date() }],
-                    pincode: acFile.pincode,
-                },
-            }),
-        )
+        if (data === null) return
+        setFile(data)
     }
-    const deleteAccount = ({ siteName, id }: Account) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        const newList = acFile.list.filter((account) => {
-            return account.siteName !== siteName || account.id !== id
+    const modifyAccount = async (account: Account) => {
+        const newList = acFile.list.filter((acInfo) => acInfo.siteName !== account.siteName || acInfo.id !== account.id)
+        const data = await WebViewMessage(RN_API.SET_FILE, {
+            contents: [...newList, { ...account, modifiedAt: new Date() }],
+            pincode: acFile.pincode,
         })
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILE,
-                data: {
-                    contents: newList,
-                    pincode: acFile.pincode,
-                },
-            }),
-        )
+        if (data === null) return
+        setFile(data)
+    }
+    const deleteAccount = async ({ siteName, id }: Account) => {
+        const newList = acFile.list.filter((account) => account.siteName !== siteName || account.id !== id)
+        const data = await WebViewMessage(RN_API.SET_FILE, {
+            contents: newList,
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        setFile(data)
     }
     return { createAccount, modifyAccount, deleteAccount }
 }
@@ -117,8 +94,20 @@ const Page = (): JSX.Element => {
         pw: "",
         tags: [],
     })
-
-    const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile)
+    const setFile = (data: Account[] | false) => {
+        if (data === false) {
+            alert("파일 수정 실패")
+            return
+        }
+        const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        dispatch(
+            AcFileActions.setInfo({
+                list: data,
+                tags: Array.from(new Set(tags)),
+            }),
+        )
+    }
+    const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile, setFile)
     const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList } = useDragable()
 
     const [tagList, setTagList] = useState(
@@ -277,7 +266,7 @@ const Page = (): JSX.Element => {
     //     },
     // ]
 
-    const moveItemIdx = (idx: number) => {
+    const moveItemIdx = async (idx: number) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
             return
@@ -299,78 +288,25 @@ const Page = (): JSX.Element => {
         const fromIdx = acFile.list.findIndex(({ siteName, id }) => siteName === account.siteName && id === account.id)
         const toIdx = acFile.list.findIndex(({ siteName, id }) => siteName === moveAccount.siteName && id === moveAccount.id)
         // console.log(getMovedList(fromIdx, toIdx, acFile.list))
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILE,
-                data: {
-                    contents: getMovedList(fromIdx, toIdx, acFile.list),
-                    pincode: acFile.pincode,
-                },
-            }),
-        )
+        const data = await WebViewMessage(RN_API.SET_FILE, {
+            contents: getMovedList(fromIdx, toIdx, acFile.list),
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        setFile(data)
     }
     const getShowAccountList = (list: Account[]) => {
+        const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
         return list
             .filter(({ siteName }: Account) => {
                 if (filterText === "") return true
                 return siteName.includes(filterText) === true
             })
             .filter(({ tags }: Account) => {
-                if (!tagList.find(({ isSelected }) => isSelected === true)) return true
-
-                return !tagList.find(({ name, isSelected }) => isSelected === true && !tags.includes(name))
+                if (selectedTagList.length === 0) return true
+                return !selectedTagList.find(({ name }) => !tags.includes(name))
             })
     }
-
-    const listener = (event: any) => {
-        const { data, type } = JSON.parse(event.data)
-        switch (type) {
-            case RN_API.SET_FILE: {
-                // alert(data + "/" + typeof data)
-                if (data === false) {
-                    alert("파일 수정 실패")
-                    return
-                }
-                const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
-                dispatch(
-                    AcFileActions.setInfo({
-                        list: data,
-                        tags: Array.from(new Set(tags)),
-                    }),
-                )
-                break
-            }
-            case RN_API.SET_COPY: {
-                if (data === false) {
-                    alert("복사 실패")
-                    return
-                }
-                break
-            }
-
-            default: {
-                break
-            }
-        }
-    }
-    useEffect(() => {
-        if (window.ReactNativeWebView) {
-            /** android */
-            document.addEventListener("message", listener)
-            /** ios */
-            window.addEventListener("message", listener)
-        } else {
-            // 모바일이 아니라면 모바일 아님을 alert로 띄웁니다.
-            // alert("모바일이 아닙니다.")
-            console.log("모바일이 아닙니다.")
-        }
-        return () => {
-            /** android */
-            document.removeEventListener("message", listener)
-            /** ios */
-            window.removeEventListener("message", listener)
-        }
-    }, [])
     return (
         <>
             <Header title="계정 목록">

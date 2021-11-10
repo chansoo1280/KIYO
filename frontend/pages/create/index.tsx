@@ -11,6 +11,7 @@ import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
+import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
 declare global {
@@ -38,11 +39,7 @@ const Page = (): JSX.Element => {
     const [filename, setFilename] = useState<AcFile["filename"]>("my-list")
     const pincodeInput = useRef<HTMLInputElement>(null)
 
-    const reqCreateFile = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
+    const reqCreateFile = async () => {
         if (filename === "") {
             alert("filename 없음")
             return
@@ -51,16 +48,23 @@ const Page = (): JSX.Element => {
             alert("pincode 없음")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.CREATE_FILE,
-                data: {
-                    pincode,
-                    filename,
-                    contents: [],
-                },
+        const data = await WebViewMessage(RN_API.CREATE_FILE, {
+            pincode,
+            filename,
+            contents: [],
+        })
+        if (data === null) return
+        if (data === false) {
+            alert("생성 실패")
+            return
+        }
+        dispatch(
+            AcFileActions.setInfo({
+                ...data,
             }),
         )
+        alert("생성 성공")
+        router.replace("/", "/")
     }
     const nextStep = () => {
         if (step === STEP.INPUT_PINCODE) {
@@ -69,47 +73,6 @@ const Page = (): JSX.Element => {
             setStep(STEP.INPUT_FILENAME)
         }
     }
-
-    const listener = (event: any) => {
-        const { data, type } = JSON.parse(event.data)
-        switch (type) {
-            case RN_API.CREATE_FILE: {
-                if (data === false) {
-                    alert("생성 실패")
-                    return
-                }
-                dispatch(
-                    AcFileActions.setInfo({
-                        ...data,
-                    }),
-                )
-                alert("생성 성공")
-                router.replace("/", "/")
-                break
-            }
-            default: {
-                break
-            }
-        }
-    }
-    useEffect(() => {
-        if (window.ReactNativeWebView) {
-            /** android */
-            document.addEventListener("message", listener)
-            /** ios */
-            window.addEventListener("message", listener)
-        } else {
-            // 모바일이 아니라면 모바일 아님을 alert로 띄웁니다.
-            // alert("모바일이 아닙니다.")
-            console.log("모바일이 아닙니다.")
-        }
-        return () => {
-            /** android */
-            document.removeEventListener("message", listener)
-            /** ios */
-            window.removeEventListener("message", listener)
-        }
-    }, [])
     return (
         <>
             <Header
@@ -188,10 +151,6 @@ const Page = (): JSX.Element => {
                     </Button>
                 </>
             )}
-            {/* 파일이름
-            <Input value={filename || ""} onChange={(e: any) => setFilename(e.target.value.slice(0, 20))} onEnter={() => pincodeInput?.current?.focus()} type="text" />
-            핀번호
-            <Input ref={pincodeInput} type="password" value={pincode || ""} onChange={(e: any) => setPincode(e.target.value.slice(0, 6))} onEnter={() => reqCreateFile()} /> */}
         </>
     )
 }
