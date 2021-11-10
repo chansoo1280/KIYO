@@ -69,7 +69,7 @@ const AccountCard = (props: Props): JSX.Element => {
                 })
                 setTimer(
                     setTimeout(() => {
-                        if (Math.abs(startPos.x - mousePos.x) > 0 || Math.abs(startPos.y - mousePos.y) > 0) return
+                        if (Math.abs(startPos.x - mousePos.x) > 60 || Math.abs(startPos.y - mousePos.y) > 60) return
                         wrap.style.touchAction = "none"
                         setDragAccount(idx)
                         setTimer(null)

@@ -12,12 +12,14 @@ import { useTranslation } from "next-i18next"
 // #endregion Local Imports
 interface Props {
     children?: ReactNode
+    hide?: boolean
     value?: string
     onClick?: (value: string) => void
     recommendList?: string[]
+    className?: string
 }
 const RecommendInput = (props: Props): JSX.Element => {
-    const { value, onClick, children, recommendList = [] } = props
+    const { hide, value, onClick, className, children, recommendList = [] } = props
     const { t } = useTranslation("common")
     const [showWordList, setShowWordList] = useState<string[]>([])
     useEffect(() => {
@@ -31,9 +33,13 @@ const RecommendInput = (props: Props): JSX.Element => {
         )
     }, [value])
     return (
-        <div className={styles["recommend-input"]}>
+        <div className={classNames(className, styles["recommend-input"])}>
             {children}
-            <ul className={styles["recommend-input__con"]}>
+            <ul
+                className={classNames(styles["recommend-input__con"], {
+                    [styles["recommend-input__con--hide"]]: hide === true,
+                })}
+            >
                 {showWordList.map((word, idx) => (
                     <li
                         className={classNames(styles["recommend-input__list"])}

@@ -7,6 +7,9 @@
         left: 0;
         width: 100%;
         background: #fff;
+        &--hide{
+            display:none;
+        }
     }
     &__list {
         display: flex;
