@@ -10,6 +10,7 @@ import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
 import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
+import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
 declare global {
@@ -32,136 +33,62 @@ const Page = (): JSX.Element => {
         inputPincode: "",
     })
 
-    const editFilename = (filename: AcFile["filename"]) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
+    const editFilename = async (filename: AcFile["filename"]) => {
+        const data = await WebViewMessage(RN_API.SET_FILENAME, {
+            myFilename: filename,
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        if (data === false) {
+            alert("파일 수정 실패")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILENAME,
-                data: {
-                    myFilename: filename,
-                    pincode: acFile.pincode,
-                },
+        dispatch(
+            AcFileActions.setInfo({
+                filename: data,
             }),
         )
     }
 
-    const shareFile = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
+    const shareFile = async () => {
+        const data = await WebViewMessage(RN_API.SHARE_FILE)
+        if (data === null) return
+    }
+
+    const setPincode = async (newPincode: AcFile["pincode"]) => {
+        const data = await WebViewMessage(RN_API.SET_PINCODE, {
+            newPincode,
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        if (data === false) {
+            alert("pincode 수정 실패")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SHARE_FILE,
+        dispatch(
+            AcFileActions.setInfo({
+                pincode: data,
             }),
         )
     }
 
-    const setPincode = (newPincode: AcFile["pincode"]) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
+    const resetFile = async () => {
+        const data = await WebViewMessage(RN_API.SET_FILE, {
+            contents: [],
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        if (data === false) {
+            alert("파일 수정 실패")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_PINCODE,
-                data: {
-                    newPincode,
-                    pincode: acFile.pincode,
-                },
+
+        dispatch(
+            AcFileActions.setInfo({
+                list: data,
             }),
         )
     }
-
-    const resetFile = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_FILE,
-                data: {
-                    contents: [],
-                    pincode: acFile.pincode,
-                },
-            }),
-        )
-    }
-
-    const listener = (event: any) => {
-        const { data, type } = JSON.parse(event.data)
-        switch (type) {
-            case RN_API.SET_FILENAME: {
-                // alert(data + "/" + typeof data)
-                if (data === false) {
-                    alert("파일 수정 실패")
-                    return
-                }
-                dispatch(
-                    AcFileActions.setInfo({
-                        filename: data,
-                    }),
-                )
-                break
-            }
-            case RN_API.SET_FILE: {
-                // alert(data + "/" + typeof data)
-                if (data === false) {
-                    alert("파일 수정 실패")
-                    return
-                }
-
-                dispatch(
-                    AcFileActions.setInfo({
-                        list: data,
-                    }),
-                )
-                break
-            }
-            case RN_API.SET_PINCODE: {
-                if (data === false) {
-                    alert("pincode 수정 실패")
-                    return
-                }
-                dispatch(
-                    AcFileActions.setInfo({
-                        pincode: data,
-                    }),
-                )
-                break
-            }
-            case RN_API.SHARE_FILE: {
-                // alert(data)
-                break
-            }
-
-            default: {
-                break
-            }
-        }
-    }
-    useEffect(() => {
-        if (window.ReactNativeWebView) {
-            /** android */
-            document.addEventListener("message", listener)
-            /** ios */
-            window.addEventListener("message", listener)
-        } else {
-            // 모바일이 아니라면 모바일 아님을 alert로 띄웁니다.
-            // alert("모바일이 아닙니다.")
-            console.log("모바일이 아닙니다.")
-        }
-        return () => {
-            /** android */
-            document.removeEventListener("message", listener)
-            /** ios */
-            window.removeEventListener("message", listener)
-        }
-    }, [])
     return (
         <>
             <Header

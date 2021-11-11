@@ -1,16 +1,17 @@
 // #region Global Imports
 import { useEffect, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { useTranslation } from "next-i18next"
+import { useRouter } from "next/router"
+import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 // #endregion Global Imports
 
 // #region Local Imports
 import { Header, KeyPad, PinCode, Title, Button, Input, Space, AlertModal } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
-import { useDispatch, useSelector } from "react-redux"
-import { useTranslation } from "next-i18next"
-import { serverSideTranslations } from "next-i18next/serverSideTranslations"
-import { useRouter } from "next/router"
 import { RN_API } from "@Definitions"
 import { Account, AcFile } from "@Interfaces"
+import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
 declare global {
@@ -30,131 +31,67 @@ const Page = (): JSX.Element => {
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
     const [showDescBanner, setShowDescBanner] = useState(false)
 
-    const getFile = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
+    const getFilename = async () => {
+        const data = await WebViewMessage(RN_API.GET_FILENAME)
+        if (data === null) return
+
+        if (data === "no-folder") {
+            setShowDescBanner(true)
+        } else if (data === false) {
+            router.replace("/files", "/files")
+        } else {
+            dispatch(
+                AcFileActions.setInfo({
+                    filename: data,
+                    pincode: "",
+                }),
+            )
         }
+    }
+
+    const getFile = async () => {
         if (!pincode || pincode.length !== 6) {
             alert("핀코드를 입력해주세요.")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.GET_FILE,
-                data: {
-                    pincode,
-                },
-            }),
-        )
-    }
-    const setDir = () => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
+        const data = await WebViewMessage(RN_API.GET_FILE, {
+            pincode,
+        })
+        if (data === null) return
+        if (data.contents === false) {
+            alert("올바르지 않은 핀번호입니다.")
+            setPincode("")
             return
         }
-        window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-                type: RN_API.SET_DIR,
+        // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
+        const list: Account[] =
+            data.contents.map((account: any) => ({
+                ...account,
+                siteName: account.siteName || account.address,
+                tags: account.tags || [],
+            })) || []
+        const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        dispatch(
+            AcFileActions.setInfo({
+                pincode: data.pincode,
+                filename: data.filename,
+                list: list,
+                tags: Array.from(new Set(tags)),
             }),
         )
+        router.push("/list", "/list")
     }
-    // const shareFile = () => {
-    //     if (!window.ReactNativeWebView) {
-    //         alert("ReactNativeWebView 객체가 없습니다.")
-    //         return
-    //     }
-    //     window.ReactNativeWebView.postMessage(
-    //         JSON.stringify({
-    //             type: RN_API.SHARE_FILE,
-    //         }),
-    //     )
-    // }
-
-    const listener = (event: any) => {
-        const { data, type } = JSON.parse(event.data)
-        switch (type) {
-            case RN_API.GET_FILENAME: {
-                if (data === "no-folder") {
-                    setShowDescBanner(true)
-                } else if (data === false) {
-                    router.replace("/files", "/files")
-                } else {
-                    dispatch(
-                        AcFileActions.setInfo({
-                            filename: data,
-                            pincode: "",
-                        }),
-                    )
-                }
-                break
-            }
-            case RN_API.SET_DIR: {
-                setShowDescBanner(false)
-                router.replace("/create", "/create")
-                break
-            }
-
-            case RN_API.GET_FILE: {
-                if (data.contents === false) {
-                    alert("올바르지 않은 핀번호입니다.")
-                    setPincode("")
-                    return
-                }
-                // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
-                const list: Account[] =
-                    data.contents.map((account: any) => ({
-                        ...account,
-                        siteName: account.siteName || account.address,
-                        tags: account.tags || [],
-                    })) || []
-                const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
-                dispatch(
-                    AcFileActions.setInfo({
-                        pincode: data.pincode,
-                        filename: data.filename,
-                        list: list,
-                        tags: Array.from(new Set(tags)),
-                    }),
-                )
-                router.push("/list", "/list")
-                break
-            }
-            case RN_API.SHARE_FILE: {
-                // alert(data)
-                break
-            }
-
-            default: {
-                break
-            }
-        }
+    const setDir = async () => {
+        const data = await WebViewMessage(RN_API.SET_DIR)
+        if (data === null) return
+        setShowDescBanner(false)
+        router.replace("/create", "/create")
     }
     useEffect(() => {
         if (app.sel_lang !== i18n.language) {
             router.replace("/", "/", { locale: app.sel_lang || "ko" })
         }
-        if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(
-                JSON.stringify({
-                    type: RN_API.GET_FILENAME,
-                }),
-            )
-            /** android */
-            document.addEventListener("message", listener)
-            /** ios */
-            window.addEventListener("message", listener)
-        } else {
-            // 모바일이 아니라면 모바일 아님을 alert로 띄웁니다.
-            // alert("모바일이 아닙니다.")
-            console.log("모바일이 아닙니다.")
-        }
-        return () => {
-            /** android */
-            document.removeEventListener("message", listener)
-            /** ios */
-            window.removeEventListener("message", listener)
-        }
+        getFilename()
     }, [])
     return (
         <>
