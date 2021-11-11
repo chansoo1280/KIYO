@@ -1,12 +1,34 @@
-.pin-code {
-    margin: 0 auto;
-    padding: 30px 0;
-    flex: 1;
-    display: flex;
-    font-size: 30px;
-    font-weight: 700;
-    &__num {
-        display: block;
-        width: 20px;
+@import "/styles/themes/index";
+@import "/styles/mixins/index";
+@each $theme-name in $theme-obj {
+    @include pub-color($theme-name);
+    .#{$theme-name}-#{$pin-code-prefix-cls} {
+        padding: 50px 0;
+        margin: 0 auto;
+        flex: 1;
+        font-size: 30px;
+        font-weight: 700;
+        text-align: center;
+        &__title {
+            color: $primary-6;
+            margin-bottom: $margin-lg;
+        }
+        &__con {
+            padding: 28px $padding-md;
+            display: flex;
+            gap: 10px;
+            border: 2px solid $primary-6;
+            border-radius: $border-radius-base;
+        }
+        &__num {
+            display: block;
+            width: 18px;
+            height: 18px;
+            background: $secondary-color;
+            border-radius: 50%;
+            &--active {
+                background: $primary-6;
+            }
+        }
     }
 }

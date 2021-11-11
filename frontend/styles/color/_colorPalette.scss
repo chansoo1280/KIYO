@@ -1,0 +1,10 @@
+@function colorPalette($color, $idx) {
+    @if ($color == transparent) {
+        @return transparent;
+    }
+    @if ($idx <= 6) {
+        @return mix(white, $color, (6 - $idx) * 10);
+    } @else {
+        @return mix(black, $color, ($idx - 6) * 10);
+    }
+}

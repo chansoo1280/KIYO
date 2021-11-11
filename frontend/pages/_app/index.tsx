@@ -57,7 +57,7 @@ class WebApp extends App<AppWithStore> {
         const { Component, pageProps, router, app }: any = this.props
         const { nextPathname, prevPathname }: any = this.state
         const AppLayout = TheLayout[pageProps?.layout || LayoutCode.Default]
-        const theme = ThemeObj[ThemeType[app.sel_theme] || ThemeType.WHITE]
+        const theme = ThemeObj[ThemeType[app.sel_theme] || ThemeType.DEFAULT]
 
         return (
             <ThemeProvider theme={theme}>

@@ -1,27 +1,35 @@
-.key-pad {
-    margin: 0 auto;
-    position: sticky;
-    bottom: 0;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(4, 1fr);
-    max-width: 420px;
-    width: 100%;
-    height: 300px;
-    flex: none;
-    box-sizing: border-box;
-    background: #fff;
-    font-size: 18px;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
-    &__btn {
-        border: none;
-        font-size: 24px;
-        & {
+@import "/styles/themes/index";
+@import "/styles/mixins/index";
+@each $theme-name in $theme-obj {
+    @include pub-color($theme-name);
+    .#{$theme-name}-#{$key-pad-prefix-cls} {
+        margin: 0 auto;
+        padding: 0 $padding-md $padding-md;
+        position: sticky;
+        bottom: 0;
+        display: grid;
+        gap: 6px;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        max-width: 420px;
+        width: 100%;
+        height: 300px;
+        flex: none;
+        font-size: 18px;
+        &__btn {
+            border: 1px solid $primary-6;
+            font-size: 32px;
             outline: none;
-        }
-        &--active {
-            background: rgb(138, 138, 138);
-            color: #fff;
+            &--confirm {
+                background: $primary-6;
+                border-radius: $border-radius-base;
+                color: $white;
+            }
+            &--active {
+                background: $secondary-color;
+                border-color: $secondary-color;
+                color: $white;
+            }
         }
     }
 }

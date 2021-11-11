@@ -95,9 +95,9 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Header title={acFile.filename ? acFile.filename + " - 핀번호 입력" : "핀번호 입력"}></Header>
             <PinCode value={pincode || ""} length={6}></PinCode>
-            <Space align="flex-end">
+            <Space align="flex-end" padding="0 16px">
+                <Title as="h2">{acFile.filename}</Title>
                 <Button type="link" onClick={() => router.push("/files", "/files")}>
                     파일 목록으로 이동
                 </Button>
@@ -118,8 +118,10 @@ const Page = (): JSX.Element => {
                 onClick={() => {
                     setDir()
                 }}
+                okText="폴더 선택하기"
             >
-                사용하실 폴더를 선택해주세요!
+                <img src="/static/images/banner/select-folder.png" alt="" />
+                <Space align="center">사용하실 폴더를 선택해주세요!</Space>
             </AlertModal>
         </>
     )

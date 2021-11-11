@@ -13,17 +13,18 @@ interface Props {
     show?: boolean
     title?: string
     onClick?: () => void
+    okText?: string
 }
 
 const AlertModal = (props: Props) => {
-    const { children, onClick, ...rest } = props
+    const { children, onClick, okText, ...rest } = props
     return (
         <>
             <Modal {...rest}>
                 <div className={styles["alert-modal"]}>{children}</div>
-                <Space cover className={styles["alert-modal__btns"]}>
-                    <Button type="default" onClick={onClick} className={styles["alert-modal__btn"]}>
-                        확인
+                <Space cover padding="4px">
+                    <Button type="primary" onClick={onClick} flex>
+                        {okText ? okText : "확인"}
                     </Button>
                 </Space>
             </Modal>

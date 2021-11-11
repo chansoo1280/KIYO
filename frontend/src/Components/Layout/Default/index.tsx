@@ -6,9 +6,13 @@ import Head from "next/head"
 import { LayoutProps } from "@Components"
 import styles from "./Default.module.scss"
 import classNames from "classnames"
+import { useContext } from "react"
+import { ThemeContext } from "styled-components"
 // #endregion Local Imports
 
 export const Default = ({ children }: LayoutProps): JSX.Element => {
+    const { name: theme } = useContext(ThemeContext)
+    const prefixCls = theme + "-wrap"
     return (
         <>
             <Head>
@@ -17,13 +21,7 @@ export const Default = ({ children }: LayoutProps): JSX.Element => {
                 <link rel="icon" href="/favicon.ico" />
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xeicon@2.3.3/xeicon.min.css"></link>
             </Head>
-            <div
-                className={classNames("l_wrap", {
-                    [styles["default-wrap"]]: true,
-                })}
-            >
-                {children}
-            </div>
+            <div className={classNames(prefixCls, styles["default-wrap"])}>{children}</div>
         </>
     )
 }

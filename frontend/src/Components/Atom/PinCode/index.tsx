@@ -1,7 +1,8 @@
 // #region Global Imports
 import { Button } from "@Components"
 import classNames from "classnames"
-import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useEffect, useState } from "react"
+import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useContext, useEffect, useState } from "react"
+import { ThemeContext } from "styled-components"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -14,25 +15,35 @@ interface Props {
 
 const PinCode = (props: Props): JSX.Element => {
     const { length = 0, value = "" } = props
+    const { name: theme } = useContext(ThemeContext)
+    const prefixCls = theme + "-pin-code"
     const [list, setList] = useState(
         (() => {
             const list = []
             for (let i = 0; i < length; i++) {
-                list.push("_")
+                list.push(undefined)
             }
             return list
         })(),
     )
     return (
-        <div className={styles["pin-code"]}>
-            {list.map((item, idx) => {
-                return (
-                    <span className={styles["pin-code__num"]} key={idx}>
-                        {value[idx] ? "*" : "_"}
-                    </span>
-                )
-            })}
-        </div>
+        <>
+            <div className={styles[prefixCls]}>
+                <h1 className={styles[`${prefixCls}__title`]}>pincode</h1>
+                <ol className={styles[`${prefixCls}__con`]}>
+                    {list.map((item, idx) => {
+                        return (
+                            <li
+                                className={classNames(styles[`${prefixCls}__num`], {
+                                    [styles[`${prefixCls}__num--active`]]: value[idx] !== undefined,
+                                })}
+                                key={idx}
+                            ></li>
+                        )
+                    })}
+                </ol>
+            </div>
+        </>
     )
 }
 

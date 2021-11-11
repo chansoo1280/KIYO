@@ -309,7 +309,7 @@ const Page = (): JSX.Element => {
     }
     return (
         <>
-            <Header title="계정 목록">
+            <Header title={<img src="/static/images/logo.svg" alt="KIYO" />}>
                 <Button
                     href="/setting"
                     icon={
@@ -319,6 +319,9 @@ const Page = (): JSX.Element => {
                     }
                 ></Button>
             </Header>
+            <Space padding="136px 16px 0">
+                <Title as="h2">{acFile.filename || "text.txt"}</Title>
+            </Space>
             <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText} />
             {acFile.list && acFile.list.length !== 0 && (
                 <Tag gap="10px">
@@ -351,7 +354,7 @@ const Page = (): JSX.Element => {
                 </Tag>
             )}
 
-            <Space direction="column" padding="10px">
+            <Space direction="column" padding="0 16px">
                 {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>

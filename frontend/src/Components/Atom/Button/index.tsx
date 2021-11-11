@@ -1,11 +1,12 @@
 // #region Global Imports
-import React, { MouseEventHandler, ReactNode } from "react"
+import React, { MouseEventHandler, ReactNode, useContext } from "react"
 import Link from "next/link"
 import classNames from "classnames"
 // #endregion Global Imports
 
 // #region Local Imports
 import styles from "./Button.module.scss"
+import { ThemeContext } from "styled-components"
 // #endregion Local Imports
 
 const ButtonTypes = ["default", "primary", "dashed", "link", "text"] as const
@@ -64,7 +65,8 @@ const Button = (props: ButtonProps): JSX.Element => {
         ;(onClick as React.MouseEventHandler<HTMLButtonElement | HTMLAnchorElement>)?.(e)
     }
     const iconType = innerLoading ? "loading" : icon
-    const prefixCls = "btn"
+    const { name: theme } = useContext(ThemeContext)
+    const prefixCls = theme + "-btn"
     const classes = classNames(
         styles[`${prefixCls}`],
         {
