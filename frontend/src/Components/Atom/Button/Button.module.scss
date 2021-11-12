@@ -59,6 +59,13 @@
             border-color: $primary-6;
             color: $white;
         }
+        &--text{
+            background: transparent;
+            border: none;
+            min-width: unset;
+            padding: 0;
+            box-shadow: none;
+        }
         &--link {
             background: transparent;
             text-decoration: underline;

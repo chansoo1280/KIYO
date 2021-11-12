@@ -1,5 +1,9 @@
 import { RN_API } from "@Definitions/MainConsts"
-
+declare global {
+    interface Window {
+        ReactNativeWebView: any
+    }
+}
 export const WebViewMessage = async (type: string, data?: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         if (!window.ReactNativeWebView) {

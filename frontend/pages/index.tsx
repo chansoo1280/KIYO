@@ -14,12 +14,6 @@ import { Account, AcFile } from "@Interfaces"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
-
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -86,7 +80,7 @@ const Page = (): JSX.Element => {
         if (data === null) return
 
         setShowDescBanner(false)
-        router.replace("/create", "/create")
+        router.replace("/start", "/start")
     }
     useEffect(() => {
         if (app.sel_lang !== i18n.language) {

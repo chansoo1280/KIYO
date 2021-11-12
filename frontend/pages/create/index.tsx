@@ -1,162 +1,221 @@
 // #region Global Imports
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, PinCode, Space, KeyPad, Title, Button, Input, SlideTab, IconList, MainHeader } from "@Components"
-import { AppActions, RootState, AcFileActions } from "@Redux"
+import { Header, Title, Space, Button, RecommendInput, Input, Tag } from "@Components"
+import { RootState } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
-import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
-const STEP = {
-    INPUT_PINCODE: "INPUT_PINCODE",
-    CONFIRM_PINCODE: "CONFIRM_PINCODE",
-    INPUT_FILENAME: "INPUT_FILENAME",
-} as const
-type STEP = typeof STEP[keyof typeof STEP]
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
-    const [step, setStep] = useState<STEP>(STEP.INPUT_PINCODE)
     const router = useRouter()
     const dispatch = useDispatch()
     const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
         app: appReducer,
         acFile: acFileReducer,
     }))
-    const [pincode, setPincode] = useState<AcFile["pincode"]>("")
-    const [pincodeConfirm, setPincodeConfirm] = useState<AcFile["pincode"]>("")
-    const [filename, setFilename] = useState<AcFile["filename"]>("my-list")
-    const pincodeInput = useRef<HTMLInputElement>(null)
 
-    const reqCreateFile = async () => {
-        if (filename === "") {
-            alert("filename 없음")
-            return
-        }
-        if (pincode === "") {
-            alert("pincode 없음")
-            return
-        }
-        const data = await WebViewMessage(RN_API.CREATE_FILE, {
-            pincode,
-            filename,
-            contents: [],
-        })
-        if (data === null) return
-        if (data === false) {
-            alert("생성 실패")
-            return
-        }
-        dispatch(
-            AcFileActions.setInfo({
-                ...data,
-            }),
-        )
-        alert("생성 성공")
-        router.replace("/", "/")
-    }
-    const nextStep = () => {
-        if (step === STEP.INPUT_PINCODE) {
-            setStep(STEP.CONFIRM_PINCODE)
-        } else if (step === STEP.CONFIRM_PINCODE) {
-            setStep(STEP.INPUT_FILENAME)
-        }
-    }
+    const [siteName, setSiteName] = useState("")
+    const [siteLink, setSiteLink] = useState("")
+    const [id, setId] = useState("")
+    const [pw, setPw] = useState("")
+    const [inputTag, setInputTag] = useState("")
+    const [tags, setTags] = useState<string[]>([])
+
     return (
         <>
             <Header
                 title={
                     <>
+                        <Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>
+                        <span>계정 정보 생성</span>
+                    </>
+                }
+            >
+                <Button
+                    type="text"
+                    onClick={() => {
+                        router.push("/start", "/start")
+                    }}
+                >
+                    생성
+                </Button>
+            </Header>
+            <Space direction="column" vAlign="flex-start" cover padding="20px 10px 0">
+                <label htmlFor="inputSiteName">사이트명</label>
+                <RecommendInput
+                    onClick={(word) => {
+                        setSiteName(word)
+                    }}
+                    value={siteName}
+                    recommendList={Array.from(
+                        new Set(
+                            ["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"].concat(
+                                acFile.list.map((account) => {
+                                    return account.siteName
+                                }),
+                            ),
+                        ),
+                    )}
+                >
+                    <Input
+                        id="inputSiteName"
+                        value={siteName}
+                        onChange={(e) => {
+                            setSiteName(e.target.value)
+                        }}
+                    />
+                </RecommendInput>
+                <label htmlFor="inputSiteLink">사이트링크</label>
+                <Input
+                    id="inputSiteLink"
+                    value={siteLink}
+                    onChange={(e) => {
+                        setSiteLink(e.target.value)
+                    }}
+                />
+                <label htmlFor="inputId">아이디</label>
+                <Input
+                    id="inputId"
+                    value={id}
+                    onChange={(e) => {
+                        setId(e.target.value)
+                    }}
+                />
+                <label htmlFor="inputPw">비밀번호</label>
+                <Input
+                    id="inputPw"
+                    value={pw}
+                    onChange={(e) => {
+                        setPw(e.target.value)
+                    }}
+                />
+                <Button
+                    onClick={() => {
+                        const chars = ["0123456789", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "!@#$%^&*()-_=+"]
+                        const charsStr = chars.join("")
+                        const getRandomIdx = (length: number) => Math.floor(Math.random() * (length - 1))
+                        const length = 12
+                        const createdPw = ((): string => {
+                            const str = []
+                            for (let i = 0; i < chars.length; i++) {
+                                const innerChars = chars[i]
+                                str.push(innerChars[getRandomIdx(innerChars.length)])
+                            }
+                            for (let i = 0; i < chars.length; i++) {
+                                const innerChars = chars[i]
+                                str.push(innerChars[getRandomIdx(innerChars.length)])
+                            }
+                            const lestLen = length - str.length
+                            for (let i = 0; i < lestLen; i++) {
+                                str.push(charsStr[getRandomIdx(charsStr.length)])
+                            }
+                            return str
+                                .sort(() => {
+                                    return Math.random() - 0.5
+                                })
+                                .join("")
+                        })()
+                        setPw(createdPw)
+                    }}
+                >
+                    비밀번호 자동 생성
+                </Button>
+                <Button
+                    onClick={() => {
+                        const charsStr = "0123456789".split("")
+                        const getRandomIdx = (length: number) => Math.floor(Math.random() * (length - 1))
+                        const length = 6
+                        const createdPw = ((): string => {
+                            const str = []
+                            for (let i = 0; i < length; i++) {
+                                const idx = getRandomIdx(charsStr.length)
+                                str.push(charsStr.splice(idx, 1))
+                                console.log(charsStr)
+                            }
+                            return str
+                                .sort(() => {
+                                    return Math.random() - 0.5
+                                })
+                                .join("")
+                        })()
+                        setPw(createdPw)
+                    }}
+                >
+                    핀번호
+                </Button>
+                <Space direction="column" vAlign="flex-start" gap="0" margin="0">
+                    <label htmlFor="inputTag">태그</label>
+                    <Space>
+                        <RecommendInput
+                            onClick={(word) => {
+                                setInputTag(word)
+                            }}
+                            value={inputTag}
+                            recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
+                        >
+                            <Input
+                                id="inputTag"
+                                value={inputTag}
+                                onChange={(e) => {
+                                    setInputTag(e.target.value)
+                                }}
+                                onEnter={() => {
+                                    if (inputTag === "") return
+                                    const isExist = tags.find((tag) => inputTag === tag)
+                                    if (isExist) return
+                                    setTags([...(tags || []), inputTag])
+                                    setInputTag("")
+                                }}
+                            />
+                        </RecommendInput>
                         <Button
                             onClick={() => {
-                                if (step === STEP.INPUT_PINCODE) {
-                                    router.push("/files", "/files")
-                                } else if (step === STEP.CONFIRM_PINCODE) {
-                                    setPincodeConfirm("")
-                                    setStep(STEP.INPUT_PINCODE)
-                                } else if (step === STEP.INPUT_FILENAME) {
-                                    setFilename("")
-                                    setStep(STEP.CONFIRM_PINCODE)
-                                }
+                                if (inputTag === "") return
+                                const isExist = tags.find((tag) => inputTag === tag)
+                                if (isExist) return
+                                setTags([...(tags || []), inputTag])
+                                setInputTag("")
                             }}
                             icon={
-                                <i className="xi-angle-left-min">
-                                    <span className="ir">뒤로가기</span>
+                                <i className="xi-tag">
+                                    <span className="ir">태그 추가</span>
                                 </i>
                             }
                         ></Button>
-                        <span>
-                            파일 생성 / {step === STEP.INPUT_PINCODE ? "1. 핀코드 입력" : step === STEP.CONFIRM_PINCODE ? "2. 핀코드 확인" : step === STEP.INPUT_FILENAME ? "3. 파일명 입력" : ""}
-                        </span>
-                    </>
-                }
-            ></Header>
-            {step === STEP.INPUT_PINCODE ? (
-                <>
-                    <PinCode value={pincode || ""} length={6}></PinCode>
-                    <Space align="flex-end">
-                        <Button type="link" onClick={() => router.push("/files", "/files")}>
-                            파일 목록으로 이동
-                        </Button>
                     </Space>
-                    <KeyPad
-                        maxLength={6}
-                        onEnter={() => {
-                            if (pincode === null || pincode.length < 6) {
-                                alert("핀코드를 입력해주세요.")
-                                return
-                            }
-                            nextStep()
-                        }}
-                        value={pincode || ""}
-                        setValue={setPincode}
-                    ></KeyPad>
-                </>
-            ) : step === STEP.CONFIRM_PINCODE ? (
-                <>
-                    <PinCode value={pincodeConfirm || ""} length={6}></PinCode>
-                    <KeyPad
-                        maxLength={6}
-                        onEnter={() => {
-                            if (pincodeConfirm === null || pincodeConfirm.length < 6) {
-                                alert("핀코드 한번더 입력해주세요.")
-                                return
-                            }
-                            if (pincode !== pincodeConfirm) {
-                                alert("핀코드 확인값이 다릅니다.")
-                                return
-                            }
-                            nextStep()
-                        }}
-                        value={pincodeConfirm || ""}
-                        setValue={setPincodeConfirm}
-                    ></KeyPad>
-                </>
-            ) : (
-                <>
-                    <Input value={filename || ""} onChange={(e: any) => setFilename(e.target.value.slice(0, 20))} onEnter={() => pincodeInput?.current?.focus()} type="text" />
-                    <Button onClick={() => reqCreateFile()} type="primary">
-                        제출
-                    </Button>
-                </>
-            )}
+                </Space>
+                <Tag>
+                    {tags.map((tag, idx) => {
+                        return (
+                            <Tag.Item
+                                key={tag}
+                                onDelete={() => {
+                                    const list = tags
+                                    list.splice(idx, 1)
+                                    setTags(list)
+                                }}
+                            >
+                                {tag}
+                            </Tag.Item>
+                        )
+                    })}
+                </Tag>
+            </Space>
         </>
     )
 }
 export const getStaticProps = async ({ locale }: { locale: string }): Promise<any> => ({
     props: {
         // ...(await serverSideTranslations(locale, ["common"])),
+        transition: "slide",
     },
 })
 export default Page

@@ -1,5 +1,5 @@
 // #region Global Imports
-import { useEffect, useMemo, useRef, useState } from "react"
+import { RefObject, useEffect, useMemo, useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -14,11 +14,6 @@ import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
 type SetFile = (arg0: Account[] | false) => void
 const useInterval = (callback: () => void, delay: number | null) => {
     const savedCallback = useRef<any>()
@@ -70,15 +65,14 @@ const useAccount = (acFile: AcFile, setFile: SetFile) => {
     return { createAccount, modifyAccount, deleteAccount }
 }
 
-const useDragable = () => {
+const useDragable = (layoutRef: RefObject<HTMLDivElement>) => {
     const [dragAccount, setDragAccount] = useState<number | null>(null)
     const [moveY, setMoveY] = useState<number>(0)
     const [mousePos, setMousePos] = useState({
         x: 0,
-        y: window.outerHeight * 0.8,
+        y: 0,
     })
     const [scrollMove, setScrollMove] = useState<number>(0)
-    const interval: NodeJS.Timer | null = null
     const isHover = (idx: number) => {
         if (dragAccount === null) return false
         const newIdx = dragAccount + moveY
@@ -89,6 +83,25 @@ const useDragable = () => {
         array.splice(to, 0, ...array.splice(from, on))
         return array
     }
+
+    useInterval(
+        () => {
+            if (layoutRef.current) {
+                console.log(mousePos)
+                if (mousePos.y < window.outerHeight * 0.2) {
+                    layoutRef.current.scrollTop += -8
+                } else if (mousePos.y < window.outerHeight * 0.4) {
+                    layoutRef.current.scrollTop += -2
+                } else if (window.outerHeight * 0.8 < mousePos.y) {
+                    layoutRef.current.scrollTop += 8
+                } else if (window.outerHeight * 0.6 < mousePos.y) {
+                    layoutRef.current.scrollTop += 2
+                }
+                // props.layoutRef.current.scroll(0, props.layoutRef.current.scrollTop + 8)
+            }
+        },
+        dragAccount === null ? null : 10,
+    )
 
     return { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove }
 }
@@ -130,25 +143,7 @@ const Page = (props: any): JSX.Element => {
         )
     }
     const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile, setFile)
-    const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove } = useDragable()
-
-    // useEffect(() => {
-    //     setInterval(() => {
-    //         // console.log(mousePos)
-    //         // if (mousePos.y < window.outerHeight * 0.2) {
-    //         //     wrap.scrollTop += -8
-    //         // } else if (mousePos.y < window.outerHeight * 0.4) {
-    //         //     wrap.scrollTop += -2
-    //         // } else if (window.outerHeight * 0.8 < mousePos.y) {
-    //         //     wrap.scrollTop += 8
-    //         // } else if (window.outerHeight * 0.6 < mousePos.y) {
-    //         //     wrap.scrollTop += 2
-    //         // }
-    //         if (props.layoutRef.current) {
-    //             props.layoutRef.current.scroll(0, props.layoutRef.current.scrollTop + 8)
-    //         }
-    //     }, 10)
-    // }, [])
+    const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove } = useDragable(props.layoutRef)
 
     const [tagList, setTagList] = useState(
         acFile.tags
@@ -307,10 +302,6 @@ const Page = (props: any): JSX.Element => {
     ]
 
     const moveItemIdx = async (idx: number) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
         if (dragAccount === null) return
         const moveIdx = (() => {
             const newIdx = dragAccount + moveY
@@ -400,6 +391,7 @@ const Page = (props: any): JSX.Element => {
                     getShowAccountList(acFile.list).map((account: Account, idx: number) => (
                         <AccountCard
                             // key={account.siteName + "_" + account.id}
+                            layoutRef={props.layoutRef}
                             idx={idx}
                             isHover={isHover(idx)}
                             isHoverTop={isHover(idx + 1) && idx === getShowAccountList(acFile.list).length - 1}
@@ -427,6 +419,7 @@ const Page = (props: any): JSX.Element => {
 
                 {getShowAccountList(testList).map((account: Account, idx: number) => (
                     <AccountCard
+                        layoutRef={props.layoutRef}
                         key={account.siteName + "_" + account.id}
                         idx={idx}
                         isHover={isHover(idx)}
@@ -455,16 +448,17 @@ const Page = (props: any): JSX.Element => {
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
                 onClick={() => {
-                    setModelCreateAccount({
-                        ...modelCreateAccount,
-                        show: true,
-                        inputTag: "",
-                        siteName: "",
-                        siteLink: "",
-                        id: "",
-                        pw: "",
-                        tags: [],
-                    })
+                    router.push("/create", "/create")
+                    // setModelCreateAccount({
+                    //     ...modelCreateAccount,
+                    //     show: true,
+                    //     inputTag: "",
+                    //     siteName: "",
+                    //     siteLink: "",
+                    //     id: "",
+                    //     pw: "",
+                    //     tags: [],
+                    // })
                     // const siteName = prompt("사이트명 입력")
                     // if (siteName === null) return
                     // const id = prompt("id 입력")
