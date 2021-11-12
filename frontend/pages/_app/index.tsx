@@ -22,8 +22,10 @@ import "@Services/API/DateFormat"
 // #endregion Local Imports
 
 class WebApp extends App<AppWithStore> {
+    layoutRef: React.RefObject<HTMLDivElement>
     constructor(props: any) {
         super(props)
+        this.layoutRef = React.createRef()
         this.state = {
             nextPathname: this.formatPathname(this.props.router.pathname),
             prevPathname: this.formatPathname(this.props.router.pathname),
@@ -81,8 +83,8 @@ class WebApp extends App<AppWithStore> {
                                     classNames={pageProps?.transition || ""}
                                 >
                                     <div className={"l_transition " + nextPathname + "From" + prevPathname}>
-                                        <AppLayout {...pageProps}>
-                                            <Component {...pageProps} />
+                                        <AppLayout {...pageProps} ref={this.layoutRef}>
+                                            <Component {...pageProps} layoutRef={this.layoutRef} />
                                         </AppLayout>
                                     </div>
                                 </CSSTransition>

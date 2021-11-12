@@ -26,7 +26,7 @@ interface Props {
 
 const Input = (props: Props): JSX.Element => {
     const { prefix, className, ref, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, ...rest } = props
-    const [isShowPw, setIsShowPw] = useState(type !== "password")
+    const [isShowPw, setIsShowPw] = useState(false)
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value: string = e.target.value || ""
         setValue && setValue(value)

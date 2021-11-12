@@ -1,5 +1,5 @@
 // #region Global Imports
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -20,6 +20,25 @@ declare global {
     }
 }
 type SetFile = (arg0: Account[] | false) => void
+const useInterval = (callback: () => void, delay: number | null) => {
+    const savedCallback = useRef<any>()
+
+    // Remember the latest function.
+    useEffect(() => {
+        savedCallback.current = callback
+    }, [callback])
+
+    // Set up the interval.
+    useEffect(() => {
+        function tick() {
+            savedCallback.current()
+        }
+        if (delay !== null) {
+            const id = setInterval(tick, delay)
+            return () => clearInterval(id)
+        }
+    }, [delay])
+}
 
 const useAccount = (acFile: AcFile, setFile: SetFile) => {
     const createAccount = async ({ siteName, siteLink, id, pw, tags }: Pick<Account, "siteName" | "siteLink" | "id" | "pw" | "tags">) => {
@@ -56,8 +75,10 @@ const useDragable = () => {
     const [moveY, setMoveY] = useState<number>(0)
     const [mousePos, setMousePos] = useState({
         x: 0,
-        y: 0,
+        y: window.outerHeight * 0.8,
     })
+    const [scrollMove, setScrollMove] = useState<number>(0)
+    const interval: NodeJS.Timer | null = null
     const isHover = (idx: number) => {
         if (dragAccount === null) return false
         const newIdx = dragAccount + moveY
@@ -68,10 +89,11 @@ const useDragable = () => {
         array.splice(to, 0, ...array.splice(from, on))
         return array
     }
-    return { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList }
+
+    return { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove }
 }
 
-const Page = (): JSX.Element => {
+const Page = (props: any): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
     const dispatch = useDispatch()
@@ -108,7 +130,25 @@ const Page = (): JSX.Element => {
         )
     }
     const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile, setFile)
-    const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList } = useDragable()
+    const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove } = useDragable()
+
+    // useEffect(() => {
+    //     setInterval(() => {
+    //         // console.log(mousePos)
+    //         // if (mousePos.y < window.outerHeight * 0.2) {
+    //         //     wrap.scrollTop += -8
+    //         // } else if (mousePos.y < window.outerHeight * 0.4) {
+    //         //     wrap.scrollTop += -2
+    //         // } else if (window.outerHeight * 0.8 < mousePos.y) {
+    //         //     wrap.scrollTop += 8
+    //         // } else if (window.outerHeight * 0.6 < mousePos.y) {
+    //         //     wrap.scrollTop += 2
+    //         // }
+    //         if (props.layoutRef.current) {
+    //             props.layoutRef.current.scroll(0, props.layoutRef.current.scrollTop + 8)
+    //         }
+    //     }, 10)
+    // }, [])
 
     const [tagList, setTagList] = useState(
         acFile.tags
@@ -135,136 +175,136 @@ const Page = (): JSX.Element => {
         )
     }, [acFile.tags])
 
-    // const testList = [
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "1",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "2",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "3",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "4",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "1",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "2",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "3",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "4",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "1",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "2",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "3",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "4",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "1",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "2",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "3",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    //     {
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "4",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //     },
-    // ]
+    const testList = [
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "1",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "2",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "3",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "4",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "5",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "6",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "7",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "8",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "9",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "10",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "11",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "12",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "13",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "14",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "15",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+        {
+            id: "123",
+            pw: "12341312",
+            siteName: "16",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+        },
+    ]
 
     const moveItemIdx = async (idx: number) => {
         if (!window.ReactNativeWebView) {
@@ -298,10 +338,7 @@ const Page = (): JSX.Element => {
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
         return list
-            .filter(({ siteName }: Account) => {
-                if (filterText === "") return true
-                return siteName.includes(filterText) === true
-            })
+            .filter(({ siteName }: Account) => filterText === "" || siteName.includes(filterText) === true)
             .filter(({ tags }: Account) => {
                 if (selectedTagList.length === 0) return true
                 return !selectedTagList.find(({ name }) => !tags.includes(name))
@@ -319,9 +356,7 @@ const Page = (): JSX.Element => {
                     }
                 ></Button>
             </Header>
-            <Space padding="136px 16px 0">
-                <Title as="h2">{acFile.filename || "text.txt"}</Title>
-            </Space>
+            <Space padding="136px 16px 0"></Space>
             <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText} />
             {acFile.list && acFile.list.length !== 0 && (
                 <Tag gap="10px">
@@ -354,7 +389,7 @@ const Page = (): JSX.Element => {
                 </Tag>
             )}
 
-            <Space direction="column" padding="0 16px">
+            <Space direction="column" padding="0 16px" gap="22px">
                 {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
@@ -364,7 +399,7 @@ const Page = (): JSX.Element => {
                 ) : (
                     getShowAccountList(acFile.list).map((account: Account, idx: number) => (
                         <AccountCard
-                            key={account.siteName + "_" + account.id}
+                            // key={account.siteName + "_" + account.id}
                             idx={idx}
                             isHover={isHover(idx)}
                             isHoverTop={isHover(idx + 1) && idx === getShowAccountList(acFile.list).length - 1}
@@ -375,6 +410,7 @@ const Page = (): JSX.Element => {
                             setDragAccount={setDragAccount}
                             mousePos={mousePos}
                             setMousePos={setMousePos}
+                            setScrollMove={setScrollMove}
                             onClickDel={(e) => {
                                 e.stopPropagation()
                                 if (confirm("삭제하시겠습니까?") === false) {
@@ -389,8 +425,9 @@ const Page = (): JSX.Element => {
                     ))
                 )}
 
-                {/* {getShowAccountList(testList).map((account: Account, idx: number) => (
+                {getShowAccountList(testList).map((account: Account, idx: number) => (
                     <AccountCard
+                        key={account.siteName + "_" + account.id}
                         idx={idx}
                         isHover={isHover(idx)}
                         isHoverTop={isHover(idx + 1) && idx === getShowAccountList(testList).length - 1}
@@ -401,6 +438,7 @@ const Page = (): JSX.Element => {
                         setDragAccount={setDragAccount}
                         mousePos={mousePos}
                         setMousePos={setMousePos}
+                        setScrollMove={setScrollMove}
                         onClickDel={(e) => {
                             e.stopPropagation()
                             if (confirm("삭제하시겠습니까?") === false) {
@@ -412,7 +450,7 @@ const Page = (): JSX.Element => {
                             modifyAccount(newAccount)
                         }}
                     ></AccountCard>
-                ))} */}
+                ))}
             </Space>
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button

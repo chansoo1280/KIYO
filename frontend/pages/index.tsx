@@ -84,6 +84,7 @@ const Page = (): JSX.Element => {
     const setDir = async () => {
         const data = await WebViewMessage(RN_API.SET_DIR)
         if (data === null) return
+
         setShowDescBanner(false)
         router.replace("/create", "/create")
     }
@@ -120,7 +121,7 @@ const Page = (): JSX.Element => {
                 }}
                 okText="폴더 선택하기"
             >
-                <img src="/static/images/banner/select-folder.png" alt="" />
+                <img style={{ objectFit: "contain" }} src="/static/images/banner/select-folder.png" alt="" />
                 <Space align="center">사용하실 폴더를 선택해주세요!</Space>
             </AlertModal>
         </>
