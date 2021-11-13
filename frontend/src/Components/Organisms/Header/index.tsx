@@ -40,7 +40,8 @@ const Header = (props: Props): JSX.Element => {
                 [styles["header--no-margin"]]: noMargin,
             })}
         >
-            {prefix}
+            {prefix && <div className={classNames(styles["header__prefix"])}>{prefix}</div>}
+
             <h1
                 className={classNames(styles["header__title"], {
                     [styles["header__title--center"]]: centerTitle,

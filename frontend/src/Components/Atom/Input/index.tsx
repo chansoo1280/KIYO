@@ -9,7 +9,7 @@ import styles from "./Input.module.scss"
 // #endregion Local Imports
 interface Props {
     children?: ReactNode
-    type?: "text" | "password" | "search" | "number"
+    type?: "text" | "email" | "password" | "search" | "number"
     size?: "sm" | "lg"
     onClick?: MouseEventHandler
     value?: string
@@ -67,6 +67,7 @@ const Input = (props: Props): JSX.Element => {
                 {...rest}
             />
             <Button
+                type="text"
                 className={styles["input__btn"]}
                 show={type === "password"}
                 onClick={() => setIsShowPw(!isShowPw)}
@@ -77,6 +78,7 @@ const Input = (props: Props): JSX.Element => {
                 }
             ></Button>
             <Button
+                type="text"
                 className={styles["input__btn"]}
                 show={type === "search" && value !== ""}
                 onClick={() => {
