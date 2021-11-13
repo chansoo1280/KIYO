@@ -13,12 +13,6 @@ import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
-
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -91,15 +85,7 @@ const Page = (): JSX.Element => {
     }
     return (
         <>
-            <Header
-                title={
-                    <>
-                        <Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>
-                        <span>설정</span>
-                    </>
-                }
-                noMargin
-            ></Header>
+            <Header prefix={<Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
             <SettingTitle as="h2">앱</SettingTitle>
             <SettingList>
                 <SettingList.Item>

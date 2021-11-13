@@ -1,4 +1,5 @@
 export interface Account {
+    idx: number
     siteName: string
     siteLink?: string
     id: string

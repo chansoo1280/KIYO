@@ -22,8 +22,10 @@ import "@Services/API/DateFormat"
 // #endregion Local Imports
 
 class WebApp extends App<AppWithStore> {
+    layoutRef: React.RefObject<HTMLDivElement>
     constructor(props: any) {
         super(props)
+        this.layoutRef = React.createRef()
         this.state = {
             nextPathname: this.formatPathname(this.props.router.pathname),
             prevPathname: this.formatPathname(this.props.router.pathname),
@@ -57,7 +59,7 @@ class WebApp extends App<AppWithStore> {
         const { Component, pageProps, router, app }: any = this.props
         const { nextPathname, prevPathname }: any = this.state
         const AppLayout = TheLayout[pageProps?.layout || LayoutCode.Default]
-        const theme = ThemeObj[ThemeType[app.sel_theme] || ThemeType.WHITE]
+        const theme = ThemeObj[ThemeType[app.sel_theme] || ThemeType.DEFAULT]
 
         return (
             <ThemeProvider theme={theme}>
@@ -81,8 +83,8 @@ class WebApp extends App<AppWithStore> {
                                     classNames={pageProps?.transition || ""}
                                 >
                                     <div className={"l_transition " + nextPathname + "From" + prevPathname}>
-                                        <AppLayout {...pageProps}>
-                                            <Component {...pageProps} />
+                                        <AppLayout {...pageProps} ref={this.layoutRef}>
+                                            <Component {...pageProps} layoutRef={this.layoutRef} />
                                         </AppLayout>
                                     </div>
                                 </CSSTransition>

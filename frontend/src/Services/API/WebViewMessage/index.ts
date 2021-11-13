@@ -1,3 +1,9 @@
+import { RN_API } from "@Definitions/MainConsts"
+declare global {
+    interface Window {
+        ReactNativeWebView: any
+    }
+}
 export const WebViewMessage = async (type: string, data?: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         if (!window.ReactNativeWebView) {
@@ -11,6 +17,9 @@ export const WebViewMessage = async (type: string, data?: any): Promise<any> => 
             }),
         )
         const timer = setTimeout(() => {
+            if (type === RN_API.SET_DIR) {
+                return
+            }
             resolve(null)
             /** android */
             document.removeEventListener("message", listener)
@@ -21,21 +30,21 @@ export const WebViewMessage = async (type: string, data?: any): Promise<any> => 
             const { data, type } = JSON.parse(event.data)
             switch (type) {
                 case type: {
-                    resolve(data)
                     clearTimeout(timer)
                     /** android */
                     document.removeEventListener("message", listener)
                     /** ios */
                     window.removeEventListener("message", listener)
+                    resolve(data)
                     return
                 }
             }
-            resolve(null)
             clearTimeout(timer)
             /** android */
             document.removeEventListener("message", listener)
             /** ios */
             window.removeEventListener("message", listener)
+            resolve(null)
         }
         /** android */
         document.addEventListener("message", listener)

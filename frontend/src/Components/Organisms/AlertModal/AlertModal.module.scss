@@ -1,10 +1,8 @@
 .alert-modal {
-    padding: 30px 10px;
+    padding: 9px;
     flex: 1;
-}
-.alert-modal__btns {
-    padding: 4px;
-}
-.alert-modal__btn {
-    flex: 1;
+    width: 100%;
+    display: flex;
+    gap: 24px;
+    flex-direction: column;
 }

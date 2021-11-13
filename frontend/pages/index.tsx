@@ -14,12 +14,6 @@ import { Account, AcFile } from "@Interfaces"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
-
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -65,10 +59,11 @@ const Page = (): JSX.Element => {
         }
         // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
         const list: Account[] =
-            data.contents.map((account: any) => ({
+            data.contents.map((account: any, idx: number) => ({
                 ...account,
                 siteName: account.siteName || account.address,
                 tags: account.tags || [],
+                idx: idx,
             })) || []
         const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         dispatch(
@@ -84,8 +79,9 @@ const Page = (): JSX.Element => {
     const setDir = async () => {
         const data = await WebViewMessage(RN_API.SET_DIR)
         if (data === null) return
+
         setShowDescBanner(false)
-        router.replace("/create", "/create")
+        router.replace("/start", "/start")
     }
     useEffect(() => {
         if (app.sel_lang !== i18n.language) {
@@ -95,9 +91,9 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Header title={acFile.filename ? acFile.filename + " - 핀번호 입력" : "핀번호 입력"}></Header>
             <PinCode value={pincode || ""} length={6}></PinCode>
-            <Space align="flex-end">
+            <Space align="flex-end" padding="0 16px">
+                <Title as="h2">{acFile.filename}</Title>
                 <Button type="link" onClick={() => router.push("/files", "/files")}>
                     파일 목록으로 이동
                 </Button>
@@ -118,8 +114,10 @@ const Page = (): JSX.Element => {
                 onClick={() => {
                     setDir()
                 }}
+                okText="폴더 선택하기"
             >
-                사용하실 폴더를 선택해주세요!
+                <img style={{ objectFit: "contain" }} src="/static/images/banner/select-folder.png" alt="" />
+                <Space align="center">사용하실 폴더를 선택해주세요!</Space>
             </AlertModal>
         </>
     )

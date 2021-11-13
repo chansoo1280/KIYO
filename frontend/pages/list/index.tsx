@@ -1,5 +1,5 @@
 // #region Global Imports
-import { useEffect, useState } from "react"
+import { RefObject, useEffect, useMemo, useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -14,12 +14,26 @@ import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
 type SetFile = (arg0: Account[] | false) => void
+const useInterval = (callback: () => void, delay: number | null) => {
+    const savedCallback = useRef<any>()
+
+    // Remember the latest function.
+    useEffect(() => {
+        savedCallback.current = callback
+    }, [callback])
+
+    // Set up the interval.
+    useEffect(() => {
+        function tick() {
+            savedCallback.current()
+        }
+        if (delay !== null) {
+            const id = setInterval(tick, delay)
+            return () => clearInterval(id)
+        }
+    }, [delay])
+}
 
 const useAccount = (acFile: AcFile, setFile: SetFile) => {
     const createAccount = async ({ siteName, siteLink, id, pw, tags }: Pick<Account, "siteName" | "siteLink" | "id" | "pw" | "tags">) => {
@@ -51,13 +65,14 @@ const useAccount = (acFile: AcFile, setFile: SetFile) => {
     return { createAccount, modifyAccount, deleteAccount }
 }
 
-const useDragable = () => {
+const useDragable = (layoutRef: RefObject<HTMLDivElement>) => {
     const [dragAccount, setDragAccount] = useState<number | null>(null)
     const [moveY, setMoveY] = useState<number>(0)
     const [mousePos, setMousePos] = useState({
         x: 0,
         y: 0,
     })
+    const [scrollMove, setScrollMove] = useState<number>(0)
     const isHover = (idx: number) => {
         if (dragAccount === null) return false
         const newIdx = dragAccount + moveY
@@ -68,10 +83,30 @@ const useDragable = () => {
         array.splice(to, 0, ...array.splice(from, on))
         return array
     }
-    return { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList }
+
+    useInterval(
+        () => {
+            if (layoutRef.current) {
+                // console.log(mousePos)
+                if (mousePos.y < window.outerHeight * 0.2) {
+                    layoutRef.current.scrollTop += -8
+                } else if (mousePos.y < window.outerHeight * 0.4) {
+                    layoutRef.current.scrollTop += -2
+                } else if (window.outerHeight * 0.8 < mousePos.y) {
+                    layoutRef.current.scrollTop += 8
+                } else if (window.outerHeight * 0.6 < mousePos.y) {
+                    layoutRef.current.scrollTop += 2
+                }
+                // props.layoutRef.current.scroll(0, props.layoutRef.current.scrollTop + 8)
+            }
+        },
+        dragAccount === null ? null : 10,
+    )
+
+    return { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove }
 }
 
-const Page = (): JSX.Element => {
+const Page = (props: any): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
     const dispatch = useDispatch()
@@ -108,7 +143,7 @@ const Page = (): JSX.Element => {
         )
     }
     const { createAccount, modifyAccount, deleteAccount } = useAccount(acFile, setFile)
-    const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList } = useDragable()
+    const { dragAccount, moveY, mousePos, setDragAccount, setMoveY, setMousePos, isHover, getMovedList, setScrollMove } = useDragable(props.layoutRef)
 
     const [tagList, setTagList] = useState(
         acFile.tags
@@ -137,6 +172,7 @@ const Page = (): JSX.Element => {
 
     // const testList = [
     //     {
+    //         idx: 1,
     //         id: "123",
     //         pw: "12341312",
     //         siteName: "1",
@@ -145,6 +181,7 @@ const Page = (): JSX.Element => {
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 2,
     //         id: "123",
     //         pw: "12341312",
     //         siteName: "2",
@@ -153,6 +190,7 @@ const Page = (): JSX.Element => {
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 3,
     //         id: "123",
     //         pw: "12341312",
     //         siteName: "3",
@@ -161,6 +199,7 @@ const Page = (): JSX.Element => {
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 4,
     //         id: "123",
     //         pw: "12341312",
     //         siteName: "4",
@@ -169,124 +208,132 @@ const Page = (): JSX.Element => {
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 5,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "1",
+    //         siteName: "5",
     //         tags: ["금융"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 6,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "2",
+    //         siteName: "6",
     //         tags: ["게임"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 7,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "3",
+    //         siteName: "7",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 8,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "4",
+    //         siteName: "8",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 9,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "1",
+    //         siteName: "9",
     //         tags: ["금융"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 10,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "2",
+    //         siteName: "10",
     //         tags: ["게임"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 11,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "3",
+    //         siteName: "11",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 12,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "4",
+    //         siteName: "12",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 13,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "1",
+    //         siteName: "13",
     //         tags: ["금융"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 14,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "2",
+    //         siteName: "14",
     //         tags: ["게임"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 15,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "3",
+    //         siteName: "15",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     //     {
+    //         idx: 16,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "4",
+    //         siteName: "16",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
     //     },
     // ]
 
-    const moveItemIdx = async (idx: number) => {
-        if (!window.ReactNativeWebView) {
-            alert("ReactNativeWebView 객체가 없습니다.")
-            return
-        }
+    const moveItemIdx = async (oldIdx: number) => {
         if (dragAccount === null) return
         const moveIdx = (() => {
             const newIdx = dragAccount + moveY
             if (newIdx < 0) return 0
             if (acFile.list.length <= newIdx) return acFile.list.length - 1
-            if (idx < newIdx) return newIdx - 1
+            if (oldIdx < newIdx) return newIdx - 1
             return newIdx
         })()
-        // console.log(idx, moveIdx)
-        if (idx === moveIdx) return
-        const account = getShowAccountList(acFile.list)[idx]
+        // console.log(oldIdx, moveIdx)
+        if (oldIdx === moveIdx) return
+        const account = getShowAccountList(acFile.list)[oldIdx]
         const moveAccount = getShowAccountList(acFile.list)[moveIdx]
         if (!account || !moveAccount) return
 
-        const fromIdx = acFile.list.findIndex(({ siteName, id }) => siteName === account.siteName && id === account.id)
-        const toIdx = acFile.list.findIndex(({ siteName, id }) => siteName === moveAccount.siteName && id === moveAccount.id)
+        const fromIdx = acFile.list.findIndex(({ idx }) => idx === account.idx)
+        const toIdx = acFile.list.findIndex(({ idx }) => idx === moveAccount.idx)
         // console.log(getMovedList(fromIdx, toIdx, acFile.list))
         const data = await WebViewMessage(RN_API.SET_FILE, {
             contents: getMovedList(fromIdx, toIdx, acFile.list),
@@ -298,10 +345,7 @@ const Page = (): JSX.Element => {
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
         return list
-            .filter(({ siteName }: Account) => {
-                if (filterText === "") return true
-                return siteName.includes(filterText) === true
-            })
+            .filter(({ siteName }: Account) => filterText === "" || siteName.includes(filterText) === true)
             .filter(({ tags }: Account) => {
                 if (selectedTagList.length === 0) return true
                 return !selectedTagList.find(({ name }) => !tags.includes(name))
@@ -309,7 +353,7 @@ const Page = (): JSX.Element => {
     }
     return (
         <>
-            <Header title="계정 목록">
+            <Header title={<img src="/static/images/logo.svg" alt="KIYO" />}>
                 <Button
                     href="/setting"
                     icon={
@@ -319,6 +363,7 @@ const Page = (): JSX.Element => {
                     }
                 ></Button>
             </Header>
+            <Space padding="136px 16px 0"></Space>
             <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText} />
             {acFile.list && acFile.list.length !== 0 && (
                 <Tag gap="10px">
@@ -351,7 +396,7 @@ const Page = (): JSX.Element => {
                 </Tag>
             )}
 
-            <Space direction="column" padding="10px">
+            <Space direction="column" padding="0 16px 36px" gap="22px">
                 {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
@@ -361,7 +406,8 @@ const Page = (): JSX.Element => {
                 ) : (
                     getShowAccountList(acFile.list).map((account: Account, idx: number) => (
                         <AccountCard
-                            key={account.siteName + "_" + account.id}
+                            // key={account.siteName + "_" + account.id}
+                            layoutRef={props.layoutRef}
                             idx={idx}
                             isHover={isHover(idx)}
                             isHoverTop={isHover(idx + 1) && idx === getShowAccountList(acFile.list).length - 1}
@@ -372,6 +418,7 @@ const Page = (): JSX.Element => {
                             setDragAccount={setDragAccount}
                             mousePos={mousePos}
                             setMousePos={setMousePos}
+                            setScrollMove={setScrollMove}
                             onClickDel={(e) => {
                                 e.stopPropagation()
                                 if (confirm("삭제하시겠습니까?") === false) {
@@ -379,8 +426,13 @@ const Page = (): JSX.Element => {
                                 }
                                 deleteAccount(account)
                             }}
-                            onClickMod={(newAccount) => {
-                                modifyAccount(newAccount)
+                            onClickMod={(account) => {
+                                router.push({
+                                    pathname: "/modify",
+                                    query: {
+                                        idx: account.idx,
+                                    },
+                                })
                             }}
                         ></AccountCard>
                     ))
@@ -388,6 +440,8 @@ const Page = (): JSX.Element => {
 
                 {/* {getShowAccountList(testList).map((account: Account, idx: number) => (
                     <AccountCard
+                        layoutRef={props.layoutRef}
+                        key={account.siteName + "_" + account.id}
                         idx={idx}
                         isHover={isHover(idx)}
                         isHoverTop={isHover(idx + 1) && idx === getShowAccountList(testList).length - 1}
@@ -398,6 +452,7 @@ const Page = (): JSX.Element => {
                         setDragAccount={setDragAccount}
                         mousePos={mousePos}
                         setMousePos={setMousePos}
+                        setScrollMove={setScrollMove}
                         onClickDel={(e) => {
                             e.stopPropagation()
                             if (confirm("삭제하시겠습니까?") === false) {
@@ -405,8 +460,13 @@ const Page = (): JSX.Element => {
                             }
                             deleteAccount(account)
                         }}
-                        onClickMod={(newAccount) => {
-                            modifyAccount(newAccount)
+                        onClickMod={(account) => {
+                            router.push({
+                                pathname: "/modify",
+                                query: {
+                                    idx: account.idx,
+                                },
+                            })
                         }}
                     ></AccountCard>
                 ))} */}
@@ -414,16 +474,17 @@ const Page = (): JSX.Element => {
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
                 onClick={() => {
-                    setModelCreateAccount({
-                        ...modelCreateAccount,
-                        show: true,
-                        inputTag: "",
-                        siteName: "",
-                        siteLink: "",
-                        id: "",
-                        pw: "",
-                        tags: [],
-                    })
+                    router.push("/create", "/create")
+                    // setModelCreateAccount({
+                    //     ...modelCreateAccount,
+                    //     show: true,
+                    //     inputTag: "",
+                    //     siteName: "",
+                    //     siteLink: "",
+                    //     id: "",
+                    //     pw: "",
+                    //     tags: [],
+                    // })
                     // const siteName = prompt("사이트명 입력")
                     // if (siteName === null) return
                     // const id = prompt("id 입력")

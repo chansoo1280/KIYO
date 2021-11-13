@@ -1,7 +1,8 @@
 // #region Global Imports
 import { Button } from "@Components"
 import classNames from "classnames"
-import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useEffect, useState } from "react"
+import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useContext, useEffect, useState } from "react"
+import { ThemeContext } from "styled-components"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -17,6 +18,8 @@ interface Props {
 
 const KeyPad = (props: Props): JSX.Element => {
     const { maxLength = 20, value, setValue, onChange, onEnter, ...rest } = props
+    const { name: theme } = useContext(ThemeContext)
+    const prefixCls = theme + "-key-pad"
     const shuffleArray = (array: string[]) => {
         for (let i = 0; i < array.length; i++) {
             const j = Math.floor(Math.random() * (i + 1))
@@ -28,7 +31,7 @@ const KeyPad = (props: Props): JSX.Element => {
     const [keyList, setKeyList] = useState(
         (() => {
             const list = shuffleArray(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"])
-            list.splice(9, 0, "delete")
+            list.splice(2, 0, "delete")
             list.splice(11, 0, "입력")
             return list
         })(),
@@ -37,12 +40,13 @@ const KeyPad = (props: Props): JSX.Element => {
         onChange && onChange()
     }, [value])
     return (
-        <div className={styles["key-pad"]}>
+        <div className={styles[prefixCls]}>
             {keyList.map((key) => (
                 <button
                     key={key}
-                    className={classNames(styles["key-pad__btn"], {
-                        [styles["key-pad__btn--active"]]: key === activeKey,
+                    className={classNames(styles[`${prefixCls}__btn`], {
+                        [styles[`${prefixCls}__btn--active`]]: key === activeKey,
+                        [styles[`${prefixCls}__btn--confirm`]]: key === "입력",
                     })}
                     onTouchStart={() => {
                         if (key === "입력") {
@@ -61,7 +65,7 @@ const KeyPad = (props: Props): JSX.Element => {
                         setActiveKey("")
                     }}
                 >
-                    {key}
+                    {key === "delete" ? <i className="xi-long-arrow-left"></i> : key === "입력" ? <i className="xi-unlock-o"></i> : key}
                 </button>
             ))}
         </div>

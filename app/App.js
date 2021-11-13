@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
 import {ToastAndroid, PermissionsAndroid} from 'react-native';
-import getPath from '@flyerhq/react-native-android-uri-path'
 import {
   WebViewWrapper,
   readDir,
@@ -46,8 +45,8 @@ const App = () => {
     if (directoryUriEnd) {
       AsyncStorage.setItem('directoryUri', directoryUriEnd);
       return directoryUriEnd;
-    };
-    return setDirectoryUri();
+    }
+    return false;
   };
   const setDirectoryUri = async () => {
     const permissions =
@@ -119,7 +118,11 @@ const App = () => {
               'filepath',
               (err, result) => result,
             );
-            const directoryUri = await getDirectoryUri();
+            let directoryUri = await getDirectoryUri();
+            if (directoryUri === false) {
+              directoryUri = await setDirectoryUri();
+            }
+
             const filename = getFilename(filepath);
             if (filename === newFilename) {
               ToastAndroid.show('동일한 파일명입니다.', ToastAndroid.SHORT);
@@ -153,23 +156,28 @@ const App = () => {
               (err, result) => result,
             );
             const filename = getFilename(filepath);
-            const isExist = await (async()=>{
+            const isExist = await (async () => {
               const directoryUri = await getDirectoryUri();
               if (directoryUri === false) {
-                return "no-folder";
+                return 'no-folder';
               }
-              console.log(directoryUri);
               const files = await readDir(directoryUri);
 
               return files.find(file => file === filepath) || false;
-            })()
+            })();
+            console.log(isExist);
             // if (!isExist) {
             //   console.log("");
             // }
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILENAME,
-                data: isExist === 'no-folder'?isExist: isExist? filename : false,
+                data:
+                  isExist === 'no-folder'
+                    ? isExist
+                    : isExist
+                    ? filename
+                    : false,
               }),
             );
             break;
@@ -181,14 +189,23 @@ const App = () => {
               return false;
             }
             const files = await readDir(directoryUri);
-            const filenames = await Promise.all(files.map((file)=>RNGRP.getRealPathFromURI(file)))
-            const fileList = files.map((file, idx)=>{
-              const fileList = decodeURIComponent(filenames[idx]).split("/")
-              return {filepath: file, filename: (fileList && fileList[fileList.length - 1]) || ""}
-            }).filter(({filename}) => filename.slice(-4, filename.length) === ".txt")
+            const filenames = await Promise.all(
+              files.map(file => RNGRP.getRealPathFromURI(file)),
+            );
+            const fileList = files
+              .map((file, idx) => {
+                const fileList = decodeURIComponent(filenames[idx]).split('/');
+                return {
+                  filepath: file,
+                  filename: (fileList && fileList[fileList.length - 1]) || '',
+                };
+              })
+              .filter(
+                ({filename}) => filename.slice(-4, filename.length) === '.txt',
+              );
             // console.log(fileList);
             webview.current.postMessage(
-              JSON.stringify({ 
+              JSON.stringify({
                 type: RN_API.SET_DIR,
                 data: {
                   dirpath: directoryUri,
@@ -205,14 +222,23 @@ const App = () => {
               (err, result) => result,
             );
             const files = await readDir(directoryUri);
-            const filenames = await Promise.all(files.map((file)=>RNGRP.getRealPathFromURI(file)))
-            const fileList = files.map((file, idx)=>{
-              const fileList = decodeURIComponent(filenames[idx]).split("/")
-              return {filepath: file, filename: (fileList && fileList[fileList.length - 1]) || ""}
-            }).filter(({filename}) => filename.slice(-4, filename.length) === ".txt")
+            const filenames = await Promise.all(
+              files.map(file => RNGRP.getRealPathFromURI(file)),
+            );
+            const fileList = files
+              .map((file, idx) => {
+                const fileList = decodeURIComponent(filenames[idx]).split('/');
+                return {
+                  filepath: file,
+                  filename: (fileList && fileList[fileList.length - 1]) || '',
+                };
+              })
+              .filter(
+                ({filename}) => filename.slice(-4, filename.length) === '.txt',
+              );
             // console.log(fileList);
             webview.current.postMessage(
-              JSON.stringify({ 
+              JSON.stringify({
                 type: RN_API.GET_FILE_LIST,
                 data: {
                   dirpath: directoryUri,

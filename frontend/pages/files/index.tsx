@@ -13,12 +13,6 @@ import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-declare global {
-    interface Window {
-        ReactNativeWebView: any
-    }
-}
-
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -87,7 +81,7 @@ const Page = (): JSX.Element => {
             >
                 <Button
                     onClick={() => {
-                        router.push("/create", "/create")
+                        router.push("/start", "/start")
                     }}
                     icon={
                         <i className="xi-plus-min">

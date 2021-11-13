@@ -1,0 +1,85 @@
+@use "sass:map";
+$theme-obj: "default", "dark";
+@import "./default.scss";
+@import "./dark.scss";
+@function get-value-of-theme($color-name, $theme-name) {
+    @if $theme-name == "dark" {
+        @return map.get($theme-dark, $color-name);
+    } @else {
+        @return map.get($theme-default, $color-name);
+    }
+}
+@mixin pub-color($theme-name) {
+    $theme: $theme-name !global;
+    $primary-color: get-value-of-theme("primary-color", $theme-name) !global;
+    $secondary-color: get-value-of-theme("secondary-color", $theme-name) !global;
+    $success-color: get-value-of-theme("success-color", $theme-name) !global;
+    $processing-color: get-value-of-theme("processing-color", $theme-name) !global;
+    $error-color: get-value-of-theme("error-color", $theme-name) !global;
+    $highlight-color: get-value-of-theme("highlight-color", $theme-name) !global;
+    $warning-color: get-value-of-theme("warning-color", $theme-name) !global;
+    $normal-color: get-value-of-theme("normal-color", $theme-name) !global;
+    $white: get-value-of-theme("white", $theme-name) !global;
+    $black: get-value-of-theme("black", $theme-name) !global;
+
+    $primary-1: colorPalette($primary-color, 1) !global;
+    $primary-2: colorPalette($primary-color, 2) !global;
+    $primary-3: colorPalette($primary-color, 3) !global;
+    $primary-4: colorPalette($primary-color, 4) !global;
+    $primary-5: colorPalette($primary-color, 5) !global;
+    $primary-6: $primary-color !global;
+    $primary-7: colorPalette($primary-color, 7) !global;
+    $primary-8: colorPalette($primary-color, 8) !global;
+    $primary-9: colorPalette($primary-color, 9) !global;
+    $primary-10: colorPalette($primary-color, 10) !global;
+
+    @if get-value-of-theme("type", $theme-name) == "white" {
+        $background-color: $white !global;
+    } @else {
+        $background-color: #000 !global;
+    }
+}
+$btn-prefix-cls: "btn";
+$input-prefix-cls: "input";
+$icon-prefix-cls: "icon";
+$space-prefix-cls: "space";
+$pin-code-prefix-cls: "pin-code";
+$key-pad-prefix-cls: "key-pad";
+$modal-prefix-cls: "modal";
+$search-prefix-cls: "search";
+
+$box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+$box-shadow-lg: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+
+$font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+$code-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+$font-variant-base: tabular-nums;
+$font-feature-settings-base: "tnum";
+$font-size-base: 14px;
+$font-size-lg: $font-size-base + 2px;
+$font-size-sm: 12px;
+$heading-1-size: ceil($font-size-base * 2.71);
+$heading-2-size: ceil($font-size-base * 2.14);
+$heading-3-size: ceil($font-size-base * 1.71);
+$heading-4-size: ceil($font-size-base * 1.42);
+$heading-5-size: ceil($font-size-base * 1.14);
+$line-height-base: 1.5715;
+$border-radius-base: 4px;
+// vertical paddings
+$padding-lg: 24px; // containers
+$padding-md: 16px; // small containers and buttons
+$padding-sm: 12px; // Form controls and items
+$padding-xs: 8px; // small items
+$padding-xss: 4px; // more small
+
+// vertical margins
+$margin-lg: 24px; // containers
+$margin-md: 16px; // small containers and buttons
+$margin-sm: 12px; // Form controls and items
+$margin-xs: 8px; // small items
+$margin-xss: 4px; // more small
+
+// height rules
+$height-base: 32px;
+$height-lg: 40px;
+$height-sm: 24px;

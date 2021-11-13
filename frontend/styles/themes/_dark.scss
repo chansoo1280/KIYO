@@ -1,0 +1,16 @@
+@use "sass:map";
+/* stylelint-disable at-rule-empty-line-before,at-rule-name-space-after,at-rule-no-unknown */
+@import "../color/colors";
+$theme-dark: (
+    "type": "white",
+    "primary-color": $blue-6,
+    "secondary-color": $blue-6,
+    "success-color": $green-6,
+    "processing-color": $blue-6,
+    "error-color": $red-5,
+    "highlight-color": $red-5,
+    "warning-color": $gold-6,
+    "normal-color": #d9d9d9,
+    "white": #fff,
+    "black": #000,
+);

@@ -1,5 +1,13 @@
-.search {
-    &__input{
-        flex:1;
+@import "/styles/themes/index";
+@import "/styles/mixins/index";
+@each $theme-name in $theme-obj {
+    @include pub-color($theme-name);
+    .#{$theme-name}-#{$search-prefix-cls} {
+        &__input-box {
+            flex: 1;
+        }
+        &__input {
+            border: 2px solid $primary-6;
+        }
     }
 }

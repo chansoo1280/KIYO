@@ -10,6 +10,7 @@ import styles from "./Input.module.scss"
 interface Props {
     children?: ReactNode
     type?: "text" | "password" | "search" | "number"
+    size?: "sm" | "lg"
     onClick?: MouseEventHandler
     value?: string
     setValue?: Dispatch<SetStateAction<string>>
@@ -20,23 +21,40 @@ interface Props {
     ref?: RefObject<HTMLInputElement>
     className?: string
     id?: string
+    prefix?: ReactNode
 }
 
 const Input = (props: Props): JSX.Element => {
-    const { className, ref, value, onClick, setValue, onChange, onEnter, onReset, type, readOnly, ...rest } = props
-    const [isShowPw, setIsShowPw] = useState(type !== "password")
+    const { prefix, className, ref, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, ...rest } = props
+    const [isShowPw, setIsShowPw] = useState(false)
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value: string = e.target.value || ""
         setValue && setValue(value)
     }, [])
     return (
-        <div className={classNames(className, styles["input-wrap"])}>
+        <div
+            className={classNames(
+                styles["input-wrap"],
+                {
+                    [styles[`input-wrap--${size}`]]: size,
+                    [styles["input-wrap--readOnly"]]: readOnly,
+                },
+                className,
+            )}
+        >
+            {prefix && (
+                <div
+                    className={classNames(styles["input__prefix"], {
+                        [styles[`input__prefix--icon-only`]]: !prefix.hasOwnProperty("length"),
+                    })}
+                >
+                    {prefix}
+                </div>
+            )}
             <input
                 ref={ref}
                 type={type === "password" ? (isShowPw ? "text" : "password") : type}
-                className={classNames(styles["input"], {
-                    [styles["input--readOnly"]]: readOnly,
-                })}
+                className={classNames(styles["input"])}
                 value={value}
                 readOnly={readOnly}
                 onChange={onChange || onChangeInput}
