@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Title, Header, Space, Button, SettingList, SettingTitle, ConfirmModal, Input } from "@Components"
+import { Title, Header, Space, Button, SettingList, ConfirmModal, Input } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
@@ -86,7 +86,7 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Header prefix={<Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
-            <SettingTitle as="h2">앱</SettingTitle>
+            <SettingList.Title as="h2">앱</SettingList.Title>
             <SettingList>
                 <SettingList.Item>
                     <Title as="h3">앱 평가</Title>
@@ -98,7 +98,7 @@ const Page = (): JSX.Element => {
                     <Title as="h3">문의하기</Title>
                 </SettingList.Item>
             </SettingList>
-            <SettingTitle as="h2">파일 관리</SettingTitle>
+            <SettingList.Title as="h2">파일 관리</SettingList.Title>
             <SettingList>
                 <SettingList.Item
                     onClick={() => {
@@ -148,7 +148,7 @@ const Page = (): JSX.Element => {
                     <Title as="h3">개인정보처리방침</Title>
                 </SettingList.Item>
             </SettingList>
-            <SettingTitle as="h2">앱정보</SettingTitle>
+            <SettingList.Title as="h2">앱정보</SettingList.Title>
             <SettingList>
                 <SettingList.Item>
                     <Title as="h3">개발자</Title>
