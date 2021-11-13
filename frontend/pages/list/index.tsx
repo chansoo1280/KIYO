@@ -170,152 +170,152 @@ const Page = (props: any): JSX.Element => {
         )
     }, [acFile.tags])
 
-    const testList = [
-        {
-            idx: 1,
-            id: "123",
-            pw: "12341312",
-            siteName: "1",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 2,
-            id: "123",
-            pw: "12341312",
-            siteName: "2",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 3,
-            id: "123",
-            pw: "12341312",
-            siteName: "3",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 4,
-            id: "123",
-            pw: "12341312",
-            siteName: "4",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 5,
-            id: "123",
-            pw: "12341312",
-            siteName: "5",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 6,
-            id: "123",
-            pw: "12341312",
-            siteName: "6",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 7,
-            id: "123",
-            pw: "12341312",
-            siteName: "7",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 8,
-            id: "123",
-            pw: "12341312",
-            siteName: "8",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 9,
-            id: "123",
-            pw: "12341312",
-            siteName: "9",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 10,
-            id: "123",
-            pw: "12341312",
-            siteName: "10",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 11,
-            id: "123",
-            pw: "12341312",
-            siteName: "11",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 12,
-            id: "123",
-            pw: "12341312",
-            siteName: "12",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 13,
-            id: "123",
-            pw: "12341312",
-            siteName: "13",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 14,
-            id: "123",
-            pw: "12341312",
-            siteName: "14",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 15,
-            id: "123",
-            pw: "12341312",
-            siteName: "15",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-        {
-            idx: 16,
-            id: "123",
-            pw: "12341312",
-            siteName: "16",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-        },
-    ]
+    // const testList = [
+    //     {
+    //         idx: 1,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "1",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 2,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "2",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 3,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "3",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 4,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "4",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 5,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "5",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 6,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "6",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 7,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "7",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 8,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "8",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 9,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "9",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 10,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "10",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 11,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "11",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 12,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "12",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 13,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "13",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 14,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "14",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 15,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "15",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    //     {
+    //         idx: 16,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "16",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //     },
+    // ]
 
     const moveItemIdx = async (oldIdx: number) => {
         if (dragAccount === null) return
@@ -396,7 +396,7 @@ const Page = (props: any): JSX.Element => {
                 </Tag>
             )}
 
-            <Space direction="column" padding="0 16px" gap="22px">
+            <Space direction="column" padding="0 16px 36px" gap="22px">
                 {!acFile.list || acFile.list.length === 0 ? (
                     filterText === "" ? (
                         <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
@@ -438,7 +438,7 @@ const Page = (props: any): JSX.Element => {
                     ))
                 )}
 
-                {getShowAccountList(testList).map((account: Account, idx: number) => (
+                {/* {getShowAccountList(testList).map((account: Account, idx: number) => (
                     <AccountCard
                         layoutRef={props.layoutRef}
                         key={account.siteName + "_" + account.id}
@@ -469,7 +469,7 @@ const Page = (props: any): JSX.Element => {
                             })
                         }}
                     ></AccountCard>
-                ))}
+                ))} */}
             </Space>
             <DragCard mousePos={mousePos} isShow={dragAccount !== null}></DragCard>
             <Button
