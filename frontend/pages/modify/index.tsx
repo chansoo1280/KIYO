@@ -28,10 +28,37 @@ const Page = (): JSX.Element => {
     const [siteLink, setSiteLink] = useState(account?.siteLink || "")
     const [id, setId] = useState(account?.id || "")
     const [pw, setPw] = useState(account?.pw || "")
+
     const [inputTag, setInputTag] = useState("")
     const [tags, setTags] = useState<string[]>(account?.tags || [])
 
-    const createAccount = async () => {
+    const setFile = (data: Account[] | false) => {
+        if (data === false) {
+            alert("파일 수정 실패")
+            return
+        }
+        const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        dispatch(
+            AcFileActions.setInfo({
+                list: data,
+                tags: Array.from(new Set(tags)),
+            }),
+        )
+    }
+
+    const deleteAccount = async () => {
+        if (confirm("삭제하시겠습니까?") === false) {
+            return
+        }
+        const data = await WebViewMessage(RN_API.SET_FILE, {
+            contents: [...acFile.list.filter(({ idx }) => idx !== newIdx)],
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        setFile(data)
+    }
+
+    const modifyAccount = async () => {
         if (siteName === "") {
             alert("사이트 명을 입력해주세요.")
             return
@@ -44,7 +71,6 @@ const Page = (): JSX.Element => {
             alert("비밀번호를 입력해주세요.")
             return
         }
-
         const data = await WebViewMessage(RN_API.SET_FILE, {
             contents: [
                 ...acFile.list.filter(({ idx }) => idx !== newIdx),
@@ -61,17 +87,7 @@ const Page = (): JSX.Element => {
             pincode: acFile.pincode,
         })
         if (data === null) return
-        if (data === false) {
-            alert("파일 수정 실패")
-            return
-        }
-        const newTags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
-        dispatch(
-            AcFileActions.setInfo({
-                list: data,
-                tags: Array.from(new Set(newTags)),
-            }),
-        )
+        setFile(data)
         router.back()
     }
 
@@ -81,7 +97,15 @@ const Page = (): JSX.Element => {
                 <Button
                     type="text"
                     onClick={() => {
-                        createAccount()
+                        deleteAccount()
+                    }}
+                >
+                    삭제
+                </Button>
+                <Button
+                    type="text"
+                    onClick={() => {
+                        modifyAccount()
                     }}
                 >
                     수정
@@ -122,6 +146,7 @@ const Page = (): JSX.Element => {
                 />
                 <label htmlFor="inputId">아이디</label>
                 <Input
+                    type="email"
                     id="inputId"
                     value={id}
                     onChange={(e) => {
@@ -130,6 +155,7 @@ const Page = (): JSX.Element => {
                 />
                 <label htmlFor="inputPw">비밀번호</label>
                 <Input
+                    type="password"
                     id="inputPw"
                     value={pw}
                     onChange={(e) => {
@@ -190,46 +216,44 @@ const Page = (): JSX.Element => {
                 >
                     핀번호
                 </Button>
-                <Space direction="column" vAlign="flex-start" gap="0" margin="0">
-                    <label htmlFor="inputTag">태그</label>
-                    <Space>
-                        <RecommendInput
-                            onClick={(word) => {
-                                setInputTag(word)
-                            }}
+                <label htmlFor="inputTag">태그</label>
+                <Space>
+                    <RecommendInput
+                        onClick={(word) => {
+                            setInputTag(word)
+                        }}
+                        value={inputTag}
+                        recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
+                    >
+                        <Input
+                            id="inputTag"
                             value={inputTag}
-                            recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
-                        >
-                            <Input
-                                id="inputTag"
-                                value={inputTag}
-                                onChange={(e) => {
-                                    setInputTag(e.target.value)
-                                }}
-                                onEnter={() => {
-                                    if (inputTag === "") return
-                                    const isExist = tags.find((tag) => inputTag === tag)
-                                    if (isExist) return
-                                    setTags([...(tags || []), inputTag])
-                                    setInputTag("")
-                                }}
-                            />
-                        </RecommendInput>
-                        <Button
-                            onClick={() => {
+                            onChange={(e) => {
+                                setInputTag(e.target.value)
+                            }}
+                            onEnter={() => {
                                 if (inputTag === "") return
                                 const isExist = tags.find((tag) => inputTag === tag)
                                 if (isExist) return
                                 setTags([...(tags || []), inputTag])
                                 setInputTag("")
                             }}
-                            icon={
-                                <i className="xi-tag">
-                                    <span className="ir">태그 추가</span>
-                                </i>
-                            }
-                        ></Button>
-                    </Space>
+                        />
+                    </RecommendInput>
+                    <Button
+                        onClick={() => {
+                            if (inputTag === "") return
+                            const isExist = tags.find((tag) => inputTag === tag)
+                            if (isExist) return
+                            setTags([...(tags || []), inputTag])
+                            setInputTag("")
+                        }}
+                        icon={
+                            <i className="xi-tag">
+                                <span className="ir">태그 추가</span>
+                            </i>
+                        }
+                    ></Button>
                 </Space>
                 <Tag>
                     {tags.map((tag, idx) => {

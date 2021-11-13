@@ -1,66 +1,33 @@
-.account-card {
-    position: relative;
-    padding: 16px 16px 16px 32px;
-    width: 100%;
-    border-radius: 4px;
-    border: none;
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
-    background: #f3f5f7;
-    word-break: keep-all;
-    &:before {
-        content: "";
-        opacity: 0;
-        position: absolute;
-        top: 0;
-        left: 50%;
-        transform: translate(-50%, -12px);
-        display: block;
-        width: 80%;
-        height: 2px;
-        background: #fabd78;
-    }
-    &--drag-hover:before {
-        opacity: 1;
-    }
-    &--drag-hover-last:before {
-        opacity: 1;
-        top: 100%;
-        transform: translate(-50%, 6px);
-    }
-    &--ghost {
-        opacity: 0.2;
-    }
-    &__btn{
-        position:absolute;
-        top:50%;
-        left:5px;
-        transform:translate(0,-50%);
-        padding:0;
-        width:4px;
-        height: 80%;
-        background:#000;
-        border:none;
-    }
-    &__header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: #4b4b4b;
-    }
-    &__title {
-        flex: 1;
-        font-size: 24px;
-    }
-    &__con {
-        overflow: hidden;
+@import "/styles/themes/index";
+@import "/styles/mixins/index";
+
+@each $theme-name in $theme-obj {
+    @include pub-color($theme-name);
+    .#{$theme-name}-#{$account-card-prefix-cls} {
+        position: relative;
+        padding: 16px;
         width: 100%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        // height: 0;
-        // transition: height 0.2s;
-        // &--show {
-        //     height: 140px;
-        // }
+        border-radius: 4px;
+        border: none;
+        box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
+        background: #f3f5f7;
+        word-break: keep-all;
+        &__header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #4b4b4b;
+        }
+        &__title {
+            flex: 1;
+            font-size: 24px;
+        }
+        &__con {
+            overflow: hidden;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 }

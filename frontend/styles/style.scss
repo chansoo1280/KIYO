@@ -11,6 +11,79 @@
         height: 100%;
         transition: all 0.3s ease-in-out;
     }
+
+    $main: "\\/";
+    $files: "\\/files";
+    $list: "\\/list";
+    $setting: "\\/setting";
+
+    // #{$setting}\/From#{$list}
+    .l_transition.#{$setting}\/From#{$list}.popup-enter {
+        z-index: 10;
+    }
+    .l_transition.#{$setting}\/From#{$list}.popup-enter::before {
+        opacity: 0;
+    }
+    .l_transition.#{$setting}\/From#{$list}.popup-enter > .#{$theme-name}-wrap {
+        z-index: 10;
+        transform: scale(.8);
+        opacity: 0;
+    }
+    .l_transition.#{$setting}\/From#{$list}.popup-enter-active::before {
+        opacity: 1;
+    }
+    .l_transition.#{$setting}\/From#{$list}.popup-enter-active > .#{$theme-name}-wrap {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    .l_transition.#{$list}\/From#{$setting}.popup-exit::before {
+        opacity: 1;
+    }
+    .l_transition.#{$list}\/From#{$setting}.popup-exit > .#{$theme-name}-wrap {
+        z-index: 10;
+        transform: scale(1);
+        opacity: 1;
+    }
+    .l_transition.#{$list}\/From#{$setting}.popup-exit-active::before {
+        opacity: 0;
+    }
+    .l_transition.#{$list}\/From#{$setting}.popup-exit-active > .#{$theme-name}-wrap {
+        transform: scale(.8);
+        opacity: 0;
+    }
+
+    .l_transition.slide-enter {
+        z-index: 10;
+    }
+    .l_transition.slide-enter::before {
+        opacity: 0;
+    }
+    .l_transition.slide-enter > .#{$theme-name}-wrap {
+        z-index: 10;
+        transform: translate3d(100%, 0, 0);
+    }
+    .l_transition.slide-enter-active::before {
+        opacity: 1;
+    }
+    .l_transition.slide-enter-active > .#{$theme-name}-wrap {
+        transform: translate3d(0, 0, 0);
+    }
+
+    .l_transition.slide-exit::before {
+        opacity: 1;
+    }
+    .l_transition.slide-exit > .#{$theme-name}-wrap {
+        z-index: 10;
+        transform: translate3d(0, 0, 0);
+    }
+    .l_transition.slide-exit-active::before {
+        opacity: 0;
+    }
+    .l_transition.slide-exit-active > .#{$theme-name}-wrap {
+        transform: translate3d(100%, 0, 0);
+    }
+
 }
 #__next {
     background: #e4e6e9;
@@ -75,71 +148,3 @@
 //     transform: rotateY(10deg) translate3d(100%, 0, 0);
 // }
 
-$main: "\\/";
-$files: "\\/files";
-$list: "\\/list";
-$setting: "\\/setting";
-
-// #{$files}\/From#{$main}
-.l_transition.#{$files}\/From#{$main}.slide-enter {
-    z-index: 10;
-}
-.l_transition.#{$files}\/From#{$main}.slide-enter::before {
-    opacity: 0;
-}
-.l_transition.#{$files}\/From#{$main}.slide-enter > .l_wrap {
-    z-index: 10;
-    transform: translate3d(100%, 0, 0);
-}
-.l_transition.#{$files}\/From#{$main}.slide-enter-active::before {
-    opacity: 1;
-}
-.l_transition.#{$files}\/From#{$main}.slide-enter-active > .l_wrap {
-    transform: translate3d(0, 0, 0);
-}
-
-.l_transition.#{$main}From#{$files}.slide-exit::before {
-    opacity: 1;
-}
-.l_transition.#{$main}From#{$files}.slide-exit > .l_wrap {
-    z-index: 10;
-    transform: translate3d(0, 0, 0);
-}
-.l_transition.#{$main}From#{$files}.slide-exit-active::before {
-    opacity: 0;
-}
-.l_transition.#{$main}From#{$files}.slide-exit-active > .l_wrap {
-    transform: translate3d(100%, 0, 0);
-}
-
-// #{$setting}\/From#{$list}
-.l_transition.#{$setting}\/From#{$list}.slide-enter {
-    z-index: 10;
-}
-.l_transition.#{$setting}\/From#{$list}.slide-enter::before {
-    opacity: 0;
-}
-.l_transition.#{$setting}\/From#{$list}.slide-enter > .l_wrap {
-    z-index: 10;
-    transform: translate3d(100%, 0, 0);
-}
-.l_transition.#{$setting}\/From#{$list}.slide-enter-active::before {
-    opacity: 1;
-}
-.l_transition.#{$setting}\/From#{$list}.slide-enter-active > .l_wrap {
-    transform: translate3d(0, 0, 0);
-}
-
-.l_transition.#{$list}\/From#{$setting}.slide-exit::before {
-    opacity: 1;
-}
-.l_transition.#{$list}\/From#{$setting}.slide-exit > .l_wrap {
-    z-index: 10;
-    transform: translate3d(0, 0, 0);
-}
-.l_transition.#{$list}\/From#{$setting}.slide-exit-active::before {
-    opacity: 0;
-}
-.l_transition.#{$list}\/From#{$setting}.slide-exit-active > .l_wrap {
-    transform: translate3d(100%, 0, 0);
-}

@@ -197,7 +197,7 @@ const Page = (): JSX.Element => {
 export const getStaticProps = async ({ locale }: { locale: string }): Promise<any> => ({
     props: {
         // ...(await serverSideTranslations(locale, ["common"])),
-        transition: "slide",
+        transition: "popup",
     },
 })
 export default Page

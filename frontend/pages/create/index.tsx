@@ -121,6 +121,7 @@ const Page = (): JSX.Element => {
                 />
                 <label htmlFor="inputId">아이디</label>
                 <Input
+                    type="email"
                     id="inputId"
                     value={id}
                     onChange={(e) => {
@@ -129,6 +130,7 @@ const Page = (): JSX.Element => {
                 />
                 <label htmlFor="inputPw">비밀번호</label>
                 <Input
+                    type="password"
                     id="inputPw"
                     value={pw}
                     onChange={(e) => {
@@ -189,46 +191,44 @@ const Page = (): JSX.Element => {
                 >
                     핀번호
                 </Button>
-                <Space direction="column" vAlign="flex-start" gap="0" margin="0">
-                    <label htmlFor="inputTag">태그</label>
-                    <Space>
-                        <RecommendInput
-                            onClick={(word) => {
-                                setInputTag(word)
-                            }}
+                <label htmlFor="inputTag">태그</label>
+                <Space>
+                    <RecommendInput
+                        onClick={(word) => {
+                            setInputTag(word)
+                        }}
+                        value={inputTag}
+                        recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
+                    >
+                        <Input
+                            id="inputTag"
                             value={inputTag}
-                            recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
-                        >
-                            <Input
-                                id="inputTag"
-                                value={inputTag}
-                                onChange={(e) => {
-                                    setInputTag(e.target.value)
-                                }}
-                                onEnter={() => {
-                                    if (inputTag === "") return
-                                    const isExist = tags.find((tag) => inputTag === tag)
-                                    if (isExist) return
-                                    setTags([...(tags || []), inputTag])
-                                    setInputTag("")
-                                }}
-                            />
-                        </RecommendInput>
-                        <Button
-                            onClick={() => {
+                            onChange={(e) => {
+                                setInputTag(e.target.value)
+                            }}
+                            onEnter={() => {
                                 if (inputTag === "") return
                                 const isExist = tags.find((tag) => inputTag === tag)
                                 if (isExist) return
                                 setTags([...(tags || []), inputTag])
                                 setInputTag("")
                             }}
-                            icon={
-                                <i className="xi-tag">
-                                    <span className="ir">태그 추가</span>
-                                </i>
-                            }
-                        ></Button>
-                    </Space>
+                        />
+                    </RecommendInput>
+                    <Button
+                        onClick={() => {
+                            if (inputTag === "") return
+                            const isExist = tags.find((tag) => inputTag === tag)
+                            if (isExist) return
+                            setTags([...(tags || []), inputTag])
+                            setInputTag("")
+                        }}
+                        icon={
+                            <i className="xi-tag">
+                                <span className="ir">태그 추가</span>
+                            </i>
+                        }
+                    ></Button>
                 </Space>
                 <Tag>
                     {tags.map((tag, idx) => {
