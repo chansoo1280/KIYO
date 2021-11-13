@@ -26,7 +26,7 @@ const ConfirmModal = (props: Props) => {
                     <Button className={styles["confirm-modal__btn"]} type="default" flex onClick={onClickCancel}>
                         취소
                     </Button>
-                    <Button className={styles["confirm-modal__btn"]} type="default" flex onClick={onClickOk}>
+                    <Button className={styles["confirm-modal__btn"]} type="primary" flex onClick={onClickOk}>
                         확인
                     </Button>
                 </Space>

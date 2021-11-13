@@ -1,7 +1,7 @@
 // #region Global Imports
 import { Button } from "@Components"
 import classNames from "classnames"
-import React, { ChangeEvent, Dispatch, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useState } from "react"
+import React, { ChangeEvent, Dispatch, ForwardedRef, forwardRef, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -18,14 +18,13 @@ interface Props {
     onEnter?: KeyboardEventHandler
     onReset?: () => void
     readOnly?: boolean
-    ref?: RefObject<HTMLInputElement>
     className?: string
     id?: string
     prefix?: ReactNode
 }
 
-const Input = (props: Props): JSX.Element => {
-    const { prefix, className, ref, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, ...rest } = props
+const Input = forwardRef((props: Props, ref: ForwardedRef<HTMLInputElement>): JSX.Element => {
+    const { prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, ...rest } = props
     const [isShowPw, setIsShowPw] = useState(false)
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value: string = e.target.value || ""
@@ -93,6 +92,6 @@ const Input = (props: Props): JSX.Element => {
             ></Button>
         </div>
     )
-}
+})
 
 export default Input

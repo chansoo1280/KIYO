@@ -11,6 +11,8 @@ import { Account } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 import { ThemeContext } from "styled-components"
+import { useDispatch, useSelector } from "react-redux"
+import { AcFileActions, RootState } from "@Reducers"
 
 // #endregion Local Imports
 interface Props {
@@ -19,17 +21,45 @@ interface Props {
 }
 const AccountCard = (props: Props): JSX.Element => {
     const { account, onClickMod } = props
+    const dispatch = useDispatch()
+    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
+        app: appReducer,
+        acFile: acFileReducer,
+    }))
     const wrapRef = useRef<HTMLDivElement>(null)
     const { t } = useTranslation("common")
 
     const { name: theme } = useContext(ThemeContext)
     const prefixCls = theme + "-account-card"
 
+    const setFile = (data: Account[] | false) => {
+        if (data === false) {
+            alert("파일 수정 실패")
+            return
+        }
+        dispatch(
+            AcFileActions.setInfo({
+                list: data,
+            }),
+        )
+    }
     const reqCopyPw = async () => {
         const data = await WebViewMessage(RN_API.SET_COPY, {
             text: account.pw,
         })
         if (data === null) return
+        const data2 = await WebViewMessage(RN_API.SET_FILE, {
+            contents: [
+                ...acFile.list.filter(({ idx }) => idx !== account.idx),
+                {
+                    ...account,
+                    copiedAt: new Date(),
+                },
+            ],
+            pincode: acFile.pincode,
+        })
+        if (data2 === null) return
+        setFile(data2)
     }
     return (
         <div ref={wrapRef} className={classNames(styles[prefixCls], {})}>

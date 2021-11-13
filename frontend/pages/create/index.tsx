@@ -55,6 +55,7 @@ const Page = (): JSX.Element => {
                     tags: tags,
                     modifiedAt: new Date(),
                     createdAt: new Date(),
+                    copiedAt: "",
                 },
             ],
             pincode: acFile.pincode,
