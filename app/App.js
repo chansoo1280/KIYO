@@ -32,6 +32,7 @@ const RN_API = {
   SET_FILE: 'SET_FILE',
   DELETE_FILE: 'DELETE_FILE',
   SET_PINCODE: 'SET_PINCODE',
+  SET_SORTTYPE: 'SET_SORTTYPE'
 };
 const extension = '.txt';
 const App = () => {
@@ -258,12 +259,17 @@ const App = () => {
             const filename = getFilename(filepath);
             const result = await readFile(filepath, pincode);
             console.log(result);
+            const sortType = await AsyncStorage.getItem(
+              'sortType',
+              (err, result) => result,
+            );
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILE,
                 data: {
                   filename,
                   pincode,
+                  sortType: sortType,
                   contents: result,
                 },
               }),
@@ -394,6 +400,19 @@ const App = () => {
             );
             break;
           }
+          case RN_API.SET_SORTTYPE: {
+            console.log(RN_API.SET_SORTTYPE);
+            const {sortType} = req?.data;
+            await AsyncStorage.setItem('sortType',sortType);
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.SET_SORTTYPE,
+                data: true,
+              }),
+            );
+            break;
+          }
+          
         }
       }}
       webview={webview}

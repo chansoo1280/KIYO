@@ -59,17 +59,19 @@ const Page = (): JSX.Element => {
         }
         // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
         const list: Account[] =
-            data.contents.map((account: any, idx: number) => ({
+            data.contents.map((account: Account, idx: number) => ({
                 ...account,
-                siteName: account.siteName || account.address,
+                siteName: account.siteName,
                 tags: account.tags || [],
                 idx: idx,
+                copiedAt: account.copiedAt || "",
             })) || []
         const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         dispatch(
             AcFileActions.setInfo({
                 pincode: data.pincode,
                 filename: data.filename,
+                sortType: data.sortType || acFile.sortType,
                 list: list,
                 tags: Array.from(new Set(tags)),
             }),

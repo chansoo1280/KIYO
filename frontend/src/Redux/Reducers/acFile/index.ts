@@ -1,5 +1,5 @@
 // #region Local Imports
-import { AcFile } from "@Interfaces"
+import { AcFile, sortType } from "@Interfaces"
 import { createAction, ActionType, createReducer } from "typesafe-actions"
 // #endregion Local Imports
 
@@ -9,12 +9,14 @@ import { createAction, ActionType, createReducer } from "typesafe-actions"
 // 상태의 타입 선언
 
 type AcFileReducer = AcFile
+
 // 상태 초기화
 const initialState: AcFileReducer = {
     filename: null,
     pincode: null,
     tags: ["즐겨찾기"],
     list: [],
+    sortType: sortType.siteName,
 }
 
 // 액션타입 선언

@@ -3,18 +3,18 @@ import { RefObject, useEffect, useMemo, useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Title, Space, Button, AccountCard, DragCard, ConfirmModal, Input, Tag, RecommendInput } from "@Components"
+import { Header, Search, Title, Space, Button, AccountCard, DragCard, ConfirmModal, Input, Tag, RecommendInput, Radio } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
-import { AcFile, Account } from "@Interfaces"
+import { AcFile, Account, sortType } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
-const Page = (props: any): JSX.Element => {
+const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
     const dispatch = useDispatch()
@@ -25,29 +25,53 @@ const Page = (props: any): JSX.Element => {
     const [search, setSearch] = useState("")
     const [filterText, setFilterText] = useState("")
     const [tagList, setTagList] = useState(
-        acFile.tags
-            .map((tag) => ({
-                name: tag,
-                isSelected: false,
-            }))
-            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
-            .slice(0, 5),
+        acFile.tags.map((tag) => ({
+            name: tag,
+            isSelected: false,
+        })),
     )
-
-    useEffect(() => {
-        setTagList(
-            acFile.tags
-                .map((tag) => {
-                    const info = tagList.find(({ name }) => name === tag)
-                    return {
-                        name: tag,
-                        isSelected: (info && info.isSelected) || false,
-                    }
-                })
-                .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
-                .slice(0, 5),
+    const getShowTagList = (list: any[]) => {
+        const tags = getShowAccountList(acFile.list).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        return list
+            .filter(({ name }) => {
+                return tags.includes(name)
+            })
+            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
+            .slice(0, 5)
+    }
+    const sortList = [
+        {
+            name: "사이트명",
+            value: sortType.siteName,
+        },
+        {
+            name: "최종수정일",
+            value: sortType.modifiedAt,
+        },
+        {
+            name: "최종복사일",
+            value: sortType.copiedAt,
+        },
+    ]
+    const [sortModal, setSortModal] = useState<{
+        show: boolean
+        selSortType: sortType
+    }>({
+        show: false,
+        selSortType: acFile.sortType,
+    })
+    const setSortType = async (sortType: AcFile["sortType"]) => {
+        const data = await WebViewMessage(RN_API.SET_SORTTYPE, {
+            sortType: sortType,
+        })
+        if (data === null) return
+        dispatch(
+            AcFileActions.setInfo({
+                sortType: sortType,
+            }),
         )
-    }, [acFile.tags])
+        return true
+    }
 
     // const testList = [
     //     {
@@ -198,12 +222,17 @@ const Page = (props: any): JSX.Element => {
 
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
-        return list
+        const showList = list
             .filter(({ siteName }: Account) => filterText === "" || siteName.includes(filterText) === true)
             .filter(({ tags }: Account) => {
                 if (selectedTagList.length === 0) return true
                 return !selectedTagList.find(({ name }) => !tags.includes(name))
             })
+            .sort((a: Account, b: Account) => (a[acFile.sortType] < b[acFile.sortType] ? -1 : a[acFile.sortType] > b[acFile.sortType] ? 1 : 0))
+        if (acFile.sortType === sortType.modifiedAt || acFile.sortType === sortType.copiedAt) {
+            return showList.reverse()
+        }
+        return showList
     }
     return (
         <>
@@ -218,21 +247,33 @@ const Page = (props: any): JSX.Element => {
                 ></Button>
             </Header>
             <Space padding="136px 16px 0"></Space>
-            <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText} />
+            <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText}>
+                <Button
+                    size="lg"
+                    onClick={() => {
+                        setSortModal({
+                            show: true,
+                            selSortType: acFile.sortType,
+                        })
+                    }}
+                    icon={
+                        <i className="xi-filter">
+                            <span className="ir">필터</span>
+                        </i>
+                    }
+                ></Button>
+            </Search>
             {acFile.list && acFile.list.length !== 0 && (
                 <Tag gap="10px">
-                    {tagList.map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
+                    {getShowTagList(tagList).map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
                         <Tag.Item
                             key={name}
                             onClick={() => {
                                 setTagList(
-                                    tagList
-                                        .map((tagInfo) => ({
-                                            ...tagInfo,
-                                            isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
-                                        }))
-                                        .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
-                                        .slice(0, 5),
+                                    tagList.map((tagInfo) => ({
+                                        ...tagInfo,
+                                        isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
+                                    })),
                                 )
                             }}
                             onDelete={
@@ -303,6 +344,42 @@ const Page = (props: any): JSX.Element => {
                     </i>
                 }
             ></Button>
+            <ConfirmModal
+                onClickOk={async () => {
+                    await setSortType(sortModal.selSortType)
+                    setSortModal({
+                        ...sortModal,
+                        show: false,
+                    })
+                }}
+                onClickCancel={() => {
+                    setSortModal({
+                        ...sortModal,
+                        show: false,
+                    })
+                }}
+                show={sortModal.show}
+                title="정렬"
+            >
+                <Space align="center" direction="column">
+                    {sortList.map(({ name, value }) => (
+                        <Radio
+                            id={"selSortType_" + value}
+                            name="selSortType"
+                            value={value}
+                            checked={sortModal.selSortType === value}
+                            onChange={(e) => {
+                                setSortModal({
+                                    ...sortModal,
+                                    selSortType: value,
+                                })
+                            }}
+                        >
+                            {name}
+                        </Radio>
+                    ))}
+                </Space>
+            </ConfirmModal>
         </>
     )
 }

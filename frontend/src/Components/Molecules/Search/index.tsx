@@ -1,5 +1,5 @@
 // #region Global Imports
-import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useContext, useState } from "react"
+import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useContext, useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -30,6 +30,7 @@ const Search = (props: Props): JSX.Element => {
     const { t } = useTranslation("common")
     const { name: theme } = useContext(ThemeContext)
     const prefixCls = theme + "-search"
+    const ref = useRef<HTMLInputElement>(null)
     return (
         <Space padding="0 16px" gap="16px" className={styles[prefixCls]}>
             <RecommendInput
@@ -43,6 +44,7 @@ const Search = (props: Props): JSX.Element => {
                 recommendList={acFile.list.map(({ siteName }) => siteName)}
             >
                 <Input
+                    ref={ref}
                     prefix={
                         <i className="xi-search">
                             <span className="ir">검색</span>
@@ -55,24 +57,16 @@ const Search = (props: Props): JSX.Element => {
                     className={styles[`${prefixCls}__input`]}
                     onEnter={() => {
                         onSearch && onSearch(value || "")
+                        ref.current?.blur()
                     }}
                     onReset={() => {
                         setValue && setValue("")
                         onSearch && onSearch("")
+                        onReset && onReset()
                     }}
                 />
             </RecommendInput>
-            <Button
-                size="lg"
-                onClick={() => {
-                    onSearch && onSearch(value || "")
-                }}
-                icon={
-                    <i className="xi-filter">
-                        <span className="ir">필터</span>
-                    </i>
-                }
-            ></Button>
+            {children}
         </Space>
     )
 }

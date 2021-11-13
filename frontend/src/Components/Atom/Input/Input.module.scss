@@ -6,6 +6,7 @@
     border: none;
     font-size: 18px;
     background: none;
+    outline: none;
     &::-webkit-search-cancel-button {
         display: none;
     }
@@ -20,6 +21,7 @@
         padding: 0 4px;
         white-space: nowrap;
         &--icon-only {
+            padding:0 10px;
             font-size: 24px;
         }
     }

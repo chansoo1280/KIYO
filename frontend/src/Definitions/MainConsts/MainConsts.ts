@@ -11,4 +11,5 @@ export const RN_API = {
     SET_FILE: "SET_FILE",
     DELETE_FILE: "DELETE_FILE",
     SET_PINCODE: "SET_PINCODE",
+    SET_SORTTYPE: "SET_SORTTYPE",
 } as const

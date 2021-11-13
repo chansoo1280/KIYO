@@ -1,3 +1,10 @@
+export const sortType = {
+    siteName: "siteName",
+    modifiedAt: "modifiedAt",
+    copiedAt: "copiedAt",
+} as const
+export type sortType = typeof sortType[keyof typeof sortType]
+
 export interface Account {
     idx: number
     siteName: string
@@ -7,6 +14,7 @@ export interface Account {
     tags: string[]
     modifiedAt: string
     createdAt: string
+    copiedAt: string
 }
 
 export interface AcFile {
@@ -14,4 +22,5 @@ export interface AcFile {
     pincode: string | null
     tags: string[]
     list: Account[]
+    sortType: sortType
 }
