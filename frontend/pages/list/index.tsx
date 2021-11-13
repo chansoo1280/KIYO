@@ -1,13 +1,12 @@
 // #region Global Imports
-import { RefObject, useEffect, useMemo, useRef, useState } from "react"
+import { useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Title, Space, Button, AccountCard, DragCard, ConfirmModal, Input, Tag, RecommendInput, Radio } from "@Components"
+import { Header, Search, Space, Button, AccountCard, ConfirmModal, Tag, Radio } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
-import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { AcFile, Account, sortType } from "@Interfaces"
 import { RN_API } from "@Definitions"
@@ -72,7 +71,37 @@ const Page = (): JSX.Element => {
         )
         return true
     }
-
+    const setFile = (data: Account[] | false) => {
+        if (data === false) {
+            alert("파일 수정 실패")
+            return
+        }
+        const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        dispatch(
+            AcFileActions.setInfo({
+                list: data,
+                tags: Array.from(new Set(tags)),
+            }),
+        )
+    }
+    const reqCopyPw = async (account: Account) => {
+        const data = await WebViewMessage(RN_API.SET_COPY, {
+            text: account.pw,
+        })
+        if (data === null) return
+        const data2 = await WebViewMessage(RN_API.SET_FILE, {
+            contents: [
+                ...acFile.list.filter(({ idx }) => idx !== account.idx),
+                {
+                    ...account,
+                    copiedAt: new Date(),
+                },
+            ],
+            pincode: acFile.pincode,
+        })
+        if (data2 === null) return
+        setFile(data2)
+    }
     // const testList = [
     //     {
     //         idx: 1,
@@ -247,7 +276,7 @@ const Page = (): JSX.Element => {
                 ></Button>
             </Header>
             <Space padding="136px 16px 0"></Space>
-            <Search value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText}>
+            <Search id="search" value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText}>
                 <Button
                     size="lg"
                     onClick={() => {
@@ -300,18 +329,33 @@ const Page = (): JSX.Element => {
                     )
                 ) : (
                     getShowAccountList(acFile.list).map((account: Account, idx: number) => (
-                        <AccountCard
-                            key={account.idx}
-                            account={account}
-                            onClickMod={(account) => {
-                                router.push({
-                                    pathname: "/modify",
-                                    query: {
-                                        idx: account.idx,
-                                    },
-                                })
-                            }}
-                        ></AccountCard>
+                        <AccountCard key={account.idx} account={account}>
+                            <Button
+                                onClick={() => {
+                                    reqCopyPw(account)
+                                }}
+                                icon={
+                                    <i className="xi-documents">
+                                        <span className="ir">copy</span>
+                                    </i>
+                                }
+                            ></Button>
+                            <Button
+                                onClick={() => {
+                                    router.push({
+                                        pathname: "/modify",
+                                        query: {
+                                            idx: account.idx,
+                                        },
+                                    })
+                                }}
+                                icon={
+                                    <i className="xi-pen">
+                                        <span className="ir">modify</span>
+                                    </i>
+                                }
+                            ></Button>
+                        </AccountCard>
                     ))
                 )}
 

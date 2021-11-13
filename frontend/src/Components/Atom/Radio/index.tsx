@@ -20,6 +20,7 @@ const Radio = (props: Props): JSX.Element => {
     return (
         <div>
             <input
+                style={{ position: "absolute" }}
                 id={id}
                 name={name}
                 type="radio"

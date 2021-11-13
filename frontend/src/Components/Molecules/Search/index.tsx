@@ -16,6 +16,7 @@ import { ThemeContext } from "styled-components"
 // #endregion Local Imports
 interface Props {
     children?: ReactNode
+    id: string
     searchValue?: string
     onSearch?: (arg1: string) => void
     value?: string
@@ -23,7 +24,7 @@ interface Props {
     onReset?: () => void
 }
 const Search = (props: Props): JSX.Element => {
-    const { searchValue, value, setValue, children, onSearch, onReset } = props
+    const { id, searchValue, value, setValue, children, onSearch, onReset } = props
     const { acFile } = useSelector(({ acFileReducer }: RootState) => ({
         acFile: acFileReducer,
     }))
@@ -44,6 +45,7 @@ const Search = (props: Props): JSX.Element => {
                 recommendList={acFile.list.map(({ siteName }) => siteName)}
             >
                 <Input
+                    id={id}
                     ref={ref}
                     prefix={
                         <i className="xi-search">
