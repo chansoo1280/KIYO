@@ -55,6 +55,7 @@ const AccountCard = (props: Props): JSX.Element => {
 
     const [isEditPw, setIsEditPw] = useState(false)
     const { t } = useTranslation("common")
+    const itemHeight = 84 + 22
     const reqCopyPw = async () => {
         const data = await WebViewMessage(RN_API.SET_COPY, {
             text: account.pw,
@@ -69,7 +70,7 @@ const AccountCard = (props: Props): JSX.Element => {
         setMousePos(tempMousePos)
         if (dragAccount === null) return
         e.preventDefault()
-        const itemHeight = 84 + 22
+
         const offsetTop = wrapRef.current?.offsetTop || 0
         const scrollTop = layoutRef.current?.scrollTop || 0
         setMoveY(Math.floor((e.touches[0].pageY + scrollTop - offsetTop + itemHeight / 2) / itemHeight))
@@ -106,7 +107,6 @@ const AccountCard = (props: Props): JSX.Element => {
                             if (Math.abs(startPos.x - mousePos.x) > 60 || Math.abs(startPos.y - mousePos.y) > 60) return
                             setDragAccount(idx)
                             setTimer(null)
-                            const itemHeight = 84 + 22
                             const offsetTop = wrapRef.current?.offsetTop || 0
                             const scrollTop = layoutRef.current?.scrollTop || 0
                             setMoveY(Math.floor((e.touches[0].pageY + scrollTop - offsetTop + itemHeight / 2) / itemHeight))
@@ -148,7 +148,9 @@ const AccountCard = (props: Props): JSX.Element => {
                     }
                 ></Button>
                 <Button
-                    onClick={onClickDel}
+                    onClick={() => {
+                        onClickMod(account)
+                    }}
                     icon={
                         <i className="xi-pen">
                             <span className="ir">modify</span>

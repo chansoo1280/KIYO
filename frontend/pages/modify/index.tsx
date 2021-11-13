@@ -21,13 +21,15 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
+    const newIdx = Number(router.query.idx)
+    const account = acFile.list.find(({ idx }) => idx === newIdx)
 
-    const [siteName, setSiteName] = useState("")
-    const [siteLink, setSiteLink] = useState("")
-    const [id, setId] = useState("")
-    const [pw, setPw] = useState("")
+    const [siteName, setSiteName] = useState(account?.siteName || "")
+    const [siteLink, setSiteLink] = useState(account?.siteLink || "")
+    const [id, setId] = useState(account?.id || "")
+    const [pw, setPw] = useState(account?.pw || "")
     const [inputTag, setInputTag] = useState("")
-    const [tags, setTags] = useState<string[]>([])
+    const [tags, setTags] = useState<string[]>(account?.tags || [])
 
     const createAccount = async () => {
         if (siteName === "") {
@@ -42,19 +44,18 @@ const Page = (): JSX.Element => {
             alert("비밀번호를 입력해주세요.")
             return
         }
-        const idx = acFile.list.map(({ idx }) => idx).reduce((previous, current) => (previous > current ? previous : current)) + 1
+
         const data = await WebViewMessage(RN_API.SET_FILE, {
             contents: [
-                ...acFile.list,
+                ...acFile.list.filter(({ idx }) => idx !== newIdx),
                 {
-                    idx,
+                    idx: newIdx,
                     siteName: siteName,
                     siteLink: siteLink,
                     id: id,
                     pw: pw,
                     tags: tags,
                     modifiedAt: new Date(),
-                    createdAt: new Date(),
                 },
             ],
             pincode: acFile.pincode,
@@ -76,14 +77,14 @@ const Page = (): JSX.Element => {
 
     return (
         <>
-            <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="계정 정보 생성" centerTitle>
+            <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="계정 정보 수정" centerTitle>
                 <Button
                     type="text"
                     onClick={() => {
                         createAccount()
                     }}
                 >
-                    생성
+                    수정
                 </Button>
             </Header>
             <Space direction="column" vAlign="flex-start" cover padding="20px 10px 0">

@@ -87,7 +87,7 @@ const useDragable = (layoutRef: RefObject<HTMLDivElement>) => {
     useInterval(
         () => {
             if (layoutRef.current) {
-                console.log(mousePos)
+                // console.log(mousePos)
                 if (mousePos.y < window.outerHeight * 0.2) {
                     layoutRef.current.scrollTop += -8
                 } else if (mousePos.y < window.outerHeight * 0.4) {
@@ -172,6 +172,7 @@ const Page = (props: any): JSX.Element => {
 
     const testList = [
         {
+            idx: 1,
             id: "123",
             pw: "12341312",
             siteName: "1",
@@ -180,6 +181,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 2,
             id: "123",
             pw: "12341312",
             siteName: "2",
@@ -188,6 +190,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 3,
             id: "123",
             pw: "12341312",
             siteName: "3",
@@ -196,6 +199,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 4,
             id: "123",
             pw: "12341312",
             siteName: "4",
@@ -204,6 +208,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 5,
             id: "123",
             pw: "12341312",
             siteName: "5",
@@ -212,6 +217,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 6,
             id: "123",
             pw: "12341312",
             siteName: "6",
@@ -220,6 +226,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 7,
             id: "123",
             pw: "12341312",
             siteName: "7",
@@ -228,6 +235,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 8,
             id: "123",
             pw: "12341312",
             siteName: "8",
@@ -236,6 +244,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 9,
             id: "123",
             pw: "12341312",
             siteName: "9",
@@ -244,6 +253,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 10,
             id: "123",
             pw: "12341312",
             siteName: "10",
@@ -252,6 +262,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 11,
             id: "123",
             pw: "12341312",
             siteName: "11",
@@ -260,6 +271,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 12,
             id: "123",
             pw: "12341312",
             siteName: "12",
@@ -268,6 +280,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 13,
             id: "123",
             pw: "12341312",
             siteName: "13",
@@ -276,6 +289,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 14,
             id: "123",
             pw: "12341312",
             siteName: "14",
@@ -284,6 +298,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 15,
             id: "123",
             pw: "12341312",
             siteName: "15",
@@ -292,6 +307,7 @@ const Page = (props: any): JSX.Element => {
             createdAt: String(new Date()),
         },
         {
+            idx: 16,
             id: "123",
             pw: "12341312",
             siteName: "16",
@@ -301,23 +317,23 @@ const Page = (props: any): JSX.Element => {
         },
     ]
 
-    const moveItemIdx = async (idx: number) => {
+    const moveItemIdx = async (oldIdx: number) => {
         if (dragAccount === null) return
         const moveIdx = (() => {
             const newIdx = dragAccount + moveY
             if (newIdx < 0) return 0
             if (acFile.list.length <= newIdx) return acFile.list.length - 1
-            if (idx < newIdx) return newIdx - 1
+            if (oldIdx < newIdx) return newIdx - 1
             return newIdx
         })()
-        // console.log(idx, moveIdx)
-        if (idx === moveIdx) return
-        const account = getShowAccountList(acFile.list)[idx]
+        // console.log(oldIdx, moveIdx)
+        if (oldIdx === moveIdx) return
+        const account = getShowAccountList(acFile.list)[oldIdx]
         const moveAccount = getShowAccountList(acFile.list)[moveIdx]
         if (!account || !moveAccount) return
 
-        const fromIdx = acFile.list.findIndex(({ siteName, id }) => siteName === account.siteName && id === account.id)
-        const toIdx = acFile.list.findIndex(({ siteName, id }) => siteName === moveAccount.siteName && id === moveAccount.id)
+        const fromIdx = acFile.list.findIndex(({ idx }) => idx === account.idx)
+        const toIdx = acFile.list.findIndex(({ idx }) => idx === moveAccount.idx)
         // console.log(getMovedList(fromIdx, toIdx, acFile.list))
         const data = await WebViewMessage(RN_API.SET_FILE, {
             contents: getMovedList(fromIdx, toIdx, acFile.list),
@@ -410,8 +426,13 @@ const Page = (props: any): JSX.Element => {
                                 }
                                 deleteAccount(account)
                             }}
-                            onClickMod={(newAccount) => {
-                                modifyAccount(newAccount)
+                            onClickMod={(account) => {
+                                router.push({
+                                    pathname: "/modify",
+                                    query: {
+                                        idx: account.idx,
+                                    },
+                                })
                             }}
                         ></AccountCard>
                     ))
@@ -439,8 +460,13 @@ const Page = (props: any): JSX.Element => {
                             }
                             deleteAccount(account)
                         }}
-                        onClickMod={(newAccount) => {
-                            modifyAccount(newAccount)
+                        onClickMod={(account) => {
+                            router.push({
+                                pathname: "/modify",
+                                query: {
+                                    idx: account.idx,
+                                },
+                            })
                         }}
                     ></AccountCard>
                 ))}

@@ -38,6 +38,7 @@ const TagInner = (props: InnerProps): JSX.Element => {
             {children}
             {onDelete ? (
                 <Button
+                    type="text"
                     onClick={onDelete}
                     icon={
                         <i className="xi-close-min">

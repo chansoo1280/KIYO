@@ -59,10 +59,11 @@ const Page = (): JSX.Element => {
         }
         // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
         const list: Account[] =
-            data.contents.map((account: any) => ({
+            data.contents.map((account: any, idx: number) => ({
                 ...account,
                 siteName: account.siteName || account.address,
                 tags: account.tags || [],
+                idx: idx,
             })) || []
         const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         dispatch(
