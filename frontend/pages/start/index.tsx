@@ -1,13 +1,12 @@
 // #region Global Imports
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, PinCode, Space, KeyPad, Title, Button, Input, SlideTab, IconList, MainHeader } from "@Components"
-import { AppActions, RootState, AcFileActions } from "@Redux"
+import { Header, PinCode, Space, KeyPad, Button, Input } from "@Components"
+import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
-import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 import { useRouter } from "next/router"
 import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
@@ -71,31 +70,28 @@ const Page = (): JSX.Element => {
     return (
         <>
             <Header
-                title={
-                    <>
-                        <Button
-                            onClick={() => {
-                                if (step === STEP.INPUT_PINCODE) {
-                                    router.push("/files", "/files")
-                                } else if (step === STEP.CONFIRM_PINCODE) {
-                                    setPincodeConfirm("")
-                                    setStep(STEP.INPUT_PINCODE)
-                                } else if (step === STEP.INPUT_FILENAME) {
-                                    setFilename("")
-                                    setStep(STEP.CONFIRM_PINCODE)
-                                }
-                            }}
-                            icon={
-                                <i className="xi-angle-left-min">
-                                    <span className="ir">뒤로가기</span>
-                                </i>
+                prefix={
+                    <Button
+                        onClick={() => {
+                            if (step === STEP.INPUT_PINCODE) {
+                                router.push("/files", "/files")
+                            } else if (step === STEP.CONFIRM_PINCODE) {
+                                setPincodeConfirm("")
+                                setStep(STEP.INPUT_PINCODE)
+                            } else if (step === STEP.INPUT_FILENAME) {
+                                setFilename("")
+                                setStep(STEP.CONFIRM_PINCODE)
                             }
-                        ></Button>
-                        <span>
-                            파일 생성 / {step === STEP.INPUT_PINCODE ? "1. 핀코드 입력" : step === STEP.CONFIRM_PINCODE ? "2. 핀코드 확인" : step === STEP.INPUT_FILENAME ? "3. 파일명 입력" : ""}
-                        </span>
-                    </>
+                        }}
+                        icon={
+                            <i className="xi-angle-left-min">
+                                <span className="ir">뒤로가기</span>
+                            </i>
+                        }
+                    ></Button>
                 }
+                title={`파일 생성 / ${step === STEP.INPUT_PINCODE ? "1. 핀코드 입력" : step === STEP.CONFIRM_PINCODE ? "2. 핀코드 확인" : step === STEP.INPUT_FILENAME ? "3. 파일명 입력" : ""}`}
+                centerTitle
             ></Header>
             {step === STEP.INPUT_PINCODE ? (
                 <>

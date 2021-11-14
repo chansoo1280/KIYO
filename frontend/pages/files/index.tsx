@@ -71,14 +71,7 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <Header
-                title={
-                    <>
-                        <Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>
-                        <span>파일목록</span>
-                    </>
-                }
-            >
+            <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="파일목록" centerTitle>
                 <Button
                     onClick={() => {
                         router.push("/start", "/start")
