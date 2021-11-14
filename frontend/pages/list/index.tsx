@@ -13,6 +13,10 @@ import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
+interface Tag {
+    name: string
+    isSelected: boolean
+}
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -23,18 +27,17 @@ const Page = (): JSX.Element => {
     }))
     const [search, setSearch] = useState("")
     const [filterText, setFilterText] = useState("")
-    const [tagList, setTagList] = useState(
+    const [tagList, setTagList] = useState<Tag[]>(
         acFile.tags.map((tag) => ({
             name: tag,
             isSelected: false,
         })),
     )
-    const getShowTagList = (list: any[]) => {
+    const getShowTagList = (list: Tag[]) => {
         const tags = getShowAccountList(acFile.list).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         return list
-            .filter(({ name }) => {
-                return tags.includes(name)
-            })
+            .filter(({ name }) => tags.includes(name))
+            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
             .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
             .slice(0, 5)
     }
