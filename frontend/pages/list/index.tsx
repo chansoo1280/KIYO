@@ -38,6 +38,7 @@ const Page = (): JSX.Element => {
         return list
             .filter(({ name }) => tags.includes(name))
             .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+            .sort((a, b) => (isNaN(Number(a.name)) ? -1 : isNaN(Number(b.name)) ? 1 : 0))
             .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
             .slice(0, 5)
     }
