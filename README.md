@@ -1,6 +1,6 @@
 <h1 align="center">
   <a href="https://github.com/chansoo1280/account-manager">
-    <img src="https://github.com/chansoo1280/account-manager/docs/images/logo.svg" alt="KIYO" width="125" height="125">
+    <img src="https://raw.githubusercontent.com/chansoo1280/account-manager/0216114eaea8ba3dd9b59017209d8a20754cd10f/docs/images/logo.svg?token=AOZDFU2IBV2XWSVHAZTNRZLBSD7QE" alt="KIYO" width="125" height="125">
   </a>
 </h1>
 
