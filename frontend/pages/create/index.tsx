@@ -29,6 +29,16 @@ const Page = (): JSX.Element => {
     const [inputTag, setInputTag] = useState("")
     const [tags, setTags] = useState<string[]>([])
 
+    const setFile = (data: Account[]) => {
+        const tags = data.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        dispatch(
+            AcFileActions.setInfo({
+                list: data,
+                tags: Array.from(new Set(tags)),
+            }),
+        )
+    }
+
     const createAccount = async () => {
         if (siteName === "") {
             alert("사이트 명을 입력해주세요.")
@@ -43,8 +53,8 @@ const Page = (): JSX.Element => {
             return
         }
         const idx = acFile.list.map(({ idx }) => idx).reduce((previous, current) => (previous > current ? previous : current)) + 1
-        const data = await WebViewMessage(RN_API.SET_FILE, {
-            contents: [
+        const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+            list: [
                 ...acFile.list,
                 {
                     idx,
@@ -65,13 +75,7 @@ const Page = (): JSX.Element => {
             alert("파일 수정 실패")
             return
         }
-        const newTags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
-        dispatch(
-            AcFileActions.setInfo({
-                list: data,
-                tags: Array.from(new Set(newTags)),
-            }),
-        )
+        setFile(data)
         router.back()
     }
 

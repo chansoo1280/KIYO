@@ -32,12 +32,8 @@ const Page = (): JSX.Element => {
     const [inputTag, setInputTag] = useState("")
     const [tags, setTags] = useState<string[]>(account?.tags || [])
 
-    const setFile = (data: Account[] | false) => {
-        if (data === false) {
-            alert("파일 수정 실패")
-            return
-        }
-        const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+    const setFile = (data: Account[]) => {
+        const tags = data.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         dispatch(
             AcFileActions.setInfo({
                 list: data,
@@ -50,11 +46,15 @@ const Page = (): JSX.Element => {
         if (confirm("삭제하시겠습니까?") === false) {
             return
         }
-        const data = await WebViewMessage(RN_API.SET_FILE, {
-            contents: [...acFile.list.filter(({ idx }) => idx !== newIdx)],
+        const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+            list: [...acFile.list.filter(({ idx }) => idx !== newIdx)],
             pincode: acFile.pincode,
         })
         if (data === null) return
+        if (data === false) {
+            alert("파일 수정 실패")
+            return
+        }
         setFile(data)
     }
 
@@ -71,8 +71,8 @@ const Page = (): JSX.Element => {
             alert("비밀번호를 입력해주세요.")
             return
         }
-        const data = await WebViewMessage(RN_API.SET_FILE, {
-            contents: [
+        const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+            list: [
                 ...acFile.list.filter(({ idx }) => idx !== newIdx),
                 {
                     idx: newIdx,
@@ -87,6 +87,10 @@ const Page = (): JSX.Element => {
             pincode: acFile.pincode,
         })
         if (data === null) return
+        if (data === false) {
+            alert("파일 수정 실패")
+            return
+        }
         setFile(data)
         router.back()
     }

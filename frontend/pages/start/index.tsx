@@ -19,6 +19,7 @@ const STEP = {
     INPUT_FILENAME: "INPUT_FILENAME",
 } as const
 type STEP = typeof STEP[keyof typeof STEP]
+
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const [step, setStep] = useState<STEP>(STEP.INPUT_PINCODE)
@@ -42,10 +43,10 @@ const Page = (): JSX.Element => {
             alert("pincode 없음")
             return
         }
-        const data = await WebViewMessage(RN_API.CREATE_FILE, {
+        const data = await WebViewMessage<typeof RN_API.CREATE_FILE>(RN_API.CREATE_FILE, {
             pincode,
             filename,
-            contents: [],
+            list: [],
         })
         if (data === null) return
         if (data === false) {

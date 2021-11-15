@@ -64,7 +64,7 @@ const Page = (): JSX.Element => {
         selSortType: acFile.sortType,
     })
     const setSortType = async (sortType: AcFile["sortType"]) => {
-        const data = await WebViewMessage(RN_API.SET_SORTTYPE, {
+        const data = await WebViewMessage<typeof RN_API.SET_SORTTYPE>(RN_API.SET_SORTTYPE, {
             sortType: sortType,
         })
         if (data === null) return
@@ -75,12 +75,8 @@ const Page = (): JSX.Element => {
         )
         return true
     }
-    const setFile = (data: Account[] | false) => {
-        if (data === false) {
-            alert("파일 수정 실패")
-            return
-        }
-        const tags = (data as Account[]).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+    const setFile = (data: Account[]) => {
+        const tags = data.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         dispatch(
             AcFileActions.setInfo({
                 list: data,
@@ -89,12 +85,12 @@ const Page = (): JSX.Element => {
         )
     }
     const reqCopyPw = async (account: Account) => {
-        const data = await WebViewMessage(RN_API.SET_COPY, {
+        const data = await WebViewMessage<typeof RN_API.SET_COPY>(RN_API.SET_COPY, {
             text: account.pw,
         })
         if (data === null) return
-        const data2 = await WebViewMessage(RN_API.SET_FILE, {
-            contents: [
+        const data2 = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+            list: [
                 ...acFile.list.filter(({ idx }) => idx !== account.idx),
                 {
                     ...account,
@@ -104,6 +100,10 @@ const Page = (): JSX.Element => {
             pincode: acFile.pincode,
         })
         if (data2 === null) return
+        if (data2 === false) {
+            alert("파일 수정 실패")
+            return
+        }
         setFile(data2)
     }
     // const testList = [
@@ -256,12 +256,12 @@ const Page = (): JSX.Element => {
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
         const showList = list
-            .filter(({ siteName }: Account) => filterText === "" || siteName.includes(filterText) === true)
-            .filter(({ tags }: Account) => {
+            .filter(({ siteName }) => filterText === "" || siteName.includes(filterText))
+            .filter(({ tags }) => {
                 if (selectedTagList.length === 0) return true
                 return !selectedTagList.find(({ name }) => !tags.includes(name))
             })
-            .sort((a: Account, b: Account) => (a[acFile.sortType] < b[acFile.sortType] ? -1 : a[acFile.sortType] > b[acFile.sortType] ? 1 : 0))
+            .sort((a, b) => (a[acFile.sortType] < b[acFile.sortType] ? -1 : a[acFile.sortType] > b[acFile.sortType] ? 1 : 0))
         if (acFile.sortType === sortType.modifiedAt || acFile.sortType === sortType.copiedAt) {
             return showList.reverse()
         }
@@ -412,6 +412,7 @@ const Page = (): JSX.Element => {
                 <Space align="center" direction="column">
                     {sortList.map(({ name, value }) => (
                         <Radio
+                            key={"selSortType_" + value}
                             id={"selSortType_" + value}
                             name="selSortType"
                             value={value}

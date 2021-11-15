@@ -1,5 +1,5 @@
 // #region Global Imports
-import { useEffect, useState } from "react"
+import { JSXElementConstructor, ReactChild, ReactElement, ReactFragment, ReactNodeArray, ReactPortal, SetStateAction, useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
@@ -8,7 +8,7 @@ import { RootState } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
-import { AcFile } from "@Interfaces"
+import { AcFile, RNFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
@@ -22,16 +22,16 @@ const Page = (): JSX.Element => {
         acFile: acFileReducer,
     }))
     const [dirpath, setDirpath] = useState("")
-    const [selFile, setSelFile] = useState(null)
-    const [fileList, setFileList] = useState<any>([])
+    const [selFile, setSelFile] = useState<string | null>(null)
+    const [fileList, setFileList] = useState<RNFile[]>([])
 
     const getFileList = async () => {
-        const data = await WebViewMessage(RN_API.GET_FILE_LIST)
+        const data = await WebViewMessage<typeof RN_API.GET_FILE_LIST>(RN_API.GET_FILE_LIST)
         if (data === null) return
         setDirpath(decodeURIComponent(data.dirpath))
         setFileList(
             (data.list &&
-                data.list.map((fileInfo: any) => ({
+                data.list.map((fileInfo) => ({
                     ...fileInfo,
                     timer: null,
                     isAction: false,
@@ -40,15 +40,16 @@ const Page = (): JSX.Element => {
         )
     }
     const setDir = async () => {
-        const data = await WebViewMessage(RN_API.SET_DIR)
+        const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR)
         if (data === null) return
+        getFileList()
     }
     const changeFile = async () => {
         if (selFile === null) {
             alert("파일을 선택해주세요.")
             return
         }
-        const data = await WebViewMessage(RN_API.SET_SEL_FILENAME, {
+        const data = await WebViewMessage<typeof RN_API.SET_SEL_FILENAME>(RN_API.SET_SEL_FILENAME, {
             filepath: selFile,
         })
         if (data === null) return
@@ -57,7 +58,7 @@ const Page = (): JSX.Element => {
         }
     }
     const deleteFile = async (filepath: string) => {
-        const data = await WebViewMessage(RN_API.DELETE_FILE, {
+        const data = await WebViewMessage<typeof RN_API.DELETE_FILE>(RN_API.DELETE_FILE, {
             filepath,
         })
         if (data === null) return
@@ -96,7 +97,7 @@ const Page = (): JSX.Element => {
                 </Button>
             </Space>
             <FileList>
-                {fileList.map((file: any) => {
+                {fileList.map((file) => {
                     return (
                         <FileList.Item
                             isChecked={file.filepath === selFile}
@@ -106,7 +107,7 @@ const Page = (): JSX.Element => {
                             onTouchStart={(e) => {
                                 file.timer = setTimeout(() => {
                                     if (confirm("삭제하시겠습니까?") === false) return
-                                    deleteFile(file.filepath)
+                                    deleteFile(file.filepath || "")
                                 }, 300)
                             }}
                             onMouseUp={(e) => {

@@ -8,7 +8,7 @@ import { RootState, AcFileActions } from "@Redux"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
-import { AcFile } from "@Interfaces"
+import { Account, AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
@@ -28,7 +28,7 @@ const Page = (): JSX.Element => {
     })
 
     const editFilename = async (filename: AcFile["filename"]) => {
-        const data = await WebViewMessage(RN_API.SET_FILENAME, {
+        const data = await WebViewMessage<typeof RN_API.SET_FILENAME>(RN_API.SET_FILENAME, {
             myFilename: filename,
             pincode: acFile.pincode,
         })
@@ -45,12 +45,12 @@ const Page = (): JSX.Element => {
     }
 
     const shareFile = async () => {
-        const data = await WebViewMessage(RN_API.SHARE_FILE)
+        const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE)
         if (data === null) return
     }
 
     const setPincode = async (newPincode: AcFile["pincode"]) => {
-        const data = await WebViewMessage(RN_API.SET_PINCODE, {
+        const data = await WebViewMessage<typeof RN_API.SET_PINCODE>(RN_API.SET_PINCODE, {
             newPincode,
             pincode: acFile.pincode,
         })
@@ -67,8 +67,8 @@ const Page = (): JSX.Element => {
     }
 
     const resetFile = async () => {
-        const data = await WebViewMessage(RN_API.SET_FILE, {
-            contents: [],
+        const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+            list: [],
             pincode: acFile.pincode,
         })
         if (data === null) return
@@ -85,7 +85,7 @@ const Page = (): JSX.Element => {
     }
     return (
         <>
-            <Header prefix={<Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
+            <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
             <SettingList.Title as="h2">앱</SettingList.Title>
             <SettingList>
                 <SettingList.Item>
