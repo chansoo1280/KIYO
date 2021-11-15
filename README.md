@@ -1,26 +1,56 @@
-<h1 align="center">
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![MIT License][license-shield]][license-url]
+[![LinkedIn][linkedin-shield]][linkedin-url]
+
+<br />
+<div align="center">
   <a href="https://github.com/chansoo1280/account-manager">
-    <img src="https://user-images.githubusercontent.com/62010067/141707497-d6172063-8505-4ffd-adb1-faea3b3f735e.png" alt="KIYO" width="125" height="125">
+    <img src="https://user-images.githubusercontent.com/62010067/141707497-d6172063-8505-4ffd-adb1-faea3b3f735e.png" alt="KIYO" width="80" height="80">
   </a>
-</h1>
 
-<details open="open">
-<summary>Table of Contents</summary>
+  <h1 align="center">KIYO</h1>
 
-- [About](#about)
-  - [Built With](#built-with)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Usage](#usage)
-    - [Cookiecutter template](#cookiecutter-template)
-    - [Manual setup](#manual-setup)
-    - [Variables reference](#variables-reference)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Support](#support)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+  <p align="center">
+    더나은 계정관리
+    <br />
+    <a href="https://github.com/chansoo1280/account-manager"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/chansoo1280/account-manager">View Demo</a>
+    ·
+    <a href="https://github.com/chansoo1280/account-manager/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/chansoo1280/account-manager/issues">Request Feature</a>
+  </p>
+</div>
 
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#installation">Installation</a></li>
+      </ul>
+    </li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#preview">Preview</a></li>
+    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><a href="#acknowledgments">Acknowledgments</a></li>
+  </ol>
 </details>
 
 ---
