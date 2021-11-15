@@ -80,7 +80,7 @@
 
 ### Built With
 
-react native와 next.js로 이루어진 웹앱입니다!
+**React Native**와 **Next.js(typescript)**로 이루어진 웹앱입니다!
 
 - [React Native](https://reactnative.dev/)
 - [Next.js](https://nextjs.org/)
@@ -116,7 +116,7 @@ react native와 next.js로 이루어진 웹앱입니다!
    # or
    npm run build && npm run start
    ```
-4. [localhost:3000](localhost:3000) or [localhost:10010](localhost:10010)로 접속
+4. [localhost:3000](http://localhost:3000/) or [localhost:10010](http://localhost:10010/)로 접속
 
 #### 앱 실행하기
 
@@ -183,7 +183,7 @@ react native와 next.js로 이루어진 웹앱입니다!
 
 ## Roadmap
 
-- [ ] Add Ios file system
+- [ ] Add Ios 지원
 - [ ] Add back to top link
 - [ ] Add Theme
   - [ ] default
@@ -201,7 +201,7 @@ react native와 next.js로 이루어진 웹앱입니다!
 
 ## License
 
-앱의 무단 복사/배포를 금지합니다.
+프로젝트의 무단 복사/배포를 금지합니다.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
