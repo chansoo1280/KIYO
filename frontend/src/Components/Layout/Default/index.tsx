@@ -3,7 +3,7 @@ import Head from "next/head"
 // #endregion Global Imports
 
 // #region Local Imports
-import { LayoutProps } from "@Components"
+import { LayoutProps, MoveTop } from "@Components"
 import styles from "./Default.module.scss"
 import classNames from "classnames"
 import { ForwardedRef, forwardRef, useContext } from "react"
@@ -23,6 +23,7 @@ export const Default = forwardRef(({ children }: LayoutProps, ref: ForwardedRef<
             </Head>
             <div ref={ref} id="wrap" className={classNames(prefixCls, styles["default-wrap"])}>
                 {children}
+                <MoveTop layoutRef={ref}></MoveTop>
             </div>
         </>
     )
