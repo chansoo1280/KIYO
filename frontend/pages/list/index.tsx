@@ -1,13 +1,13 @@
 // #region Global Imports
 import { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { useTranslation } from "next-i18next"
+import { useRouter } from "next/router"
 // #endregion Global Imports
 
 // #region Local Imports
 import { Header, Search, Space, Button, AccountCard, ConfirmModal, Tag, Radio } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
-import { useDispatch, useSelector } from "react-redux"
-import { useTranslation } from "next-i18next"
-import { useRouter } from "next/router"
 import { AcFile, Account, sortType } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
@@ -37,9 +37,9 @@ const Page = (): JSX.Element => {
         const tags = getShowAccountList(acFile.list).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         return list
             .filter(({ name }) => tags.includes(name))
-            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-            .sort((a, b) => (isNaN(Number(a.name)) ? -1 : isNaN(Number(b.name)) ? 1 : 0))
-            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
+            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) // 이름순 정렬
+            .sort((a, b) => (isNaN(Number(a.name)) ? -1 : isNaN(Number(b.name)) ? 1 : 0)) // 숫자는 뒤로
+            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)) // 선택된 태그를 앞으로
             .slice(0, 5)
     }
     const sortList = [
@@ -73,7 +73,6 @@ const Page = (): JSX.Element => {
                 sortType: sortType,
             }),
         )
-        return true
     }
     const setFile = (data: Account[]) => {
         const tags = data.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
@@ -256,16 +255,10 @@ const Page = (): JSX.Element => {
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
         const showList = list
-            .filter(({ siteName }) => filterText === "" || siteName.includes(filterText))
-            .filter(({ tags }) => {
-                if (selectedTagList.length === 0) return true
-                return !selectedTagList.find(({ name }) => !tags.includes(name))
-            })
+            .filter(({ siteName }) => filterText === "" || siteName.includes(filterText)) // filterText 체크
+            .filter(({ tags }) => !selectedTagList.length || !selectedTagList.find(({ name }) => !tags.includes(name))) // tags 체크
             .sort((a, b) => (a[acFile.sortType] < b[acFile.sortType] ? -1 : a[acFile.sortType] > b[acFile.sortType] ? 1 : 0))
-        if (acFile.sortType === sortType.modifiedAt || acFile.sortType === sortType.copiedAt) {
-            return showList.reverse()
-        }
-        return showList
+        return acFile.sortType === sortType.modifiedAt || acFile.sortType === sortType.copiedAt ? showList.reverse() : showList
     }
     return (
         <>
@@ -298,12 +291,12 @@ const Page = (): JSX.Element => {
             </Search>
             {acFile.list && acFile.list.length !== 0 && (
                 <Tag gap="10px">
-                    {getShowTagList(tagList).map(({ name, isSelected }: { name: string; isSelected: boolean }) => (
+                    {getShowTagList(tagList).map(({ name, isSelected }) => (
                         <Tag.Item
                             key={name}
                             onClick={() => {
-                                setTagList(
-                                    tagList.map((tagInfo) => ({
+                                setTagList((prevState) =>
+                                    prevState.map((tagInfo) => ({
                                         ...tagInfo,
                                         isSelected: tagInfo.name === name ? !tagInfo.isSelected : tagInfo.isSelected,
                                     })),
@@ -332,7 +325,7 @@ const Page = (): JSX.Element => {
                         <span>검색된 계정 정보가 없습니다!</span>
                     )
                 ) : (
-                    getShowAccountList(acFile.list).map((account: Account, idx: number) => (
+                    getShowAccountList(acFile.list).map((account) => (
                         <AccountCard key={account.idx} account={account}>
                             <Button
                                 onClick={() => {
@@ -393,21 +386,25 @@ const Page = (): JSX.Element => {
                 }
             ></Button>
             <ConfirmModal
-                onClickOk={async () => {
-                    await setSortType(sortModal.selSortType)
-                    setSortModal({
-                        ...sortModal,
-                        show: false,
-                    })
-                }}
-                onClickCancel={() => {
-                    setSortModal({
-                        ...sortModal,
-                        show: false,
-                    })
-                }}
-                show={sortModal.show}
                 title="정렬"
+                show={sortModal.show}
+                okButtonProps={{
+                    onClick: async () => {
+                        await setSortType(sortModal.selSortType)
+                        setSortModal((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
+                }}
+                cancelButtonProps={{
+                    onClick: () => {
+                        setSortModal((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
+                }}
             >
                 <Space align="center" direction="column">
                     {sortList.map(({ name, value }) => (
@@ -418,10 +415,10 @@ const Page = (): JSX.Element => {
                             value={value}
                             checked={sortModal.selSortType === value}
                             onChange={(e) => {
-                                setSortModal({
-                                    ...sortModal,
+                                setSortModal((prevState) => ({
+                                    ...prevState,
                                     selSortType: value,
-                                })
+                                }))
                             }}
                         >
                             {name}

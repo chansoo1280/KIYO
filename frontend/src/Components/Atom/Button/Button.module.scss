@@ -18,6 +18,14 @@
         &:focus {
             outline: none;
         }
+        &--danger {
+            border-color: $error-color;
+            color: $error-color;
+        }
+        &[disabled] {
+            border-color: $normal-color;
+            color: $normal-color;
+        }
         &--hide {
             display: none;
         }
@@ -58,8 +66,18 @@
             background: $primary-6;
             border-color: $primary-6;
             color: $white;
+            &.#{$theme-name}-#{$btn-prefix-cls}--danger {
+                background: $error-color;
+                border-color: $error-color;
+                color: $white;
+            }
+            &[disabled] {
+                background: $normal-color;
+                border-color: $normal-color;
+                color: $white;
+            }
         }
-        &--text{
+        &--text {
             background: transparent;
             border: none;
             min-width: unset;

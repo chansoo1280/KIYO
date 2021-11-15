@@ -1,32 +1,33 @@
 declare global {
     interface Date {
-        format: any
+        format: (arg0: string) => string
     }
     interface String {
-        string: any
-        zf: any
+        string: (arg0: number) => string
+        zf: (arg0: number) => string
     }
     interface Number {
-        zf: any
+        zf: (arg0: number) => string
     }
 }
-export default Date.prototype.format = function (f: any) {
+export default Date.prototype.format = function (f: string) {
     if (!this.valueOf()) return " "
 
-    var weekKorName = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
+    const weekKorName = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 
-    var weekKorShortName = ["일", "월", "화", "수", "목", "금", "토"]
+    const weekKorShortName = ["일", "월", "화", "수", "목", "금", "토"]
 
-    var weekEngName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    const weekEngName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-    var weekEngShortName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const weekEngShortName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-    var d = this
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const d = this
 
-    return f.replace(/(yyyy|yy|MM|dd|KS|WN|KL|ES|EL|HH|hh|mm|ss|a\/p)/gi, function ($1: string) {
+    return f.replace(/(yyyy|yy|MM|dd|KS|WN|KL|ES|EL|HH|hh|mm|ss|a\/p)/gi, ($1: string): string => {
         switch ($1) {
             case "yyyy":
-                return d.getFullYear() // 년 (4자리)
+                return String(d.getFullYear()) // 년 (4자리)
 
             case "yy":
                 return (d.getFullYear() % 1000).zf(2) // 년 (2자리)
@@ -74,7 +75,7 @@ export default Date.prototype.format = function (f: any) {
 }
 
 String.prototype.string = function (len: number) {
-    var s = "",
+    let s = "",
         i = 0
     while (i++ < len) {
         s += this

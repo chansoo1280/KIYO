@@ -16,7 +16,7 @@ export const Default = forwardRef(({ children }: LayoutProps, ref: ForwardedRef<
     return (
         <>
             <Head>
-                <title>내가 기억할개</title>
+                <title>KIYO - 통합 계정관리</title>
                 <meta name="description" content="" />
                 <link rel="icon" href="/favicon.ico" />
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xeicon@2.3.3/xeicon.min.css"></link>

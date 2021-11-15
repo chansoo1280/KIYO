@@ -1,13 +1,13 @@
 // #region Global Imports
 import { useEffect, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { useTranslation } from "next-i18next"
+import { useRouter } from "next/router"
 // #endregion Global Imports
 
 // #region Local Imports
 import { Header, Title, Space, Button, RecommendInput, Input, Tag } from "@Components"
 import { AcFileActions, RootState } from "@Redux"
-import { useDispatch, useSelector } from "react-redux"
-import { useTranslation } from "next-i18next"
-import { useRouter } from "next/router"
 import { Account, AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
@@ -122,15 +122,7 @@ const Page = (): JSX.Element => {
                         setSiteName(word)
                     }}
                     value={siteName}
-                    recommendList={Array.from(
-                        new Set(
-                            ["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"].concat(
-                                acFile.list.map((account) => {
-                                    return account.siteName
-                                }),
-                            ),
-                        ),
-                    )}
+                    recommendList={Array.from(new Set(["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"].concat(acFile.list.map(({ siteName }) => siteName))))}
                 >
                     <Input
                         id="inputSiteName"
@@ -169,30 +161,17 @@ const Page = (): JSX.Element => {
                 <Button
                     onClick={() => {
                         const chars = ["0123456789", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "!@#$%^&*()-_=+"]
+                        const charsLen = chars.length
                         const charsStr = chars.join("")
+                        const charsStrLen = charsStr.length
                         const getRandomIdx = (length: number) => Math.floor(Math.random() * (length - 1))
-                        const length = 12
-                        const createdPw = ((): string => {
-                            const str = []
-                            for (let i = 0; i < chars.length; i++) {
-                                const innerChars = chars[i]
-                                str.push(innerChars[getRandomIdx(innerChars.length)])
-                            }
-                            for (let i = 0; i < chars.length; i++) {
-                                const innerChars = chars[i]
-                                str.push(innerChars[getRandomIdx(innerChars.length)])
-                            }
-                            const lestLen = length - str.length
-                            for (let i = 0; i < lestLen; i++) {
-                                str.push(charsStr[getRandomIdx(charsStr.length)])
-                            }
-                            return str
-                                .sort(() => {
-                                    return Math.random() - 0.5
-                                })
-                                .join("")
-                        })()
-                        setPw(createdPw)
+                        setPw(
+                            new Array(12)
+                                .fill(null)
+                                .map((_, idx) => (idx < 9 ? chars[idx % charsLen][getRandomIdx(chars[idx % charsLen].length)] : charsStr[getRandomIdx(charsStrLen)]))
+                                .sort(() => Math.random() - 0.5)
+                                .join(""),
+                        )
                     }}
                 >
                     비밀번호 자동 생성
@@ -201,21 +180,13 @@ const Page = (): JSX.Element => {
                     onClick={() => {
                         const charsStr = "0123456789".split("")
                         const getRandomIdx = (length: number) => Math.floor(Math.random() * (length - 1))
-                        const length = 6
-                        const createdPw = ((): string => {
-                            const str = []
-                            for (let i = 0; i < length; i++) {
-                                const idx = getRandomIdx(charsStr.length)
-                                str.push(charsStr.splice(idx, 1))
-                                console.log(charsStr)
-                            }
-                            return str
-                                .sort(() => {
-                                    return Math.random() - 0.5
-                                })
-                                .join("")
-                        })()
-                        setPw(createdPw)
+                        setPw(
+                            new Array(6)
+                                .fill(null)
+                                .map(() => charsStr.splice(getRandomIdx(charsStr.length), 1)) //한개씩 빼서 넣기
+                                .sort(() => Math.random() - 0.5)
+                                .join(""),
+                        )
                     }}
                 >
                     핀번호
@@ -239,7 +210,7 @@ const Page = (): JSX.Element => {
                                 if (inputTag === "") return
                                 const isExist = tags.find((tag) => inputTag === tag)
                                 if (isExist) return
-                                setTags([...(tags || []), inputTag])
+                                setTags((prevState) => [...prevState, inputTag])
                                 setInputTag("")
                             }}
                         />
@@ -249,7 +220,7 @@ const Page = (): JSX.Element => {
                             if (inputTag === "") return
                             const isExist = tags.find((tag) => inputTag === tag)
                             if (isExist) return
-                            setTags([...(tags || []), inputTag])
+                            setTags((prevState) => [...prevState, inputTag])
                             setInputTag("")
                         }}
                         icon={
@@ -260,20 +231,17 @@ const Page = (): JSX.Element => {
                     ></Button>
                 </Space>
                 <Tag>
-                    {tags.map((tag, idx) => {
-                        return (
-                            <Tag.Item
-                                key={tag}
-                                onDelete={() => {
-                                    const list = tags
-                                    list.splice(idx, 1)
-                                    setTags(list)
-                                }}
-                            >
-                                {tag}
-                            </Tag.Item>
-                        )
-                    })}
+                    {tags.map((tag, idx) => (
+                        <Tag.Item
+                            key={tag}
+                            onDelete={() => {
+                                tags.splice(idx, 1)
+                                setTags(tags)
+                            }}
+                        >
+                            {tag}
+                        </Tag.Item>
+                    ))}
                 </Tag>
             </Space>
         </>

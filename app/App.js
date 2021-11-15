@@ -27,6 +27,7 @@ const RN_API = {
   GET_FILENAME: 'GET_FILENAME',
   GET_FILE: 'GET_FILE',
   SHARE_FILE: 'SHARE_FILE',
+  BACKUP_FILE: 'BACKUP_FILE',
   GET_FILE_LIST: 'GET_FILE_LIST',
   CREATE_FILE: 'CREATE_FILE',
   SET_FILE: 'SET_FILE',
@@ -308,6 +309,36 @@ const App = () => {
               JSON.stringify({
                 type: RN_API.SHARE_FILE,
                 data: result,
+              }),
+            );
+            break;
+          }
+          case RN_API.BACKUP_FILE: {
+            console.log(RN_API.BACKUP_FILE);
+            const {filename: myFilename, pincode} = req?.data;
+            const filename = myFilename + extension;
+            const directoryUriEnd = await AsyncStorage.getItem(
+              'directoryUriEnd',
+              (err, result) => result,
+            );
+            const filepath = await AsyncStorage.getItem(
+              'filepath',
+              (err, result) => result,
+            );
+            const list = await readFile(filepath, pincode);
+            const filepath = await createFile(
+              directoryUriEnd,
+              filename,
+              JSON.stringify(list),
+              pincode,
+            );
+            if (filepath) {
+              ToastAndroid.show('백업 완료', ToastAndroid.SHORT);
+            }
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.BACKUP_FILE,
+                data: !!filepath,
               }),
             );
             break;

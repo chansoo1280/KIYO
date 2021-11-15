@@ -1,13 +1,13 @@
 // #region Global Imports
 import { useRef, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { useTranslation } from "next-i18next"
+import { useRouter } from "next/router"
 // #endregion Global Imports
 
 // #region Local Imports
 import { Header, PinCode, Space, KeyPad, Button, Input } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
-import { useDispatch, useSelector } from "react-redux"
-import { useTranslation } from "next-i18next"
-import { useRouter } from "next/router"
 import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
@@ -25,12 +25,13 @@ const Page = (): JSX.Element => {
     const [step, setStep] = useState<STEP>(STEP.INPUT_PINCODE)
     const router = useRouter()
     const dispatch = useDispatch()
-    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
-        app: appReducer,
-        acFile: acFileReducer,
-    }))
+    // const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
+    //     app: appReducer,
+    //     acFile: acFileReducer,
+    // }))
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
     const [pincodeConfirm, setPincodeConfirm] = useState<AcFile["pincode"]>("")
+    const pinCodeLen = 6
     const [filename, setFilename] = useState<AcFile["filename"]>("my-list")
     const pincodeInput = useRef<HTMLInputElement>(null)
 
@@ -96,16 +97,16 @@ const Page = (): JSX.Element => {
             ></Header>
             {step === STEP.INPUT_PINCODE ? (
                 <>
-                    <PinCode value={pincode || ""} length={6}></PinCode>
+                    <PinCode value={pincode || ""} length={pinCodeLen}></PinCode>
                     <Space align="flex-end">
                         <Button type="link" onClick={() => router.push("/files", "/files")}>
                             파일 목록으로 이동
                         </Button>
                     </Space>
                     <KeyPad
-                        maxLength={6}
+                        maxLength={pinCodeLen}
                         onEnter={() => {
-                            if (pincode === null || pincode.length < 6) {
+                            if (!pincode || pincode.length !== pinCodeLen) {
                                 alert("핀코드를 입력해주세요.")
                                 return
                             }
@@ -117,11 +118,11 @@ const Page = (): JSX.Element => {
                 </>
             ) : step === STEP.CONFIRM_PINCODE ? (
                 <>
-                    <PinCode value={pincodeConfirm || ""} length={6}></PinCode>
+                    <PinCode value={pincodeConfirm || ""} length={pinCodeLen}></PinCode>
                     <KeyPad
-                        maxLength={6}
+                        maxLength={pinCodeLen}
                         onEnter={() => {
-                            if (pincodeConfirm === null || pincodeConfirm.length < 6) {
+                            if (!pincodeConfirm || pincodeConfirm.length !== pinCodeLen) {
                                 alert("핀코드 한번더 입력해주세요.")
                                 return
                             }
@@ -137,7 +138,7 @@ const Page = (): JSX.Element => {
                 </>
             ) : (
                 <>
-                    <Input value={filename || ""} onChange={(e: any) => setFilename(e.target.value.slice(0, 20))} onEnter={() => pincodeInput?.current?.focus()} type="text" />
+                    <Input value={filename || ""} onChange={(e: any) => setFilename(e.target.value.slice(0, 20))} onEnter={() => pincodeInput.current?.focus()} type="text" />
                     <Button onClick={() => reqCreateFile()} type="primary">
                         제출
                     </Button>

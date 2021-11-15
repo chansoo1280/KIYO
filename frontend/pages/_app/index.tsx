@@ -3,24 +3,22 @@ import "/styles/style.scss"
 import "/styles/reset.css"
 // Import Swiper styles
 import "swiper/swiper.scss"
-import * as React from "react"
-import App, { AppInitialProps, AppContext, AppProps } from "next/app"
-import { useRouter, withRouter } from "next/router"
+import { AppInitialProps, AppContext, AppProps } from "next/app"
+import { useRouter } from "next/router"
 import { ThemeProvider } from "styled-components"
-import { connect, ReactReduxContext, useSelector } from "react-redux"
+import { ReactReduxContext, useSelector } from "react-redux"
 import { PersistGate } from "redux-persist/integration/react"
 import { CSSTransition, TransitionGroup } from "react-transition-group"
 import { appWithTranslation } from "next-i18next"
+import { NextComponentType } from "next"
+import { createRef, useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
 import { ThemeObj, ThemeType } from "@Definitions/Styled"
-import { AppWithStore } from "@Interfaces"
 import { RootState, wrapper } from "@Redux"
 import TheLayout, { LayoutCode } from "@Components/Layout"
 import "@Services/API/DateFormat"
-import { NextComponentType } from "next"
-import { createRef, useState } from "react"
 // #endregion Local Imports
 
 const formatPathname = (url: string) =>
@@ -47,7 +45,7 @@ const WebApp: NextComponentType<AppContext, AppInitialProps, AppProps> = ({ Comp
             setPrevPathname(prevPathname)
             return formatPathname(url)
         })
-    React.useEffect(() => {
+    useEffect(() => {
         router.events.on("routeChangeStart", handleRouteChange)
         return () => {
             router.events.off("routeChangeStart", handleRouteChange)

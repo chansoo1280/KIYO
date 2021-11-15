@@ -23,6 +23,7 @@ const Page = (): JSX.Element => {
         acFile: acFileReducer,
     }))
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
+    const pinCodeLen = 6
     const [showDescBanner, setShowDescBanner] = useState(false)
 
     const getFilename = async () => {
@@ -44,7 +45,7 @@ const Page = (): JSX.Element => {
     }
 
     const getFile = async () => {
-        if (!pincode || pincode.length !== 6) {
+        if (!pincode || pincode.length !== pinCodeLen) {
             alert("핀코드를 입력해주세요.")
             return
         }
@@ -61,12 +62,12 @@ const Page = (): JSX.Element => {
         const list: Account[] =
             data.list.map((account: Account, idx: number) => ({
                 ...account,
-                siteName: account.siteName,
+                siteName: account.siteName || "",
                 tags: account.tags || [],
                 idx: idx,
                 copiedAt: account.copiedAt || "",
             })) || []
-        const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        const tags = list.reduce((acc: Account["tags"], cur) => acc.concat(cur.tags), [])
         dispatch(
             AcFileActions.setInfo({
                 pincode: data.pincode,
@@ -93,7 +94,7 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <PinCode value={pincode || ""} length={6}></PinCode>
+            <PinCode value={pincode || ""} length={pinCodeLen}></PinCode>
             <Space align="flex-end" padding="0 16px">
                 <Title as="h2">{acFile.filename}</Title>
                 <Button type="link" onClick={() => router.push("/files", "/files")}>
@@ -102,22 +103,16 @@ const Page = (): JSX.Element => {
             </Space>
             <KeyPad
                 onChange={() => {
-                    if (pincode && pincode.length === 6) {
+                    if (pincode && pincode.length === pinCodeLen) {
                         getFile()
                     }
                 }}
-                maxLength={6}
+                maxLength={pinCodeLen}
                 onEnter={() => getFile()}
                 value={pincode || ""}
                 setValue={setPincode}
             ></KeyPad>
-            <AlertModal
-                show={showDescBanner}
-                onClick={() => {
-                    setDir()
-                }}
-                okText="폴더 선택하기"
-            >
+            <AlertModal show={showDescBanner} onClick={() => setDir()} okText="폴더 선택하기">
                 <img style={{ objectFit: "contain" }} src="/static/images/banner/select-folder.png" alt="" />
                 <Space align="center">사용하실 폴더를 선택해주세요!</Space>
             </AlertModal>

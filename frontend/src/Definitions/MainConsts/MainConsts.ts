@@ -8,6 +8,7 @@ export const RN_API = {
     GET_FILENAME: "GET_FILENAME",
     GET_FILE: "GET_FILE",
     SHARE_FILE: "SHARE_FILE",
+    BACKUP_FILE: "BACKUP_FILE",
     GET_FILE_LIST: "GET_FILE_LIST",
     CREATE_FILE: "CREATE_FILE",
     SET_FILE: "SET_FILE",
@@ -28,6 +29,7 @@ export type RN_API_RES_TYPES = {
     [RN_API.GET_FILENAME]: string | false
     [RN_API.GET_FILE]: false | AcFile
     [RN_API.SHARE_FILE]: unknown
+    [RN_API.BACKUP_FILE]: boolean
     [RN_API.GET_FILE_LIST]: {
         dirpath: string
         list: RNFile[]
