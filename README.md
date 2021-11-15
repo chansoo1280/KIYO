@@ -80,7 +80,7 @@
 
 ### Built With
 
-**React Native**와 **Next.js(typescript)**로 이루어진 웹앱입니다!
+**React Native**와 **Next.js**(typescript)로 이루어진 웹앱입니다!
 
 - [React Native](https://reactnative.dev/)
 - [Next.js](https://nextjs.org/)
