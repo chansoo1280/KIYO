@@ -1,20 +1,13 @@
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+<div id="top"></div>
 
-<br />
+<h1 align="center">KIYO</h1>
 <div align="center">
   <a href="https://github.com/chansoo1280/account-manager">
-    <img src="https://user-images.githubusercontent.com/62010067/141707497-d6172063-8505-4ffd-adb1-faea3b3f735e.png" alt="KIYO" width="80" height="80">
+    <img src="https://user-images.githubusercontent.com/62010067/141707497-d6172063-8505-4ffd-adb1-faea3b3f735e.png" alt="KIYO" width="300" height="300">
   </a>
 
-  <h1 align="center">KIYO</h1>
-
   <p align="center">
-    더나은 계정관리
+    통합 계정관리 앱
     <br />
     <a href="https://github.com/chansoo1280/account-manager"><strong>Explore the docs »</strong></a>
     <br />
@@ -27,7 +20,7 @@
   </p>
 </div>
 
-<details>
+<details open="open">
   <summary>Table of Contents</summary>
   <ol>
     <li>
@@ -55,7 +48,7 @@
 
 ---
 
-<details open="open">
+<details>
 <summary>Git Rules</summary>
 
 1. branch
@@ -89,8 +82,13 @@
 
 react native와 next.js로 이루어진 웹앱입니다!
 
+- [React Native](https://reactnative.dev/)
 - [Next.js](https://nextjs.org/)
 - [React.js](https://reactjs.org/)
+
+서버는 aws의 EKS를 사용하여 운영중입니다.
+
+- [aws](https://aws.amazon.com/ko/?nc2=h_lg)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
