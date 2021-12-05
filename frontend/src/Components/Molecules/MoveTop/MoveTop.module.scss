@@ -1,0 +1,12 @@
+@import "/styles/themes/index";
+@import "/styles/mixins/index";
+
+@each $theme-name in $theme-obj {
+    @include pub-color($theme-name);
+    .#{$theme-name}-#{$move-top-prefix-cls} {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translate(-50%, 0);
+    }
+}

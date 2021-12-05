@@ -17,39 +17,39 @@
     $list: "\\/list";
     $setting: "\\/setting";
 
-    // #{$setting}\/From#{$list}
-    .l_transition.#{$setting}\/From#{$list}.popup-enter {
+    // #{$setting}\/-from-#{$list}
+    .l_transition.#{$setting}-from-#{$list}.popup-enter {
         z-index: 10;
     }
-    .l_transition.#{$setting}\/From#{$list}.popup-enter::before {
+    .l_transition.#{$setting}-from-#{$list}.popup-enter::before {
         opacity: 0;
     }
-    .l_transition.#{$setting}\/From#{$list}.popup-enter > .#{$theme-name}-wrap {
+    .l_transition.#{$setting}-from-#{$list}.popup-enter > .#{$theme-name}-wrap {
         z-index: 10;
-        transform: scale(.8);
+        transform: scale(0.8);
         opacity: 0;
     }
-    .l_transition.#{$setting}\/From#{$list}.popup-enter-active::before {
+    .l_transition.#{$setting}-from-#{$list}.popup-enter-active::before {
         opacity: 1;
     }
-    .l_transition.#{$setting}\/From#{$list}.popup-enter-active > .#{$theme-name}-wrap {
+    .l_transition.#{$setting}-from-#{$list}.popup-enter-active > .#{$theme-name}-wrap {
         transform: scale(1);
         opacity: 1;
     }
 
-    .l_transition.#{$list}\/From#{$setting}.popup-exit::before {
+    .l_transition.#{$list}-from-#{$setting}.popup-exit::before {
         opacity: 1;
     }
-    .l_transition.#{$list}\/From#{$setting}.popup-exit > .#{$theme-name}-wrap {
+    .l_transition.#{$list}-from-#{$setting}.popup-exit > .#{$theme-name}-wrap {
         z-index: 10;
         transform: scale(1);
         opacity: 1;
     }
-    .l_transition.#{$list}\/From#{$setting}.popup-exit-active::before {
+    .l_transition.#{$list}-from-#{$setting}.popup-exit-active::before {
         opacity: 0;
     }
-    .l_transition.#{$list}\/From#{$setting}.popup-exit-active > .#{$theme-name}-wrap {
-        transform: scale(.8);
+    .l_transition.#{$list}-from-#{$setting}.popup-exit-active > .#{$theme-name}-wrap {
+        transform: scale(0.8);
         opacity: 0;
     }
 
@@ -83,7 +83,6 @@
     .l_transition.slide-exit-active > .#{$theme-name}-wrap {
         transform: translate3d(100%, 0, 0);
     }
-
 }
 #__next {
     background: #e4e6e9;
@@ -147,4 +146,3 @@
 // .popup-exit-active {
 //     transform: rotateY(10deg) translate3d(100%, 0, 0);
 // }
-

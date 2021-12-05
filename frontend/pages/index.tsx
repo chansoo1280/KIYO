@@ -23,50 +23,51 @@ const Page = (): JSX.Element => {
         acFile: acFileReducer,
     }))
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
+    const pinCodeLen = 6
     const [showDescBanner, setShowDescBanner] = useState(false)
 
     const getFilename = async () => {
-        const data = await WebViewMessage(RN_API.GET_FILENAME)
+        const data = await WebViewMessage<typeof RN_API.GET_FILENAME>(RN_API.GET_FILENAME)
         if (data === null) return
-
         if (data === "no-folder") {
             setShowDescBanner(true)
+            return
         } else if (data === false) {
             router.replace("/files", "/files")
-        } else {
-            dispatch(
-                AcFileActions.setInfo({
-                    filename: data,
-                    pincode: "",
-                }),
-            )
+            return
         }
+        dispatch(
+            AcFileActions.setInfo({
+                filename: data,
+                pincode: "",
+            }),
+        )
     }
 
     const getFile = async () => {
-        if (!pincode || pincode.length !== 6) {
+        if (!pincode || pincode.length !== pinCodeLen) {
             alert("핀코드를 입력해주세요.")
             return
         }
-        const data = await WebViewMessage(RN_API.GET_FILE, {
+        const data = await WebViewMessage<typeof RN_API.GET_FILE>(RN_API.GET_FILE, {
             pincode,
         })
         if (data === null) return
-        if (data.contents === false) {
+        if (data === false) {
             alert("올바르지 않은 핀번호입니다.")
             setPincode("")
             return
         }
-        // alert(data.pincode + "/" + data.filename + "/" + data.contents.length)
+        // alert(data.pincode + "/" + data.filename + "/" + data.list.length)
         const list: Account[] =
-            data.contents.map((account: Account, idx: number) => ({
+            data.list.map((account: Account, idx: number) => ({
                 ...account,
-                siteName: account.siteName,
+                siteName: account.siteName || "",
                 tags: account.tags || [],
                 idx: idx,
                 copiedAt: account.copiedAt || "",
             })) || []
-        const tags = list.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        const tags = list.reduce((acc: Account["tags"], cur) => acc.concat(cur.tags), [])
         dispatch(
             AcFileActions.setInfo({
                 pincode: data.pincode,
@@ -79,7 +80,7 @@ const Page = (): JSX.Element => {
         router.push("/list", "/list")
     }
     const setDir = async () => {
-        const data = await WebViewMessage(RN_API.SET_DIR)
+        const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR)
         if (data === null) return
 
         setShowDescBanner(false)
@@ -93,7 +94,7 @@ const Page = (): JSX.Element => {
     }, [])
     return (
         <>
-            <PinCode value={pincode || ""} length={6}></PinCode>
+            <PinCode value={pincode || ""} length={pinCodeLen}></PinCode>
             <Space align="flex-end" padding="0 16px">
                 <Title as="h2">{acFile.filename}</Title>
                 <Button type="link" onClick={() => router.push("/files", "/files")}>
@@ -102,22 +103,16 @@ const Page = (): JSX.Element => {
             </Space>
             <KeyPad
                 onChange={() => {
-                    if (pincode && pincode.length === 6) {
+                    if (pincode && pincode.length === pinCodeLen) {
                         getFile()
                     }
                 }}
-                maxLength={6}
+                maxLength={pinCodeLen}
                 onEnter={() => getFile()}
                 value={pincode || ""}
                 setValue={setPincode}
             ></KeyPad>
-            <AlertModal
-                show={showDescBanner}
-                onClick={() => {
-                    setDir()
-                }}
-                okText="폴더 선택하기"
-            >
+            <AlertModal show={showDescBanner} onClick={() => setDir()} okText="폴더 선택하기">
                 <img style={{ objectFit: "contain" }} src="/static/images/banner/select-folder.png" alt="" />
                 <Space align="center">사용하실 폴더를 선택해주세요!</Space>
             </AlertModal>

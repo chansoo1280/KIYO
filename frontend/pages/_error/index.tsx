@@ -3,15 +3,12 @@ import * as React from "react"
 import { NextPage } from "next"
 // #endregion Global Imports
 
-// #region Local Imports
-// import { withTranslation } from "@Server/i18n";
-// #endregion Local Imports
-
 // #region Interface Imports
-import { IErrorPage } from "@Interfaces"
 // #endregion Interface Imports
 
-const Error: NextPage<IErrorPage.IProps, IErrorPage.InitialProps> = ({
+const Error: NextPage<{
+    statusCode: React.ReactNode
+}> = ({
     // t,
     statusCode,
 }) => {

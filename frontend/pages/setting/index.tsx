@@ -1,14 +1,14 @@
 // #region Global Imports
 import { useEffect, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { useTranslation } from "next-i18next"
+import { useRouter } from "next/router"
 // #endregion Global Imports
 
 // #region Local Imports
 import { Title, Header, Space, Button, SettingList, ConfirmModal, Input } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
-import { useDispatch, useSelector } from "react-redux"
-import { useTranslation } from "next-i18next"
-import { useRouter } from "next/router"
-import { AcFile } from "@Interfaces"
+import { Account, AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
@@ -26,9 +26,13 @@ const Page = (): JSX.Element => {
         show: false,
         inputPincode: "",
     })
+    const [modalReset, setModalReset] = useState({
+        show: false,
+        inputConfirmText: "",
+    })
 
     const editFilename = async (filename: AcFile["filename"]) => {
-        const data = await WebViewMessage(RN_API.SET_FILENAME, {
+        const data = await WebViewMessage<typeof RN_API.SET_FILENAME>(RN_API.SET_FILENAME, {
             myFilename: filename,
             pincode: acFile.pincode,
         })
@@ -44,13 +48,25 @@ const Page = (): JSX.Element => {
         )
     }
 
+    const backupFile = async (filename: AcFile["filename"]) => {
+        const data = await WebViewMessage<typeof RN_API.BACKUP_FILE>(RN_API.BACKUP_FILE, {
+            filename: filename,
+            pincode: acFile.pincode,
+        })
+        if (data === null) return
+        if (data === false) {
+            alert("파일 백업 실패")
+            return
+        }
+    }
+
     const shareFile = async () => {
-        const data = await WebViewMessage(RN_API.SHARE_FILE)
+        const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE)
         if (data === null) return
     }
 
     const setPincode = async (newPincode: AcFile["pincode"]) => {
-        const data = await WebViewMessage(RN_API.SET_PINCODE, {
+        const data = await WebViewMessage<typeof RN_API.SET_PINCODE>(RN_API.SET_PINCODE, {
             newPincode,
             pincode: acFile.pincode,
         })
@@ -67,16 +83,15 @@ const Page = (): JSX.Element => {
     }
 
     const resetFile = async () => {
-        const data = await WebViewMessage(RN_API.SET_FILE, {
-            contents: [],
+        const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+            list: [],
             pincode: acFile.pincode,
         })
         if (data === null) return
         if (data === false) {
-            alert("파일 수정 실패")
+            alert("초기화 실패")
             return
         }
-
         dispatch(
             AcFileActions.setInfo({
                 list: data,
@@ -85,59 +100,64 @@ const Page = (): JSX.Element => {
     }
     return (
         <>
-            <Header prefix={<Button onClick={() => router.replace("/list", "/list")} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
+            <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
             <SettingList.Title as="h2">앱</SettingList.Title>
             <SettingList>
                 <SettingList.Item>
                     <Title as="h3">앱 평가</Title>
                 </SettingList.Item>
                 <SettingList.Item>
-                    <Title as="h3">공지사항</Title>
+                    <Title as="h3">사용방법</Title>
                 </SettingList.Item>
                 <SettingList.Item>
                     <Title as="h3">문의하기</Title>
                 </SettingList.Item>
             </SettingList>
-            <SettingList.Title as="h2">파일 관리</SettingList.Title>
+            <SettingList.Title as="h2">데이터</SettingList.Title>
             <SettingList>
                 <SettingList.Item
                     onClick={() => {
-                        const newFilename = prompt("파일이름 입력")
-                        if (!newFilename) {
-                            return
-                        }
+                        const newFilename = prompt("파일 이름 입력")
+                        if (!newFilename) return
                         editFilename(newFilename)
                     }}
                 >
-                    <Title as="h3">파일이름변경</Title>
+                    <Title as="h3">파일 이름변경</Title>
+                </SettingList.Item>
+                <SettingList.Item
+                    onClick={() => {
+                        const newFilename = prompt("백업 파일 이름 입력")
+                        if (!newFilename) return
+                        backupFile(newFilename)
+                    }}
+                >
+                    <Title as="h3">파일 백업</Title>
+                </SettingList.Item>
+                <SettingList.Item onClick={() => router.push("/files", "/files")}>
+                    <Title as="h3">파일 복원</Title>
                 </SettingList.Item>
                 <SettingList.Item onClick={() => shareFile()}>
                     <Title as="h3">파일 내보내기(공유)</Title>
                 </SettingList.Item>
-                <SettingList.Item onClick={() => router.push("/files", "/files")}>
-                    <Title as="h3">파일 가져오기</Title>
-                </SettingList.Item>
                 <SettingList.Item
-                    onClick={() => {
+                    onClick={() =>
                         setModalSetPincode({
                             show: true,
                             inputPincode: "",
                         })
-                        // const newPincode = prompt("새로운 핀코드 입력")
-                        // if (!newPincode) {
-                        //     return
-                        // }
-                    }}
+                    }
                 >
                     <Title as="h3">핀코드 변경</Title>
                 </SettingList.Item>
                 <SettingList.Item
-                    onClick={() => {
-                        if (!confirm("초기화하시겠습니까?")) return
-                        resetFile()
-                    }}
+                    onClick={() =>
+                        setModalReset({
+                            inputConfirmText: "",
+                            show: true,
+                        })
+                    }
                 >
-                    <Title as="h3">초기화</Title>
+                    <Title as="h3">데이터 초기화</Title>
                 </SettingList.Item>
             </SettingList>
             <SettingList>
@@ -162,32 +182,75 @@ const Page = (): JSX.Element => {
             <ConfirmModal
                 title="핀코드 변경"
                 show={modalSetPincode.show}
-                onClickCancel={() => {
-                    setModalSetPincode({
-                        ...modalSetPincode,
-                        show: false,
-                    })
+                cancelButtonProps={{
+                    onClick: () => {
+                        setModalSetPincode((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
                 }}
-                onClickOk={() => {
-                    setModalSetPincode({
-                        ...modalSetPincode,
-                        show: false,
-                    })
-                    if (modalSetPincode.inputPincode.replace(/[^0-9]/g, "").length !== 6) {
-                        alert("6자리의 숫자로 핀코드를 입력해주세요.")
-                        return
-                    }
-                    setPincode(modalSetPincode.inputPincode)
+                okButtonProps={{
+                    onClick: () => {
+                        setModalSetPincode((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                        if (modalSetPincode.inputPincode.replace(/[^0-9]/g, "").length !== 6) {
+                            alert("6자리의 숫자로 핀코드를 입력해주세요.")
+                            return
+                        }
+                        setPincode(modalSetPincode.inputPincode)
+                    },
                 }}
             >
                 <Input
                     type="number"
                     value={modalSetPincode.inputPincode}
                     onChange={(e) => {
-                        setModalSetPincode({
-                            ...modalSetPincode,
-                            inputPincode: e.target.value.slice(0, 6),
-                        })
+                        setModalSetPincode((prevState) => ({
+                            ...prevState,
+                            inputPincode: e.target.value.slice(0, 6).replace(/[^0-9]/g, ""),
+                        }))
+                    }}
+                ></Input>
+            </ConfirmModal>
+            <ConfirmModal
+                title="데이터 초기화"
+                show={modalReset.show}
+                cancelButtonProps={{
+                    onClick: () => {
+                        setModalReset((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
+                }}
+                okButtonProps={{
+                    children: "초기화",
+                    danger: true,
+                    disabled: modalReset.inputConfirmText !== `${acFile.filename}/초기화`,
+                    onClick: async () => {
+                        await resetFile()
+                        setModalReset((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
+                }}
+            >
+                <Space align="center">
+                    <span>"{acFile.filename}/초기화"를 입력해주세요.</span>
+                </Space>
+                <Input
+                    type="text"
+                    placeholder={`${acFile.filename}/초기화`}
+                    value={modalReset.inputConfirmText}
+                    onChange={(e) => {
+                        setModalReset((prevState) => ({
+                            ...prevState,
+                            inputConfirmText: e.target.value,
+                        }))
                     }}
                 ></Input>
             </ConfirmModal>

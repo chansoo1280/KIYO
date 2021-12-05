@@ -28,12 +28,13 @@ const RN_API = {
   GET_FILENAME: 'GET_FILENAME',
   GET_FILE: 'GET_FILE',
   SHARE_FILE: 'SHARE_FILE',
+  BACKUP_FILE: 'BACKUP_FILE',
   GET_FILE_LIST: 'GET_FILE_LIST',
   CREATE_FILE: 'CREATE_FILE',
   SET_FILE: 'SET_FILE',
   DELETE_FILE: 'DELETE_FILE',
   SET_PINCODE: 'SET_PINCODE',
-  SET_SORTTYPE: 'SET_SORTTYPE'
+  SET_SORTTYPE: 'SET_SORTTYPE',
 };
 const extension = '.txt';
 const App = () => {
@@ -267,12 +268,15 @@ const App = () => {
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.GET_FILE,
-                data: {
-                  filename,
-                  pincode,
-                  sortType: sortType,
-                  contents: result,
-                },
+                data:
+                  result === false
+                    ? false
+                    : {
+                        filename,
+                        pincode,
+                        sortType: sortType,
+                        list: result,
+                      },
               }),
             );
             break;
@@ -310,19 +314,49 @@ const App = () => {
             );
             break;
           }
+          case RN_API.BACKUP_FILE: {
+            console.log(RN_API.BACKUP_FILE);
+            const {filename: myFilename, pincode} = req?.data;
+            const filename = myFilename + extension;
+            const directoryUriEnd = await AsyncStorage.getItem(
+              'directoryUriEnd',
+              (err, result) => result,
+            );
+            const filepath = await AsyncStorage.getItem(
+              'filepath',
+              (err, result) => result,
+            );
+            const list = await readFile(filepath, pincode);
+            const filepath = await createFile(
+              directoryUriEnd,
+              filename,
+              JSON.stringify(list),
+              pincode,
+            );
+            if (filepath) {
+              ToastAndroid.show('백업 완료', ToastAndroid.SHORT);
+            }
+            webview.current.postMessage(
+              JSON.stringify({
+                type: RN_API.BACKUP_FILE,
+                data: !!filepath,
+              }),
+            );
+            break;
+          }
           case RN_API.CREATE_FILE: {
             console.log(RN_API.CREATE_FILE);
-            const {filename: myFilename, contents, pincode} = req?.data;
+            const {filename: myFilename, list, pincode} = req?.data;
             const filename = myFilename + extension;
             const directoryUri = await AsyncStorage.getItem(
               'directoryUri',
               (err, result) => result,
             );
-            console.log(contents);
+            console.log(list);
             const filepath = await createFile(
               directoryUri,
               filename,
-              JSON.stringify(contents),
+              JSON.stringify(list),
               pincode,
             );
             if (filepath !== false) {
@@ -339,14 +373,14 @@ const App = () => {
           }
           case RN_API.SET_FILE: {
             console.log(RN_API.SET_FILE);
-            const {contents, pincode} = req?.data;
+            const {list, pincode} = req?.data;
             const filepath = await AsyncStorage.getItem(
               'filepath',
               (err, result) => result,
             );
             const result = await modifyFile(
               filepath,
-              JSON.stringify(contents),
+              JSON.stringify(list),
               pincode,
             );
             if (result !== false) {
@@ -358,7 +392,7 @@ const App = () => {
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_FILE,
-                data: result ? contents : false,
+                data: result ? list : false,
               }),
             );
             break;
@@ -404,7 +438,7 @@ const App = () => {
           case RN_API.SET_SORTTYPE: {
             console.log(RN_API.SET_SORTTYPE);
             const {sortType} = req?.data;
-            await AsyncStorage.setItem('sortType',sortType);
+            await AsyncStorage.setItem('sortType', sortType);
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.SET_SORTTYPE,
@@ -413,7 +447,6 @@ const App = () => {
             );
             break;
           }
-          
         }
       }}
       webview={webview}

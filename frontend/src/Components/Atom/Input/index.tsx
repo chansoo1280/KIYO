@@ -21,10 +21,11 @@ interface Props {
     className?: string
     id?: string
     prefix?: ReactNode
+    placeholder?: string
 }
 
 const Input = forwardRef((props: Props, ref: ForwardedRef<HTMLInputElement>): JSX.Element => {
-    const { id, prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, ...rest } = props
+    const { id, prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, placeholder, ...rest } = props
     const [isShowPw, setIsShowPw] = useState(false)
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value: string = e.target.value || ""
@@ -65,6 +66,7 @@ const Input = forwardRef((props: Props, ref: ForwardedRef<HTMLInputElement>): JS
                         onEnter && onEnter(e)
                     }
                 }}
+                placeholder={placeholder}
                 {...rest}
             />
             <Button

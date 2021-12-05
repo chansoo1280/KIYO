@@ -17,30 +17,20 @@ const PinCode = (props: Props): JSX.Element => {
     const { length = 0, value = "" } = props
     const { name: theme } = useContext(ThemeContext)
     const prefixCls = theme + "-pin-code"
-    const [list, setList] = useState(
-        (() => {
-            const list = []
-            for (let i = 0; i < length; i++) {
-                list.push(undefined)
-            }
-            return list
-        })(),
-    )
+    const pinCodeList = new Array(length).fill(null)
     return (
         <>
             <div className={styles[prefixCls]}>
                 <h1 className={styles[`${prefixCls}__title`]}>pincode</h1>
                 <ol className={styles[`${prefixCls}__con`]}>
-                    {list.map((item, idx) => {
-                        return (
-                            <li
-                                className={classNames(styles[`${prefixCls}__num`], {
-                                    [styles[`${prefixCls}__num--active`]]: value[idx] !== undefined,
-                                })}
-                                key={idx}
-                            ></li>
-                        )
-                    })}
+                    {pinCodeList.map((_, idx) => (
+                        <li
+                            key={idx}
+                            className={classNames(styles[`${prefixCls}__num`], {
+                                [styles[`${prefixCls}__num--active`]]: value[idx] !== undefined,
+                            })}
+                        ></li>
+                    ))}
                 </ol>
             </div>
         </>

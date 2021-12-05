@@ -3,101 +3,92 @@ import "/styles/style.scss"
 import "/styles/reset.css"
 // Import Swiper styles
 import "swiper/swiper.scss"
-import * as React from "react"
-import App, { AppInitialProps, AppContext } from "next/app"
-import { withRouter } from "next/router"
+import { AppInitialProps, AppContext, AppProps } from "next/app"
+import { useRouter } from "next/router"
 import { ThemeProvider } from "styled-components"
-import { connect, ReactReduxContext } from "react-redux"
+import { ReactReduxContext, useSelector } from "react-redux"
 import { PersistGate } from "redux-persist/integration/react"
 import { CSSTransition, TransitionGroup } from "react-transition-group"
 import { appWithTranslation } from "next-i18next"
+import { NextComponentType } from "next"
+import { createRef, useEffect, useState } from "react"
 // #endregion Global Imports
 
 // #region Local Imports
 import { ThemeObj, ThemeType } from "@Definitions/Styled"
-import { AppWithStore } from "@Interfaces"
 import { RootState, wrapper } from "@Redux"
 import TheLayout, { LayoutCode } from "@Components/Layout"
 import "@Services/API/DateFormat"
 // #endregion Local Imports
 
-class WebApp extends App<AppWithStore> {
-    layoutRef: React.RefObject<HTMLDivElement>
-    constructor(props: any) {
-        super(props)
-        this.layoutRef = React.createRef()
-        this.state = {
-            nextPathname: this.formatPathname(this.props.router.pathname),
-            prevPathname: this.formatPathname(this.props.router.pathname),
-        }
-    }
-    static async getInitialProps({ Component, ctx }: AppContext): Promise<AppInitialProps> {
-        const pageProps = Component.getInitialProps ? await Component.getInitialProps(ctx) : {}
+const formatPathname = (url: string) =>
+    url
+        .replace(/\/[0-9]{1,}/g, "") //seq 제거
+        .replace("/en", "") //locale 제거
+        .replace("/[seq]", "") //seq 제거2
+        .replace(/\/$/g, "") //마지막 / 제거
+        .split("?")[0] //query string 제거
+const WebApp: NextComponentType<AppContext, AppInitialProps, AppProps> = ({ Component, pageProps }) => {
+    const router = useRouter()
+    const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
+        app: appReducer,
+        acFile: acFileReducer,
+    }))
+    const [nextPathname, setNextPathname] = useState<string>(formatPathname(router.pathname))
+    const [prevPathname, setPrevPathname] = useState<string>(formatPathname(router.pathname))
+    const layoutRef = createRef()
+    const AppLayout = TheLayout[pageProps?.layout || LayoutCode.Default]
+    const theme = ThemeObj[ThemeType[app.sel_theme || ""] || ThemeType.DEFAULT]
 
-        return { pageProps: pageProps }
-    }
-    formatPathname = (url: string) => {
-        return url
-            .replace(/[0-9]{1,}\//g, "")
-            .replace("/[seq]", "")
-            .replace("en/", "")
-    }
-    handleRouteChange = (url: string) => {
-        this.setState({
-            ...this.state,
-            nextPathname: this.formatPathname(url.split("?")[0]),
-            prevPathname: this.formatPathname(this.props.router.pathname),
+    const handleRouteChange = (url: string) =>
+        setNextPathname((prevPathname) => {
+            setPrevPathname(prevPathname)
+            return formatPathname(url)
         })
-    }
-    componentDidMount() {
-        this.props.router.events.on("routeChangeStart", this.handleRouteChange)
-    }
-    componentWillUnmount() {
-        this.props.router.events.off("routeChangeStart", this.handleRouteChange)
-    }
-    render() {
-        const { Component, pageProps, router, app }: any = this.props
-        const { nextPathname, prevPathname }: any = this.state
-        const AppLayout = TheLayout[pageProps?.layout || LayoutCode.Default]
-        const theme = ThemeObj[ThemeType[app.sel_theme] || ThemeType.DEFAULT]
-
-        return (
-            <ThemeProvider theme={theme}>
-                <ReactReduxContext.Consumer>
-                    {({ store }: any) => (
-                        <PersistGate
-                            persistor={store.__persistor}
-                            loading={
-                                <div className="l_loading">
-                                    <img src="/static/images/splash_bg.svg" alt="내가 기억할개" />
+    useEffect(() => {
+        router.events.on("routeChangeStart", handleRouteChange)
+        return () => {
+            router.events.off("routeChangeStart", handleRouteChange)
+        }
+    }, [])
+    return (
+        <ThemeProvider theme={theme}>
+            <ReactReduxContext.Consumer>
+                {({ store }: any) => (
+                    <PersistGate
+                        persistor={store.__persistor}
+                        loading={
+                            <div className="l_loading">
+                                <img src="/static/images/splash_bg.svg" alt="내가 기억할개" />
+                            </div>
+                        }
+                    >
+                        <TransitionGroup className="l_transition-wrap">
+                            <CSSTransition
+                                key={router.pathname}
+                                timeout={{
+                                    enter: 300,
+                                    exit: 299,
+                                }}
+                                classNames={pageProps?.transition || ""}
+                            >
+                                <div className={"l_transition " + nextPathname + "-from-" + prevPathname}>
+                                    <AppLayout {...pageProps} ref={layoutRef}>
+                                        <Component {...pageProps} layoutRef={layoutRef} />
+                                    </AppLayout>
                                 </div>
-                            }
-                        >
-                            <TransitionGroup className="l_transition-wrap">
-                                <CSSTransition
-                                    key={router.pathname}
-                                    timeout={{
-                                        enter: 300,
-                                        exit: 290,
-                                    }}
-                                    classNames={pageProps?.transition || ""}
-                                >
-                                    <div className={"l_transition " + nextPathname + "From" + prevPathname}>
-                                        <AppLayout {...pageProps} ref={this.layoutRef}>
-                                            <Component {...pageProps} layoutRef={this.layoutRef} />
-                                        </AppLayout>
-                                    </div>
-                                </CSSTransition>
-                            </TransitionGroup>
-                        </PersistGate>
-                    )}
-                </ReactReduxContext.Consumer>
-            </ThemeProvider>
-        )
-    }
+                            </CSSTransition>
+                        </TransitionGroup>
+                    </PersistGate>
+                )}
+            </ReactReduxContext.Consumer>
+        </ThemeProvider>
+    )
 }
-const mapStateToProps = (state: RootState) => ({
-    app: state.appReducer,
-})
+WebApp.getInitialProps = async ({ Component, ctx }: AppContext): Promise<AppInitialProps> => {
+    const pageProps = Component.getInitialProps ? await Component.getInitialProps(ctx) : {}
 
-export default wrapper.withRedux(connect(mapStateToProps)(withRouter(appWithTranslation(WebApp))))
+    return { pageProps: pageProps }
+}
+
+export default wrapper.withRedux(appWithTranslation(WebApp))

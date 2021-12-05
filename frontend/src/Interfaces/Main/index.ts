@@ -24,3 +24,10 @@ export interface AcFile {
     list: Account[]
     sortType: sortType
 }
+
+export interface RNFile {
+    filepath: string
+    filename: string
+    timer: NodeJS.Timeout | null
+    mTime: string
+}

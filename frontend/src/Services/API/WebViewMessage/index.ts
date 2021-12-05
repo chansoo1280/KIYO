@@ -1,10 +1,10 @@
-import { RN_API } from "@Definitions/MainConsts"
+import { RN_API, RN_API_RES_TYPES } from "@Definitions/MainConsts"
 declare global {
     interface Window {
         ReactNativeWebView: any
     }
 }
-export const WebViewMessage = async (type: string, data?: any): Promise<any> => {
+export const WebViewMessage = async <T extends RN_API>(type: RN_API, data?: any): Promise<RN_API_RES_TYPES[T] | null> => {
     return new Promise((resolve, reject) => {
         if (!window.ReactNativeWebView) {
             alert("ReactNativeWebView 객체가 없습니다.")
