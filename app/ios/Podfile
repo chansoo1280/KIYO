@@ -15,9 +15,6 @@ target 'app' do
   )
 
 
-  pod 'RNFS', :path => '../node_modules/react-native-fs'
-
-  pod 'react-native-static-server', :path => '../node_modules/react-native-static-server'
 
   target 'appTests' do
     inherit! :complete
