@@ -296,7 +296,7 @@ const App = () => {
               });
             const result = await Share.open({
               url: 'file://' + targetPath,
-              title: '내가 기억할개 파일 내보내기',
+              title: 'KIYO 파일 내보내기',
             }).catch(err => {
               err && console.log(err);
               return err;
