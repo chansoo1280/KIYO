@@ -326,19 +326,19 @@ const App = () => {
               (err, result) => result,
             );
             const list = await readFile(filepath, pincode);
-            const filepath = await createFile(
+            const newFilepath = await createFile(
               directoryUriEnd,
               filename,
               JSON.stringify(list),
               pincode,
             );
-            if (filepath) {
+            if (newFilepath) {
               ToastAndroid.show('백업 완료', ToastAndroid.SHORT);
             }
             webview.current.postMessage(
               JSON.stringify({
                 type: RN_API.BACKUP_FILE,
-                data: !!filepath,
+                data: !!newFilepath,
               }),
             );
             break;
