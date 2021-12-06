@@ -5,7 +5,7 @@ export const WebViewWrapper = props => {
   const {webview, onMessage, canGoBack} = props;
   let exitAppTimeout = null;
   let exitApp = false;
-  const url = 'https://am.chansoo1280.site/';
+  const url = __DEV__ ? 'http://172.30.1.40:3000/' : 'https://am.chansoo1280.site/';
   // const url = __DEV__
   //   ? 'http://192.168.0.64:3000/'
   //   : 'https://am.chansoo1280.site/';
