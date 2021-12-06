@@ -80,7 +80,7 @@
 
 ### Built With
 
-react native와 next.js로 이루어진 웹앱입니다!
+**React Native**와 **Next.js**(typescript)로 이루어진 웹앱입니다!
 
 - [React Native](https://reactnative.dev/)
 - [Next.js](https://nextjs.org/)
@@ -88,7 +88,7 @@ react native와 next.js로 이루어진 웹앱입니다!
 
 서버는 aws의 EKS를 사용하여 운영중입니다.
 
-- [aws](https://aws.amazon.com/ko/?nc2=h_lg)
+- [AWS](https://aws.amazon.com/ko/?nc2=h_lg)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -96,28 +96,102 @@ react native와 next.js로 이루어진 웹앱입니다!
 
 ### Prerequisites
 
-- node.js 설치가 필요합니다.
+- [Node.js](https://nodejs.org/ko/)
 
 ### Installation
 
 #### 웹 서버 실행하기
 
-    1. `cd ${project root}/frontend`
-    2. `npm i`
-    3. `npm run dev` or `npm run build && npm run start`
-    4. localhost:3000 or localhost:10010로 접속
+1. 프로젝트 경로 이동
+   ```sh
+   cd ${project root}/frontend
+   ```
+2. npm packages 설치
+   ```sh
+   npm i
+   ```
+3. 개발서버/운영서버 실행
+   ```sh
+   npm run dev
+   # or
+   npm run build && npm run start
+   ```
+4. [localhost:3000](http://localhost:3000/) or [localhost:10010](http://localhost:10010/)로 접속
 
 #### 앱 실행하기
 
+1. 프로젝트 경로 이동
+   ```sh
+   cd ${project root}/app
+   ```
+2. npm packages 설치
+   ```sh
+   npm i
+   #if ios
+   cd ios
+   pod install
+   ```
+3. 개발서버 실행
+   ```sh
+   npm run android
+   #if ios
+   npm run ios
+   ```
+
 #### 앱 빌드하기
+
+1. 프로젝트 경로 이동
+   ```sh
+   cd ${project root}/app
+   ```
+2. npm packages 설치
+   ```sh
+   npm i
+   #if ios
+   cd ios
+   pod install
+   ```
+3. 빌드
+   ```sh
+   cd android
+   ./gradlew assembleRelease
+   #/app/android/app/build/outputs/apk 여기 경로에 .apk 파일이 생성됩니다.
+   ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Usage
 
+1. 계정목록을 저장할 폴더 선택하기
+2. 계정목록 파일 만들기
+3. 계정정보를 등록하기
+4. enjoy!
+
+### 백업
+
+1. 핀번호 입력 후 설정으로 이동
+2. 파일 백업하기 버튼 클릭
+3. 파일 이름 입력 후 완료 버튼 클릭
+
+### 복원
+
+1. 핀번호 입력 후 설정으로 이동
+2. 파일 가져오기 버튼 클릭
+3. 사용할 파일 선택
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Roadmap
+
+- [ ] Add Ios 지원
+- [ ] Add back to top link
+- [ ] Add Theme
+  - [ ] default
+  - [ ] dark
+  - [ ] color
+- [ ] Multi-language Support
+  - [ ] en
+  - [ ] jp
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -125,20 +199,22 @@ react native와 next.js로 이루어진 웹앱입니다!
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-## Contributing
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 ## License
+
+프로젝트의 무단 복사/배포를 금지합니다.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Contact
 
+chansoo kim - chansoo1280@naver.com
+Project Link: [https://github.com/chansoo1280/account-manager](https://github.com/chansoo1280/account-manager)
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Acknowledgments
 
-- [xeicon](#a)
+- [XEIcon](https://xpressengine.github.io/XEIcon/)
+- [figma](https://www.figma.com/)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
