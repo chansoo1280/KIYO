@@ -1,4 +1,4 @@
-package com.app;
+package site.chansoo1280.am;
 import expo.modules.ReactActivityDelegateWrapper;
 import com.facebook.react.ReactActivityDelegate;
 

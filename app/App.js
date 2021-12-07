@@ -1,9 +1,8 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import Share from 'react-native-share';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
-import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
-import {ToastAndroid, PermissionsAndroid} from 'react-native';
+import {ToastAndroid} from 'react-native';
 import {
   WebViewWrapper,
   readDir,
@@ -66,8 +65,6 @@ const App = () => {
     const fileList = decodeURI(filepath).split('%2F');
     return (fileList && fileList[fileList.length - 1]) || '';
   };
-  useEffect(() => {}, []);
-
   return (
     <WebViewWrapper
       onMessage={async message => {
@@ -287,20 +284,9 @@ const App = () => {
               'filepath',
               (err, result) => result,
             );
-            console.log(filepath);
             const realPath = await RNGRP.getRealPathFromURI(filepath);
-            const targetPath = realPath.replace(extension, '.zip');
-
-            await zip(realPath, targetPath)
-              .then(path => {
-                console.log(`zip completed at ${path}`);
-              })
-              .catch(error => {
-                console.error(error);
-              });
             const result = await Share.open({
-              url: 'file://' + targetPath,
-              title: 'KIYO 파일 내보내기',
+              url: 'file://' + realPath,
             }).catch(err => {
               err && console.log(err);
               return err;
