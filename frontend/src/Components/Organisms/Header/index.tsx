@@ -16,27 +16,27 @@ interface Props {
 }
 const Header = (props: Props): JSX.Element => {
     const { prefix, title, centerTitle, noMargin, children } = props
-    const [ScrollToTop, setScrollToTop] = useState(0)
-    const [isScrollToTop, setIsScrollToTop] = useState(false)
-    const refContainer = useRef(null)
-    let scrollTop = 0
-    useEffect(() => {
-        if (refContainer !== null) {
-            const ref = refContainer.current as unknown as HTMLElement
-            const wrapEl = ref.parentElement as HTMLElement
-            wrapEl.addEventListener("scroll", (e) => {
-                setIsScrollToTop(wrapEl.scrollTop - scrollTop < 0)
-                scrollTop = wrapEl.scrollTop
-                setScrollToTop(wrapEl.scrollTop)
-            })
-        }
-    }, [])
+    // const [ScrollToTop, setScrollToTop] = useState(0)
+    // const [isScrollToTop, setIsScrollToTop] = useState(false)
+    // const refContainer = useRef(null)
+    // let scrollTop = 0
+    // useEffect(() => {
+    //     if (refContainer !== null) {
+    //         const ref = refContainer.current as unknown as HTMLElement
+    //         const wrapEl = ref.parentElement as HTMLElement
+    //         wrapEl.addEventListener("scroll", (e) => {
+    //             setIsScrollToTop(wrapEl.scrollTop - scrollTop < 0)
+    //             scrollTop = wrapEl.scrollTop
+    //             setScrollToTop(wrapEl.scrollTop)
+    //         })
+    //     }
+    // }, [])
     return (
         <header
-            ref={refContainer}
+            // ref={refContainer}
             className={classNames({
                 [styles["header"]]: true,
-                [styles["header--hide"]]: 100 < ScrollToTop && isScrollToTop === false,
+                // [styles["header--hide"]]: 100 < ScrollToTop && isScrollToTop === false,
                 [styles["header--no-margin"]]: noMargin,
             })}
         >

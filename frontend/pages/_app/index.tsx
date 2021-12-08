@@ -68,7 +68,7 @@ const WebApp: NextComponentType<AppContext, AppInitialProps, AppProps> = ({ Comp
                                 key={router.pathname}
                                 timeout={{
                                     enter: 300,
-                                    exit: 299,
+                                    exit: 300,
                                 }}
                                 classNames={pageProps?.transition || ""}
                             >

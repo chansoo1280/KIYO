@@ -4,6 +4,7 @@ import {StorageAccessFramework} from 'expo-file-system';
 
 //readDir(dirpath: string)
 const filetype = 'utf8';
+const secret = 'as@#dfasd';
 
 export const readDir = directoryUri => {
   console.log(directoryUri);
@@ -24,14 +25,23 @@ export const readFile = (filepath, pincode) => {
   })
     .then(contents => {
       console.log(contents);
-      const originalText = CryptoJS.AES.decrypt(contents, pincode).toString(
-        CryptoJS.enc.Utf8,
-      );
+      let originalText = '';
+      try {
+        originalText = CryptoJS.AES.decrypt(contents, secret + pincode).toString(
+          CryptoJS.enc.Utf8,
+        );
+      } catch (error) {
+        console.error(error);
+        originalText = CryptoJS.AES.decrypt(contents, pincode).toString(
+          CryptoJS.enc.Utf8,
+        );
+      }
       console.log('originalText : ' + originalText);
       return JSON.parse(originalText);
     })
     .catch(err => {
       console.log(err);
+
       return false;
     });
 };
@@ -74,7 +84,7 @@ export const createFile = (directoryUri, fileName, contents, pincode) => {
     .then(filepath => {
       return StorageAccessFramework.writeAsStringAsync(
         filepath,
-        CryptoJS.AES.encrypt(contents, pincode).toString(),
+        CryptoJS.AES.encrypt(contents, secret + pincode).toString(),
         {encoding: filetype},
       ).then(() => {
         return filepath;
@@ -93,7 +103,7 @@ export const modifyFile = (filepath, contents, pincode) => {
   // console.log(filepath, contents, pincode);
   return StorageAccessFramework.writeAsStringAsync(
     filepath,
-    CryptoJS.AES.encrypt(contents, pincode).toString(),
+    CryptoJS.AES.encrypt(contents, secret + pincode).toString(),
     {encoding: filetype},
   )
     .then(() => {

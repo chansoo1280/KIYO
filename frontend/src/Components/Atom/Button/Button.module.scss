@@ -43,10 +43,10 @@
             &.#{$theme-name}-#{$btn-prefix-cls}--default {
                 background: #fff;
                 border: 1px solid #d0d9e4;
-                border-radius: 50%;
                 box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
             }
         }
+        
         &--flex {
             min-width: unset;
             flex: 1;
@@ -91,6 +91,9 @@
             min-width: unset;
             padding: 0;
             box-shadow: none;
+        }
+        &--round{
+            border-radius: $border-radius-base;
         }
         &--circle {
             border-radius: 50%;

@@ -19,6 +19,7 @@
     "react": "17.0.2",
     "react-native": "0.66.1",
     "react-native-crypto-js": "^1.0.0",
+    "react-native-fs": "^2.18.0",
     "react-native-get-real-path": "github:Wraptime/react-native-get-real-path",
     "react-native-share": "^7.2.1",
     "react-native-webview": "^11.14.1",
