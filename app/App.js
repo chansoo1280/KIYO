@@ -241,7 +241,7 @@ const App = () => {
               JSON.stringify({
                 type: RN_API.GET_FILE_LIST,
                 data: {
-                  dirpath: directoryUri,
+                  dirpath: filenames.length?decodeURIComponent(filenames[0]).split('/').slice(0, -1).join('/'):directoryUri,
                   list: fileList,
                 },
               }),

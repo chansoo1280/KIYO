@@ -134,11 +134,11 @@ const Page = (): JSX.Element => {
                     <Title as="h3">파일 백업</Title>
                 </SettingList.Item>
                 <SettingList.Item onClick={() => router.push("/files", "/files")}>
-                    <Title as="h3">파일 복원</Title>
+                    <Title as="h3">파일 변경</Title>
                 </SettingList.Item>
-                <SettingList.Item onClick={() => shareFile()}>
+                {/* <SettingList.Item onClick={() => shareFile()}>
                     <Title as="h3">파일 내보내기(공유)</Title>
-                </SettingList.Item>
+                </SettingList.Item> */}
                 <SettingList.Item
                     onClick={() =>
                         setModalSetPincode({
