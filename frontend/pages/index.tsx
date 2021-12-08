@@ -3,11 +3,10 @@ import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
-import { serverSideTranslations } from "next-i18next/serverSideTranslations"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, KeyPad, PinCode, Title, Button, Input, Space, AlertModal } from "@Components"
+import { KeyPad, PinCode, Title, Button, Space, AlertModal } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { RN_API } from "@Definitions"
 import { Account, AcFile } from "@Interfaces"
