@@ -27,7 +27,8 @@ const formatPathname = (url: string) =>
         .replace("/en", "") //locale 제거
         .replace("/[seq]", "") //seq 제거2
         .replace(/\/$/g, "") //마지막 / 제거
-        .split("?")[0] //query string 제거
+        .split("?")[0] || //query string 제거
+    "/"
 const WebApp: NextComponentType<AppContext, AppInitialProps, AppProps> = ({ Component, pageProps }) => {
     const router = useRouter()
     const { app, acFile } = useSelector(({ appReducer, acFileReducer }: RootState) => ({
