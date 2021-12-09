@@ -104,168 +104,168 @@ const Page = (): JSX.Element => {
         }
         setFile(data2)
     }
-    const testList: Account[] = [
-        {
-            idx: 1,
-            id: "123",
-            pw: "12341312",
-            siteName: "1",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 2,
-            id: "123",
-            pw: "12341312",
-            siteName: "2",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 3,
-            id: "123",
-            pw: "12341312",
-            siteName: "3",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 4,
-            id: "123",
-            pw: "12341312",
-            siteName: "4",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 5,
-            id: "123",
-            pw: "12341312",
-            siteName: "5",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 6,
-            id: "123",
-            pw: "12341312",
-            siteName: "6",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 7,
-            id: "123",
-            pw: "12341312",
-            siteName: "7",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 8,
-            id: "123",
-            pw: "12341312",
-            siteName: "8",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 9,
-            id: "123",
-            pw: "12341312",
-            siteName: "9",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 10,
-            id: "123",
-            pw: "12341312",
-            siteName: "10",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 11,
-            id: "123",
-            pw: "12341312",
-            siteName: "11",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 12,
-            id: "123",
-            pw: "12341312",
-            siteName: "12",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 13,
-            id: "123",
-            pw: "12341312",
-            siteName: "13",
-            tags: ["금융"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 14,
-            id: "123",
-            pw: "12341312",
-            siteName: "14",
-            tags: ["게임"],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 15,
-            id: "123",
-            pw: "12341312",
-            siteName: "15",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-        {
-            idx: 16,
-            id: "123",
-            pw: "12341312",
-            siteName: "16",
-            tags: [],
-            modifiedAt: String(new Date()),
-            createdAt: String(new Date()),
-            copiedAt: "",
-        },
-    ]
+    // const testList: Account[] = [
+    //     {
+    //         idx: 1,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "1",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 2,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "2",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 3,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "3",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 4,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "4",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 5,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "5",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 6,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "6",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 7,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "7",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 8,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "8",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 9,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "9",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 10,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "10",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 11,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "11",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 12,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "12",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 13,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "13",
+    //         tags: ["금융"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 14,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "14",
+    //         tags: ["게임"],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 15,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "15",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    //     {
+    //         idx: 16,
+    //         id: "123",
+    //         pw: "12341312",
+    //         siteName: "16",
+    //         tags: [],
+    //         modifiedAt: String(new Date()),
+    //         createdAt: String(new Date()),
+    //         copiedAt: "",
+    //     },
+    // ]
 
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
@@ -337,73 +337,76 @@ const Page = (): JSX.Element => {
             )}
 
             <Space direction="column" padding="0 16px 36px" gap="22px">
-                {testList ? (
-                    getShowAccountList(testList).map((account: Account, idx: number) => (
-                        <AccountCard key={account.idx} account={account}>
-                            <Button
-                                onClick={() => {
-                                    reqCopyPw(account)
-                                }}
-                                icon={
-                                    <i className="xi-documents">
-                                        <span className="ir">copy</span>
-                                    </i>
-                                }
-                            ></Button>
-                            <Button
-                                onClick={() => {
-                                    router.push({
-                                        pathname: "/modify",
-                                        query: {
-                                            idx: account.idx,
-                                        },
-                                    })
-                                }}
-                                icon={
-                                    <i className="xi-pen">
-                                        <span className="ir">modify</span>
-                                    </i>
-                                }
-                            ></Button>
-                        </AccountCard>
-                    ))
-                ) : !acFile.list || acFile.list.length === 0 ? (
-                    filterText === "" ? (
-                        <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
+                {
+                    // testList ? (
+                    //     getShowAccountList(testList).map((account: Account, idx: number) => (
+                    //         <AccountCard key={account.idx} account={account}>
+                    //             <Button
+                    //                 onClick={() => {
+                    //                     reqCopyPw(account)
+                    //                 }}
+                    //                 icon={
+                    //                     <i className="xi-documents">
+                    //                         <span className="ir">copy</span>
+                    //                     </i>
+                    //                 }
+                    //             ></Button>
+                    //             <Button
+                    //                 onClick={() => {
+                    //                     router.push({
+                    //                         pathname: "/modify",
+                    //                         query: {
+                    //                             idx: account.idx,
+                    //                         },
+                    //                     })
+                    //                 }}
+                    //                 icon={
+                    //                     <i className="xi-pen">
+                    //                         <span className="ir">modify</span>
+                    //                     </i>
+                    //                 }
+                    //             ></Button>
+                    //         </AccountCard>
+                    //     ))
+                    // ) :
+                    !acFile.list || acFile.list.length === 0 ? (
+                        filterText === "" ? (
+                            <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
+                        ) : (
+                            <span>검색된 계정 정보가 없습니다!</span>
+                        )
                     ) : (
-                        <span>검색된 계정 정보가 없습니다!</span>
+                        getShowAccountList(acFile.list).map((account) => (
+                            <AccountCard key={account.idx} account={account}>
+                                <Button
+                                    onClick={() => {
+                                        reqCopyPw(account)
+                                    }}
+                                    icon={
+                                        <i className="xi-documents">
+                                            <span className="ir">copy</span>
+                                        </i>
+                                    }
+                                ></Button>
+                                <Button
+                                    onClick={() => {
+                                        router.push({
+                                            pathname: "/modify",
+                                            query: {
+                                                idx: account.idx,
+                                            },
+                                        })
+                                    }}
+                                    icon={
+                                        <i className="xi-pen">
+                                            <span className="ir">modify</span>
+                                        </i>
+                                    }
+                                ></Button>
+                            </AccountCard>
+                        ))
                     )
-                ) : (
-                    getShowAccountList(acFile.list).map((account) => (
-                        <AccountCard key={account.idx} account={account}>
-                            <Button
-                                onClick={() => {
-                                    reqCopyPw(account)
-                                }}
-                                icon={
-                                    <i className="xi-documents">
-                                        <span className="ir">copy</span>
-                                    </i>
-                                }
-                            ></Button>
-                            <Button
-                                onClick={() => {
-                                    router.push({
-                                        pathname: "/modify",
-                                        query: {
-                                            idx: account.idx,
-                                        },
-                                    })
-                                }}
-                                icon={
-                                    <i className="xi-pen">
-                                        <span className="ir">modify</span>
-                                    </i>
-                                }
-                            ></Button>
-                        </AccountCard>
-                    ))
-                )}
+                }
 
                 {/* {getShowAccountList(testList).map((account: Account, idx: number) => (
                     <AccountCard
