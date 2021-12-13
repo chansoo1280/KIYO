@@ -47,7 +47,6 @@ const App = () => {
 		return false;
 	};
 	const setDirectoryUri = async () => {
-		console.warn(StorageAccessFramework);
 		const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync().catch((e) => alert(e));
 		if (permissions.granted) {
 			// Gets SAF URI from response
