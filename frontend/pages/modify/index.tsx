@@ -6,9 +6,9 @@ import { useRouter } from "next/router"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Title, Space, Button, RecommendInput, Input, Tag } from "@Components"
+import { Header, Space, Button, RecommendInput, Input, Tag } from "@Components"
 import { AcFileActions, RootState } from "@Redux"
-import { Account, AcFile } from "@Interfaces"
+import { Account } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
@@ -56,6 +56,7 @@ const Page = (): JSX.Element => {
             return
         }
         setFile(data)
+        router.back()
     }
 
     const modifyAccount = async () => {

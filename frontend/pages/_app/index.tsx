@@ -60,7 +60,7 @@ const WebApp: NextComponentType<AppContext, AppInitialProps, AppProps> = ({ Comp
                         persistor={store.__persistor}
                         loading={
                             <div className="l_loading">
-                                <img src="/static/images/splash_bg.svg" alt="내가 기억할개" />
+                                <img src="/static/images/splash_bg.svg" alt="KIYO" />
                             </div>
                         }
                     >

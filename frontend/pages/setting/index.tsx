@@ -22,6 +22,16 @@ const Page = (): JSX.Element => {
         acFile: acFileReducer,
     }))
 
+    const [modalSetFilename, setModalSetFilename] = useState({
+        show: false,
+        inputFilename: "",
+    })
+
+    const [modalBackupFile, setModalBackupFile] = useState({
+        show: false,
+        inputFilename: "",
+    })
+
     const [modalSetPincode, setModalSetPincode] = useState({
         show: false,
         inputPincode: "",
@@ -105,30 +115,35 @@ const Page = (): JSX.Element => {
             <SettingList>
                 <SettingList.Item>
                     <Title as="h3">앱 평가</Title>
+                    <SettingList.Text>
+                        <a href="javascript:alert('준비중입니다.');">바로가기</a>
+                    </SettingList.Text>
                 </SettingList.Item>
-                <SettingList.Item>
+                {/* <SettingList.Item>
                     <Title as="h3">사용방법</Title>
                 </SettingList.Item>
                 <SettingList.Item>
                     <Title as="h3">문의하기</Title>
-                </SettingList.Item>
+                </SettingList.Item> */}
             </SettingList>
             <SettingList.Title as="h2">데이터</SettingList.Title>
             <SettingList>
                 <SettingList.Item
                     onClick={() => {
-                        const newFilename = prompt("파일 이름 입력")
-                        if (!newFilename) return
-                        editFilename(newFilename)
+                        setModalSetFilename({
+                            show: true,
+                            inputFilename: "",
+                        })
                     }}
                 >
                     <Title as="h3">파일 이름변경</Title>
                 </SettingList.Item>
                 <SettingList.Item
                     onClick={() => {
-                        const newFilename = prompt("백업 파일 이름 입력")
-                        if (!newFilename) return
-                        backupFile(newFilename)
+                        setModalBackupFile({
+                            show: true,
+                            inputFilename: "",
+                        })
                     }}
                 >
                     <Title as="h3">파일 백업</Title>
@@ -161,11 +176,16 @@ const Page = (): JSX.Element => {
                 </SettingList.Item>
             </SettingList>
             <SettingList>
-                <SettingList.Item>
+                {/* <SettingList.Item>
                     <Title as="h3">이용약관</Title>
-                </SettingList.Item>
+                </SettingList.Item> */}
                 <SettingList.Item>
                     <Title as="h3">개인정보처리방침</Title>
+                    <SettingList.Text>
+                        <a href="https://chansoo1280.site/privacy/account-manager/" target="_blank">
+                            새창으로 보기
+                        </a>
+                    </SettingList.Text>
                 </SettingList.Item>
             </SettingList>
             <SettingList.Title as="h2">앱정보</SettingList.Title>
@@ -179,6 +199,80 @@ const Page = (): JSX.Element => {
                     0.0.1
                 </SettingList.Item>
             </SettingList>
+            <ConfirmModal
+                title="파일 이름 변경"
+                show={modalSetFilename.show}
+                cancelButtonProps={{
+                    onClick: () => {
+                        setModalSetFilename((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
+                }}
+                okButtonProps={{
+                    onClick: () => {
+                        setModalSetFilename((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                        if (modalSetFilename.inputFilename.length === 0) {
+                            alert("변경하실 파일명을 입력해주세요.")
+                            return
+                        }
+                        editFilename(modalSetFilename.inputFilename)
+                    },
+                }}
+            >
+                <Input
+                    type="text"
+                    placeholder="확장자(.txt)는 빼고 입력해주세요."
+                    value={modalSetFilename.inputFilename}
+                    onChange={(e) => {
+                        setModalSetFilename((prevState) => ({
+                            ...prevState,
+                            inputFilename: e.target.value,
+                        }))
+                    }}
+                ></Input>
+            </ConfirmModal>
+            <ConfirmModal
+                title="파일 백업"
+                show={modalBackupFile.show}
+                cancelButtonProps={{
+                    onClick: () => {
+                        setModalBackupFile((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                    },
+                }}
+                okButtonProps={{
+                    onClick: () => {
+                        setModalBackupFile((prevState) => ({
+                            ...prevState,
+                            show: false,
+                        }))
+                        if (modalBackupFile.inputFilename.length === 0) {
+                            alert("파일명을 입력해주세요.")
+                            return
+                        }
+                        backupFile(modalBackupFile.inputFilename)
+                    },
+                }}
+            >
+                <Input
+                    type="text"
+                    placeholder="확장자(.txt)는 빼고 입력해주세요."
+                    value={modalBackupFile.inputFilename}
+                    onChange={(e) => {
+                        setModalBackupFile((prevState) => ({
+                            ...prevState,
+                            inputFilename: e.target.value,
+                        }))
+                    }}
+                ></Input>
+            </ConfirmModal>
             <ConfirmModal
                 title="핀코드 변경"
                 show={modalSetPincode.show}
