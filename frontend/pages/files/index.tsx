@@ -42,7 +42,16 @@ const Page = (): JSX.Element => {
     const setDir = async () => {
         const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR)
         if (data === null) return
-        getFileList()
+        setDirpath(decodeURIComponent(data.dirpath))
+        setFileList(
+            (data.list &&
+                data.list.map((fileInfo) => ({
+                    ...fileInfo,
+                    timer: null,
+                    isAction: false,
+                }))) ||
+                [],
+        )
     }
     const changeFile = async () => {
         if (selFile === null) {
