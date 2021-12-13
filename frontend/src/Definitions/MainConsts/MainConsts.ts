@@ -20,8 +20,8 @@ export type RN_API = typeof RN_API[keyof typeof RN_API]
 
 export type RN_API_RES_TYPES = {
     [RN_API.SET_DIR]: {
-        filepath: string
-        filename: string
+        dirpath: string
+        list: RNFile[]
     }
     [RN_API.SET_COPY]: boolean
     [RN_API.SET_SEL_FILENAME]: boolean
