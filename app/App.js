@@ -86,7 +86,7 @@ const App = () => {
 							webview.current.postMessage(
 								JSON.stringify({
 									type: RN_API.GET_VERSION,
-									data: '1.6'
+									data: '1.7'
 								})
 							);
 							break;

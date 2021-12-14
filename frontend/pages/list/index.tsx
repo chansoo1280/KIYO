@@ -36,10 +36,10 @@ const Page = (): JSX.Element => {
         const tags = getShowAccountList(acFile.list).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
         return list
             .filter(({ name }) => tags.includes(name))
-            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) // 이름순 정렬
+            .sort((a, b) => (a.name > b.name ? -1 : a.name < b.name ? 1 : 0)) // 이름순 정렬 ㄱㄴㄷ
             .sort((a, b) => (isNaN(Number(a.name)) ? -1 : isNaN(Number(b.name)) ? 1 : 0)) // 숫자는 뒤로
             .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)) // 선택된 태그를 앞으로
-            .slice(0, 5)
+            .slice(0, 6)
     }
     const sortList = [
         {
