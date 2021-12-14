@@ -289,7 +289,7 @@ const Page = (): JSX.Element => {
             </Header>
             <Space padding="166px 16px 0" background="url(/static/images/bg_list.png)no-repeat right/auto 165px"></Space>
             <Sticky top="10px">
-                <Search id="search" value={search} setValue={setSearch} searchValue={filterText} onSearch={setFilterText}>
+                <Search id="search" value={search} setValue={setSearch} onSearch={setFilterText}>
                     <Button
                         size="lg"
                         type="default"

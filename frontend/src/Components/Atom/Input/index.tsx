@@ -1,13 +1,27 @@
 // #region Global Imports
 import { Button } from "@Components"
 import classNames from "classnames"
-import React, { ChangeEvent, Dispatch, ForwardedRef, forwardRef, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactNode, RefObject, SetStateAction, useCallback, useState } from "react"
+import React, {
+    ChangeEvent,
+    Dispatch,
+    FocusEventHandler,
+    ForwardedRef,
+    forwardRef,
+    KeyboardEventHandler,
+    MouseEventHandler,
+    MutableRefObject,
+    ReactNode,
+    RefObject,
+    SetStateAction,
+    useCallback,
+    useState,
+} from "react"
 // #endregion Global Imports
 
 // #region Local Imports
 import styles from "./Input.module.scss"
 // #endregion Local Imports
-interface Props {
+export interface InputProps {
     children?: ReactNode
     type?: "text" | "email" | "password" | "search" | "number"
     size?: "sm" | "lg"
@@ -16,16 +30,19 @@ interface Props {
     setValue?: Dispatch<SetStateAction<string>>
     onChange?: (e: ChangeEvent<HTMLInputElement>) => void
     onEnter?: KeyboardEventHandler
+    onFocus?: FocusEventHandler
+    onBlur?: (e: any) => void
     onReset?: () => void
     readOnly?: boolean
+    cover?: boolean
     className?: string
     id?: string
     prefix?: ReactNode
     placeholder?: string
 }
 
-const Input = forwardRef((props: Props, ref: ForwardedRef<HTMLInputElement>): JSX.Element => {
-    const { id, prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, placeholder, ...rest } = props
+const Input = forwardRef((props: InputProps, ref: ForwardedRef<HTMLInputElement>): JSX.Element => {
+    const { id, prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, cover, placeholder, ...rest } = props
     const [isShowPw, setIsShowPw] = useState(false)
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value: string = e.target.value || ""
@@ -38,6 +55,7 @@ const Input = forwardRef((props: Props, ref: ForwardedRef<HTMLInputElement>): JS
                 {
                     [styles[`input-wrap--${size}`]]: size,
                     [styles["input-wrap--readOnly"]]: readOnly,
+                    [styles["input-wrap--cover"]]: cover,
                 },
                 className,
             )}

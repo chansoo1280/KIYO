@@ -1,4 +1,14 @@
 {
   "name": "app",
-  "displayName": "app"
+  "displayName": "app",
+  "android": {
+    "config": {
+      "googleMobileAdsAppId": "ca-app-pub-1378042447494891~9239818391"
+    }
+  },
+  "ios": {
+    "config": {
+      "googleMobileAdsAppId": "ca-app-pub-1378042447494891~9239818391"
+    }
+  }
 }

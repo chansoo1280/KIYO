@@ -7,7 +7,7 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "build": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/",
-    "build:android": "cd android && ./gradlew assembleRelease",
+    "bundle:android": "cd android && ./gradlew bundleRelease",
     "test": "jest",
     "lint": "eslint ."
   },
@@ -24,7 +24,8 @@
     "react-native-get-real-path": "github:Wraptime/react-native-get-real-path",
     "react-native-share": "^7.2.1",
     "react-native-webview": "^11.14.1",
-    "react-native-zip-archive": "^6.0.5"
+    "react-native-zip-archive": "^6.0.5",
+    "expo-ads-admob": "~11.0.3"
   },
   "devDependencies": {
     "@babel/core": "7.15.8",

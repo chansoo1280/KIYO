@@ -1,26 +1,32 @@
 // #region Global Imports
-import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useEffect, useState } from "react"
+import { Dispatch, ForwardedRef, forwardRef, MouseEventHandler, ReactNode, SetStateAction, useEffect, useRef, useState } from "react"
 import * as Hangul from "hangul-js"
 // #endregion Global Imports
 
 // #region Local Imports
 import styles from "./RecommendInput.module.scss"
-import { Button, Input, Space } from "@Components"
+import { Input } from "@Components"
 import classNames from "classnames"
 import { useTranslation } from "next-i18next"
+import { InputProps } from "@Components/Atom/Input"
 
 // #endregion Local Imports
+interface InputPropsWithRef extends InputProps {
+    ref?: ForwardedRef<HTMLInputElement>
+}
 interface Props {
     children?: ReactNode
-    hide?: boolean
     value?: string
     onClick?: (value: string) => void
     recommendList?: string[]
     className?: string
+    inputProps?: InputPropsWithRef
+    cover?: boolean
 }
 const RecommendInput = (props: Props): JSX.Element => {
-    const { hide, value, onClick, className, children, recommendList = [] } = props
+    const { value, onClick, className, inputProps, recommendList = [], cover } = props
     const { t } = useTranslation("common")
+    const [isFocus, setIsFocus] = useState(false)
     const [showWordList, setShowWordList] = useState<string[]>([])
     useEffect(() => {
         const searcher = new Hangul.Searcher(value || "")
@@ -33,15 +39,31 @@ const RecommendInput = (props: Props): JSX.Element => {
         )
     }, [value])
     return (
-        <div className={classNames(className, styles["recommend-input"])}>
-            {children}
+        <div
+            className={classNames(className, styles["recommend-input"], {
+                [styles["recommend-input--cover"]]: cover,
+            })}
+        >
+            <Input
+                onFocus={() => {
+                    setIsFocus(true)
+                }}
+                onBlur={() => {
+                    setTimeout(() => {
+                        setIsFocus(false)
+                    }, 100) // onClick 지원
+                }}
+                cover={cover}
+                {...inputProps}
+            />
             <ul
                 className={classNames(styles["recommend-input__con"], {
-                    [styles["recommend-input__con--hide"]]: hide === true,
+                    [styles["recommend-input__con--hide"]]: isFocus === false || showWordList.length === 0,
                 })}
             >
                 {showWordList.map((word, idx) => (
                     <li
+                        key={word}
                         className={classNames(styles["recommend-input__list"])}
                         onClick={() => {
                             onClick && onClick(word)
