@@ -42,6 +42,7 @@ const Page = (): JSX.Element => {
     }
 
     const createAccount = async () => {
+        console.log("createAccount")
         if (siteName === "") {
             alert("사이트 명을 입력해주세요.")
             return
@@ -54,7 +55,7 @@ const Page = (): JSX.Element => {
             alert("비밀번호를 입력해주세요.")
             return
         }
-        const idx = acFile.list.map(({ idx }) => idx).reduce((previous, current) => (previous > current ? previous : current)) + 1
+        const idx = acFile.list.length === 0 ? 1 : acFile.list.map(({ idx }) => idx).reduce((previous, current) => (previous > current ? previous : current)) + 1
         const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
             list: [
                 ...acFile.list,
