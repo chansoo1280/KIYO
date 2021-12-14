@@ -1,6 +1,7 @@
 import { Account, AcFile, RNFile } from "@Interfaces"
 
 export const RN_API = {
+    GET_VERSION: "GET_VERSION",
     SET_DIR: "SET_DIR",
     SET_COPY: "SET_COPY",
     SET_SEL_FILENAME: "SET_SEL_FILENAME",
@@ -19,6 +20,7 @@ export const RN_API = {
 export type RN_API = typeof RN_API[keyof typeof RN_API]
 
 export type RN_API_RES_TYPES = {
+    [RN_API.GET_VERSION]: string
     [RN_API.SET_DIR]: {
         dirpath: string
         list: RNFile[]

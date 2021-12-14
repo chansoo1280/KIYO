@@ -8,10 +8,22 @@ import { useRouter } from "next/router"
 // #region Local Imports
 import { Title, Header, Space, Button, SettingList, ConfirmModal, Input } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
-import { Account, AcFile } from "@Interfaces"
+import { AcFile } from "@Interfaces"
 import { RN_API } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
+
+const useAppVersion = () => {
+    const [version, setVerion] = useState<string | null>(null)
+    const setVersion = async () => {
+        const data = await WebViewMessage<typeof RN_API.GET_VERSION>(RN_API.GET_VERSION)
+        setVerion(data)
+    }
+    useEffect(() => {
+        setVersion()
+    }, [])
+    return [version]
+}
 
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
@@ -21,6 +33,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
+    const [version] = useAppVersion()
 
     const [modalSetFilename, setModalSetFilename] = useState({
         show: false,
@@ -70,10 +83,10 @@ const Page = (): JSX.Element => {
         }
     }
 
-    const shareFile = async () => {
-        const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE)
-        if (data === null) return
-    }
+    // const shareFile = async () => {
+    //     const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE)
+    //     if (data === null) return
+    // }
 
     const setPincode = async (newPincode: AcFile["pincode"]) => {
         const data = await WebViewMessage<typeof RN_API.SET_PINCODE>(RN_API.SET_PINCODE, {
@@ -196,7 +209,7 @@ const Page = (): JSX.Element => {
                 </SettingList.Item>
                 <SettingList.Item>
                     <Title as="h3">앱버전</Title>
-                    0.0.1
+                    {version}
                 </SettingList.Item>
             </SettingList>
             <ConfirmModal

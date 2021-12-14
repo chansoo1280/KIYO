@@ -19,6 +19,7 @@ import { StorageAccessFramework } from 'expo-file-system';
 var RNGRP = require('react-native-get-real-path');
 
 const RN_API = {
+	GET_VERSION: 'GET_VERSION',
 	SET_DIR: 'SET_DIR',
 	SET_COPY: 'SET_COPY',
 	SET_FILENAME: 'SET_FILENAME',
@@ -78,6 +79,16 @@ const App = () => {
 					switch (req.type) {
 						case 'Console': {
 							console.info(`[Console] ${JSON.stringify(req.data)}`);
+							break;
+						}
+						case RN_API.GET_VERSION: {
+							console.log(RN_API.GET_VERSION);
+							webview.current.postMessage(
+								JSON.stringify({
+									type: RN_API.GET_VERSION,
+									data: '1.6'
+								})
+							);
 							break;
 						}
 						case RN_API.SET_COPY: {
