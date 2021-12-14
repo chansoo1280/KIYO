@@ -34,6 +34,7 @@ export interface InputProps {
     onBlur?: (e: any) => void
     onReset?: () => void
     readOnly?: boolean
+    cover?: boolean
     className?: string
     id?: string
     prefix?: ReactNode
@@ -41,7 +42,7 @@ export interface InputProps {
 }
 
 const Input = forwardRef((props: InputProps, ref: ForwardedRef<HTMLInputElement>): JSX.Element => {
-    const { id, prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, placeholder, ...rest } = props
+    const { id, prefix, className, value, onClick, setValue, onChange, onEnter, onReset, type, size, readOnly, cover, placeholder, ...rest } = props
     const [isShowPw, setIsShowPw] = useState(false)
     const onChangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value: string = e.target.value || ""
@@ -54,6 +55,7 @@ const Input = forwardRef((props: InputProps, ref: ForwardedRef<HTMLInputElement>
                 {
                     [styles[`input-wrap--${size}`]]: size,
                     [styles["input-wrap--readOnly"]]: readOnly,
+                    [styles["input-wrap--cover"]]: cover,
                 },
                 className,
             )}

@@ -21,9 +21,10 @@ interface Props {
     recommendList?: string[]
     className?: string
     inputProps?: InputPropsWithRef
+    cover?: boolean
 }
 const RecommendInput = (props: Props): JSX.Element => {
-    const { value, onClick, className, inputProps, recommendList = [] } = props
+    const { value, onClick, className, inputProps, recommendList = [], cover } = props
     const { t } = useTranslation("common")
     const [isFocus, setIsFocus] = useState(false)
     const [showWordList, setShowWordList] = useState<string[]>([])
@@ -38,7 +39,11 @@ const RecommendInput = (props: Props): JSX.Element => {
         )
     }, [value])
     return (
-        <div className={classNames(className, styles["recommend-input"])}>
+        <div
+            className={classNames(className, styles["recommend-input"], {
+                [styles["recommend-input--cover"]]: cover,
+            })}
+        >
             <Input
                 onFocus={() => {
                     setIsFocus(true)
@@ -48,6 +53,7 @@ const RecommendInput = (props: Props): JSX.Element => {
                         setIsFocus(false)
                     }, 100) // onClick 지원
                 }}
+                cover={cover}
                 {...inputProps}
             />
             <ul

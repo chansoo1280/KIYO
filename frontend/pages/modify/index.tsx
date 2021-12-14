@@ -9,7 +9,7 @@ import { useRouter } from "next/router"
 import { Header, Space, Button, RecommendInput, Input, Tag } from "@Components"
 import { AcFileActions, RootState } from "@Redux"
 import { Account } from "@Interfaces"
-import { RN_API } from "@Definitions"
+import { RN_API, siteNameRecommendList, tagRecommendList } from "@Definitions"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
@@ -119,11 +119,12 @@ const Page = (): JSX.Element => {
             <Space direction="column" vAlign="flex-start" cover padding="20px 10px 0">
                 <label htmlFor="inputSiteName">사이트명</label>
                 <RecommendInput
+                    cover
                     onClick={(word) => {
                         setSiteName(word)
                     }}
                     value={siteName}
-                    recommendList={Array.from(new Set(["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"].concat(acFile.list.map(({ siteName }) => siteName))))}
+                    recommendList={Array.from(new Set(siteNameRecommendList.concat(acFile.list.map(({ siteName }) => siteName))))}
                     inputProps={{
                         id: "inputSiteName",
                         value: siteName,
@@ -134,6 +135,7 @@ const Page = (): JSX.Element => {
                 ></RecommendInput>
                 <label htmlFor="inputSiteLink">사이트링크</label>
                 <Input
+                    cover
                     id="inputSiteLink"
                     value={siteLink}
                     onChange={(e) => {
@@ -142,6 +144,7 @@ const Page = (): JSX.Element => {
                 />
                 <label htmlFor="inputId">아이디</label>
                 <Input
+                    cover
                     type="email"
                     id="inputId"
                     value={id}
@@ -151,6 +154,7 @@ const Page = (): JSX.Element => {
                 />
                 <label htmlFor="inputPw">비밀번호</label>
                 <Input
+                    cover
                     type="password"
                     id="inputPw"
                     value={pw}
@@ -192,13 +196,14 @@ const Page = (): JSX.Element => {
                     핀번호
                 </Button>
                 <label htmlFor="inputTag">태그</label>
-                <Space>
+                <Space cover>
                     <RecommendInput
+                        cover
                         onClick={(word) => {
                             setInputTag(word)
                         }}
                         value={inputTag}
-                        recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
+                        recommendList={Array.from(new Set(tagRecommendList.concat(acFile.tags)))}
                         inputProps={{
                             id: "inputTag",
                             value: inputTag,

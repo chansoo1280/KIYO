@@ -1,5 +1,8 @@
 .recommend-input {
     position: relative;
+    &--cover{
+        width:100%;
+    }
     &__con {
         z-index: 1;
         position: absolute;
