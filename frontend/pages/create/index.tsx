@@ -102,15 +102,14 @@ const Page = (): JSX.Element => {
                     }}
                     value={siteName}
                     recommendList={Array.from(new Set(["구글(google)", "네이버(naver)", "다음(daum)", "카카오(kakao)", "네이트(nate)"].concat(acFile.list.map(({ siteName }) => siteName))))}
-                >
-                    <Input
-                        id="inputSiteName"
-                        value={siteName}
-                        onChange={(e) => {
+                    inputProps={{
+                        id: "inputSiteName",
+                        value: siteName,
+                        onChange: (e) => {
                             setSiteName(e.target.value)
-                        }}
-                    />
-                </RecommendInput>
+                        },
+                    }}
+                ></RecommendInput>
                 <label htmlFor="inputSiteLink">사이트링크</label>
                 <Input
                     id="inputSiteLink"
@@ -176,22 +175,21 @@ const Page = (): JSX.Element => {
                         }}
                         value={inputTag}
                         recommendList={Array.from(new Set(["즐겨찾기"].concat(acFile.tags)))}
-                    >
-                        <Input
-                            id="inputTag"
-                            value={inputTag}
-                            onChange={(e) => {
+                        inputProps={{
+                            id: "inputTag",
+                            value: inputTag,
+                            onChange: (e) => {
                                 setInputTag(e.target.value)
-                            }}
-                            onEnter={() => {
+                            },
+                            onEnter: () => {
                                 if (inputTag === "") return
                                 const isExist = tags.find((tag) => inputTag === tag)
                                 if (isExist) return
                                 setTags((prevState) => [...prevState, inputTag])
                                 setInputTag("")
-                            }}
-                        />
-                    </RecommendInput>
+                            },
+                        }}
+                    ></RecommendInput>
                     <Button
                         onClick={() => {
                             if (inputTag === "") return
