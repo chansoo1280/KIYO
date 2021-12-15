@@ -93,7 +93,7 @@ const Page = (): JSX.Element => {
         }
         getVersion()
             .then((res) => {
-                if (res !== "1.8") {
+                if (res !== "1.8" && res !== "1.9") {
                     alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
                 }
             })
