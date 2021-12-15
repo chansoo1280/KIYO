@@ -2,21 +2,21 @@
 
 <h1 align="center">KIYO</h1>
 <div align="center">
-  <a href="https://github.com/chansoo1280/account-manager">
+  <a href="https://github.com/chansoo1280/KIYO">
     <img src="https://user-images.githubusercontent.com/62010067/141707497-d6172063-8505-4ffd-adb1-faea3b3f735e.png" alt="KIYO" width="300" height="300">
   </a>
 
   <p align="center">
     통합 계정관리 앱
     <br />
-    <a href="https://github.com/chansoo1280/account-manager"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/chansoo1280/KIYO"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/chansoo1280/account-manager">View Demo</a>
+    <a href="https://github.com/chansoo1280/KIYO">View Demo</a>
     ·
-    <a href="https://github.com/chansoo1280/account-manager/issues">Report Bug</a>
+    <a href="https://github.com/chansoo1280/KIYO/issues">Report Bug</a>
     ·
-    <a href="https://github.com/chansoo1280/account-manager/issues">Request Feature</a>
+    <a href="https://github.com/chansoo1280/KIYO/issues">Request Feature</a>
   </p>
 </div>
 
@@ -211,7 +211,7 @@ http://opensource.org/licenses/mit-license.html
 ## Contact
 
 chansoo kim - chansoo1280@naver.com
-Project Link: [https://github.com/chansoo1280/account-manager](https://github.com/chansoo1280/account-manager)
+Project Link: [https://github.com/chansoo1280/KIYO](https://github.com/chansoo1280/KIYO)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
