@@ -91,13 +91,12 @@ const Page = (): JSX.Element => {
         if (app.sel_lang !== i18n.language) {
             router.replace("/", "/", { locale: app.sel_lang || "ko" })
         }
-        getVersion()
-            .then((res) => {
-                if (res !== "1.8" && res !== "1.9") {
-                    alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
-                }
-            })
-            .then(getFilename)
+        getVersion().then((res) => {
+            if (res !== "1.8" && res !== "1.9") {
+                alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
+            }
+        })
+        getFilename()
     }, [])
     return (
         <>
