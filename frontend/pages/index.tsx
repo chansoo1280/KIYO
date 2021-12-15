@@ -11,19 +11,8 @@ import { RootState, AcFileActions } from "@Redux"
 import { RN_API } from "@Definitions"
 import { Account, AcFile } from "@Interfaces"
 import { WebViewMessage } from "@Services"
+import { useAppVersion } from "@Hooks"
 // #endregion Local Imports
-
-const useAppVersion = () => {
-    const [version, setVerion] = useState<string | null>(null)
-    const setVersion = async () => {
-        const data = await WebViewMessage<typeof RN_API.GET_VERSION>(RN_API.GET_VERSION)
-        setVerion(data)
-    }
-    useEffect(() => {
-        setVersion()
-    }, [])
-    return [version]
-}
 
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
