@@ -86,7 +86,7 @@
 - [Next.js](https://nextjs.org/)
 - [React.js](https://reactjs.org/)
 
-서버는 aws의 EKS를 사용하여 운영중입니다.
+서버는 aws의 EC2를 사용하여 운영중입니다.
 
 - [AWS](https://aws.amazon.com/ko/?nc2=h_lg)
 
@@ -203,7 +203,8 @@
 
 ## License
 
-프로젝트의 무단 복사/배포를 금지합니다.
+KIYO are licensed under the MIT License :
+http://opensource.org/licenses/mit-license.html
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
