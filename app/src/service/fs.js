@@ -28,14 +28,36 @@ export const readFile = (filepath, pincode) => {
 		.then((contents) => {
 			console.log(contents);
 			let originalText = '';
-			originalText = CryptoJS.AES.decrypt(contents, secret + pincode).toString(CryptoJS.enc.Utf8);
-			if (!originalText) {
-				originalText = CryptoJS.AES.decrypt(contents, secret_back + pincode).toString(CryptoJS.enc.Utf8);
+			try {
+				console.log(secret);
+				originalText = CryptoJS.AES.decrypt(contents, secret + pincode).toString(CryptoJS.enc.Utf8);
+			} catch (error) {
+				try {
+					console.log(secret_back);
+					originalText = CryptoJS.AES.decrypt(contents, secret_back + pincode).toString(CryptoJS.enc.Utf8);
+				} catch (error) {
+					console.error('3');
+					originalText = CryptoJS.AES.decrypt(contents, pincode).toString(CryptoJS.enc.Utf8);
+				}
 				if (!originalText) {
-					console.error(error);
+					console.error('3');
 					originalText = CryptoJS.AES.decrypt(contents, pincode).toString(CryptoJS.enc.Utf8);
 				}
 			}
+			if (!originalText) {
+				try {
+					console.log(secret_back);
+					originalText = CryptoJS.AES.decrypt(contents, secret_back + pincode).toString(CryptoJS.enc.Utf8);
+				} catch (error) {
+					console.error('3');
+					originalText = CryptoJS.AES.decrypt(contents, pincode).toString(CryptoJS.enc.Utf8);
+				}
+				if (!originalText) {
+					console.error('3');
+					originalText = CryptoJS.AES.decrypt(contents, pincode).toString(CryptoJS.enc.Utf8);
+				}
+			}
+
 			console.log('originalText : ' + originalText);
 			return JSON.parse(originalText);
 		})
