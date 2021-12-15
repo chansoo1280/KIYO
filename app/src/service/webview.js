@@ -5,8 +5,8 @@ export const WebViewWrapper = (props) => {
 	const { webview, onMessage, canGoBack } = props;
 	let exitAppTimeout = null;
 	let exitApp = false;
-	const url = 'https://am.chansoo1280.site/';
-	// const url = 'http://172.30.1.40:3000/';
+	// const url = 'https://am.chansoo1280.site/';
+	const url = 'http://172.30.1.40:3000/';
 	//   const requestPermissions = async function () {
 	//     if (Platform.OS === 'ios') {
 	//       Geolocation.requestAuthorization();

@@ -47,6 +47,10 @@ const WebApp: NextComponentType<AppContext, AppInitialProps, AppProps> = ({ Comp
             return formatPathname(url)
         })
     useEffect(() => {
+        if (!window.ReactNativeWebView && process.env.NODE_ENV === "production") {
+            window.location.href = "https://chansoo1280.site/"
+            return
+        }
         router.events.on("routeChangeStart", handleRouteChange)
         return () => {
             router.events.off("routeChangeStart", handleRouteChange)

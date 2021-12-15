@@ -13,6 +13,18 @@ import { Account, AcFile } from "@Interfaces"
 import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
+const useAppVersion = () => {
+    const [version, setVerion] = useState<string | null>(null)
+    const setVersion = async () => {
+        const data = await WebViewMessage<typeof RN_API.GET_VERSION>(RN_API.GET_VERSION)
+        setVerion(data)
+    }
+    useEffect(() => {
+        setVersion()
+    }, [])
+    return [version]
+}
+
 const Page = (): JSX.Element => {
     const { t, i18n } = useTranslation("common")
     const router = useRouter()
@@ -21,6 +33,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
+    const [version] = useAppVersion()
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
     const pinCodeLen = 6
     const [showDescBanner, setShowDescBanner] = useState(false)
@@ -90,6 +103,9 @@ const Page = (): JSX.Element => {
             router.replace("/", "/", { locale: app.sel_lang || "ko" })
         }
         getFilename()
+        if (version !== "1.8") {
+            alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
+        }
     }, [])
     return (
         <>
