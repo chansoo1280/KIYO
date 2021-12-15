@@ -154,8 +154,8 @@
 3. 빌드
    ```sh
    cd android
-   ./gradlew assembleRelease
-   #/app/android/app/build/outputs/apk 여기 경로에 .apk 파일이 생성됩니다.
+   ./gradlew bundleRelease
+   #/app/android/app/build/outputs/bundle/release 에 .aab 파일이 생성됩니다.
    ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -176,8 +176,8 @@
 ### 복원
 
 1. 핀번호 입력 후 설정으로 이동
-2. 파일 가져오기 버튼 클릭
-3. 사용할 파일 선택
+2. 파일 변경 버튼 클릭
+3. 사용할 폴더와 파일 선택
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -196,6 +196,8 @@
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Preview
+<img src="https://user-images.githubusercontent.com/62010067/146176243-f521bd5a-05da-4366-904f-0f500ce090d6.png" alt="KIYO 프리뷰" width="360">
+<img src="https://user-images.githubusercontent.com/62010067/146176238-af717941-d6c2-405f-9e53-8d028daf88cd.png" alt="KIYO 프리뷰" width="360">
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

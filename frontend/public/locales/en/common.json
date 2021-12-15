@@ -1,22 +1,36 @@
 {
-    "김찬수": "chansoo kim",
-    "박진구": "박진구",
+    "김찬수": "김찬수",
     "header": {
         "title": {
-            "setting": "setting"
+            "setting": "설정"
         },
-        "back": "back"
+        "back": "뒤로가기"
+    },
+    "word": {
+    },
+    "main": {
     },
     "setting": {
-        "usability": "usability",
-        "langage": "langage",
-        "app-info": "info of app",
-        "data-provider": "data provider",
-        "producer": "producer",
-        "version-info": "version",
-        "developer": "developer",
-        "designer": "designer",
-        "policy": "policy",
-        "privacy-policy": "privacy policy"
+        "usability": "사용성",
+        "langage": "언어",
+        "app-info": "앱 정보",
+        "data-provider": "데이터 제공자",
+        "producer": "제작자",
+        "version-info": "버전 정보",
+        "developer": "개발자",
+        "designer": "디자이너",
+        "policy": "정책",
+        "privacy-policy": "개인정보처리방침"
+    },
+    "message": {
+        "was-added": "추가되었습니다.",
+        "was-removed": "삭제되었습니다.",
+        "add-to-favorites": "즐겨찾기 추가",
+        "remove-to-favorites": "즐겨찾기 삭제",
+        "not-mobile-device": "모바일 기기가 아닙니다.",
+        "location-information-not-found": "위치정보를 찾지 못했습니다.",
+        "is-not-Seoul": "서울이 아닙니다.",
+        "open-chart": "차트 보기",
+        "close-chart": "차트 닫기"
     }
 }
