@@ -22,7 +22,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
-    const [version] = useAppVersion()
+    const { version, getVersion } = useAppVersion()
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
     const pinCodeLen = 6
     const [showDescBanner, setShowDescBanner] = useState(false)
@@ -91,10 +91,13 @@ const Page = (): JSX.Element => {
         if (app.sel_lang !== i18n.language) {
             router.replace("/", "/", { locale: app.sel_lang || "ko" })
         }
-        getFilename()
-        if (version !== "1.8") {
-            alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
-        }
+        getVersion()
+            .then((res) => {
+                if (res !== "1.8") {
+                    alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
+                }
+            })
+            .then(getFilename)
     }, [])
     return (
         <>
