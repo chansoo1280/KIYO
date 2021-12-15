@@ -46,12 +46,14 @@ const RecommendInput = (props: Props): JSX.Element => {
         >
             <Input
                 onFocus={() => {
-                    setIsFocus(true)
+                    setTimeout(() => {
+                        setIsFocus(true)
+                    }, 10) // onClick 지원
                 }}
                 onBlur={() => {
                     setTimeout(() => {
                         setIsFocus(false)
-                    }, 100) // onClick 지원
+                    }, 10) // onClick 지원
                 }}
                 cover={cover}
                 {...inputProps}

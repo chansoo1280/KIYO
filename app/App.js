@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Share from 'react-native-share';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { ToastAndroid, View } from 'react-native';
+import { BackHandler, ToastAndroid, View } from 'react-native';
 import {
 	WebViewWrapper,
 	readDir,
@@ -14,6 +15,7 @@ import {
 	modifyFile
 } from '@Service';
 import { AdMobBanner } from 'expo-ads-admob';
+import { vw, vh } from 'react-native-expo-viewport-units';
 import { StorageAccessFramework } from 'expo-file-system';
 
 var RNGRP = require('react-native-get-real-path');
@@ -61,11 +63,19 @@ const App = () => {
 		const fileList = decodeURI(filepath).split('%2F');
 		return (fileList && fileList[fileList.length - 1]) || '';
 	};
+	useEffect(() => {
+		NetInfo.fetch().then((state) => {
+			if (state.isConnected !== true) {
+				alert('네트워크 연결이 불안정하여 앱을 종료합니다.');
+				BackHandler.exitApp(); // 앱 종료
+			}
+		});
+	}, []);
 	return (
 		<View
 			style={{
-				width: '100%',
-				height: '100%'
+				width: vw(100),
+				height: vh(100)
 			}}
 		>
 			<WebViewWrapper
@@ -86,7 +96,7 @@ const App = () => {
 							webview.current.postMessage(
 								JSON.stringify({
 									type: RN_API.GET_VERSION,
-									data: '1.7'
+									data: '1.8'
 								})
 							);
 							break;

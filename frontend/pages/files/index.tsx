@@ -106,30 +106,28 @@ const Page = (): JSX.Element => {
                 </Button>
             </Space>
             <FileList>
-                {fileList.map((file) => {
-                    return (
-                        <FileList.Item
-                            isChecked={file.filepath === selFile}
-                            onClick={() => {
-                                setSelFile(file.filepath === selFile ? null : file.filepath)
-                            }}
-                            onTouchStart={(e) => {
-                                file.timer = setTimeout(() => {
-                                    if (confirm("삭제하시겠습니까?") === false) return
-                                    deleteFile(file.filepath || "")
-                                }, 300)
-                            }}
-                            onMouseUp={(e) => {
-                                if (file.timer !== null) clearTimeout(file.timer)
-                            }}
-                        >
-                            <Title flex as="h2">
-                                {file.filename}
-                            </Title>
-                            {file.mTime}
-                        </FileList.Item>
-                    )
-                })}
+                {fileList.map((file) => (
+                    <FileList.Item
+                        isChecked={file.filepath === selFile}
+                        onClick={() => {
+                            setSelFile(file.filepath === selFile ? null : file.filepath)
+                        }}
+                        onTouchStart={(e) => {
+                            file.timer = setTimeout(() => {
+                                if (confirm("삭제하시겠습니까?") === false) return
+                                deleteFile(file.filepath || "")
+                            }, 300)
+                        }}
+                        onMouseUp={(e) => {
+                            if (file.timer !== null) clearTimeout(file.timer)
+                        }}
+                    >
+                        <Title flex as="h2">
+                            {file.filename}
+                        </Title>
+                        {file.mTime}
+                    </FileList.Item>
+                ))}
             </FileList>
             <Button
                 type="primary"
