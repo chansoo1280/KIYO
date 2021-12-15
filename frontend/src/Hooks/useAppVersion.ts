@@ -8,14 +8,12 @@ import { WebViewMessage } from "@Services"
 // #endregion Local Imports
 
 const useAppVersion = () => {
-    const [version, setVerion] = useState<string | null>(null)
-    const setVersion = async () => {
-        const data = await WebViewMessage<typeof RN_API.GET_VERSION>(RN_API.GET_VERSION)
-        setVerion(data)
-    }
-    useEffect(() => {
-        setVersion()
-    }, [])
-    return [version]
+    const [version, setVersion] = useState<string | null>(null)
+    const getVersion = () =>
+        WebViewMessage<typeof RN_API.GET_VERSION>(RN_API.GET_VERSION).then((res) => {
+            setVersion(res)
+            return res
+        })
+    return { version, getVersion }
 }
 export default useAppVersion

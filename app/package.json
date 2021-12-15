@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "android:release": "react-native run-android --variant release",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "build": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/",
@@ -22,6 +23,7 @@
     "react": "17.0.2",
     "react-native": "0.66.1",
     "react-native-crypto-js": "^1.0.0",
+    "react-native-dotenv": "^3.3.1",
     "react-native-expo-viewport-units": "^0.0.8",
     "react-native-fs": "^2.18.0",
     "react-native-get-real-path": "github:Wraptime/react-native-get-real-path",

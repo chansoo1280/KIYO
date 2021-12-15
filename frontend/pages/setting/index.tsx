@@ -22,7 +22,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
-    const [version] = useAppVersion()
+    const { version, getVersion } = useAppVersion()
 
     const [modalSetFilename, setModalSetFilename] = useState({
         show: false,
@@ -110,6 +110,9 @@ const Page = (): JSX.Element => {
             }),
         )
     }
+    useEffect(() => {
+        getVersion()
+    }, [])
     return (
         <>
             <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>

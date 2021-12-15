@@ -35,6 +35,8 @@ export const WebViewMessage = async <T extends RN_API>(type: RN_API, data?: any)
                     document.removeEventListener("message", listener)
                     /** ios */
                     window.removeEventListener("message", listener)
+                    // setTimeout(() => {
+                    // }, 0)
                     resolve(data)
                     return
                 }
