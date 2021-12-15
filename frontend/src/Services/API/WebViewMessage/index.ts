@@ -28,18 +28,16 @@ export const WebViewMessage = async <T extends RN_API>(type: RN_API, data?: any)
         }, 3000)
         const listener = (event: any) => {
             const { listenerData, listenerType } = JSON.parse(event.data)
-            switch (listenerType) {
-                case type: {
-                    clearTimeout(timer)
-                    /** android */
-                    document.removeEventListener("message", listener)
-                    /** ios */
-                    window.removeEventListener("message", listener)
-                    // setTimeout(() => {
-                    // }, 0)
-                    resolve(listenerData)
-                    return
-                }
+            if (listenerType === type) {
+                clearTimeout(timer)
+                /** android */
+                document.removeEventListener("message", listener)
+                /** ios */
+                window.removeEventListener("message", listener)
+                // setTimeout(() => {
+                // }, 0)
+                resolve(listenerData)
+                return
             }
         }
         /** android */
