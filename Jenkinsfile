@@ -1,7 +1,7 @@
 node {
     stage ('Pull'){
         sh 'dir'
-        git url: 'https://github.com/chansoo1280/account-manager.git', credentialsId: 'git-chansoo1280'
+        git url: 'https://github.com/chansoo1280/KIYO.git', credentialsId: 'git-chansoo1280'
     }
     stage ('Build'){
         withAWS(credentials: 'aws-chansoo1280', region: 'ap-northeast-2') {

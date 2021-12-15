@@ -27,7 +27,7 @@ export const WebViewMessage = async <T extends RN_API>(type: RN_API, data?: any)
             window.removeEventListener("message", listener)
         }, 3000)
         const listener = (event: any) => {
-            const { listenerData, listenerType } = JSON.parse(event.data)
+            const { data: listenerData, type: listenerType } = JSON.parse(event.data)
             if (listenerType === type) {
                 clearTimeout(timer)
                 /** android */
