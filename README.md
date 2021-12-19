@@ -80,7 +80,7 @@
 
 ### Built With
 
-**React Native**와 **Next.js**(typescript)로 이루어진 웹앱입니다!
+**React Native**와 **Next.js**(typescript)로 이루어진 하이브리드 앱입니다!
 
 - [React Native](https://reactnative.dev/)
 - [Next.js](https://nextjs.org/)
@@ -104,7 +104,7 @@
 
 1. 프로젝트 경로 이동
    ```sh
-   cd ${project root}/frontend
+   cd ./frontend
    ```
 2. npm packages 설치
    ```sh
@@ -122,7 +122,7 @@
 
 1. 프로젝트 경로 이동
    ```sh
-   cd ${project root}/app
+   cd ./app
    ```
 2. npm packages 설치
    ```sh
@@ -142,7 +142,7 @@
 
 1. 프로젝트 경로 이동
    ```sh
-   cd ${project root}/app
+   cd ./app
    ```
 2. npm packages 설치
    ```sh
