@@ -63,8 +63,8 @@ const App = () => {
 		>
 			<WebViewWrapper
 				ref={webview}
-				uri="http://172.30.1.40:3000/"
-				// uri="https://am.chansoo1280.site/"
+				// uri="http://172.30.1.40:3000/"
+				uri="https://am.chansoo1280.site/"
 				onMessage={async (req) => {
 					if (!req) return;
 					const { data, type, reqId } = req;

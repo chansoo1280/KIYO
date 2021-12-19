@@ -9,6 +9,7 @@ import { Input } from "@Components"
 import classNames from "classnames"
 import { useTranslation } from "next-i18next"
 import { InputProps } from "@Components/Atom/Input"
+import { siteIconObj } from "@Definitions"
 
 // #endregion Local Imports
 interface InputPropsWithRef extends InputProps {
@@ -22,18 +23,19 @@ interface Props {
     className?: string
     inputProps?: InputPropsWithRef
     cover?: boolean
+    isNotSite?: boolean
 }
 const RecommendInput = (props: Props): JSX.Element => {
-    const { value, onClick, className, inputProps, recommendList = [], cover } = props
+    const { value = "", onClick, className, inputProps, recommendList = [], cover, isNotSite = false } = props
     const { t } = useTranslation("common")
     const [isFocus, setIsFocus] = useState(false)
     const [showWordList, setShowWordList] = useState<string[]>([])
     useEffect(() => {
-        const searcher = new Hangul.Searcher(value || "")
+        const searcher = new Hangul.Searcher(value.toLowerCase() || "")
         setShowWordList(
             recommendList
                 .filter((info) => {
-                    return value && info !== value && searcher.search(info) !== -1
+                    return value && info !== value && searcher.search(info.toLowerCase()) !== -1
                 })
                 .slice(0, 4),
         )
@@ -66,11 +68,12 @@ const RecommendInput = (props: Props): JSX.Element => {
                 {showWordList.map((word, idx) => (
                     <li
                         key={word}
-                        className={classNames(styles["recommend-input__list"])}
+                        className={classNames(styles["recommend-input__item"])}
                         onClick={() => {
                             onClick && onClick(word)
                         }}
                     >
+                        {isNotSite === false && siteIconObj[word] && <img className={classNames(styles["recommend-input__img"])} src={siteIconObj[word]} alt="" />}
                         {word}
                     </li>
                 ))}

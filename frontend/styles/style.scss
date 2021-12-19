@@ -15,6 +15,7 @@
     $main: "\\/";
     $files: "\\/files";
     $list: "\\/list";
+    $FAQ: "\\/FAQ";
     $setting: "\\/setting";
 
     // #{$setting}\/-from-#{$list}
@@ -51,6 +52,44 @@
         transition: all 0.3s ease-in-out;
     }
     .l_transition.#{$list}-from-#{$setting}.popup-exit-active > .#{$theme-name}-wrap {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    
+    // #{$FAQ}\/-from-#{$setting}
+    .l_transition.#{$FAQ}-from-#{$setting}.popup-enter,
+    .l_transition.#{$FAQ}-from-#{$setting}.popup-enter-done{
+        z-index: 10;
+    }
+    .l_transition.#{$FAQ}-from-#{$setting}.popup-enter::before {
+        opacity: 0;
+    }
+    .l_transition.#{$FAQ}-from-#{$setting}.popup-enter > .#{$theme-name}-wrap {
+        z-index: 10;
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    .l_transition.#{$FAQ}-from-#{$setting}.popup-enter-active::before {
+        opacity: 1;
+        transition: all 0.3s ease-in-out;
+    }
+    .l_transition.#{$FAQ}-from-#{$setting}.popup-enter-active > .#{$theme-name}-wrap {
+        transform: scale(1);
+        opacity: 1;
+    }
+    .l_transition.#{$setting}-from-#{$FAQ}.popup-exit::before{
+        opacity: 1;
+    }
+    .l_transition.#{$setting}-from-#{$FAQ}.popup-exit > .#{$theme-name}-wrap {
+        z-index: 10;
+        transform: scale(1);
+        opacity: 1;
+    }
+    .l_transition.#{$setting}-from-#{$FAQ}.popup-exit-active::before {
+        opacity: 0;
+        transition: all 0.3s ease-in-out;
+    }
+    .l_transition.#{$setting}-from-#{$FAQ}.popup-exit-active > .#{$theme-name}-wrap {
         transform: scale(0.8);
         opacity: 0;
     }

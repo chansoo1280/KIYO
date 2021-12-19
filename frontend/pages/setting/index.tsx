@@ -109,8 +109,8 @@ const Page = (): JSX.Element => {
                 list: data,
             }),
         )
+        router.push("/list", "/list")
     }
-    useEffect(() => {}, [])
     return (
         <>
             <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
@@ -122,12 +122,21 @@ const Page = (): JSX.Element => {
                         <a href="javascript:alert('준비중입니다.');">바로가기</a>
                     </SettingList.Text>
                 </SettingList.Item>
-                {/* <SettingList.Item>
-                    <Title as="h3">사용방법</Title>
+                <SettingList.Item
+                    onClick={() => {
+                        router.push("/FAQ", "/FAQ")
+                    }}
+                >
+                    <Title as="h3">FAQ(자주 묻는 질문)</Title>
                 </SettingList.Item>
                 <SettingList.Item>
                     <Title as="h3">문의하기</Title>
-                </SettingList.Item> */}
+                    <SettingList.Text>
+                        <a href="mailto:chansoo1280@naver.com" target="_blank">
+                            이메일 보내기
+                        </a>
+                    </SettingList.Text>
+                </SettingList.Item>
             </SettingList>
             <SettingList.Title as="h2">데이터</SettingList.Title>
             <SettingList>
@@ -186,7 +195,7 @@ const Page = (): JSX.Element => {
                     <Title as="h3">개인정보처리방침</Title>
                     <SettingList.Text>
                         <a href="https://chansoo1280.site/privacy/account-manager/" target="_blank">
-                            새창으로 보기
+                            새창으로 열기
                         </a>
                     </SettingList.Text>
                 </SettingList.Item>

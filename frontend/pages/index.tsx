@@ -67,6 +67,7 @@ const Page = (): JSX.Element => {
                 tags: account.tags || [],
                 idx: idx,
                 copiedAt: account.copiedAt || "",
+                memo: account.memo || "",
             })) || []
         const tags = list.reduce((acc: Account["tags"], cur) => acc.concat(cur.tags), [])
         dispatch(
