@@ -18,7 +18,7 @@ import { createRef, useEffect, useState } from "react"
 import { ThemeObj, ThemeType } from "@Definitions/Styled"
 import { RootState, wrapper } from "@Redux"
 import TheLayout, { LayoutCode } from "@Components/Layout"
-import "@Services/API/DateFormat"
+import "@Services/DateFormat"
 // #endregion Local Imports
 
 const formatPathname = (url: string) =>

@@ -49,7 +49,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
             list: [...acFile.list.filter(({ idx }) => idx !== newIdx)],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 수정 실패")
@@ -82,11 +82,11 @@ const Page = (): JSX.Element => {
                     id: id,
                     pw: pw,
                     tags: tags,
-                    modifiedAt: new Date(),
+                    modifiedAt: String(new Date()),
                 },
             ],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 수정 실패")

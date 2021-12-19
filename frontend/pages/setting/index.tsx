@@ -22,7 +22,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
-    const { version, getVersion } = useAppVersion()
+    const { version } = useAppVersion()
 
     const [modalSetFilename, setModalSetFilename] = useState({
         show: false,
@@ -47,7 +47,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_FILENAME>(RN_API.SET_FILENAME, {
             myFilename: filename,
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 수정 실패")
@@ -64,7 +64,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.BACKUP_FILE>(RN_API.BACKUP_FILE, {
             filename: filename,
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 백업 실패")
@@ -73,7 +73,7 @@ const Page = (): JSX.Element => {
     }
 
     // const shareFile = async () => {
-    //     const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE)
+    //     const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE).catch(() => null)
     //     if (data === null) return
     // }
 
@@ -81,7 +81,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_PINCODE>(RN_API.SET_PINCODE, {
             newPincode,
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("pincode 수정 실패")
@@ -98,7 +98,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
             list: [],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("초기화 실패")
@@ -110,9 +110,7 @@ const Page = (): JSX.Element => {
             }),
         )
     }
-    useEffect(() => {
-        getVersion()
-    }, [])
+    useEffect(() => {}, [])
     return (
         <>
             <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>

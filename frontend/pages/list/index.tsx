@@ -65,7 +65,7 @@ const Page = (): JSX.Element => {
     const setSortType = async (sortType: AcFile["sortType"]) => {
         const data = await WebViewMessage<typeof RN_API.SET_SORTTYPE>(RN_API.SET_SORTTYPE, {
             sortType: sortType,
-        })
+        }).catch(() => null)
         if (data === null) return
         dispatch(
             AcFileActions.setInfo({
@@ -85,18 +85,18 @@ const Page = (): JSX.Element => {
     const reqCopyPw = async (account: Account) => {
         const data = await WebViewMessage<typeof RN_API.SET_COPY>(RN_API.SET_COPY, {
             text: account.pw,
-        })
+        }).catch(() => null)
         if (data === null) return
         const data2 = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
             list: [
                 ...acFile.list.filter(({ idx }) => idx !== account.idx),
                 {
                     ...account,
-                    copiedAt: new Date(),
+                    copiedAt: String(new Date()),
                 },
             ],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data2 === null) return
         if (data2 === false) {
             alert("파일 수정 실패")

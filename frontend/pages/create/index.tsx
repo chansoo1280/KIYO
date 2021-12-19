@@ -66,13 +66,13 @@ const Page = (): JSX.Element => {
                     id: id,
                     pw: pw,
                     tags: tags,
-                    modifiedAt: new Date(),
-                    createdAt: new Date(),
+                    modifiedAt: String(new Date()),
+                    createdAt: String(new Date()),
                     copiedAt: "",
                 },
             ],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 수정 실패")
