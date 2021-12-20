@@ -22,6 +22,7 @@ import { StorageAccessFramework } from 'expo-file-system';
 var RNGRP = require('react-native-get-real-path');
 
 const extension = '.txt';
+const version = '2.0';
 const App = () => {
 	const webview = useRef(null);
 	const getDirectoryUri = async () => {
@@ -79,7 +80,7 @@ const App = () => {
 							webview.current.postMessage(
 								JSON.stringify({
 									type: RN_API.GET_VERSION,
-									data: '1.9'
+									data: version
 								})
 							);
 							break;

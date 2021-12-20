@@ -119,7 +119,9 @@ const Page = (): JSX.Element => {
                 <SettingList.Item>
                     <Title as="h3">앱 평가</Title>
                     <SettingList.Text>
-                        <a href="javascript:alert('준비중입니다.');">바로가기</a>
+                        <a href="https://play.google.com/store/apps/details?id=site.chansoo1280.am" target="_blank">
+                            바로가기
+                        </a>
                     </SettingList.Text>
                 </SettingList.Item>
                 <SettingList.Item
