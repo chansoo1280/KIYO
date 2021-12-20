@@ -22,7 +22,7 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
-    const { version, getVersion } = useAppVersion()
+    const { version } = useAppVersion()
 
     const [modalSetFilename, setModalSetFilename] = useState({
         show: false,
@@ -47,7 +47,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_FILENAME>(RN_API.SET_FILENAME, {
             myFilename: filename,
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 수정 실패")
@@ -64,7 +64,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.BACKUP_FILE>(RN_API.BACKUP_FILE, {
             filename: filename,
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("파일 백업 실패")
@@ -73,7 +73,7 @@ const Page = (): JSX.Element => {
     }
 
     // const shareFile = async () => {
-    //     const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE)
+    //     const data = await WebViewMessage<typeof RN_API.SHARE_FILE>(RN_API.SHARE_FILE).catch(() => null)
     //     if (data === null) return
     // }
 
@@ -81,7 +81,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_PINCODE>(RN_API.SET_PINCODE, {
             newPincode,
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("pincode 수정 실패")
@@ -98,7 +98,7 @@ const Page = (): JSX.Element => {
         const data = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
             list: [],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("초기화 실패")
@@ -109,10 +109,8 @@ const Page = (): JSX.Element => {
                 list: data,
             }),
         )
+        router.push("/list", "/list")
     }
-    useEffect(() => {
-        getVersion()
-    }, [])
     return (
         <>
             <Header prefix={<Button onClick={() => router.back()} icon={<i className="xi-angle-left-min"></i>}></Button>} title="설정" centerTitle noMargin></Header>
@@ -121,15 +119,26 @@ const Page = (): JSX.Element => {
                 <SettingList.Item>
                     <Title as="h3">앱 평가</Title>
                     <SettingList.Text>
-                        <a href="javascript:alert('준비중입니다.');">바로가기</a>
+                        <a href="https://play.google.com/store/apps/details?id=site.chansoo1280.am" target="_blank">
+                            바로가기
+                        </a>
                     </SettingList.Text>
                 </SettingList.Item>
-                {/* <SettingList.Item>
-                    <Title as="h3">사용방법</Title>
+                <SettingList.Item
+                    onClick={() => {
+                        router.push("/FAQ", "/FAQ")
+                    }}
+                >
+                    <Title as="h3">FAQ(자주 묻는 질문)</Title>
                 </SettingList.Item>
                 <SettingList.Item>
                     <Title as="h3">문의하기</Title>
-                </SettingList.Item> */}
+                    <SettingList.Text>
+                        <a href="mailto:chansoo1280@naver.com" target="_blank">
+                            이메일 보내기
+                        </a>
+                    </SettingList.Text>
+                </SettingList.Item>
             </SettingList>
             <SettingList.Title as="h2">데이터</SettingList.Title>
             <SettingList>
@@ -188,7 +197,7 @@ const Page = (): JSX.Element => {
                     <Title as="h3">개인정보처리방침</Title>
                     <SettingList.Text>
                         <a href="https://chansoo1280.site/privacy/account-manager/" target="_blank">
-                            새창으로 보기
+                            새창으로 열기
                         </a>
                     </SettingList.Text>
                 </SettingList.Item>

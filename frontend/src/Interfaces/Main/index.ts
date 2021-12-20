@@ -15,6 +15,7 @@ export interface Account {
     modifiedAt: string
     createdAt: string
     copiedAt: string
+    memo?: string
 }
 
 export interface AcFile {

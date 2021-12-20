@@ -26,7 +26,7 @@ const Page = (): JSX.Element => {
     const [fileList, setFileList] = useState<RNFile[]>([])
 
     const getFileList = async () => {
-        const data = await WebViewMessage<typeof RN_API.GET_FILE_LIST>(RN_API.GET_FILE_LIST)
+        const data = await WebViewMessage<typeof RN_API.GET_FILE_LIST>(RN_API.GET_FILE_LIST).catch(() => null)
         if (data === null) return
         setDirpath(decodeURIComponent(data.dirpath))
         setFileList(
@@ -40,7 +40,7 @@ const Page = (): JSX.Element => {
         )
     }
     const setDir = async () => {
-        const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR)
+        const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR).catch(() => null)
         if (data === null) return
         setDirpath(decodeURIComponent(data.dirpath))
         setFileList(
@@ -60,7 +60,7 @@ const Page = (): JSX.Element => {
         }
         const data = await WebViewMessage<typeof RN_API.SET_SEL_FILENAME>(RN_API.SET_SEL_FILENAME, {
             filepath: selFile,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === true) {
             router.replace("/", "/")
@@ -69,7 +69,7 @@ const Page = (): JSX.Element => {
     const deleteFile = async (filepath: string) => {
         const data = await WebViewMessage<typeof RN_API.DELETE_FILE>(RN_API.DELETE_FILE, {
             filepath,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === true) {
             alert("삭제되었습니다.")

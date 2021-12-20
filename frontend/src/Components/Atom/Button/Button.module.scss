@@ -41,7 +41,7 @@
                 min-width: 48px;
             }
             &.#{$theme-name}-#{$btn-prefix-cls}--default {
-                background: #fff;
+                background:#fbfbfb;;
                 border: 1px solid #d0d9e4;
                 box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16);
             }
@@ -101,6 +101,10 @@
         &--lg {
             min-height: 48px;
             font-size: 30px;
+        }
+        &__desc{
+            word-break:keep-all;
+            font-size:14px;
         }
     }
 }

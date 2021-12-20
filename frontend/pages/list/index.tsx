@@ -65,7 +65,7 @@ const Page = (): JSX.Element => {
     const setSortType = async (sortType: AcFile["sortType"]) => {
         const data = await WebViewMessage<typeof RN_API.SET_SORTTYPE>(RN_API.SET_SORTTYPE, {
             sortType: sortType,
-        })
+        }).catch(() => null)
         if (data === null) return
         dispatch(
             AcFileActions.setInfo({
@@ -85,18 +85,18 @@ const Page = (): JSX.Element => {
     const reqCopyPw = async (account: Account) => {
         const data = await WebViewMessage<typeof RN_API.SET_COPY>(RN_API.SET_COPY, {
             text: account.pw,
-        })
+        }).catch(() => null)
         if (data === null) return
         const data2 = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
             list: [
                 ...acFile.list.filter(({ idx }) => idx !== account.idx),
                 {
                     ...account,
-                    copiedAt: new Date(),
+                    copiedAt: String(new Date()),
                 },
             ],
             pincode: acFile.pincode,
-        })
+        }).catch(() => null)
         if (data2 === null) return
         if (data2 === false) {
             alert("파일 수정 실패")
@@ -104,12 +104,13 @@ const Page = (): JSX.Element => {
         }
         setFile(data2)
     }
+    const testList = undefined
     // const testList: Account[] = [
     //     {
     //         idx: 1,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "1",
+    //         siteName: "구글(Google)",
     //         tags: ["금융"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
@@ -119,7 +120,7 @@ const Page = (): JSX.Element => {
     //         idx: 2,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "2",
+    //         siteName: "네이버(Naver)",
     //         tags: ["게임"],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
@@ -129,7 +130,7 @@ const Page = (): JSX.Element => {
     //         idx: 3,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "3",
+    //         siteName: "다음(Daum)",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
@@ -139,7 +140,7 @@ const Page = (): JSX.Element => {
     //         idx: 4,
     //         id: "123",
     //         pw: "12341312",
-    //         siteName: "4",
+    //         siteName: "마이크로소프트(Microsoft)",
     //         tags: [],
     //         modifiedAt: String(new Date()),
     //         createdAt: String(new Date()),
@@ -270,7 +271,7 @@ const Page = (): JSX.Element => {
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
         const showList = list
-            .filter(({ siteName }) => filterText === "" || siteName.includes(filterText)) // filterText 체크
+            .filter(({ siteName }) => filterText === "" || siteName.toLowerCase().includes(filterText.toLowerCase())) // filterText 체크
             .filter(({ tags }) => !selectedTagList.length || !selectedTagList.find(({ name }) => !tags.includes(name))) // tags 체크
             .sort((a, b) => (a[acFile.sortType] < b[acFile.sortType] ? -1 : a[acFile.sortType] > b[acFile.sortType] ? 1 : 0))
         return acFile.sortType === sortType.modifiedAt || acFile.sortType === sortType.copiedAt ? showList.reverse() : showList
@@ -289,7 +290,7 @@ const Page = (): JSX.Element => {
             </Header>
             <Space padding="166px 16px 0" background="url(/static/images/bg_list.png)no-repeat right/auto 165px"></Space>
             <Sticky top="10px">
-                <Search id="search" value={search} setValue={setSearch} onSearch={setFilterText}>
+                <Search id="search" value={search} setValue={setSearch} onSearch={setFilterText} recommendList={acFile.list.map(({ siteName }) => siteName)}>
                     <Button
                         size="lg"
                         type="default"
@@ -337,91 +338,77 @@ const Page = (): JSX.Element => {
             )}
 
             <Space direction="column" padding="0 16px 36px" gap="22px">
-                {
-                    // testList ? (
-                    //     getShowAccountList(testList).map((account: Account, idx: number) => (
-                    //         <AccountCard key={account.idx} account={account}>
-                    //             <Button
-                    //                 onClick={() => {
-                    //                     reqCopyPw(account)
-                    //                 }}
-                    //                 icon={
-                    //                     <i className="xi-documents">
-                    //                         <span className="ir">copy</span>
-                    //                     </i>
-                    //                 }
-                    //             ></Button>
-                    //             <Button
-                    //                 onClick={() => {
-                    //                     router.push({
-                    //                         pathname: "/modify",
-                    //                         query: {
-                    //                             idx: account.idx,
-                    //                         },
-                    //                     })
-                    //                 }}
-                    //                 icon={
-                    //                     <i className="xi-pen">
-                    //                         <span className="ir">modify</span>
-                    //                     </i>
-                    //                 }
-                    //             ></Button>
-                    //         </AccountCard>
-                    //     ))
-                    // ) :
-                    !acFile.list || acFile.list.length === 0 ? (
-                        filterText === "" ? (
-                            <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
-                        ) : (
-                            <span>검색된 계정 정보가 없습니다!</span>
-                        )
+                {testList ? (
+                    getShowAccountList(testList).map((account: Account, idx: number) => (
+                        <AccountCard key={account.idx} account={account}>
+                            <Button
+                                onClick={() => {
+                                    reqCopyPw(account)
+                                }}
+                                icon={
+                                    <i className="xi-documents">
+                                        <span className="ir">copy</span>
+                                    </i>
+                                }
+                                type="default"
+                            ></Button>
+                            <Button
+                                onClick={() => {
+                                    router.push({
+                                        pathname: "/modify",
+                                        query: {
+                                            idx: account.idx,
+                                        },
+                                    })
+                                }}
+                                icon={
+                                    <i className="xi-pen">
+                                        <span className="ir">modify</span>
+                                    </i>
+                                }
+                                type="default"
+                            ></Button>
+                        </AccountCard>
+                    ))
+                ) : !acFile.list || acFile.list.length === 0 ? (
+                    filterText === "" ? (
+                        <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
                     ) : (
-                        getShowAccountList(acFile.list).map((account) => (
-                            <AccountCard key={account.idx} account={account}>
-                                <Button
-                                    onClick={() => {
-                                        reqCopyPw(account)
-                                    }}
-                                    icon={
-                                        <i className="xi-documents">
-                                            <span className="ir">copy</span>
-                                        </i>
-                                    }
-                                ></Button>
-                                <Button
-                                    onClick={() => {
-                                        router.push({
-                                            pathname: "/modify",
-                                            query: {
-                                                idx: account.idx,
-                                            },
-                                        })
-                                    }}
-                                    icon={
-                                        <i className="xi-pen">
-                                            <span className="ir">modify</span>
-                                        </i>
-                                    }
-                                ></Button>
-                            </AccountCard>
-                        ))
+                        <span>검색된 계정 정보가 없습니다!</span>
                     )
-                }
-
-                {/* {getShowAccountList(testList).map((account: Account, idx: number) => (
-                    <AccountCard
-                        key={account.idx}
-                        account={account}
-                        onClickMod={(account) => {
-                            router.push({
-                                pathname: "/modify",
-                                query: {
-                                    idx: account.idx,
-                                },
-                            })
-                        }}
-                    ></AccountCard>
-                ))} */}
+                ) : (
+                    getShowAccountList(acFile.list).map((account) => (
+                        <AccountCard key={account.idx} account={account}>
+                            <Button
+                                onClick={() => {
+                                    reqCopyPw(account)
+                                }}
+                                icon={
+                                    <i className="xi-documents">
+                                        <span className="ir">copy</span>
+                                    </i>
+                                }
+                                type="default"
+                            ></Button>
+                            <Button
+                                onClick={() => {
+                                    router.push({
+                                        pathname: "/modify",
+                                        query: {
+                                            idx: account.idx,
+                                        },
+                                    })
+                                }}
+                                icon={
+                                    <i className="xi-pen">
+                                        <span className="ir">modify</span>
+                                    </i>
+                                }
+                                type="default"
+                            ></Button>
+                        </AccountCard>
+                    ))
+                )}
             </Space>
             <Button
                 onClick={() => {

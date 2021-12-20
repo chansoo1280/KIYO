@@ -12,7 +12,7 @@
     <a href="https://github.com/chansoo1280/KIYO"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/chansoo1280/KIYO">View Demo</a>
+    <a href="https://play.google.com/store/apps/details?id=site.chansoo1280.am">Download</a>
     ·
     <a href="https://github.com/chansoo1280/KIYO/issues">Report Bug</a>
     ·
@@ -219,5 +219,6 @@ Project Link: [https://github.com/chansoo1280/KIYO](https://github.com/chansoo12
 
 - [XEIcon](https://xpressengine.github.io/XEIcon/)
 - [figma](https://www.figma.com/)
+- [Google Play](https://play.google.com/store/apps/details?id=site.chansoo1280.am): 2021-12-20 출시
 
 <p align="right">(<a href="#top">back to top</a>)</p>

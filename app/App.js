@@ -5,6 +5,7 @@ import NetInfo from '@react-native-community/netinfo';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { BackHandler, ToastAndroid, View } from 'react-native';
 import {
+	RN_API,
 	WebViewWrapper,
 	readDir,
 	readFile,
@@ -20,27 +21,10 @@ import { StorageAccessFramework } from 'expo-file-system';
 
 var RNGRP = require('react-native-get-real-path');
 
-const RN_API = {
-	GET_VERSION: 'GET_VERSION',
-	SET_DIR: 'SET_DIR',
-	SET_COPY: 'SET_COPY',
-	SET_FILENAME: 'SET_FILENAME',
-	SET_SEL_FILENAME: 'SET_SEL_FILENAME',
-	GET_FILENAME: 'GET_FILENAME',
-	GET_FILE: 'GET_FILE',
-	SHARE_FILE: 'SHARE_FILE',
-	BACKUP_FILE: 'BACKUP_FILE',
-	GET_FILE_LIST: 'GET_FILE_LIST',
-	CREATE_FILE: 'CREATE_FILE',
-	SET_FILE: 'SET_FILE',
-	DELETE_FILE: 'DELETE_FILE',
-	SET_PINCODE: 'SET_PINCODE',
-	SET_SORTTYPE: 'SET_SORTTYPE'
-};
 const extension = '.txt';
+const version = '2.0';
 const App = () => {
 	const webview = useRef(null);
-	const [ canGoBack, SetCanGoBack ] = useState(false);
 	const getDirectoryUri = async () => {
 		const directoryUriEnd = await AsyncStorage.getItem('directoryUriEnd', (err, result) => result);
 		if (directoryUriEnd) {
@@ -79,16 +63,16 @@ const App = () => {
 			}}
 		>
 			<WebViewWrapper
-				onMessage={async (message) => {
-					const { nativeEvent } = message;
-					if (nativeEvent.data === 'navigationStateChange') {
-						SetCanGoBack(nativeEvent.canGoBack);
-						return;
-					}
-					const req = JSON.parse(nativeEvent.data || '""');
-					switch (req.type) {
+				ref={webview}
+				// uri="http://172.30.1.40:3000/"
+				uri="https://am.chansoo1280.site/"
+				onMessage={async (req) => {
+					if (!req) return;
+					const { data, type, reqId } = req;
+					console.log(reqId, type);
+					switch (type) {
 						case 'Console': {
-							console.info(`[Console] ${JSON.stringify(req.data)}`);
+							console.info(`[Console] ${JSON.stringify(data)}`);
 							break;
 						}
 						case RN_API.GET_VERSION: {
@@ -96,14 +80,14 @@ const App = () => {
 							webview.current.postMessage(
 								JSON.stringify({
 									type: RN_API.GET_VERSION,
-									data: '1.8'
+									data: version
 								})
 							);
 							break;
 						}
 						case RN_API.SET_COPY: {
 							console.log(RN_API.SET_COPY);
-							const { text } = req.data;
+							const { text } = data;
 							Clipboard.setString(text);
 							console.log(text);
 							webview.current.postMessage(
@@ -117,7 +101,7 @@ const App = () => {
 						}
 						case RN_API.SET_SEL_FILENAME: {
 							console.log(RN_API.SET_SEL_FILENAME);
-							const { filepath } = req.data;
+							const { filepath } = data;
 							AsyncStorage.setItem('filepath', filepath);
 							const directoryUri = await AsyncStorage.getItem('directoryUri', (err, result) => result);
 							AsyncStorage.setItem('directoryUriEnd', directoryUri);
@@ -131,7 +115,7 @@ const App = () => {
 						}
 						case RN_API.SET_FILENAME: {
 							console.log(RN_API.SET_FILENAME);
-							const { myFilename, pincode } = req.data;
+							const { myFilename, pincode } = data;
 							const newFilename = myFilename + extension;
 							const filepath = await AsyncStorage.getItem('filepath', (err, result) => result);
 							let directoryUri = await getDirectoryUri();
@@ -242,7 +226,7 @@ const App = () => {
 						}
 						case RN_API.GET_FILE: {
 							console.log(RN_API.GET_FILE);
-							const { pincode } = req.data;
+							const { pincode } = data;
 							const filepath = await AsyncStorage.getItem('filepath', (err, result) => result);
 							const filename = getFilename(filepath);
 							const result = await readFile(filepath, pincode);
@@ -285,7 +269,7 @@ const App = () => {
 						}
 						case RN_API.BACKUP_FILE: {
 							console.log(RN_API.BACKUP_FILE);
-							const { filename: myFilename, pincode } = req.data;
+							const { filename: myFilename, pincode } = data;
 							const filename = myFilename + extension;
 							const directoryUriEnd = await AsyncStorage.getItem(
 								'directoryUriEnd',
@@ -312,7 +296,7 @@ const App = () => {
 						}
 						case RN_API.CREATE_FILE: {
 							console.log(RN_API.CREATE_FILE);
-							const { filename: myFilename, list, pincode } = req.data;
+							const { filename: myFilename, list, pincode } = data;
 							const filename = myFilename + extension;
 							const directoryUri = await AsyncStorage.getItem('directoryUri', (err, result) => result);
 							console.log(list);
@@ -324,14 +308,14 @@ const App = () => {
 							webview.current.postMessage(
 								JSON.stringify({
 									type: RN_API.CREATE_FILE,
-									data: filepath ? req.data : null
+									data: filepath ? data : null
 								})
 							);
 							break;
 						}
 						case RN_API.SET_FILE: {
 							console.log(RN_API.SET_FILE);
-							const { list, pincode } = req.data;
+							const { list, pincode } = data;
 							const filepath = await AsyncStorage.getItem('filepath', (err, result) => result);
 							const result = await modifyFile(filepath, JSON.stringify(list), pincode);
 							if (result !== false) {
@@ -347,7 +331,7 @@ const App = () => {
 						}
 						case RN_API.SET_PINCODE: {
 							console.log(RN_API.SET_PINCODE);
-							const { pincode, newPincode } = req.data;
+							const { pincode, newPincode } = data;
 							const filepath = await AsyncStorage.getItem('filepath', (err, result) => result);
 							const result = await editPincode(filepath, pincode, newPincode);
 							if (result !== false) {
@@ -363,7 +347,7 @@ const App = () => {
 						}
 						case RN_API.DELETE_FILE: {
 							console.log(RN_API.DELETE_FILE);
-							const { filepath } = req.data;
+							const { filepath } = data;
 							const result = await deleteFile(filepath);
 							const curFilepath = await AsyncStorage.getItem('filepath', (err, result) => result);
 							if (curFilepath === filepath) {
@@ -379,7 +363,7 @@ const App = () => {
 						}
 						case RN_API.SET_SORTTYPE: {
 							console.log(RN_API.SET_SORTTYPE);
-							const { sortType } = req.data;
+							const { sortType } = data;
 							await AsyncStorage.setItem('sortType', sortType);
 							webview.current.postMessage(
 								JSON.stringify({
@@ -391,8 +375,6 @@ const App = () => {
 						}
 					}
 				}}
-				webview={webview}
-				canGoBack={canGoBack}
 			/>
 			<AdMobBanner
 				bannerSize="smartBannerPortrait"

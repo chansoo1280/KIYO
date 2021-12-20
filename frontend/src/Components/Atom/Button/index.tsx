@@ -36,6 +36,7 @@ interface BaseButtonProps {
     htmlType?: ButtonHTMLType
     className?: string
     onClick?: MouseEventHandler
+    desc?: string
 }
 type AnchorButtonProps = {
     href: string
@@ -54,7 +55,7 @@ type ButtonProps = Partial<AnchorButtonProps & NativeButtonProps>
 
 type Loading = number | boolean
 const Button = (props: ButtonProps): JSX.Element => {
-    const { href, icon, flex, loading = false, show, htmlType = "button", size, type, shape, className, children, block, fixed, danger, ...rest } = props
+    const { href, icon, flex, loading = false, show, htmlType = "button", size, type, shape, className, children, block, fixed, danger, desc, ...rest } = props
     const [innerLoading, setLoading] = React.useState<Loading>(!!loading)
     const handleClick = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement, MouseEvent>) => {
         const { onClick, disabled } = props
@@ -83,18 +84,23 @@ const Button = (props: ButtonProps): JSX.Element => {
         },
         className,
     )
-    return href !== undefined ? (
-        <Link href={href}>
-            <a {...(rest as AnchorButtonProps)} onClick={handleClick} className={classes}>
-                {icon}
-                {children}
-            </a>
-        </Link>
-    ) : (
-        <button {...(rest as NativeButtonProps)} onClick={handleClick} type={htmlType} className={classes}>
-            {icon}
-            {children}
-        </button>
+    return (
+        <>
+            {href !== undefined ? (
+                <Link href={href}>
+                    <a {...(rest as AnchorButtonProps)} onClick={handleClick} className={classes}>
+                        {icon}
+                        {children}
+                    </a>
+                </Link>
+            ) : (
+                <button {...(rest as NativeButtonProps)} onClick={handleClick} type={htmlType} className={classes}>
+                    {icon}
+                    {children}
+                </button>
+            )}
+            {desc && <span className={styles[`${prefixCls}__desc`]}>{desc}</span>}
+        </>
     )
 }
 

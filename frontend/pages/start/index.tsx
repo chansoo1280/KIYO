@@ -48,7 +48,7 @@ const Page = (): JSX.Element => {
             pincode,
             filename,
             list: [],
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("생성 실패")

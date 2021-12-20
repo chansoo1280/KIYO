@@ -22,13 +22,13 @@ const Page = (): JSX.Element => {
         app: appReducer,
         acFile: acFileReducer,
     }))
-    const { version, getVersion } = useAppVersion()
+    const { version } = useAppVersion()
     const [pincode, setPincode] = useState<AcFile["pincode"]>("")
     const pinCodeLen = 6
     const [showDescBanner, setShowDescBanner] = useState(false)
 
     const getFilename = async () => {
-        const data = await WebViewMessage<typeof RN_API.GET_FILENAME>(RN_API.GET_FILENAME)
+        const data = await WebViewMessage<typeof RN_API.GET_FILENAME>(RN_API.GET_FILENAME).catch(() => null)
         if (data === null) return
         if (data === "no-folder") {
             setShowDescBanner(true)
@@ -52,7 +52,7 @@ const Page = (): JSX.Element => {
         }
         const data = await WebViewMessage<typeof RN_API.GET_FILE>(RN_API.GET_FILE, {
             pincode,
-        })
+        }).catch(() => null)
         if (data === null) return
         if (data === false) {
             alert("올바르지 않은 핀번호입니다.")
@@ -67,6 +67,7 @@ const Page = (): JSX.Element => {
                 tags: account.tags || [],
                 idx: idx,
                 copiedAt: account.copiedAt || "",
+                memo: account.memo || "",
             })) || []
         const tags = list.reduce((acc: Account["tags"], cur) => acc.concat(cur.tags), [])
         dispatch(
@@ -81,21 +82,21 @@ const Page = (): JSX.Element => {
         router.push("/list", "/list")
     }
     const setDir = async () => {
-        const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR)
+        const data = await WebViewMessage<typeof RN_API.SET_DIR>(RN_API.SET_DIR).catch(() => null)
         if (data === null) return
 
         setShowDescBanner(false)
         router.replace("/start", "/start")
     }
     useEffect(() => {
+        if (version !== null && version !== "2.0") {
+            alert("최신버전이 아닙니다. 업데이트를 진행해주세요. version: " + version)
+        }
+    }, [version])
+    useEffect(() => {
         if (app.sel_lang !== i18n.language) {
             router.replace("/", "/", { locale: app.sel_lang || "ko" })
         }
-        getVersion().then((res) => {
-            if (res !== "1.8" && res !== "1.9") {
-                alert("최신버전이 아닙니다. 업데이트를 진행해주세요.")
-            }
-        })
         getFilename()
     }, [])
     return (
