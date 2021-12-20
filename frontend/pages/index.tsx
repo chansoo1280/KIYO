@@ -89,7 +89,7 @@ const Page = (): JSX.Element => {
         router.replace("/start", "/start")
     }
     useEffect(() => {
-        if (version !== null && version !== "1.9" && version !== "2.0") {
+        if (version !== null && version !== "2.0") {
             alert("최신버전이 아닙니다. 업데이트를 진행해주세요. version: " + version)
         }
     }, [version])
