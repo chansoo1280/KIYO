@@ -92,13 +92,16 @@ const Page = (): JSX.Element => {
                         }
                     ></Button>
                 }
-                title={`파일 생성 / ${step === STEP.INPUT_PINCODE ? "1. 핀코드 입력" : step === STEP.CONFIRM_PINCODE ? "2. 핀코드 확인" : step === STEP.INPUT_FILENAME ? "3. 파일명 입력" : ""}`}
+                title={step === STEP.INPUT_PINCODE ? "1. 핀코드 입력" : step === STEP.CONFIRM_PINCODE ? "2. 핀코드 확인" : step === STEP.INPUT_FILENAME ? "3. 파일명 입력" : ""}
                 centerTitle
-            ></Header>
+                noMargin
+            >
+                파일 생성
+            </Header>
             {step === STEP.INPUT_PINCODE ? (
                 <>
                     <PinCode value={pincode || ""} length={pinCodeLen}></PinCode>
-                    <Space align="flex-end">
+                    <Space padding="0 16px" align="flex-end">
                         <Button type="link" onClick={() => router.push("/files", "/files")}>
                             파일 목록으로 이동
                         </Button>
