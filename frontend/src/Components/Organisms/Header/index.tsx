@@ -1,9 +1,9 @@
 // #region Global Imports
+import classNames from "classnames"
+import React from "react"
 // #endregion Global Imports
 
 // #region Local Imports
-import classNames from "classnames"
-import { useEffect, useRef, useState } from "react"
 import styles from "./Header.module.scss"
 
 // #endregion Local Imports

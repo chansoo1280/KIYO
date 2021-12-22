@@ -23,4 +23,4 @@ const Title = (props: Props): JSX.Element => {
     })
     return <TitleNode className={classes} {...rest} />
 }
-export default Title
+export default React.memo(Title)

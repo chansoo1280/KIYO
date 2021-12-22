@@ -1,12 +1,12 @@
 // #region Global Imports
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
 // #endregion Global Imports
 
 // #region Local Imports
-import { Header, Search, Space, Button, AccountCard, ConfirmModal, Tag, Radio, Sticky } from "@Components"
+import { Header, Search, Space, Button, ConfirmModal, Tag, Radio, Sticky, AccountList } from "@Components"
 import { RootState, AcFileActions } from "@Redux"
 import { AcFile, Account, sortType } from "@Interfaces"
 import { RN_API } from "@Definitions"
@@ -32,15 +32,6 @@ const Page = (): JSX.Element => {
             isSelected: false,
         })),
     )
-    const getShowTagList = (list: Tag[]) => {
-        const tags = getShowAccountList(acFile.list).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
-        return list
-            .filter(({ name }) => tags.includes(name))
-            .sort((a, b) => (a.name > b.name ? -1 : a.name < b.name ? 1 : 0)) // 이름순 정렬 ㄱㄴㄷ
-            .sort((a, b) => (isNaN(Number(a.name)) ? -1 : isNaN(Number(b.name)) ? 1 : 0)) // 숫자는 뒤로
-            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)) // 선택된 태그를 앞으로
-            .slice(0, 6)
-    }
     const sortList = [
         {
             name: "사이트명",
@@ -62,6 +53,15 @@ const Page = (): JSX.Element => {
         show: false,
         selSortType: acFile.sortType,
     })
+    const getShowTagList = (list: Tag[]) => {
+        const tags = getShowAccountList(acFile.list).reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+        return list
+            .filter(({ name }) => tags.includes(name))
+            .sort((a, b) => (a.name > b.name ? -1 : a.name < b.name ? 1 : 0)) // 이름순 정렬 ㄱㄴㄷ
+            .sort((a, b) => (isNaN(Number(a.name)) ? -1 : isNaN(Number(b.name)) ? 1 : 0)) // 숫자는 뒤로
+            .sort((a, b) => Number(b.isSelected) - Number(a.isSelected)) // 선택된 태그를 앞으로
+            .slice(0, 6)
+    }
     const setSortType = async (sortType: AcFile["sortType"]) => {
         const data = await WebViewMessage<typeof RN_API.SET_SORTTYPE>(RN_API.SET_SORTTYPE, {
             sortType: sortType,
@@ -73,200 +73,200 @@ const Page = (): JSX.Element => {
             }),
         )
     }
-    const setFile = (data: Account[]) => {
-        const tags = data.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
-        dispatch(
-            AcFileActions.setInfo({
-                list: data,
-                tags: Array.from(new Set(tags)),
-            }),
-        )
-    }
-    const reqCopyPw = async (account: Account) => {
-        const data = await WebViewMessage<typeof RN_API.SET_COPY>(RN_API.SET_COPY, {
-            text: account.pw,
-        }).catch(() => null)
-        if (data === null) return
-        const data2 = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
-            list: [
-                ...acFile.list.filter(({ idx }) => idx !== account.idx),
-                {
-                    ...account,
-                    copiedAt: String(new Date()),
-                },
-            ],
-            pincode: acFile.pincode,
-        }).catch(() => null)
-        if (data2 === null) return
-        if (data2 === false) {
-            alert("파일 수정 실패")
-            return
-        }
-        setFile(data2)
-    }
-    const testList = undefined
-    // const testList: Account[] = [
-    //     {
-    //         idx: 1,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "구글(Google)",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 2,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "네이버(Naver)",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 3,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "다음(Daum)",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 4,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "마이크로소프트(Microsoft)",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 5,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "5",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 6,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "6",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 7,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "7",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 8,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "8",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 9,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "9",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 10,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "10",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 11,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "11",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 12,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "12",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 13,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "13",
-    //         tags: ["금융"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 14,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "14",
-    //         tags: ["게임"],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 15,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "15",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    //     {
-    //         idx: 16,
-    //         id: "123",
-    //         pw: "12341312",
-    //         siteName: "16",
-    //         tags: [],
-    //         modifiedAt: String(new Date()),
-    //         createdAt: String(new Date()),
-    //         copiedAt: "",
-    //     },
-    // ]
+    // const setFile = (data: Account[]) => {
+    //     const tags = data.reduce((acc: string[], cur) => acc.concat(cur.tags), [])
+    //     dispatch(
+    //         AcFileActions.setInfo({
+    //             list: data,
+    //             tags: Array.from(new Set(tags)),
+    //         }),
+    //     )
+    // }
+    // const reqCopyPw = async (account: Account) => {
+    //     const data = await WebViewMessage<typeof RN_API.SET_COPY>(RN_API.SET_COPY, {
+    //         text: account.pw,
+    //     }).catch(() => null)
+    //     if (data === null) return
+    //     const data2 = await WebViewMessage<typeof RN_API.SET_FILE>(RN_API.SET_FILE, {
+    //         list: [
+    //             ...acFile.list.filter(({ idx }) => idx !== account.idx),
+    //             {
+    //                 ...account,
+    //                 copiedAt: String(new Date()),
+    //             },
+    //         ],
+    //         pincode: acFile.pincode,
+    //     }).catch(() => null)
+    //     if (data2 === null) return
+    //     if (data2 === false) {
+    //         alert("파일 수정 실패")
+    //         return
+    //     }
+    //     setFile(data2)
+    // }
+    // const testList = undefined
+    const testList: Account[] = [
+        {
+            idx: 1,
+            id: "123",
+            pw: "12341312",
+            siteName: "구글(Google)",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 2,
+            id: "123",
+            pw: "12341312",
+            siteName: "네이버(Naver)",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 3,
+            id: "123",
+            pw: "12341312",
+            siteName: "다음(Daum)",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 4,
+            id: "123",
+            pw: "12341312",
+            siteName: "마이크로소프트(Microsoft)",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 5,
+            id: "123",
+            pw: "12341312",
+            siteName: "5",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 6,
+            id: "123",
+            pw: "12341312",
+            siteName: "6",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 7,
+            id: "123",
+            pw: "12341312",
+            siteName: "7",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 8,
+            id: "123",
+            pw: "12341312",
+            siteName: "8",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 9,
+            id: "123",
+            pw: "12341312",
+            siteName: "9",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 10,
+            id: "123",
+            pw: "12341312",
+            siteName: "10",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 11,
+            id: "123",
+            pw: "12341312",
+            siteName: "11",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 12,
+            id: "123",
+            pw: "12341312",
+            siteName: "12",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 13,
+            id: "123",
+            pw: "12341312",
+            siteName: "13",
+            tags: ["금융"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 14,
+            id: "123",
+            pw: "12341312",
+            siteName: "14",
+            tags: ["게임"],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 15,
+            id: "123",
+            pw: "12341312",
+            siteName: "15",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+        {
+            idx: 16,
+            id: "123",
+            pw: "12341312",
+            siteName: "16",
+            tags: [],
+            modifiedAt: String(new Date()),
+            createdAt: String(new Date()),
+            copiedAt: "",
+        },
+    ]
 
     const getShowAccountList = (list: Account[]) => {
         const selectedTagList = tagList.filter(({ isSelected }) => isSelected === true)
@@ -276,6 +276,9 @@ const Page = (): JSX.Element => {
             .sort((a, b) => (a[acFile.sortType] < b[acFile.sortType] ? -1 : a[acFile.sortType] > b[acFile.sortType] ? 1 : 0))
         return acFile.sortType === sortType.modifiedAt || acFile.sortType === sortType.copiedAt ? showList.reverse() : showList
     }
+    const accountList = useMemo(() => {
+        return getShowAccountList(testList || acFile.list)
+    }, [acFile, filterText, tagList])
     return (
         <>
             <Header title={<img src="/static/images/logo.svg" alt="KIYO" />}>
@@ -336,80 +339,8 @@ const Page = (): JSX.Element => {
                     ))}
                 </Tag>
             )}
+            <AccountList list={accountList} filterText={filterText}></AccountList>
 
-            <Space direction="column" padding="0 16px 36px" gap="22px">
-                {testList ? (
-                    getShowAccountList(testList).map((account: Account, idx: number) => (
-                        <AccountCard key={account.idx} account={account}>
-                            <Button
-                                onClick={() => {
-                                    reqCopyPw(account)
-                                }}
-                                icon={
-                                    <i className="xi-documents">
-                                        <span className="ir">copy</span>
-                                    </i>
-                                }
-                                type="default"
-                            ></Button>
-                            <Button
-                                onClick={() => {
-                                    router.push({
-                                        pathname: "/modify",
-                                        query: {
-                                            idx: account.idx,
-                                        },
-                                    })
-                                }}
-                                icon={
-                                    <i className="xi-pen">
-                                        <span className="ir">modify</span>
-                                    </i>
-                                }
-                                type="default"
-                            ></Button>
-                        </AccountCard>
-                    ))
-                ) : !acFile.list || acFile.list.length === 0 ? (
-                    filterText === "" ? (
-                        <span>아래의 +버튼을 통해 계정을 생성해주세요.</span>
-                    ) : (
-                        <span>검색된 계정 정보가 없습니다!</span>
-                    )
-                ) : (
-                    getShowAccountList(acFile.list).map((account) => (
-                        <AccountCard key={account.idx} account={account}>
-                            <Button
-                                onClick={() => {
-                                    reqCopyPw(account)
-                                }}
-                                icon={
-                                    <i className="xi-documents">
-                                        <span className="ir">copy</span>
-                                    </i>
-                                }
-                                type="default"
-                            ></Button>
-                            <Button
-                                onClick={() => {
-                                    router.push({
-                                        pathname: "/modify",
-                                        query: {
-                                            idx: account.idx,
-                                        },
-                                    })
-                                }}
-                                icon={
-                                    <i className="xi-pen">
-                                        <span className="ir">modify</span>
-                                    </i>
-                                }
-                                type="default"
-                            ></Button>
-                        </AccountCard>
-                    ))
-                )}
-            </Space>
             <Button
                 onClick={() => {
                     router.push("/create", "/create")

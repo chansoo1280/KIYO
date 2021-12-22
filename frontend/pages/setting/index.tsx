@@ -1,5 +1,5 @@
 // #region Global Imports
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useTranslation } from "next-i18next"
 import { useRouter } from "next/router"
