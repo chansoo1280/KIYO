@@ -28,7 +28,7 @@ export const siteIconObj: {
     AWS: "/static/images/sites/aws.png",
     MSI: "/static/images/sites/msi.png",
     워크넷: "/static/images/sites/worknet.png",
-    "깃허브(Github)": "/static/images/sites/github.png",
+    "깃허브(Github)": "/static/images/sites/gitHub.png",
     "마이크로소프트(Microsoft)": "/static/images/sites/microsoft.svg",
     "어도비(Adobe)": "/static/images/sites/adobe.png",
     "넷플릭스(Netflix)": "/static/images/sites/netflix.svg",
