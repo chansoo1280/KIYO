@@ -1,8 +1,0 @@
-export { default as Tab } from "./Tab"
-export { default as Tag } from "./Tag"
-export { default as Modal } from "./Modal"
-export { default as SettingList } from "./SettingList"
-export { default as FileList } from "./FileList"
-export { default as Search } from "./Search"
-export { default as RecommendInput } from "./RecommendInput"
-export { default as MoveTop } from "./MoveTop"

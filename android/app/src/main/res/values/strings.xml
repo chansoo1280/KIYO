@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">kiyo</string>
+    <string name="title_activity_main">kiyo</string>
+    <string name="package_name">com.kiyo.app</string>
+    <string name="custom_url_scheme">com.kiyo.app</string>
+</resources>
