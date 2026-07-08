@@ -8,52 +8,74 @@ type Props = {
 
 const Settings = ({ onOpenAlerts, onOpenList, onOpenHome }: Props) => {
   return (
-    <main className="settings-screen">
-      <div className="settings-shell">
-        <header className="settings-header">
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <h1>Settings</h1>
-          </div>
+    <main className="min-h-[100svh] flex flex-col justify-center px-5 py-6 sm:px-8">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <header className="flex items-center gap-3">
+          <h1 className="text-3xl font-semibold text-slate-900">Settings</h1>
         </header>
 
-        <section>
-          <h3>Security</h3>
-          <div className="settings-item">
-            <span>PIN</span>
-          </div>
-          <div className="settings-item">
-            <span>자동잠금</span>
-          </div>
-
-          <h3>UI</h3>
-          <div className="settings-item">
-            <span>다크모드</span>
-          </div>
-          <div className="settings-item">
-            <span>글자크기</span>
+        <section className="space-y-4">
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Security
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>PIN</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>자동잠금</span>
+              </div>
+            </div>
           </div>
 
-          <h3>Data</h3>
-          <div className="settings-item">
-            <span>백업</span>
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              UI
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>다크모드</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>글자크기</span>
+              </div>
+            </div>
           </div>
-          <div className="settings-item">
-            <span>복원</span>
-          </div>
-          <div className="settings-item">
-            <span>초기화</span>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Data
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>백업</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>복원</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+                <span>초기화</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        <div className="settings-item">
-          <span>파일변경</span>
-          <button type="button" onClick={() => onOpenHome && onOpenHome()}>
-            이동
-          </button>
-        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+            <span>파일변경</span>
+            <button
+              type="button"
+              className="rounded-full bg-[#aa3bff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#8d2bd4]"
+              onClick={() => onOpenHome && onOpenHome()}
+            >
+              이동
+            </button>
+          </div>
 
-        <div className="settings-item">
-          <span>앱 정보</span>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
+            <span>앱 정보</span>
+          </div>
         </div>
       </div>
 

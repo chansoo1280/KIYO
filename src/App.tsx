@@ -3,7 +3,6 @@ import Home from "./pages/Home";
 import AccountList from "./pages/AccountList";
 import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
-import "./App.css";
 
 function App() {
   const [view, setView] = useState<"home" | "list" | "settings" | "alerts">(
