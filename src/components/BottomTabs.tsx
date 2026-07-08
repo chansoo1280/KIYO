@@ -1,16 +1,23 @@
-type Props = {
-  active?: "alerts" | "list" | "settings";
-  onOpenAlerts?: () => void;
-  onOpenList?: () => void;
-  onOpenSettings?: () => void;
-};
+import { useLocation, useNavigate } from "react-router-dom";
 
-const BottomTabs = ({
-  active = "list",
-  onOpenAlerts,
-  onOpenList,
-  onOpenSettings,
-}: Props) => {
+type Props = {};
+
+const BottomTabs = ({}: Props) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const active = (() => {
+    switch (location.pathname) {
+      case "/alerts":
+        return "alerts";
+      case "/settings":
+        return "settings";
+      case "/list":
+      case "/":
+      default:
+        return "list";
+    }
+  })();
+
   return (
     <nav
       className="fixed left-1/2 bottom-4 z-30 flex w-[min(92%,420px)] -translate-x-1/2 gap-2 rounded-full border border-slate-200 bg-white p-2 shadow-xl"
@@ -24,7 +31,7 @@ const BottomTabs = ({
             : "text-slate-600 hover:bg-slate-100"
         }`}
         aria-label="Alerts"
-        onClick={() => onOpenAlerts && onOpenAlerts()}
+        onClick={() => navigate("/alerts")}
       >
         🔔
       </button>
@@ -37,7 +44,7 @@ const BottomTabs = ({
             : "text-slate-600 hover:bg-slate-100"
         }`}
         aria-label="List"
-        onClick={() => onOpenList && onOpenList()}
+        onClick={() => navigate("/list")}
       >
         📋
       </button>
@@ -50,7 +57,7 @@ const BottomTabs = ({
             : "text-slate-600 hover:bg-slate-100"
         }`}
         aria-label="Settings"
-        onClick={() => onOpenSettings && onOpenSettings()}
+        onClick={() => navigate("/settings")}
       >
         ⚙️
       </button>

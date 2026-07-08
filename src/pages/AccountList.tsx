@@ -1,11 +1,6 @@
 import type { Account } from "../models/account";
 import BottomTabs from "../components/BottomTabs";
 
-type AccountListProps = {
-  onOpenSettings?: () => void;
-  onOpenAlerts?: () => void;
-};
-
 const accounts: Account[] = [
   {
     id: "1",
@@ -73,7 +68,7 @@ const accounts: Account[] = [
   },
 ];
 
-const AccountList = ({ onOpenSettings, onOpenAlerts }: AccountListProps) => {
+const AccountList = () => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -143,11 +138,7 @@ const AccountList = ({ onOpenSettings, onOpenAlerts }: AccountListProps) => {
         ⬆
       </button>
 
-      <BottomTabs
-        active="list"
-        onOpenAlerts={onOpenAlerts}
-        onOpenSettings={onOpenSettings}
-      />
+      <BottomTabs />
     </section>
   );
 };

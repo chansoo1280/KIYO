@@ -1,14 +1,13 @@
 import BottomTabs from "../components/BottomTabs";
 
-type Props = {
-  onOpenAlerts?: () => void;
-  onOpenList?: () => void;
-  onOpenHome?: () => void;
-};
+import { useNavigate } from "react-router-dom";
 
-const Settings = ({ onOpenAlerts, onOpenList, onOpenHome }: Props) => {
+type Props = {};
+
+const Settings = ({}: Props) => {
+  const navigate = useNavigate();
   return (
-    <main className="min-h-[100svh] flex flex-col justify-center px-5 py-6 sm:px-8">
+    <main className="min-h-svh flex flex-col justify-center px-5 py-6 sm:px-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header className="flex items-center gap-3">
           <h1 className="text-3xl font-semibold text-slate-900">Settings</h1>
@@ -67,7 +66,7 @@ const Settings = ({ onOpenAlerts, onOpenList, onOpenHome }: Props) => {
             <button
               type="button"
               className="rounded-full bg-[#aa3bff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#8d2bd4]"
-              onClick={() => onOpenHome && onOpenHome()}
+              onClick={() => navigate("/")}
             >
               이동
             </button>
@@ -79,12 +78,7 @@ const Settings = ({ onOpenAlerts, onOpenList, onOpenHome }: Props) => {
         </div>
       </div>
 
-      <BottomTabs
-        active="settings"
-        onOpenAlerts={onOpenAlerts}
-        onOpenList={onOpenList}
-        onOpenSettings={() => {}}
-      />
+      <BottomTabs />
     </main>
   );
 };

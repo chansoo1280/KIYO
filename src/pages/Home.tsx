@@ -1,8 +1,9 @@
-type HomeProps = {
-  onCreateFile: () => void;
-};
+import { useNavigate } from "react-router-dom";
 
-const Home = ({ onCreateFile }: HomeProps) => {
+type HomeProps = {};
+
+const Home = ({}: HomeProps) => {
+  const navigate = useNavigate();
   const hasRecentFile = false;
   const recentFileName = "project.kiyo";
 
@@ -97,7 +98,7 @@ const Home = ({ onCreateFile }: HomeProps) => {
                 <button
                   type="button"
                   className="rounded-full bg-[#aa3bff] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#8d2bd4]"
-                  onClick={onCreateFile}
+                  onClick={() => navigate("/list")}
                 >
                   Create file
                 </button>

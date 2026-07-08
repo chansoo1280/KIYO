@@ -1,12 +1,6 @@
 import BottomTabs from "../components/BottomTabs";
 
-const Alerts = ({
-  onOpenList,
-  onOpenSettings,
-}: {
-  onOpenList?: () => void;
-  onOpenSettings?: () => void;
-}) => {
+const Alerts = () => {
   const notifications = [
     { id: "1", text: "보안 업데이트가 필요합니다." },
     { id: "2", text: "새로운 로그인 기기 감지" },
@@ -39,11 +33,7 @@ const Alerts = ({
         </div>
       </div>
 
-      <BottomTabs
-        active="alerts"
-        onOpenList={onOpenList}
-        onOpenSettings={onOpenSettings}
-      />
+      <BottomTabs />
     </section>
   );
 };

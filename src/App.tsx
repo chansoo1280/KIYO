@@ -1,32 +1,19 @@
-import { useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import AccountList from "./pages/AccountList";
 import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
 
 function App() {
-  const [view, setView] = useState<"home" | "list" | "settings" | "alerts">(
-    "home",
-  );
-
-  return view === "home" ? (
-    <Home onCreateFile={() => setView("list")} />
-  ) : view === "list" ? (
-    <AccountList
-      onOpenSettings={() => setView("settings")}
-      onOpenAlerts={() => setView("alerts")}
-    />
-  ) : view === "settings" ? (
-    <Settings
-      onOpenAlerts={() => setView("alerts")}
-      onOpenList={() => setView("list")}
-      onOpenHome={() => setView("home")}
-    />
-  ) : (
-    <Alerts
-      onOpenList={() => setView("list")}
-      onOpenSettings={() => setView("settings")}
-    />
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/list" element={<AccountList />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/alerts" element={<Alerts />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
