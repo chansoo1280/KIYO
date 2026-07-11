@@ -8,7 +8,7 @@ const Alerts = () => {
   ];
 
   return (
-    <section className="min-h-[100svh] bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] pb-28 pt-6">
+    <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] pb-28 pt-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-5">
         <header className="flex items-center gap-3">
           <div>

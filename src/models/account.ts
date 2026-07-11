@@ -1,8 +1,18 @@
-export type Account = {
+export type FieldType = "text" | "password" | "email" | "number" | "textarea";
+
+export interface AccountField {
   id: string;
-  name: string;
-  username: string;
-  password: string;
-  icon: string;
-  balance: number;
-};
+  accountId: string;
+  label: string;
+  type: FieldType;
+  value: string;
+  order: number;
+}
+
+export interface Account {
+  id: string;
+  title: string;
+  tags: string[];
+  favorite: boolean;
+  fields: AccountField[];
+}

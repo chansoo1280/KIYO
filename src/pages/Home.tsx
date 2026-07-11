@@ -8,10 +8,10 @@ const Home = ({}: HomeProps) => {
   const recentFileName = "project.kiyo";
 
   return (
-    <main className="min-h-[100svh] flex flex-col justify-center px-5 py-6 sm:px-8">
+    <main className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header className="flex items-center justify-between gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-[1.5rem] bg-gradient-to-br from-[#aa3bff] to-[#7c3aed] text-3xl font-bold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]">
+          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[#aa3bff] to-[#7c3aed] text-3xl font-bold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]">
             K
           </div>
 
@@ -25,7 +25,7 @@ const Home = ({}: HomeProps) => {
           </div>
         </header>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]">
+        <section className="rounded-4xl border border-slate-200 bg-white p-7 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]">
           {hasRecentFile ? (
             <>
               <div className="mb-6">
@@ -47,7 +47,7 @@ const Home = ({}: HomeProps) => {
                   </p>
                 </div>
 
-                <div className="min-w-[110px] space-y-2">
+                <div className="min-w-27.5 space-y-2">
                   <label
                     className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500"
                     htmlFor="pin"
