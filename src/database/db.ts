@@ -1,6 +1,21 @@
-import type { Account } from "../models/account";
+import Dexie, { type Table } from "dexie";
+import type {
+  Account,
+  AccountField,
+  Metadata,
+  Setting,
+  Template,
+} from "../models/account";
+import {
+  getActiveDataFileName,
+  readDataFile,
+  setActiveDataFileName,
+  writeBackupFile,
+  writeDataFile,
+  type KiyoDataFile,
+} from "./fileStorage";
 
-export const initialAccounts: Account[] = [
+const seedAccounts = [
   {
     id: "1",
     title: "Personal",
@@ -203,42 +218,159 @@ export const initialAccounts: Account[] = [
   },
 ];
 
-const accounts: Account[] = [...initialAccounts];
+const seedTimestamp = Date.now();
 
-export const getAccounts = () => accounts;
-export const getAccountById = (id: string) =>
-  accounts.find((account) => account.id === id);
+export const initialAccounts: Account[] = seedAccounts.map((account, index) => {
+  const id = Number(account.id);
 
-export const addAccount = (account: Omit<Account, "id"> & { id?: string }) => {
-  // Generate new ID: find max existing ID and increment
-  const maxId = accounts.reduce((max, acc) => {
-    const idNum = parseInt(acc.id, 10);
-    return !isNaN(idNum) && idNum > max ? idNum : max;
-  }, 0);
-
-  const newId = account.id || (maxId + 1).toString();
-
-  // Create new account with generated ID
-  const newAccount: Account = {
+  return {
     ...account,
-    id: newId,
-    fields: account.fields.map((field, index) => ({
+    id,
+    templateId: 1,
+    fields: account.fields.map((field): AccountField => ({
       ...field,
-      id: `${newId}-${index + 1}`,
-      accountId: newId,
+      accountId: id,
+      type: field.type as AccountField["type"],
     })),
+    createdAt: seedTimestamp + index,
+    updatedAt: seedTimestamp + index,
   };
+});
 
-  accounts.push(newAccount);
+export const fixedTemplates: Template[] = [
+  {
+    id: 1,
+    name: "기본",
+    fields: [
+      { id: "email", accountId: 0, label: "이메일", type: "email", value: "", order: 1 },
+      { id: "password", accountId: 0, label: "비밀번호", type: "password", value: "", order: 2 },
+    ],
+  },
+  {
+    id: 2,
+    name: "은행",
+    fields: [
+      { id: "email", accountId: 0, label: "이메일", type: "email", value: "", order: 1 },
+      { id: "password", accountId: 0, label: "비밀번호", type: "password", value: "", order: 2 },
+      { id: "memo", accountId: 0, label: "메모", type: "textarea", value: "", order: 3 },
+    ],
+  },
+  {
+    id: 3,
+    name: "카드",
+    fields: [
+      { id: "card-number", accountId: 0, label: "카드번호", type: "text", value: "", order: 1 },
+      { id: "password", accountId: 0, label: "비밀번호", type: "password", value: "", order: 2 },
+      { id: "expiry-date", accountId: 0, label: "유효기간", type: "text", value: "", order: 3 },
+    ],
+  },
+];
 
-  return newAccount;
+export class KiyoDatabase extends Dexie {
+  accounts!: Table<Account, number>;
+  templates!: Table<Template, number>;
+  settings!: Table<Setting, number>;
+  metadata!: Table<Metadata, number>;
+
+  constructor() {
+    super("kiyo-db");
+    this.version(3).stores({
+      accounts: "id, templateId, title, *tags, favorite, createdAt, updatedAt",
+      templates: "id, name",
+      settings: "++id, theme, lockEnabled",
+      metadata: "id, version, createdAt",
+    }).upgrade((transaction) =>
+      transaction.table("accounts").toCollection().modify({ templateId: 1 }),
+    );
+  }
+}
+
+export const db = new KiyoDatabase();
+
+let initializationPromise: Promise<void> | undefined;
+
+export const getDatabaseSnapshot = async (): Promise<KiyoDataFile> => ({
+  version: 1,
+  fileName: getActiveDataFileName() ?? "kiyo-data.json",
+  updatedAt: Date.now(),
+  accounts: await db.accounts.toArray(),
+  templates: await db.templates.toArray(),
+  settings: await db.settings.toArray(),
+  metadata: await db.metadata.toArray(),
+});
+
+export const syncDatabaseToFile = async (): Promise<void> => {
+  await writeDataFile(await getDatabaseSnapshot());
 };
 
-export const deleteAccount = (id: string) => {
-  const index = accounts.findIndex((account) => account.id === id);
-  if (index !== -1) {
-    accounts.splice(index, 1);
-    return true;
-  }
-  return false;
+const replaceDatabaseData = async (data: KiyoDataFile): Promise<void> => {
+  await db.transaction(
+    "rw",
+    db.accounts,
+    db.templates,
+    db.settings,
+    db.metadata,
+    async () => {
+      await db.accounts.clear();
+      await db.templates.clear();
+      await db.settings.clear();
+      await db.metadata.clear();
+      await db.accounts.bulkPut(data.accounts);
+      await db.templates.bulkPut(data.templates);
+      await db.settings.bulkPut(data.settings);
+      await db.metadata.bulkPut(data.metadata);
+    },
+  );
+};
+
+export const createDataFile = async (fileName: string): Promise<Account[]> => {
+  const data: KiyoDataFile = {
+    version: 1,
+    fileName,
+    updatedAt: Date.now(),
+    accounts: [],
+    templates: fixedTemplates,
+    settings: [],
+    metadata: [],
+  };
+  setActiveDataFileName(fileName);
+  await replaceDatabaseData(data);
+  await syncDatabaseToFile();
+  return data.accounts;
+};
+
+export const restoreDataFile = async (
+  data: KiyoDataFile,
+  fileName: string,
+): Promise<Account[]> => {
+  setActiveDataFileName(fileName);
+  await replaceDatabaseData(data);
+  await syncDatabaseToFile();
+  return data.accounts;
+};
+
+export const backupDataFile = async (fileName: string): Promise<void> => {
+  await writeBackupFile(await getDatabaseSnapshot(), fileName);
+};
+
+export const initializeDataStorage = (): Promise<void> => {
+  initializationPromise ??= (async () => {
+    const fileData = await readDataFile();
+
+    if (fileData) {
+      await replaceDatabaseData(fileData);
+      return;
+    }
+
+    if (!getActiveDataFileName() && (await db.templates.count()) === 0) {
+      await db.templates.bulkAdd(fixedTemplates);
+    }
+  })();
+
+  return initializationPromise;
+};
+
+export const loadAccounts = async (): Promise<Account[]> => {
+  await initializeDataStorage();
+  return db.accounts.orderBy("updatedAt").reverse().toArray();
 };

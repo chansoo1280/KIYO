@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Account } from "../models/account";
+import type { Account, Template } from "../models/account";
+import { fixedTemplates } from "../database/db";
+import { getActiveDataFileName } from "../database/fileStorage";
 import { useAccountStore } from "../store/accountStore";
 import BottomTabs from "../components/BottomTabs";
 
@@ -11,42 +13,36 @@ const AccountList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const activeFileName = getActiveDataFileName();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleAccountClick = (account: Account) => {
-    navigate("/account", { state: { account } });
+    navigate(`/account/${account.id}`, { state: { account } });
   };
 
-  const handleAddAccount = () => {
-    // Create new account without ID - will be auto-generated in addAccount
+  const handleSelectTemplate = (template: Template) => {
     const newAccount: Account = {
-      id: "",
+      id: 0,
+      templateId: template.id,
       title: "",
       tags: [],
       favorite: false,
-      fields: [
-        {
-          id: "",
-          accountId: "",
-          label: "Email",
-          type: "email",
-          value: "",
-          order: 1,
-        },
-        {
-          id: "",
-          accountId: "",
-          label: "Password",
-          type: "password",
-          value: "",
-          order: 2,
-        },
-      ],
+      createdAt: 0,
+      updatedAt: 0,
+      fields: template.fields.map((field, index) => ({
+        ...field,
+        id: `template-${template.id}-${index + 1}`,
+        accountId: 0,
+        value: "",
+        order: index + 1,
+      })),
     };
 
+    setShowTemplatePicker(false);
     navigate("/account/edit", { state: { account: newAccount } });
   };
 
@@ -134,6 +130,9 @@ const AccountList = () => {
             <h2 className="mt-2 text-3xl font-semibold text-slate-900">
               My accounts
             </h2>
+            {activeFileName && (
+              <p className="mt-1 text-sm text-slate-500">{activeFileName}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -274,7 +273,7 @@ const AccountList = () => {
           className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#aa3bff] text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-[#8d2bd4]"
           type="button"
           aria-label="Add account"
-          onClick={handleAddAccount}
+          onClick={() => setShowTemplatePicker(true)}
         >
           +
         </button>
@@ -287,6 +286,64 @@ const AccountList = () => {
           ⬆
         </button>
       </div>
+
+      {showTemplatePicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-5 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="template-picker-title"
+          onClick={() => setShowTemplatePicker(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#aa3bff]">
+                  새 계정
+                </p>
+                <h2
+                  id="template-picker-title"
+                  className="mt-1 text-xl font-semibold text-slate-900"
+                >
+                  템플릿 선택
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  기본 항목을 선택한 뒤 내용을 입력하세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTemplatePicker(false)}
+                className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="템플릿 선택 닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {fixedTemplates.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => handleSelectTemplate(template)}
+                  className="rounded-2xl border border-slate-200 p-4 text-left transition hover:border-[#aa3bff] hover:bg-[#f8f5ff]"
+                >
+                  <p className="font-semibold text-slate-900">
+                    {template.name}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {template.fields.map((field) => field.label).join(", ")}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomTabs />
     </section>

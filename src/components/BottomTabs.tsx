@@ -1,8 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 
-type Props = {};
-
-const BottomTabs = ({}: Props) => {
+const BottomTabs = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const active = (() => {

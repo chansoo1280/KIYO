@@ -1,80 +1,104 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import type { Account } from "../models/account";
-import { initialAccounts } from "../database/db";
+import {
+  db,
+  createDataFile,
+  initialAccounts,
+  loadAccounts,
+  restoreDataFile,
+  syncDatabaseToFile,
+} from "../database/db";
+import type { KiyoDataFile } from "../database/fileStorage";
 
 interface AccountState {
   accounts: Account[];
   setAccounts: (accounts: Account[]) => void;
-  addAccount: (account: Omit<Account, "id"> & { id?: string }) => Account;
-  updateAccount: (account: Account) => void;
-  deleteAccount: (id: string) => void;
-  getAccountById: (id: string) => Account | undefined;
+  addAccount: (account: Account) => Promise<Account>;
+  updateAccount: (account: Account) => Promise<void>;
+  deleteAccount: (id: number) => Promise<void>;
+  getAccountById: (id: number) => Account | undefined;
   resetToInitial: () => void;
+  createFile: (fileName: string) => Promise<void>;
+  restoreFile: (data: KiyoDataFile, fileName: string) => Promise<void>;
 }
 
-// Helper function to get initial accounts (empty array for production, initialAccounts for development)
-const getInitialAccounts = () => {
-  // Check if we're in development mode
-  if (import.meta.env.DEV) {
-    return initialAccounts;
-  }
-  // In production, start with empty array (data will be loaded from localStorage if exists)
-  return [];
-};
+const accountsLoaded = loadAccounts();
 
 export const useAccountStore = create<AccountState>()(
-  persist(
-    (set, get) => ({
-      accounts: getInitialAccounts(),
+  (set, get) => ({
+      accounts: [],
 
       setAccounts: (accounts) => set({ accounts }),
 
-      addAccount: (account) => {
-        // Generate new ID: find max existing ID and increment
-        const maxId = get().accounts.reduce((max, acc) => {
-          const idNum = parseInt(acc.id, 10);
-          return !isNaN(idNum) && idNum > max ? idNum : max;
-        }, 0);
-
-        const newId = account.id || (maxId + 1).toString();
-
-        // Create new account with generated ID
-        const newAccount: Account = {
-          ...account,
-          id: newId,
-          fields: account.fields.map((field, index) => ({
-            ...field,
-            id: `${newId}-${index + 1}`,
-            accountId: newId,
-          })),
-        };
-
+      addAccount: async (account) => {
+        await accountsLoaded;
+        const now = Date.now();
+        const newAccount = await db.transaction("rw", db.accounts, async () => {
+          const lastAccount = await db.accounts.orderBy("id").last();
+          const id = (lastAccount?.id ?? 0) + 1;
+          const createdAccount: Account = {
+            ...account,
+            id,
+            createdAt: now,
+            updatedAt: now,
+            fields: account.fields.map((field, index) => ({
+              ...field,
+              id: `${id}-${index + 1}`,
+              accountId: id,
+            })),
+          };
+          await db.accounts.add(createdAccount);
+          return createdAccount;
+        });
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
-
+        await syncDatabaseToFile();
         return newAccount;
       },
 
-      updateAccount: (account) =>
+      updateAccount: async (account) => {
+        await accountsLoaded;
+        const updatedAccount = { ...account, updatedAt: Date.now() };
+        await db.accounts.put(updatedAccount);
         set((state) => ({
           accounts: state.accounts.map((a) =>
-            a.id === account.id ? account : a,
+            a.id === updatedAccount.id ? updatedAccount : a,
           ),
-        })),
+        }));
+        await syncDatabaseToFile();
+      },
 
-      deleteAccount: (id) =>
+      deleteAccount: async (id) => {
+        await accountsLoaded;
+        await db.accounts.delete(id);
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
-        })),
+        }));
+        await syncDatabaseToFile();
+      },
 
       getAccountById: (id) => get().accounts.find((a) => a.id === id),
 
-      resetToInitial: () => set({ accounts: initialAccounts }),
-    }),
-    {
-      name: "kiyo_accounts",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ accounts: state.accounts }),
-    },
-  ),
+      resetToInitial: () => {
+        void db.transaction("rw", db.accounts, async () => {
+          await db.accounts.clear();
+          await db.accounts.bulkAdd(initialAccounts);
+          set({ accounts: initialAccounts });
+          await syncDatabaseToFile();
+        }).catch(console.error);
+      },
+
+      createFile: async (fileName) => {
+        const accounts = await createDataFile(fileName);
+        set({ accounts });
+      },
+
+      restoreFile: async (data, fileName) => {
+        const accounts = await restoreDataFile(data, fileName);
+        set({ accounts });
+      },
+  }),
 );
+
+void accountsLoaded
+  .then((accounts) => useAccountStore.getState().setAccounts(accounts))
+  .catch((error) => console.error("Failed to load accounts from Dexie:", error));

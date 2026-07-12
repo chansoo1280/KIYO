@@ -1,30 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField, FieldType } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
 
-const AccountEdit = () => {
+const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const account = location.state?.account as Account | undefined;
-  const isNew =
-    !account?.id || account.id.startsWith("temp") || account.id === "";
+  const isNew = !account.id;
 
   const updateAccount = useAccountStore((state) => state.updateAccount);
   const addAccount = useAccountStore((state) => state.addAccount);
 
-  const [title, setTitle] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [favorite, setFavorite] = useState(false);
-  const [fields, setFields] = useState<AccountField[]>([]);
-
-  useEffect(() => {
-    if (!account) return;
-    setTitle(account.title);
-    setTags(account.tags);
-    setFavorite(account.favorite);
-    setFields([...account.fields].sort((a, b) => a.order - b.order));
-  }, [account]);
+  const [title, setTitle] = useState(account.title);
+  const [tags, setTags] = useState<string[]>(account.tags);
+  const favorite = account.favorite;
+  const [fields, setFields] = useState<AccountField[]>(() =>
+    [...account.fields].sort((a, b) => a.order - b.order),
+  );
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
@@ -47,7 +38,7 @@ const AccountEdit = () => {
   const addField = () => {
     const newField: AccountField = {
       id: `field-${Date.now()}`,
-      accountId: account?.id ?? "temp",
+      accountId: account.id,
       label: "",
       type: "text",
       value: "",
@@ -61,7 +52,7 @@ const AccountEdit = () => {
     setFields((current) => current.filter((field) => field.id !== id));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const cleanedFields = fields
       .filter((field) => {
         const trimmedLabel = field.label.trim();
@@ -84,35 +75,15 @@ const AccountEdit = () => {
 
     if (isNew) {
       // addAccount returns the newly created account with generated ID
-      const createdAccount = addAccount(updatedAccount);
-      if (createdAccount) {
-        savedAccount = createdAccount;
-      }
+      savedAccount = await addAccount(updatedAccount);
     } else {
-      updateAccount(updatedAccount);
+      await updateAccount(updatedAccount);
     }
 
     navigate("/account", {
       state: { account: savedAccount },
     });
   };
-
-  if (!account) {
-    return (
-      <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-        >
-          ← 뒤로 가기
-        </button>
-        <p className="mt-4 text-slate-600">
-          수정할 계정 정보를 찾을 수 없습니다.
-        </p>
-      </section>
-    );
-  }
 
   return (
     <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
@@ -247,6 +218,36 @@ const AccountEdit = () => {
       </article>
     </section>
   );
+};
+
+const AccountEdit = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
+  const accountId = Number(id);
+  const storedAccount = useAccountStore((state) =>
+    Number.isInteger(accountId)
+      ? state.accounts.find((item) => item.id === accountId)
+      : undefined,
+  );
+  const account = storedAccount ?? (location.state?.account as Account | undefined);
+
+  if (!account) {
+    return (
+      <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+        >
+          ← 뒤로 가기
+        </button>
+        <p className="mt-4 text-slate-600">수정할 계정 정보를 찾을 수 없습니다.</p>
+      </section>
+    );
+  }
+
+  return <AccountEditor key={account.id} account={account} />;
 };
 
 export default AccountEdit;

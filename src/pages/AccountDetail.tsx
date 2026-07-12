@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
 
@@ -14,9 +14,16 @@ const copyToClipboard = async (text: string) => {
 const AccountDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const account = location.state?.account as Account | undefined;
-  const [favorite, setFavorite] = useState(account?.favorite ?? false);
+  const { id } = useParams();
+  const accountId = Number(id);
+  const storedAccount = useAccountStore((state) =>
+    Number.isInteger(accountId)
+      ? state.accounts.find((item) => item.id === accountId)
+      : undefined,
+  );
+  const account = storedAccount ?? (location.state?.account as Account | undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { deleteAccount, updateAccount } = useAccountStore();
 
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
@@ -66,25 +73,18 @@ const AccountDetail = () => {
     );
   }
 
-  const currentAccount = account ? { ...account, favorite } : undefined;
-  const sortedFields = [...(account?.fields ?? [])].sort(
+  const sortedFields = [...account.fields].sort(
     (a, b) => a.order - b.order,
   );
-  const { deleteAccount, updateAccount } = useAccountStore();
 
-  const handleDelete = () => {
-    deleteAccount(account.id);
+  const handleDelete = async () => {
+    await deleteAccount(account.id);
     navigate("/list");
     setShowDeleteConfirm(false);
   };
 
   const handleBack = () => {
-    if (currentAccount) {
-      updateAccount(currentAccount);
-      navigate("/list", { state: { account: currentAccount } });
-    } else {
-      navigate("/list");
-    }
+    navigate("/list", { state: { account } });
   };
 
   return (
@@ -102,8 +102,8 @@ const AccountDetail = () => {
             <button
               type="button"
               onClick={() =>
-                navigate("/account/edit", {
-                  state: { account: currentAccount },
+                navigate(`/account/edit/${account.id}`, {
+                  state: { account },
                 })
               }
               className="rounded-full bg-[#aa3bff] px-4 py-2 text-sm font-semibold text-white shadow-sm"
@@ -139,14 +139,14 @@ const AccountDetail = () => {
             </div>
             <button
               type="button"
-              onClick={() => setFavorite((current) => !current)}
+              onClick={() => void updateAccount({ ...account, favorite: !account.favorite })}
               className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
-                favorite
+                account.favorite
                   ? "border-[#aa3bff] bg-[#f4efff] text-[#7c3aed]"
                   : "border-slate-200 bg-white text-slate-700"
               }`}
             >
-              {favorite ? "★ Favorite" : "☆ Favorite"}
+              {account.favorite ? "★ Favorite" : "☆ Favorite"}
             </button>
           </div>
 
@@ -194,7 +194,7 @@ const AccountDetail = () => {
               </button>
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
                 className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
               >
                 삭제
