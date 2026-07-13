@@ -1,62 +1,68 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  createDataFile,
   fileExists,
-  getActiveDataFileName,
-  isKiyoDataFile,
+  isKiyoFile,
+  openImportedDataFile,
 } from "../database/fileStorage";
-import { useAccountStore } from "../store/accountStore";
-import FileNameDialog from "../components/FileNameDialog";
+import FileCreateDialog from "../components/FileCreateDialog";
+import { useSecurityStore } from "../store/securityStore";
+import { initializeDatabase } from "../database/db";
+import FileOpenDialog from "../components/FileOpenDialog";
 
 const Home = () => {
   const navigate = useNavigate();
-  const createFile = useAccountStore((state) => state.createFile);
-  const restoreFile = useAccountStore((state) => state.restoreFile);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeFileName] = useState(() => getActiveDataFileName());
-  const [error, setError] = useState("");
+  const { activeFileName } = useSecurityStore((state) => state);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [errorMessageCreateDialog, setErrorMessageCreateDialog] = useState("");
+  const [showOpenDialog, setShowOpenDialog] = useState(false);
 
   useEffect(() => {
     if (activeFileName) {
-      navigate("/list", { replace: true });
+      navigate("/auth", { replace: true });
       return;
     }
-  }, [activeFileName]);
+  }, []);
 
-  const handleCreate = async (fileName: string) => {
+  const handleCreateFile = async ({
+    fileName,
+    encrypted,
+    pin,
+  }: {
+    fileName: string;
+    location: string;
+    encrypted: boolean;
+    pin: string;
+  }) => {
     const exists = await fileExists(fileName);
     if (exists) {
-      setErrorMessageCreateDialog(`${fileName} 파일이 이미 존재합니다.`);
-      return;
-    } else {
-      setErrorMessageCreateDialog("");
+      throw new Error(`${fileName} 파일이 이미 존재합니다.`);
     }
-    await createFile(fileName);
+    if (encrypted && !pin) {
+      throw new Error("핀번호를 입력하세요");
+    }
+
+    await createDataFile(fileName, pin);
+    await initializeDatabase();
     navigate("/list", { replace: true });
     setShowCreateDialog(false);
   };
 
-  const handleSelectedFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+  const handleOpenFile = async ({ file, pin }: { file: File; pin: string }) => {
+    const data = await openImportedDataFile(await file.text(), pin, file.name);
 
-    try {
-      const data = JSON.parse(await file.text()) as unknown;
-      if (!isKiyoDataFile(data)) {
-        throw new Error("지원하지 않는 파일 형식입니다.");
-      }
-      await restoreFile(data, file.name);
-      navigate("/list", { replace: true });
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "파일을 불러오지 못했습니다.",
-      );
+    if (!data) {
+      throw new Error("PIN 번호가 올바르지 않습니다.");
     }
+
+    if (!isKiyoFile(data)) {
+      throw new Error("지원하지 않는 파일 형식입니다.");
+    }
+
+    navigate("/list", {
+      replace: true,
+    });
+    setShowOpenDialog(false);
   };
 
   return (
@@ -85,10 +91,6 @@ const Home = () => {
             새 JSON 파일을 만들거나, 기존 KIYO JSON 파일을 불러올 수 있습니다.
           </p>
 
-          {error && (
-            <p className="mt-4 text-sm font-medium text-red-600">{error}</p>
-          )}
-
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
@@ -99,30 +101,27 @@ const Home = () => {
             </button>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-full bg-[#f4efff] px-5 py-3 text-sm font-semibold text-[#7c3aed] transition hover:bg-[#ede4ff]"
+              onClick={() => setShowOpenDialog(true)}
+              className="rounded-full bg-[#867e98] px-5 py-3 text-sm font-semibold text-[#7c3aed] transition hover:bg-[#ede4ff]"
             >
               파일 선택
             </button>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(event) => void handleSelectedFile(event)}
-          />
         </section>
       </div>
-      <FileNameDialog
+      <FileCreateDialog
         open={showCreateDialog}
         title="새 파일 생성"
         description="새 JSON 파일의 이름을 입력하세요."
         defaultValue="my-accounts.json"
         confirmLabel="생성"
-        errorMessage={errorMessageCreateDialog}
         onClose={() => setShowCreateDialog(false)}
-        onConfirm={(fileName) => void handleCreate(fileName)}
+        onConfirm={handleCreateFile}
+      />
+      <FileOpenDialog
+        open={showOpenDialog}
+        onClose={() => setShowOpenDialog(false)}
+        onConfirm={handleOpenFile}
       />
     </main>
   );

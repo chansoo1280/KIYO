@@ -1,29 +1,41 @@
 import BottomTabs from "../components/BottomTabs";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { backupDataFile } from "../database/db";
 import {
-  clearActiveDataFileName,
+  backupDataFile,
   fileExists,
-  getActiveDataFileName,
-  isKiyoDataFile,
+  isKiyoFile,
+  openImportedDataFile,
 } from "../database/fileStorage";
+import { useSecurityStore } from "../store/securityStore";
+import FileCreateDialog from "../components/FileCreateDialog";
+import FileOpenDialog from "../components/FileOpenDialog";
 import { useAccountStore } from "../store/accountStore";
-import FileNameDialog from "../components/FileNameDialog";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const restoreFile = useAccountStore((state) => state.restoreFile);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [showBackupDialog, setShowBackupDialog] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const { activeFileName, setActiveFileName } = useSecurityStore(
+    (state) => state,
+  );
   const defaultBackupFileName = (() => {
-    const fileName = getActiveDataFileName()?.replace(/\.json$/, "") ?? "kiyo";
+    const fileName = activeFileName?.replace(/\.json$/, "") ?? "kiyo";
     const isBackup = /-backup$/i.test(fileName);
     return `${fileName}${isBackup ? "" : "-backup"}.json`;
   })();
 
-  const handleBackup = async (fileName: string) => {
+  const handleBackup = async ({
+    fileName,
+    encrypted,
+    pin,
+  }: {
+    fileName: string;
+    location: string;
+    encrypted: boolean;
+    pin: string;
+  }) => {
     const exists = await fileExists(fileName);
     if (exists) {
       const overwrite = window.confirm(
@@ -34,19 +46,24 @@ const Settings = () => {
         return;
       }
     }
-    await backupDataFile(fileName);
+    if (encrypted && !pin) {
+      throw new Error("핀번호를 입력하세요");
+    }
+    await backupDataFile(fileName, pin);
     setMessage("백업 파일을 저장했습니다.");
+    setShowBackupDialog(false);
   };
 
-  const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+  const handleRestore = async ({ file, pin }: { file: File; pin: string }) => {
+    const data = await openImportedDataFile(await file.text(), pin, file.name);
+    if (!data) {
+      throw new Error("PIN 번호가 올바르지 않습니다.");
+    }
+
+    if (!isKiyoFile(data)) {
+      throw new Error("지원하지 않는 파일 형식입니다.");
+    }
     try {
-      const data = JSON.parse(await file.text()) as unknown;
-      if (!isKiyoDataFile(data))
-        throw new Error("지원하지 않는 파일 형식입니다.");
-      await restoreFile(data, file.name);
       setMessage(`${file.name} 파일을 복원했습니다.`);
       navigate("/list", { replace: true });
     } catch (cause) {
@@ -110,7 +127,7 @@ const Settings = () => {
                 <span>복원</span>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setShowRestoreDialog(true)}
                   className="rounded-full bg-[#f4efff] px-4 py-2 text-sm font-semibold text-[#7c3aed]"
                 >
                   불러오기
@@ -133,7 +150,8 @@ const Settings = () => {
               type="button"
               className="rounded-full bg-[#aa3bff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#8d2bd4]"
               onClick={() => {
-                clearActiveDataFileName();
+                setActiveFileName("");
+                useAccountStore.getState().resetToInitial();
                 navigate("/", { state: { selectFile: true } });
               }}
             >
@@ -147,25 +165,19 @@ const Settings = () => {
         </div>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json,.json"
-        className="hidden"
-        onChange={(event) => void handleRestore(event)}
-      />
-
-      <FileNameDialog
+      <FileCreateDialog
         open={showBackupDialog}
         title="백업 파일 저장"
         description="백업 JSON 파일의 이름을 입력하세요."
         defaultValue={defaultBackupFileName}
         confirmLabel="저장"
         onClose={() => setShowBackupDialog(false)}
-        onConfirm={(fileName) => {
-          setShowBackupDialog(false);
-          void handleBackup(fileName);
-        }}
+        onConfirm={handleBackup}
+      />
+      <FileOpenDialog
+        open={showRestoreDialog}
+        onClose={() => setShowRestoreDialog(false)}
+        onConfirm={handleRestore}
       />
 
       <BottomTabs />

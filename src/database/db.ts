@@ -7,13 +7,12 @@ import type {
   Template,
 } from "../models/account";
 import {
-  getActiveDataFileName,
-  readDataFile,
-  setActiveDataFileName,
-  writeBackupFile,
+  isNativeFileStorageAvailable,
   writeDataFile,
   type KiyoDataFile,
 } from "./fileStorage";
+import { useSecurityStore } from "../store/securityStore";
+import { encryptData } from "../crypto/encryption";
 
 const seedAccounts = [
   {
@@ -227,11 +226,13 @@ export const initialAccounts: Account[] = seedAccounts.map((account, index) => {
     ...account,
     id,
     templateId: 1,
-    fields: account.fields.map((field): AccountField => ({
-      ...field,
-      accountId: id,
-      type: field.type as AccountField["type"],
-    })),
+    fields: account.fields.map(
+      (field): AccountField => ({
+        ...field,
+        accountId: id,
+        type: field.type as AccountField["type"],
+      }),
+    ),
     createdAt: seedTimestamp + index,
     updatedAt: seedTimestamp + index,
   };
@@ -242,26 +243,82 @@ export const fixedTemplates: Template[] = [
     id: 1,
     name: "기본",
     fields: [
-      { id: "email", accountId: 0, label: "이메일", type: "email", value: "", order: 1 },
-      { id: "password", accountId: 0, label: "비밀번호", type: "password", value: "", order: 2 },
+      {
+        id: "email",
+        accountId: 0,
+        label: "이메일",
+        type: "email",
+        value: "",
+        order: 1,
+      },
+      {
+        id: "password",
+        accountId: 0,
+        label: "비밀번호",
+        type: "password",
+        value: "",
+        order: 2,
+      },
     ],
   },
   {
     id: 2,
     name: "은행",
     fields: [
-      { id: "email", accountId: 0, label: "이메일", type: "email", value: "", order: 1 },
-      { id: "password", accountId: 0, label: "비밀번호", type: "password", value: "", order: 2 },
-      { id: "memo", accountId: 0, label: "메모", type: "textarea", value: "", order: 3 },
+      {
+        id: "email",
+        accountId: 0,
+        label: "이메일",
+        type: "email",
+        value: "",
+        order: 1,
+      },
+      {
+        id: "password",
+        accountId: 0,
+        label: "비밀번호",
+        type: "password",
+        value: "",
+        order: 2,
+      },
+      {
+        id: "memo",
+        accountId: 0,
+        label: "메모",
+        type: "textarea",
+        value: "",
+        order: 3,
+      },
     ],
   },
   {
     id: 3,
     name: "카드",
     fields: [
-      { id: "card-number", accountId: 0, label: "카드번호", type: "text", value: "", order: 1 },
-      { id: "password", accountId: 0, label: "비밀번호", type: "password", value: "", order: 2 },
-      { id: "expiry-date", accountId: 0, label: "유효기간", type: "text", value: "", order: 3 },
+      {
+        id: "card-number",
+        accountId: 0,
+        label: "카드번호",
+        type: "text",
+        value: "",
+        order: 1,
+      },
+      {
+        id: "password",
+        accountId: 0,
+        label: "비밀번호",
+        type: "password",
+        value: "",
+        order: 2,
+      },
+      {
+        id: "expiry-date",
+        accountId: 0,
+        label: "유효기간",
+        type: "text",
+        value: "",
+        order: 3,
+      },
     ],
   },
 ];
@@ -274,24 +331,27 @@ export class KiyoDatabase extends Dexie {
 
   constructor() {
     super("kiyo-db");
-    this.version(3).stores({
-      accounts: "id, templateId, title, *tags, favorite, createdAt, updatedAt",
-      templates: "id, name",
-      settings: "++id, theme, lockEnabled",
-      metadata: "id, version, createdAt",
-    }).upgrade((transaction) =>
-      transaction.table("accounts").toCollection().modify({ templateId: 1 }),
-    );
+    this.version(3)
+      .stores({
+        accounts:
+          "id, templateId, title, *tags, favorite, createdAt, updatedAt",
+        templates: "id, name",
+        settings: "++id, theme, lockEnabled",
+        metadata: "id, version, createdAt",
+      })
+      .upgrade((transaction) =>
+        transaction.table("accounts").toCollection().modify({ templateId: 1 }),
+      );
   }
 }
 
 export const db = new KiyoDatabase();
 
-let initializationPromise: Promise<void> | undefined;
-
-export const getDatabaseSnapshot = async (): Promise<KiyoDataFile> => ({
+export const getDatabaseSnapshot = async (
+  filename: string,
+): Promise<KiyoDataFile> => ({
   version: 1,
-  fileName: getActiveDataFileName() ?? "kiyo-data.json",
+  fileName: filename || "kiyo-data.json",
   updatedAt: Date.now(),
   accounts: await db.accounts.toArray(),
   templates: await db.templates.toArray(),
@@ -300,10 +360,28 @@ export const getDatabaseSnapshot = async (): Promise<KiyoDataFile> => ({
 });
 
 export const syncDatabaseToFile = async (): Promise<void> => {
-  await writeDataFile(await getDatabaseSnapshot());
+  const { activeFileName, cryptoKey, salt } = useSecurityStore.getState();
+
+  if (!activeFileName) {
+    throw new Error("파일이 선택되지 않았습니다.");
+  }
+  if (!isNativeFileStorageAvailable()) {
+    // 앱에서만 자동저장
+    return;
+  }
+  const data = await getDatabaseSnapshot(activeFileName);
+  if (!cryptoKey || !salt) {
+    await writeDataFile(data, activeFileName);
+    return;
+  }
+  const encrypted = await encryptData(data, cryptoKey, salt);
+  if (encrypted === null) return;
+  await writeDataFile(encrypted, activeFileName);
 };
 
-const replaceDatabaseData = async (data: KiyoDataFile): Promise<void> => {
+export const replaceDatabaseData = async (
+  data: KiyoDataFile,
+): Promise<void> => {
   await db.transaction(
     "rw",
     db.accounts,
@@ -322,55 +400,41 @@ const replaceDatabaseData = async (data: KiyoDataFile): Promise<void> => {
     },
   );
 };
+export const initializeDatabase = async () => {
+  console.log("Initializing database...");
+  if (!import.meta.env.DEV) return;
 
-export const createDataFile = async (fileName: string): Promise<Account[]> => {
-  const data: KiyoDataFile = {
-    version: 1,
-    fileName,
-    updatedAt: Date.now(),
-    accounts: [],
-    templates: fixedTemplates,
-    settings: [],
-    metadata: [],
-  };
-  setActiveDataFileName(fileName);
-  await replaceDatabaseData(data);
-  await syncDatabaseToFile();
-  return data.accounts;
+  const count = await db.accounts.count();
+
+  if (count > 0) return;
+
+  await db.transaction(
+    "rw",
+    db.accounts,
+    db.templates,
+    db.settings,
+    db.metadata,
+    async () => {
+      await db.accounts.bulkPut(initialAccounts);
+
+      await db.templates.bulkPut(fixedTemplates);
+
+      await db.settings.put({
+        theme: "light",
+        lockEnabled: true,
+        autoLockTime: 60,
+      });
+
+      await db.metadata.put({
+        id: 1,
+        version: "1.0.0",
+        createdAt: Date.now(),
+      });
+    },
+  );
+
+  console.log("개발용 seed 데이터가 추가되었습니다.");
 };
-
-export const restoreDataFile = async (
-  data: KiyoDataFile,
-  fileName: string,
-): Promise<Account[]> => {
-  setActiveDataFileName(fileName);
-  await replaceDatabaseData(data);
-  await syncDatabaseToFile();
-  return data.accounts;
-};
-
-export const backupDataFile = async (fileName: string): Promise<void> => {
-  await writeBackupFile(await getDatabaseSnapshot(), fileName);
-};
-
-export const initializeDataStorage = (): Promise<void> => {
-  initializationPromise ??= (async () => {
-    const fileData = await readDataFile();
-
-    if (fileData) {
-      await replaceDatabaseData(fileData);
-      return;
-    }
-
-    if (!getActiveDataFileName() && (await db.templates.count()) === 0) {
-      await db.templates.bulkAdd(fixedTemplates);
-    }
-  })();
-
-  return initializationPromise;
-};
-
-export const loadAccounts = async (): Promise<Account[]> => {
-  await initializeDataStorage();
+export const loadAccountsFromDB = async (): Promise<Account[]> => {
   return db.accounts.orderBy("updatedAt").reverse().toArray();
 };
