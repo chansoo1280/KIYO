@@ -9,8 +9,12 @@ import {
   type EncryptedKiyoFile,
 } from "../crypto/encryption";
 import { fromBase64 } from "../crypto/crypto.utils";
-import { useSecurityStore } from "../store/securityStore";
-import { replaceDatabaseData } from "./db";
+import { useSessionStore } from "../store/sessionStore";
+import {
+  replaceDatabaseData,
+  getDatabaseSnapshot,
+  saveFileDataToDB,
+} from "./db";
 import { useAccountStore } from "../store/accountStore";
 
 export interface KiyoDataFile {
@@ -24,6 +28,9 @@ export interface KiyoDataFile {
 }
 
 export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();
+
+// Re-export isEncryptedKiyoFile for use in other modules
+export { isEncryptedKiyoFile } from "../crypto/encryption";
 
 export const normalizeDataFileName = (fileName: string) => {
   const trimmedName = fileName.trim() || "kiyo-data";
@@ -52,6 +59,45 @@ export const fileExists = async (fileName: string): Promise<boolean> => {
   return !!data;
 };
 
+// Helper function to save data (encrypted or plain) to file and update security store
+const saveDataFile = async (
+  data: KiyoDataFile,
+  normalizedFileName: string,
+  pin?: string,
+  shouldSetActiveFile: boolean = true,
+): Promise<KiyoDataFile> => {
+  if (!pin) {
+    if (shouldSetActiveFile) {
+      await useSessionStore.getState().setSession({
+        fileName: normalizedFileName,
+      });
+    }
+    await writeDataFile(data, normalizedFileName);
+    // Save plain data to DB
+    await saveFileDataToDB(normalizedFileName, data);
+    return data;
+  }
+
+  // PIN -> CryptoKey 생성
+  const { key, salt } = await createCryptoKey(pin);
+
+  // 이후 자동 저장을 위해 메모리에 보관
+  if (shouldSetActiveFile) {
+    await useSessionStore.getState().setCryptoKey(key, salt);
+  }
+
+  // 데이터 암호화
+  const encrypted = await encryptData(data, key, salt);
+
+  // 파일 저장
+  await writeDataFile(encrypted, normalizedFileName);
+
+  // Save encrypted data to DB
+  await saveFileDataToDB(normalizedFileName, encrypted, salt);
+
+  return data;
+};
+
 export const createDataFile = async (
   fileName: string,
   pin?: string,
@@ -68,64 +114,18 @@ export const createDataFile = async (
     metadata: [],
   };
 
-  if (!pin) {
-    useSecurityStore.getState().setActiveFileName(normalizedFileName);
-    // 파일 저장
-    await writeDataFile(data, normalizedFileName);
-
-    return data;
-  }
-
-  // PIN -> CryptoKey 생성
-  const { key, salt } = await createCryptoKey(pin);
-
-  // 이후 자동 저장을 위해 메모리에 보관
-  useSecurityStore.getState().setCryptoKey(key, salt);
-
-  // 현재 파일 저장
-  useSecurityStore.getState().setActiveFileName(normalizedFileName);
-
-  // 데이터 암호화
-  const encrypted = await encryptData(data, key, salt);
-
-  // 파일 저장
-  await writeDataFile(encrypted, normalizedFileName);
-
-  return data;
+  return saveDataFile(data, normalizedFileName, pin, true);
 };
+
 export const backupDataFile = async (
   fileName: string,
   pin: string,
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
 
-  const data: KiyoDataFile = {
-    version: 1,
-    fileName: normalizedFileName,
-    updatedAt: Date.now(),
-    accounts: useAccountStore.getState().accounts,
-    templates: [],
-    settings: [],
-    metadata: [],
-  };
+  const data: KiyoDataFile = await getDatabaseSnapshot(normalizedFileName);
 
-  if (!pin) {
-    // 파일 저장
-    await writeDataFile(data, normalizedFileName);
-
-    return data;
-  }
-
-  // PIN -> CryptoKey 생성
-  const { key, salt } = await createCryptoKey(pin);
-
-  // 데이터 암호화
-  const encrypted = await encryptData(data, key, salt);
-
-  // 파일 저장
-  await writeDataFile(encrypted, normalizedFileName);
-
-  return data;
+  return saveDataFile(data, normalizedFileName, pin, false);
 };
 
 export const openImportedDataFile = async (
@@ -133,26 +133,54 @@ export const openImportedDataFile = async (
   pin: string,
   fileName: string,
 ): Promise<KiyoDataFile | null> => {
-  const parsedData = JSON.parse(data);
+  let parsedData: unknown;
+  try {
+    parsedData = JSON.parse(data);
+  } catch (error) {
+    console.error("Invalid JSON data:", error);
+    return null;
+  }
+
   // 기존 평문 파일 지원
   if (!isEncryptedKiyoFile(parsedData)) {
     if (!isKiyoFile(parsedData)) {
       return null;
     }
-    await replaceDatabaseData(parsedData);
-    useSecurityStore.getState().setActiveFileName(fileName);
-    useAccountStore.getState().setAccounts(parsedData.accounts);
-    return parsedData;
+    try {
+      await replaceDatabaseData(parsedData);
+      await useSessionStore.getState().setSession({
+        fileName,
+      });
+      // Save plain data to DB
+      await saveFileDataToDB(fileName, parsedData);
+      useAccountStore.getState().setAccounts(parsedData.accounts);
+      return parsedData;
+    } catch (error) {
+      console.error("Failed to load plain data file:", error);
+      return null;
+    }
   }
 
   try {
     // 파일의 salt로 동일한 CryptoKey 생성
+    if (!parsedData.salt || typeof parsedData.salt !== "string") {
+      console.error("Invalid salt in encrypted file");
+      return null;
+    }
+
     const salt = fromBase64(parsedData.salt);
+    // Validate salt length (should be 16 bytes for AES-GCM)
+    if (salt.byteLength !== 16) {
+      console.error("Invalid salt length");
+      return null;
+    }
+
     const { key } = await createCryptoKey(pin, salt);
 
     // 이후 자동 저장을 위해 메모리에 보관
-    useSecurityStore.getState().setCryptoKey(key, salt);
-    useSecurityStore.getState().setActiveFileName(fileName);
+    await useSessionStore
+      .getState()
+      .setSession({ fileName, cryptoKey: key, salt });
 
     const decrypted = await decryptData(parsedData, key);
 
@@ -160,6 +188,8 @@ export const openImportedDataFile = async (
       return null;
     }
     await replaceDatabaseData(decrypted);
+    // Save decrypted data to DB
+    await saveFileDataToDB(fileName, parsedData, salt);
     useAccountStore.getState().setAccounts(decrypted.accounts);
     return decrypted;
   } catch (error) {
@@ -192,4 +222,87 @@ export const writeDataFile = async (
     encoding: Encoding.UTF8,
     recursive: true,
   });
+};
+
+export interface ReadDataFileResult {
+  type: "not-found" | "encrypted" | "plain" | "invalid";
+  data?: KiyoDataFile;
+}
+
+export const readDataFile = async (
+  fileName: string,
+  pin?: string,
+): Promise<ReadDataFileResult> => {
+  const normalizedFileName = normalizeDataFileName(fileName);
+
+  if (!isNativeFileStorageAvailable()) {
+    // On web platform, we can't read from filesystem directly
+    // This should be handled via file input in the UI
+    return { type: "not-found" };
+  }
+
+  try {
+    // Read file from filesystem (native platform only)
+    const { data } = await Filesystem.readFile({
+      path: normalizedFileName,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    });
+
+    const fileContent = data as string;
+    const parsedData = JSON.parse(fileContent);
+
+    // Check if it's an encrypted KIYO file
+    if (isEncryptedKiyoFile(parsedData)) {
+      // If no PIN provided, just return that it's encrypted
+      if (!pin || !pin.trim()) {
+        return { type: "encrypted" };
+      }
+
+      // Try to decrypt with PIN
+      try {
+        const salt = fromBase64(parsedData.salt);
+        const { key } = await createCryptoKey(pin, salt);
+
+        // Store crypto key for auto-save
+        await useSessionStore
+          .getState()
+          .setSession({ fileName: normalizedFileName, cryptoKey: key, salt });
+
+        const decrypted = await decryptData(parsedData, key);
+
+        if (!isKiyoFile(decrypted)) {
+          return { type: "invalid" };
+        }
+
+        await replaceDatabaseData(decrypted);
+        useAccountStore.getState().setAccounts(decrypted.accounts);
+        return { type: "plain", data: decrypted };
+      } catch {
+        // PIN is wrong or decryption failed
+        return { type: "encrypted" };
+      }
+    }
+
+    // Check if it's a plain KIYO file
+    if (!isKiyoFile(parsedData)) {
+      return { type: "invalid" };
+    }
+
+    // Plain text KIYO file - load directly
+    await replaceDatabaseData(parsedData);
+    await useSessionStore.getState().setSession({
+      fileName: normalizedFileName,
+    });
+    useAccountStore.getState().setAccounts(parsedData.accounts);
+    return { type: "plain", data: parsedData };
+  } catch (error) {
+    await useSessionStore.getState().clearSession();
+    // File not found or read error
+    if (error instanceof Error && error.message.includes("File not found")) {
+      return { type: "not-found" };
+    }
+    console.error("File read error:", error);
+    return { type: "not-found" };
+  }
 };

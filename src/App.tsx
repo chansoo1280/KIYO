@@ -5,12 +5,14 @@ import AccountDetail from "./pages/AccountDetail";
 import AccountEdit from "./pages/AccountEdit";
 import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
+import Auth from "./pages/Auth";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/list" element={<AccountList />} />
         <Route path="/account" element={<AccountDetail />} />
         <Route path="/account/:id" element={<AccountDetail />} />

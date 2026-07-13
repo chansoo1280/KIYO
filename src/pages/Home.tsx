@@ -3,25 +3,49 @@ import { useNavigate } from "react-router-dom";
 import {
   createDataFile,
   fileExists,
+  isEncryptedKiyoFile,
   isKiyoFile,
   openImportedDataFile,
 } from "../database/fileStorage";
 import FileCreateDialog from "../components/FileCreateDialog";
-import { useSecurityStore } from "../store/securityStore";
-import { initializeDatabase } from "../database/db";
+import {
+  db,
+  getActiveFileInfo,
+  initializeDatabase,
+  loadAccountsFromDB,
+} from "../database/db";
 import FileOpenDialog from "../components/FileOpenDialog";
+import { useAccountStore } from "../store/accountStore";
 
 const Home = () => {
   const navigate = useNavigate();
-  const { activeFileName } = useSecurityStore((state) => state);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOpenDialog, setShowOpenDialog] = useState(false);
 
-  useEffect(() => {
-    if (activeFileName) {
-      navigate("/auth", { replace: true });
+  const checkFileAndNavigate = async () => {
+    const { activeFileName, encrypted, fileData } = await getActiveFileInfo();
+    if (!activeFileName) return;
+    if (encrypted && isEncryptedKiyoFile(fileData)) {
+      navigate("/auth", {
+        replace: true,
+      });
       return;
+    } else if (isKiyoFile(fileData)) {
+      navigate("/list", { replace: true });
     }
+  };
+  useEffect(() => {
+    const init = async () => {
+      console.log("DB name:", db.name);
+      console.log("DB version:", db.verno);
+      const files = await db.files.toArray();
+      console.log(files);
+    };
+
+    init();
+  }, []);
+  useEffect(() => {
+    checkFileAndNavigate();
   }, []);
 
   const handleCreateFile = async ({
@@ -30,7 +54,6 @@ const Home = () => {
     pin,
   }: {
     fileName: string;
-    location: string;
     encrypted: boolean;
     pin: string;
   }) => {
@@ -44,6 +67,8 @@ const Home = () => {
 
     await createDataFile(fileName, pin);
     await initializeDatabase();
+    const accounts = await loadAccountsFromDB();
+    useAccountStore.getState().setAccounts(accounts);
     navigate("/list", { replace: true });
     setShowCreateDialog(false);
   };
@@ -102,7 +127,7 @@ const Home = () => {
             <button
               type="button"
               onClick={() => setShowOpenDialog(true)}
-              className="rounded-full bg-[#867e98] px-5 py-3 text-sm font-semibold text-[#7c3aed] transition hover:bg-[#ede4ff]"
+              className="rounded-full border-2 border-[#aa3bff] bg-white px-5 py-3 text-sm font-semibold text-[#aa3bff] shadow-sm transition hover:bg-[#faf5ff] hover:border-[#8d2bd4]"
             >
               파일 선택
             </button>

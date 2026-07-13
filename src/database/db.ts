@@ -1,343 +1,40 @@
+import { Capacitor } from "@capacitor/core";
 import Dexie, { type Table } from "dexie";
-import type {
-  Account,
-  AccountField,
-  Metadata,
-  Setting,
-  Template,
-} from "../models/account";
-import {
-  isNativeFileStorageAvailable,
-  writeDataFile,
-  type KiyoDataFile,
-} from "./fileStorage";
-import { useSecurityStore } from "../store/securityStore";
+import { useSessionStore } from "../store/sessionStore";
 import { encryptData } from "../crypto/encryption";
+import { writeDataFile, type KiyoDataFile } from "../database/fileStorage";
+import { toBase64, fromBase64 } from "../crypto/crypto.utils";
+import type { EncryptedKiyoFile } from "../crypto/encryption";
+import type { Account, Metadata, Setting, Template } from "../models/account";
+import { fixedTemplates, initialAccounts } from "./testdata";
 
-const seedAccounts = [
-  {
-    id: "1",
-    title: "Personal",
-    tags: ["personal", "finance"],
-    favorite: true,
-    fields: [
-      {
-        id: "1-1",
-        accountId: "1",
-        label: "Email",
-        type: "email",
-        value: "user01@example.com",
-        order: 1,
-      },
-      {
-        id: "1-2",
-        accountId: "1",
-        label: "Password",
-        type: "password",
-        value: "pass1234",
-        order: 2,
-      },
-      {
-        id: "1-3",
-        accountId: "1",
-        label: "Notes",
-        type: "textarea",
-        value: "Main personal account.",
-        order: 3,
-      },
-    ],
-  },
-  {
-    id: "2",
-    title: "Savings",
-    tags: ["bank", "savings"],
-    favorite: false,
-    fields: [
-      {
-        id: "2-1",
-        accountId: "2",
-        label: "Email",
-        type: "email",
-        value: "user02@example.com",
-        order: 1,
-      },
-      {
-        id: "2-2",
-        accountId: "2",
-        label: "Password",
-        type: "password",
-        value: "secure456",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: "3",
-    title: "Travel",
-    tags: ["travel"],
-    favorite: true,
-    fields: [
-      {
-        id: "3-1",
-        accountId: "3",
-        label: "Email",
-        type: "email",
-        value: "travel@example.com",
-        order: 1,
-      },
-      {
-        id: "3-2",
-        accountId: "3",
-        label: "Password",
-        type: "password",
-        value: "trip789",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: "4",
-    title: "Work",
-    tags: ["work"],
-    favorite: false,
-    fields: [
-      {
-        id: "4-1",
-        accountId: "4",
-        label: "Email",
-        type: "email",
-        value: "workteam@example.com",
-        order: 1,
-      },
-      {
-        id: "4-2",
-        accountId: "4",
-        label: "Password",
-        type: "password",
-        value: "work2024",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: "5",
-    title: "Family",
-    tags: ["family"],
-    favorite: true,
-    fields: [
-      {
-        id: "5-1",
-        accountId: "5",
-        label: "Email",
-        type: "email",
-        value: "family@example.com",
-        order: 1,
-      },
-      {
-        id: "5-2",
-        accountId: "5",
-        label: "Password",
-        type: "password",
-        value: "fam123",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: "6",
-    title: "Study",
-    tags: ["study"],
-    favorite: false,
-    fields: [
-      {
-        id: "6-1",
-        accountId: "6",
-        label: "Email",
-        type: "email",
-        value: "study@example.com",
-        order: 1,
-      },
-      {
-        id: "6-2",
-        accountId: "6",
-        label: "Password",
-        type: "password",
-        value: "learn321",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: "7",
-    title: "Study",
-    tags: ["study"],
-    favorite: false,
-    fields: [
-      {
-        id: "7-1",
-        accountId: "7",
-        label: "Email",
-        type: "email",
-        value: "study@example.com",
-        order: 1,
-      },
-      {
-        id: "7-2",
-        accountId: "7",
-        label: "Password",
-        type: "password",
-        value: "learn321",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: "8",
-    title: "Study",
-    tags: ["study"],
-    favorite: false,
-    fields: [
-      {
-        id: "8-1",
-        accountId: "8",
-        label: "Email",
-        type: "email",
-        value: "study@example.com",
-        order: 1,
-      },
-      {
-        id: "8-2",
-        accountId: "8",
-        label: "Password",
-        type: "password",
-        value: "learn321",
-        order: 2,
-      },
-    ],
-  },
-];
-
-const seedTimestamp = Date.now();
-
-export const initialAccounts: Account[] = seedAccounts.map((account, index) => {
-  const id = Number(account.id);
-
-  return {
-    ...account,
-    id,
-    templateId: 1,
-    fields: account.fields.map(
-      (field): AccountField => ({
-        ...field,
-        accountId: id,
-        type: field.type as AccountField["type"],
-      }),
-    ),
-    createdAt: seedTimestamp + index,
-    updatedAt: seedTimestamp + index,
-  };
-});
-
-export const fixedTemplates: Template[] = [
-  {
-    id: 1,
-    name: "기본",
-    fields: [
-      {
-        id: "email",
-        accountId: 0,
-        label: "이메일",
-        type: "email",
-        value: "",
-        order: 1,
-      },
-      {
-        id: "password",
-        accountId: 0,
-        label: "비밀번호",
-        type: "password",
-        value: "",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "은행",
-    fields: [
-      {
-        id: "email",
-        accountId: 0,
-        label: "이메일",
-        type: "email",
-        value: "",
-        order: 1,
-      },
-      {
-        id: "password",
-        accountId: 0,
-        label: "비밀번호",
-        type: "password",
-        value: "",
-        order: 2,
-      },
-      {
-        id: "memo",
-        accountId: 0,
-        label: "메모",
-        type: "textarea",
-        value: "",
-        order: 3,
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "카드",
-    fields: [
-      {
-        id: "card-number",
-        accountId: 0,
-        label: "카드번호",
-        type: "text",
-        value: "",
-        order: 1,
-      },
-      {
-        id: "password",
-        accountId: 0,
-        label: "비밀번호",
-        type: "password",
-        value: "",
-        order: 2,
-      },
-      {
-        id: "expiry-date",
-        accountId: 0,
-        label: "유효기간",
-        type: "text",
-        value: "",
-        order: 3,
-      },
-    ],
-  },
-];
+export interface FileData {
+  id: number;
+  fileName: string;
+  fileData: string; // JSON string of KiyoDataFile (encrypted or plain)
+  encrypted: boolean;
+  salt?: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
 export class KiyoDatabase extends Dexie {
   accounts!: Table<Account, number>;
   templates!: Table<Template, number>;
   settings!: Table<Setting, number>;
   metadata!: Table<Metadata, number>;
+  files!: Table<FileData, number>;
 
   constructor() {
     super("kiyo-db");
-    this.version(3)
+    this.version(5)
       .stores({
         accounts:
           "id, templateId, title, *tags, favorite, createdAt, updatedAt",
         templates: "id, name",
-        settings: "++id, theme, lockEnabled",
-        metadata: "id, version, createdAt",
+        settings: "++id, theme, lockEnabled, autoLockTime",
+        metadata: "id, version, createdAt, activeFileName, salt",
+        files: "++id, fileName, createdAt, updatedAt",
       })
       .upgrade((transaction) =>
         transaction.table("accounts").toCollection().modify({ templateId: 1 }),
@@ -357,26 +54,41 @@ export const getDatabaseSnapshot = async (
   templates: await db.templates.toArray(),
   settings: await db.settings.toArray(),
   metadata: await db.metadata.toArray(),
+  // Note: files table is intentionally excluded from JSON export
 });
 
 export const syncDatabaseToFile = async (): Promise<void> => {
-  const { activeFileName, cryptoKey, salt } = useSecurityStore.getState();
+  try {
+    const { activeFileName, cryptoKey, salt } = useSessionStore.getState();
 
-  if (!activeFileName) {
-    throw new Error("파일이 선택되지 않았습니다.");
+    if (!activeFileName) {
+      console.warn("syncDatabaseToFile: No active file name");
+      return;
+    }
+    if (!isNativeFileStorageAvailable()) {
+      // 앱에서만 자동저장
+      return;
+    }
+    const data = await getDatabaseSnapshot(activeFileName);
+
+    // Save to DB first
+    await saveFileDataToDB(activeFileName, data, salt || undefined);
+
+    // Also write to filesystem
+    if (!cryptoKey || !salt) {
+      await writeDataFile(data, activeFileName);
+      return;
+    }
+    const encrypted = await encryptData(data, cryptoKey, salt);
+    if (encrypted === null) {
+      console.error("syncDatabaseToFile: Encryption returned null");
+      return;
+    }
+    await writeDataFile(encrypted, activeFileName);
+  } catch (error) {
+    console.error("syncDatabaseToFile failed:", error);
+    // Don't throw - auto-save should not break the app
   }
-  if (!isNativeFileStorageAvailable()) {
-    // 앱에서만 자동저장
-    return;
-  }
-  const data = await getDatabaseSnapshot(activeFileName);
-  if (!cryptoKey || !salt) {
-    await writeDataFile(data, activeFileName);
-    return;
-  }
-  const encrypted = await encryptData(data, cryptoKey, salt);
-  if (encrypted === null) return;
-  await writeDataFile(encrypted, activeFileName);
 };
 
 export const replaceDatabaseData = async (
@@ -388,6 +100,7 @@ export const replaceDatabaseData = async (
     db.templates,
     db.settings,
     db.metadata,
+    db.files,
     async () => {
       await db.accounts.clear();
       await db.templates.clear();
@@ -400,6 +113,7 @@ export const replaceDatabaseData = async (
     },
   );
 };
+
 export const initializeDatabase = async () => {
   console.log("Initializing database...");
   if (!import.meta.env.DEV) return;
@@ -435,6 +149,106 @@ export const initializeDatabase = async () => {
 
   console.log("개발용 seed 데이터가 추가되었습니다.");
 };
+
 export const loadAccountsFromDB = async (): Promise<Account[]> => {
   return db.accounts.orderBy("updatedAt").reverse().toArray();
 };
+
+// Save active file info to files table (update salt only, don't touch other fields)
+export const saveActiveFileInfo = async (
+  fileName: string,
+  salt?: Uint8Array,
+): Promise<void> => {
+  const saltBase64 = salt ? toBase64(salt) : undefined;
+  const now = Date.now();
+  // Update only salt and updatedAt fields, don't touch other fields
+  const updatedCount = await db.files
+    .where("fileName")
+    .equals(fileName)
+    .modify({
+      salt: saltBase64,
+      updatedAt: now,
+    });
+  if (updatedCount === 0) {
+    console.warn(
+      `saveActiveFileInfo: No existing file record found for "${fileName}", skipping update (salt-only mode)`,
+    );
+  }
+};
+
+// Get active file info from sessionStore (salt) and files table (fileData)
+// Check sessionStore for salt to determine if file is encrypted
+// If no salt in sessionStore, check DB record as fallback (e.g. after app restart)
+export const getActiveFileInfo = async (): Promise<{
+  activeFileName: string | null;
+  salt: Uint8Array | null;
+  encrypted: boolean;
+  fileData: KiyoDataFile | EncryptedKiyoFile | null;
+}> => {
+  // Get fileRecord from DB to check for salt as fallback
+  const fileRecord = await db.files.orderBy("updatedAt").reverse().first();
+  if (!fileRecord) {
+    return {
+      activeFileName: null,
+      salt: null,
+      encrypted: false,
+      fileData: null,
+    };
+  }
+  return {
+    activeFileName: fileRecord.fileName,
+    salt: fileRecord.salt ? fromBase64(fileRecord.salt) : null,
+    fileData: JSON.parse(fileRecord.fileData),
+    encrypted: fileRecord.encrypted,
+  };
+};
+
+// Save file data (encrypted or plain) to files table
+// Determines encryption status from the data itself (EncryptedKiyoFile has encrypted: true)
+export const saveFileDataToDB = async (
+  fileName: string,
+  fileData: KiyoDataFile | EncryptedKiyoFile,
+  salt?: Uint8Array,
+): Promise<void> => {
+  const now = Date.now();
+
+  // Check if the data itself is encrypted (EncryptedKiyoFile has encrypted: true property)
+  const isEncrypted = "encrypted" in fileData && fileData.encrypted === true;
+
+  const fileDataRecord: FileData = {
+    id: Date.now(), // Assign a unique ID
+    fileName,
+    fileData: JSON.stringify(fileData),
+    encrypted: isEncrypted,
+    salt: isEncrypted && salt ? toBase64(salt) : undefined,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.files.put(fileDataRecord);
+};
+
+// Clear file data for a specific file
+export const clearFileData = async (fileName: string): Promise<void> => {
+  await db.files.where("fileName").equals(fileName).delete();
+};
+
+// Get all file names from files table
+export const getAllFileNames = async (): Promise<string[]> => {
+  const files = await db.files.toArray();
+  return files.map((f) => f.fileName);
+};
+
+// Clear active file info from files table
+export const clearActiveFileInfo = async (fileName?: string): Promise<void> => {
+  if (fileName) {
+    await db.files.where("fileName").equals(fileName).delete();
+  } else {
+    await db.files.clear();
+  }
+};
+
+// Get database instance
+export const getDatabase = () => db;
+
+// Helper functions
+export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();

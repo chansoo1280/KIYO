@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Account, Template } from "../models/account";
-import { fixedTemplates } from "../database/db";
 import { useAccountStore } from "../store/accountStore";
 import BottomTabs from "../components/BottomTabs";
-import { useSecurityStore } from "../store/securityStore";
+import { useSessionStore } from "../store/sessionStore";
+import { fixedTemplates } from "../database/testdata";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ const AccountList = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const activeFileName = useSecurityStore((state) => state.activeFileName);
+  const { activeFileName } = useSessionStore((state) => state);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });

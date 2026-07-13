@@ -18,6 +18,7 @@ export const isEncryptedKiyoFile = (
   if (!value || typeof value !== "object") return false;
 
   const file = value as Partial<EncryptedKiyoFile>;
+  console.log(file);
 
   return (
     file.version === 1 &&
@@ -52,7 +53,7 @@ export async function createCryptoKey(pin: string, salt?: Uint8Array) {
       name: "AES-GCM",
       length: 256,
     },
-    false,
+    true,
     ["encrypt", "decrypt"],
   );
 

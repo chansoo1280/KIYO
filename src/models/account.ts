@@ -2,7 +2,7 @@ export type FieldType = "text" | "password" | "email" | "number" | "textarea";
 
 export interface AccountField {
   id: string;
-  accountId: number;
+  accountId?: number;
   label: string;
   type: FieldType;
   value: string;

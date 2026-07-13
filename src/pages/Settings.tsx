@@ -7,7 +7,7 @@ import {
   isKiyoFile,
   openImportedDataFile,
 } from "../database/fileStorage";
-import { useSecurityStore } from "../store/securityStore";
+import { useSessionStore } from "../store/sessionStore";
 import FileCreateDialog from "../components/FileCreateDialog";
 import FileOpenDialog from "../components/FileOpenDialog";
 import { useAccountStore } from "../store/accountStore";
@@ -17,9 +17,7 @@ const Settings = () => {
   const [message, setMessage] = useState("");
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const { activeFileName, setActiveFileName } = useSecurityStore(
-    (state) => state,
-  );
+  const { activeFileName } = useSessionStore((state) => state);
   const defaultBackupFileName = (() => {
     const fileName = activeFileName?.replace(/\.json$/, "") ?? "kiyo";
     const isBackup = /-backup$/i.test(fileName);
@@ -32,7 +30,6 @@ const Settings = () => {
     pin,
   }: {
     fileName: string;
-    location: string;
     encrypted: boolean;
     pin: string;
   }) => {
@@ -149,8 +146,8 @@ const Settings = () => {
             <button
               type="button"
               className="rounded-full bg-[#aa3bff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#8d2bd4]"
-              onClick={() => {
-                setActiveFileName("");
+              onClick={async () => {
+                await useSessionStore.getState().clearSession();
                 useAccountStore.getState().resetToInitial();
                 navigate("/", { state: { selectFile: true } });
               }}
