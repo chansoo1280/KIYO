@@ -83,7 +83,11 @@ const saveDataFile = async (
 
   // 이후 자동 저장을 위해 메모리에 보관
   if (shouldSetActiveFile) {
-    await useSessionStore.getState().setCryptoKey(key, salt);
+    await useSessionStore.getState().setSession({
+      fileName: normalizedFileName,
+      cryptoKey: key,
+      salt,
+    });
   }
 
   // 데이터 암호화
@@ -131,7 +135,6 @@ export const backupDataFile = async (
 export const openImportedDataFile = async (
   data: string,
   pin: string,
-  fileName: string,
 ): Promise<KiyoDataFile | null> => {
   let parsedData: unknown;
   try {
@@ -148,13 +151,14 @@ export const openImportedDataFile = async (
     }
     try {
       await replaceDatabaseData(parsedData);
+      const normalizedFileName = normalizeDataFileName(parsedData.fileName);
       await useSessionStore.getState().setSession({
-        fileName,
+        fileName: normalizedFileName,
       });
       // Save plain data to DB
-      await saveFileDataToDB(fileName, parsedData);
+      await saveFileDataToDB(normalizedFileName, parsedData);
       useAccountStore.getState().setAccounts(parsedData.accounts);
-      return parsedData;
+      return { ...parsedData, fileName: normalizedFileName };
     } catch (error) {
       console.error("Failed to load plain data file:", error);
       return null;
@@ -178,20 +182,21 @@ export const openImportedDataFile = async (
     const { key } = await createCryptoKey(pin, salt);
 
     // 이후 자동 저장을 위해 메모리에 보관
-    await useSessionStore
-      .getState()
-      .setSession({ fileName, cryptoKey: key, salt });
 
     const decrypted = await decryptData(parsedData, key);
+    const normalizedFileName = normalizeDataFileName(decrypted.fileName);
+    await useSessionStore
+      .getState()
+      .setSession({ fileName: normalizedFileName, cryptoKey: key, salt });
 
     if (!isKiyoFile(decrypted)) {
       return null;
     }
     await replaceDatabaseData(decrypted);
     // Save decrypted data to DB
-    await saveFileDataToDB(fileName, parsedData, salt);
+    await saveFileDataToDB(normalizedFileName, parsedData, salt);
     useAccountStore.getState().setAccounts(decrypted.accounts);
-    return decrypted;
+    return { ...decrypted, fileName: normalizedFileName };
   } catch (error) {
     console.error("PIN 또는 파일이 올바르지 않습니다.", error);
     return null;
@@ -222,87 +227,4 @@ export const writeDataFile = async (
     encoding: Encoding.UTF8,
     recursive: true,
   });
-};
-
-export interface ReadDataFileResult {
-  type: "not-found" | "encrypted" | "plain" | "invalid";
-  data?: KiyoDataFile;
-}
-
-export const readDataFile = async (
-  fileName: string,
-  pin?: string,
-): Promise<ReadDataFileResult> => {
-  const normalizedFileName = normalizeDataFileName(fileName);
-
-  if (!isNativeFileStorageAvailable()) {
-    // On web platform, we can't read from filesystem directly
-    // This should be handled via file input in the UI
-    return { type: "not-found" };
-  }
-
-  try {
-    // Read file from filesystem (native platform only)
-    const { data } = await Filesystem.readFile({
-      path: normalizedFileName,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    });
-
-    const fileContent = data as string;
-    const parsedData = JSON.parse(fileContent);
-
-    // Check if it's an encrypted KIYO file
-    if (isEncryptedKiyoFile(parsedData)) {
-      // If no PIN provided, just return that it's encrypted
-      if (!pin || !pin.trim()) {
-        return { type: "encrypted" };
-      }
-
-      // Try to decrypt with PIN
-      try {
-        const salt = fromBase64(parsedData.salt);
-        const { key } = await createCryptoKey(pin, salt);
-
-        // Store crypto key for auto-save
-        await useSessionStore
-          .getState()
-          .setSession({ fileName: normalizedFileName, cryptoKey: key, salt });
-
-        const decrypted = await decryptData(parsedData, key);
-
-        if (!isKiyoFile(decrypted)) {
-          return { type: "invalid" };
-        }
-
-        await replaceDatabaseData(decrypted);
-        useAccountStore.getState().setAccounts(decrypted.accounts);
-        return { type: "plain", data: decrypted };
-      } catch {
-        // PIN is wrong or decryption failed
-        return { type: "encrypted" };
-      }
-    }
-
-    // Check if it's a plain KIYO file
-    if (!isKiyoFile(parsedData)) {
-      return { type: "invalid" };
-    }
-
-    // Plain text KIYO file - load directly
-    await replaceDatabaseData(parsedData);
-    await useSessionStore.getState().setSession({
-      fileName: normalizedFileName,
-    });
-    useAccountStore.getState().setAccounts(parsedData.accounts);
-    return { type: "plain", data: parsedData };
-  } catch (error) {
-    await useSessionStore.getState().clearSession();
-    // File not found or read error
-    if (error instanceof Error && error.message.includes("File not found")) {
-      return { type: "not-found" };
-    }
-    console.error("File read error:", error);
-    return { type: "not-found" };
-  }
 };

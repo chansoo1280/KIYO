@@ -6,8 +6,15 @@ import AccountEdit from "./pages/AccountEdit";
 import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
 import Auth from "./pages/Auth";
+import { useAccountStore } from "./store/accountStore.ts";
+import { useEffect } from "react";
 
 function App() {
+  const initialize = useAccountStore((state) => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
   return (
     <BrowserRouter>
       <Routes>

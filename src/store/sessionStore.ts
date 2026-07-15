@@ -27,7 +27,11 @@ export const useSessionStore = create<SessionState>()(
       salt: null,
 
       setSession: async ({ fileName, cryptoKey, salt }) => {
-        set({ activeFileName: fileName, cryptoKey, salt });
+        set({
+          activeFileName: fileName,
+          cryptoKey: cryptoKey ?? null,
+          salt: salt ?? null,
+        });
         if (fileName) {
           await saveActiveFileInfo(fileName, salt || undefined);
         } else {

@@ -52,7 +52,7 @@ const Settings = () => {
   };
 
   const handleRestore = async ({ file, pin }: { file: File; pin: string }) => {
-    const data = await openImportedDataFile(await file.text(), pin, file.name);
+    const data = await openImportedDataFile(await file.text(), pin);
     if (!data) {
       throw new Error("PIN 번호가 올바르지 않습니다.");
     }

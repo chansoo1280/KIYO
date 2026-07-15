@@ -11,7 +11,7 @@ import FileCreateDialog from "../components/FileCreateDialog";
 import {
   db,
   getActiveFileInfo,
-  initializeDatabase,
+  initializeDevDatabase,
   loadAccountsFromDB,
 } from "../database/db";
 import FileOpenDialog from "../components/FileOpenDialog";
@@ -66,7 +66,7 @@ const Home = () => {
     }
 
     await createDataFile(fileName, pin);
-    await initializeDatabase();
+    if (!import.meta.env.DEV) await initializeDevDatabase();
     const accounts = await loadAccountsFromDB();
     useAccountStore.getState().setAccounts(accounts);
     navigate("/list", { replace: true });
@@ -74,7 +74,7 @@ const Home = () => {
   };
 
   const handleOpenFile = async ({ file, pin }: { file: File; pin: string }) => {
-    const data = await openImportedDataFile(await file.text(), pin, file.name);
+    const data = await openImportedDataFile(await file.text(), pin);
 
     if (!data) {
       throw new Error("PIN 번호가 올바르지 않습니다.");

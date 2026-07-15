@@ -6,6 +6,9 @@ import { initialAccounts } from "../database/testdata";
 
 interface AccountState {
   accounts: Account[];
+  initialized: boolean;
+
+  initialize: () => Promise<void>;
   setAccounts: (accounts: Account[]) => void;
   addAccount: (account: Account) => Promise<Account>;
   updateAccount: (account: Account) => Promise<void>;
@@ -14,17 +17,22 @@ interface AccountState {
   resetToInitial: () => void;
 }
 
-const accountsLoaded = loadAccountsFromDB();
-
 export const useAccountStore = create<AccountState>()(
   devtools(
     (set, get) => ({
       accounts: [],
+      initialized: false,
+      initialize: async () => {
+        const accounts = await loadAccountsFromDB();
 
+        set({
+          accounts,
+          initialized: true,
+        });
+      },
       setAccounts: (accounts) => set({ accounts }),
 
       addAccount: async (account) => {
-        await accountsLoaded;
         const now = Date.now();
         const newAccount = await db.transaction("rw", db.accounts, async () => {
           const lastAccount = await db.accounts.orderBy("id").last();
@@ -49,7 +57,6 @@ export const useAccountStore = create<AccountState>()(
       },
 
       updateAccount: async (account) => {
-        await accountsLoaded;
         const updatedAccount = { ...account, updatedAt: Date.now() };
         await db.accounts.put(updatedAccount);
         set((state) => ({
@@ -61,7 +68,6 @@ export const useAccountStore = create<AccountState>()(
       },
 
       deleteAccount: async (id) => {
-        await accountsLoaded;
         await db.accounts.delete(id);
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
@@ -85,9 +91,3 @@ export const useAccountStore = create<AccountState>()(
     { name: "AccountStore" },
   ),
 );
-
-void accountsLoaded
-  .then((accounts) => useAccountStore.getState().setAccounts(accounts))
-  .catch((error) =>
-    console.error("Failed to load accounts from Dexie:", error),
-  );

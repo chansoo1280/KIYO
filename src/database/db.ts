@@ -114,7 +114,7 @@ export const replaceDatabaseData = async (
   );
 };
 
-export const initializeDatabase = async () => {
+export const initializeDevDatabase = async () => {
   console.log("Initializing database...");
   if (!import.meta.env.DEV) return;
 
