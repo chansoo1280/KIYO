@@ -4,7 +4,7 @@ import type { Account } from "../models/account";
 import { db, loadAccountsFromDB, syncDatabaseToFile } from "../database/db";
 import { initialAccounts } from "../database/testdata";
 
-interface AccountState {
+export interface AccountState {
   accounts: Account[];
   initialized: boolean;
 

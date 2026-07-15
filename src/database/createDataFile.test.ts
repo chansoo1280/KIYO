@@ -1,39 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Capacitor } from "@capacitor/core";
-import { useSessionStore } from "../store/sessionStore";
-import { useAccountStore } from "../store/accountStore";
-import {
-  createCryptoKey,
-  encryptData,
-  type EncryptedKiyoFile,
-} from "../crypto/encryption";
-import { saveFileDataToDB } from "./db";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createDataFile } from "./fileStorage";
+import type { EncryptedKiyoFile } from "../crypto/encryption";
+import { createCryptoKey, encryptData } from "../crypto/encryption";
+import { saveFileDataToDB } from "../database/db";
 
-// Mock Capacitor
-vi.mock("@capacitor/core", () => ({
-  Capacitor: {
-    isNativePlatform: vi.fn(() => false),
-  },
-}));
+// Import common mocks
+import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
+import { createMockEncryption } from "../test/mocks/encryptionMock";
+import { createMockDB } from "../test/mocks/dbMock";
 
 // Mock sessionStore
 vi.mock("../store/sessionStore", () => ({
   useSessionStore: {
-    getState: vi.fn(() => ({
-      setSession: vi.fn(),
-      setCryptoKey: vi.fn(),
-      clearSession: vi.fn(),
-    })),
-  },
-}));
-
-// Mock accountStore
-vi.mock("../store/accountStore", () => ({
-  useAccountStore: {
-    getState: vi.fn(() => ({
-      setAccounts: vi.fn(),
-    })),
+    getState: vi.fn(),
   },
 }));
 
@@ -41,28 +20,19 @@ vi.mock("../store/accountStore", () => ({
 vi.mock("../crypto/encryption", () => ({
   createCryptoKey: vi.fn(),
   encryptData: vi.fn(),
-  decryptData: vi.fn(),
-  isEncryptedKiyoFile: vi.fn(),
-  fromBase64: vi.fn(),
 }));
 
 // Mock db functions
-vi.mock("./db", () => ({
+vi.mock("../database/db", () => ({
   saveFileDataToDB: vi.fn(),
-  getDatabaseSnapshot: vi.fn(),
-  replaceDatabaseData: vi.fn(),
-  loadAccountsFromDB: vi.fn(),
-  isNativeFileStorageAvailable: vi.fn(() => false),
 }));
 
+import { useSessionStore } from "../store/sessionStore";
+
 describe("createDataFile", () => {
-  let mockSetSession: ReturnType<typeof vi.fn>;
-  let mockSetCryptoKey: ReturnType<typeof vi.fn>;
-  let mockSetAccounts: ReturnType<typeof vi.fn>;
-  let mockSaveFileDataToDB: ReturnType<typeof vi.fn>;
-  let mockCreateCryptoKey: ReturnType<typeof vi.fn>;
-  let mockEncryptData: ReturnType<typeof vi.fn>;
-  let mockIsNativePlatform: ReturnType<typeof vi.fn>;
+  let mockSessionStore: ReturnType<typeof createMockSessionStore>;
+  let mockEncryption: ReturnType<typeof createMockEncryption>;
+  let mockDB: ReturnType<typeof createMockDB>;
 
   const mockCryptoKey = {} as CryptoKey;
   const mockSalt = new Uint8Array(16);
@@ -75,46 +45,29 @@ describe("createDataFile", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Create fresh mocks for each test
+    mockSessionStore = createMockSessionStore();
+    mockEncryption = createMockEncryption();
+    mockDB = createMockDB();
 
-    // Setup mocks
-    mockSetSession = vi.fn().mockResolvedValue(undefined);
-    mockSetCryptoKey = vi.fn().mockResolvedValue(undefined);
-    mockSetAccounts = vi.fn();
-    mockSaveFileDataToDB = vi.fn().mockResolvedValue(undefined);
-    mockCreateCryptoKey = vi
-      .fn()
-      .mockResolvedValue({ key: mockCryptoKey, salt: mockSalt });
-    mockEncryptData = vi.fn().mockResolvedValue(mockEncryptedData);
-    mockIsNativePlatform = vi.fn().mockReturnValue(false);
+    // Configure mock implementations
+    vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+    vi.mocked(createCryptoKey).mockImplementation(
+      mockEncryption.mockCreateCryptoKey,
+    );
+    vi.mocked(encryptData).mockImplementation(mockEncryption.mockEncryptData);
+    vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
 
-    // Configure mocks
-    (useSessionStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-      setSession: mockSetSession,
-      setCryptoKey: mockSetCryptoKey,
-      clearSession: vi.fn(),
+    // Override specific mock implementations for createDataFile tests
+    mockEncryption.mockCreateCryptoKey.mockResolvedValue({
+      key: mockCryptoKey,
+      salt: mockSalt,
     });
-
-    (useAccountStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-      setAccounts: mockSetAccounts,
-    });
-
-    (saveFileDataToDB as ReturnType<typeof vi.fn>).mockImplementation(
-      mockSaveFileDataToDB,
-    );
-    (createCryptoKey as ReturnType<typeof vi.fn>).mockImplementation(
-      mockCreateCryptoKey,
-    );
-    (encryptData as ReturnType<typeof vi.fn>).mockImplementation(
-      mockEncryptData,
-    );
-    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockImplementation(
-      mockIsNativePlatform,
-    );
+    mockEncryption.mockEncryptData.mockResolvedValue(mockEncryptedData);
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("PIN 없는 파일 생성", () => {
@@ -141,8 +94,8 @@ describe("createDataFile", () => {
     it("sessionStore.setSession을 fileName과 함께 호출한다", async () => {
       await createDataFile("test-file");
 
-      expect(mockSetSession).toHaveBeenCalledTimes(1);
-      expect(mockSetSession).toHaveBeenCalledWith({
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
         fileName: "test-file.json",
       });
     });
@@ -150,13 +103,13 @@ describe("createDataFile", () => {
     it("sessionStore.setSession에 cryptoKey와 salt를 전달하지 않는다", async () => {
       await createDataFile("test-file");
 
-      expect(mockSetSession).toHaveBeenCalledWith(
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({
           fileName: "test-file.json",
         }),
       );
       // cryptoKey와 salt가 전달되지 않았는지 확인 (undefined가 아닌 아예 없음)
-      const callArgs = mockSetSession.mock.calls[0][0];
+      const callArgs = mockSessionStore.mockSetSession.mock.calls[0][0];
       expect(callArgs).not.toHaveProperty("cryptoKey");
       expect(callArgs).not.toHaveProperty("salt");
     });
@@ -164,8 +117,8 @@ describe("createDataFile", () => {
     it("DB 저장 함수(saveFileDataToDB)를 평문 데이터와 함께 호출한다", async () => {
       await createDataFile("test-file");
 
-      expect(mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockSaveFileDataToDB.mock.calls[0];
+      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -183,11 +136,11 @@ describe("createDataFile", () => {
     it("파일명 정규화를 적용한다 (공백 제거, .json 추가)", async () => {
       await createDataFile("  my data  ");
 
-      expect(mockSetSession).toHaveBeenCalledWith(
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "my data.json" }),
       );
-      expect(mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockSaveFileDataToDB.mock.calls[0];
+      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("my data.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -206,7 +159,7 @@ describe("createDataFile", () => {
     it("이미 .json이 있는 파일명은 그대로 사용한다", async () => {
       await createDataFile("data.json");
 
-      expect(mockSetSession).toHaveBeenCalledWith(
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "data.json" }),
       );
     });
@@ -216,8 +169,8 @@ describe("createDataFile", () => {
     it("createCryptoKey를 PIN과 함께 호출한다", async () => {
       await createDataFile("test-file", "1234");
 
-      expect(mockCreateCryptoKey).toHaveBeenCalledTimes(1);
-      expect(mockCreateCryptoKey).toHaveBeenCalledWith("1234");
+      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledTimes(1);
+      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledWith("1234");
     });
 
     it("AES 암호화 파일(EncryptedKiyoFile)을 생성한다", async () => {
@@ -240,21 +193,21 @@ describe("createDataFile", () => {
       await createDataFile("test-file", "1234");
 
       // PIN이 있는 경우 setSession이 fileName, cryptoKey, salt와 함께 호출됨
-      expect(mockSetSession).toHaveBeenCalledTimes(1);
-      expect(mockSetSession).toHaveBeenCalledWith({
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
         fileName: "test-file.json",
         cryptoKey: mockCryptoKey,
         salt: mockSalt,
       });
       // setCryptoKey는 더 이상 호출되지 않음
-      expect(mockSetCryptoKey).not.toHaveBeenCalled();
+      expect(mockSessionStore.mockSetCryptoKey).not.toHaveBeenCalled();
     });
 
     it("DB 저장 함수(saveFileDataToDB)를 암호화 데이터와 salt와 함께 호출한다", async () => {
       await createDataFile("test-file", "1234");
 
-      expect(mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockSaveFileDataToDB.mock.calls[0];
+      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(mockEncryptedData);
       expect(salt).toEqual(mockSalt);
@@ -263,8 +216,8 @@ describe("createDataFile", () => {
     it("encryptData를 생성된 cryptoKey와 salt로 호출한다", async () => {
       await createDataFile("test-file", "1234");
 
-      expect(mockEncryptData).toHaveBeenCalledTimes(1);
-      const [data, key, salt] = mockEncryptData.mock.calls[0];
+      expect(mockEncryption.mockEncryptData).toHaveBeenCalledTimes(1);
+      const [data, key, salt] = mockEncryption.mockEncryptData.mock.calls[0];
       expect(key).toBe(mockCryptoKey);
       expect(salt).toEqual(mockSalt);
       expect(data).toEqual(
@@ -282,12 +235,12 @@ describe("createDataFile", () => {
     it("파일명 정규화를 적용한다", async () => {
       await createDataFile("  secure data  ", "1234");
 
-      expect(mockSetSession).toHaveBeenCalledWith({
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
         fileName: "secure data.json",
         cryptoKey: mockCryptoKey,
         salt: mockSalt,
       });
-      expect(mockSaveFileDataToDB).toHaveBeenCalledWith(
+      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledWith(
         "secure data.json",
         expect.any(Object),
         expect.any(Uint8Array),
@@ -299,7 +252,7 @@ describe("createDataFile", () => {
     it("기본 파일명 'kiyo-data'를 사용한다 (빈 문자열 입력 시)", async () => {
       await createDataFile("");
 
-      expect(mockSetSession).toHaveBeenCalledWith(
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "kiyo-data.json" }),
       );
     });
@@ -307,7 +260,7 @@ describe("createDataFile", () => {
     it("공백만 있는 입력도 기본 파일명으로 처리한다", async () => {
       await createDataFile("   ");
 
-      expect(mockSetSession).toHaveBeenCalledWith(
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "kiyo-data.json" }),
       );
     });
@@ -334,7 +287,7 @@ describe("createDataFile", () => {
 
   describe("에러 처리", () => {
     it("createCryptoKey 실패 시 에러를 전파한다", async () => {
-      mockCreateCryptoKey.mockRejectedValueOnce(
+      mockEncryption.mockCreateCryptoKey.mockRejectedValueOnce(
         new Error("Crypto key creation failed"),
       );
 
@@ -344,7 +297,9 @@ describe("createDataFile", () => {
     });
 
     it("encryptData 실패 시 에러를 전파한다", async () => {
-      mockEncryptData.mockRejectedValueOnce(new Error("Encryption failed"));
+      mockEncryption.mockEncryptData.mockRejectedValueOnce(
+        new Error("Encryption failed"),
+      );
 
       await expect(createDataFile("test-file", "1234")).rejects.toThrow(
         "Encryption failed",
@@ -352,7 +307,9 @@ describe("createDataFile", () => {
     });
 
     it("saveFileDataToDB 실패 시 에러를 전파한다", async () => {
-      mockSaveFileDataToDB.mockRejectedValueOnce(new Error("DB save failed"));
+      mockDB.mockSaveFileDataToDB.mockRejectedValueOnce(
+        new Error("DB save failed"),
+      );
 
       await expect(createDataFile("test-file")).rejects.toThrow(
         "DB save failed",
@@ -360,7 +317,9 @@ describe("createDataFile", () => {
     });
 
     it("setSession 실패 시 에러를 전파한다", async () => {
-      mockSetSession.mockRejectedValueOnce(new Error("Session set failed"));
+      mockSessionStore.mockSetSession.mockRejectedValueOnce(
+        new Error("Session set failed"),
+      );
 
       await expect(createDataFile("test-file")).rejects.toThrow(
         "Session set failed",

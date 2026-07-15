@@ -1,0 +1,20 @@
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/database/fileStorage.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Home.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Settings.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/store/accountStore.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'vite.config.ts', LF will be replaced by CRLF the next time Git touches it
+ package-lock.json           | 1024 [32m++++++++++++++++++++++++++++++++++++++++++[m[31m-[m
+ package.json                |   13 [32m+[m[31m-[m
+ review.patch                |   17 [31m-[m
+ src/App.tsx                 |    7 [32m+[m
+ src/database/db.ts          |    2 [32m+[m[31m-[m
+ src/database/fileStorage.ts |  108 [32m+[m[31m----[m
+ src/pages/Home.tsx          |    6 [32m+[m[31m-[m
+ src/pages/Settings.tsx      |    2 [32m+[m[31m-[m
+ src/store/accountStore.ts   |   22 [32m+[m[31m-[m
+ src/store/sessionStore.ts   |    6 [32m+[m[31m-[m
+ vite.config.ts              |    7 [32m+[m
+ 11 files changed, 1071 insertions(+), 143 deletions(-)

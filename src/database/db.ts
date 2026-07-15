@@ -7,6 +7,7 @@ import { toBase64, fromBase64 } from "../crypto/crypto.utils";
 import type { EncryptedKiyoFile } from "../crypto/encryption";
 import type { Account, Metadata, Setting, Template } from "../models/account";
 import { fixedTemplates, initialAccounts } from "./testdata";
+import { isFileStorageError } from "../errors/FileStorageError";
 
 export interface FileData {
   id: number;
@@ -85,8 +86,18 @@ export const syncDatabaseToFile = async (): Promise<void> => {
       return;
     }
     await writeDataFile(encrypted, activeFileName);
+    
+    // Clear any previous sync error on success
+    useSessionStore.getState().clearSyncError();
   } catch (error) {
     console.error("syncDatabaseToFile failed:", error);
+    // Store error in sessionStore for UI to display
+    const errorMessage = isFileStorageError(error) 
+      ? error.message 
+      : error instanceof Error 
+        ? error.message 
+        : "Unknown sync error";
+    useSessionStore.getState().setSyncError(errorMessage);
     // Don't throw - auto-save should not break the app
   }
 };

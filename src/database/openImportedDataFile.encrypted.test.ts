@@ -9,33 +9,41 @@ import {
 } from "../crypto/encryption";
 import { fromBase64 } from "../crypto/crypto.utils";
 import { saveFileDataToDB, replaceDatabaseData } from "./db";
-import { openImportedDataFile, type KiyoDataFile } from "./fileStorage";
-import type { Account, Template, Setting, Metadata } from "../models/account";
+import { openImportedDataFile } from "./fileStorage";
+import {
+  createTestKiyoDataFile,
+  createTestEncryptedFile,
+} from "../test/fixtures/databaseFixtures";
+import {
+  createTestAccount,
+  createTestField,
+} from "../test/fixtures/accountFixtures";
+
+// Import common mocks
+import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
+import { createMockAccountStoreWithGetState } from "../test/mocks/accountStoreMock";
+import { createMockEncryption } from "../test/mocks/encryptionMock";
+import { createMockDB } from "../test/mocks/dbMock";
+import { createMockCryptoUtils } from "../test/mocks/encryptionMock";
 
 // Mock Capacitor
 vi.mock("@capacitor/core", () => ({
   Capacitor: {
-    isNativePlatform: vi.fn(() => false),
+    isNativePlatform: vi.fn(),
   },
 }));
 
 // Mock sessionStore
 vi.mock("../store/sessionStore", () => ({
   useSessionStore: {
-    getState: vi.fn(() => ({
-      setSession: vi.fn(),
-      setCryptoKey: vi.fn(),
-      clearSession: vi.fn(),
-    })),
+    getState: vi.fn(),
   },
 }));
 
 // Mock accountStore
 vi.mock("../store/accountStore", () => ({
   useAccountStore: {
-    getState: vi.fn(() => ({
-      setAccounts: vi.fn(),
-    })),
+    getState: vi.fn(),
   },
 }));
 
@@ -64,101 +72,59 @@ vi.mock("./db", () => ({
 }));
 
 describe("openImportedDataFile - 암호화 파일 테스트", () => {
-  let mockSetSession: ReturnType<typeof vi.fn>;
-  let mockSetAccounts: ReturnType<typeof vi.fn>;
-  let mockSaveFileDataToDB: ReturnType<typeof vi.fn>;
-  let mockReplaceDatabaseData: ReturnType<typeof vi.fn>;
-  let mockIsEncryptedKiyoFile: ReturnType<typeof vi.fn>;
-  let mockCreateCryptoKey: ReturnType<typeof vi.fn>;
-  let mockDecryptData: ReturnType<typeof vi.fn>;
-  let mockFromBase64: ReturnType<typeof vi.fn>;
-  let mockIsNativePlatform: ReturnType<typeof vi.fn>;
+  let mockSessionStore: ReturnType<typeof createMockSessionStore>;
+  let mockAccountStore: ReturnType<typeof createMockAccountStoreWithGetState>;
+  let mockEncryption: ReturnType<typeof createMockEncryption>;
+  let mockCryptoUtils: ReturnType<typeof createMockCryptoUtils>;
+  let mockDB: ReturnType<typeof createMockDB>;
 
-  const createValidKiyoFile = (
-    overrides: Partial<KiyoDataFile> = {},
-  ): KiyoDataFile => ({
-    version: 1,
-    fileName: "test.json",
-    updatedAt: Date.now(),
-    accounts: [] as Account[],
-    templates: [] as Template[],
-    settings: [] as Setting[],
-    metadata: [] as Metadata[],
-    ...overrides,
-  });
-
-  const createEncryptedFile = (
-    overrides: Partial<{
-      salt: string;
-      iv: string;
-      ciphertext: string;
-    }> = {},
-  ) => ({
-    version: 1,
-    encrypted: true,
-    salt: "c2FsdF9zYWx0X3NhbHRfc2FsdA==", // base64 encoded 16 bytes
-    iv: "aXYxMjM0NTY3ODkwYWI=", // base64 encoded 12 bytes
-    ciphertext: "Y2lwaGVydGV4dF9jaXBoZXJ0ZXh0", // base64 encoded
-    ...overrides,
-  });
-
-  const validJsonString = JSON.stringify(createValidKiyoFile());
-  const encryptedFile = createEncryptedFile();
+  const validJsonString = JSON.stringify(
+    createTestKiyoDataFile({ fileName: "test.json" }),
+  );
+  const encryptedFile = createTestEncryptedFile();
   const encryptedJsonString = JSON.stringify(encryptedFile);
   const mockCryptoKey = {} as CryptoKey;
   const mockSalt = new Uint8Array(16);
-  const mockDecryptedData = createValidKiyoFile();
+  const mockDecryptedData = createTestKiyoDataFile({ fileName: "test.json" });
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Setup mocks
-    mockSetSession = vi.fn().mockResolvedValue(undefined);
-    mockSetAccounts = vi.fn();
-    mockSaveFileDataToDB = vi.fn().mockResolvedValue(undefined);
-    mockReplaceDatabaseData = vi.fn().mockResolvedValue(undefined);
-    mockIsEncryptedKiyoFile = vi.fn().mockReturnValue(true); // 암호화 파일로 인식
-    mockCreateCryptoKey = vi
-      .fn()
-      .mockResolvedValue({ key: mockCryptoKey, salt: mockSalt });
-    mockDecryptData = vi.fn().mockResolvedValue(mockDecryptedData);
-    mockFromBase64 = vi.fn().mockReturnValue(new Uint8Array(16));
-    mockIsNativePlatform = vi.fn().mockReturnValue(false);
-
-    // Configure mocks
-    (useSessionStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-      setSession: mockSetSession,
-      setCryptoKey: vi.fn(),
-      clearSession: vi.fn(),
+    // Create fresh mocks for each test
+    mockSessionStore = createMockSessionStore();
+    mockAccountStore = createMockAccountStoreWithGetState();
+    mockEncryption = createMockEncryption({
+      mockIsEncryptedKiyoFile: vi.fn().mockReturnValue(true), // 암호화 파일로 인식
+      mockCreateCryptoKey: vi.fn().mockResolvedValue({ key: mockCryptoKey, salt: mockSalt }),
+      mockDecryptData: vi.fn().mockResolvedValue(mockDecryptedData),
     });
-
-    (useAccountStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-      setAccounts: mockSetAccounts,
+    mockCryptoUtils = createMockCryptoUtils({
+      mockFromBase64: vi.fn().mockReturnValue(new Uint8Array(16)),
     });
+    mockDB = createMockDB();
 
-    (saveFileDataToDB as ReturnType<typeof vi.fn>).mockImplementation(
-      mockSaveFileDataToDB,
+    // Configure mock implementations
+    vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+    vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
+    vi.mocked(isEncryptedKiyoFile).mockImplementation(
+      mockEncryption.mockIsEncryptedKiyoFile,
     );
-    (replaceDatabaseData as ReturnType<typeof vi.fn>).mockImplementation(
-      mockReplaceDatabaseData,
+    vi.mocked(createCryptoKey).mockImplementation(
+      mockEncryption.mockCreateCryptoKey,
     );
-    (
-      isEncryptedKiyoFile as unknown as ReturnType<typeof vi.fn>
-    ).mockImplementation(mockIsEncryptedKiyoFile);
-    (createCryptoKey as ReturnType<typeof vi.fn>).mockImplementation(
-      mockCreateCryptoKey,
+    vi.mocked(decryptData).mockImplementation(
+      mockEncryption.mockDecryptData,
     );
-    (decryptData as ReturnType<typeof vi.fn>).mockImplementation(
-      mockDecryptData,
+    vi.mocked(fromBase64).mockImplementation(
+      mockCryptoUtils.mockFromBase64,
     );
-    (fromBase64 as ReturnType<typeof vi.fn>).mockImplementation(mockFromBase64);
-    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockImplementation(
-      mockIsNativePlatform,
+    vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
+    vi.mocked(replaceDatabaseData).mockImplementation(
+      mockDB.mockReplaceDatabaseData,
     );
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("정상 케이스 (암호화 파일)", () => {
@@ -172,7 +138,7 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       });
 
       // isEncryptedKiyoFile 호출 확인
-      expect(mockIsEncryptedKiyoFile).toHaveBeenCalledWith(
+      expect(mockEncryption.mockIsEncryptedKiyoFile).toHaveBeenCalledWith(
         expect.objectContaining({
           version: 1,
           encrypted: true,
@@ -180,16 +146,16 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       );
 
       // fromBase64로 salt 디코딩 확인
-      expect(mockFromBase64).toHaveBeenCalledWith(encryptedFile.salt);
+      expect(mockCryptoUtils.mockFromBase64).toHaveBeenCalledWith(encryptedFile.salt);
 
       // createCryptoKey 호출 확인
-      expect(mockCreateCryptoKey).toHaveBeenCalledWith(
+      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledWith(
         "1234",
         expect.any(Uint8Array),
       );
 
       // decryptData 호출 확인
-      expect(mockDecryptData).toHaveBeenCalledWith(
+      expect(mockEncryption.mockDecryptData).toHaveBeenCalledWith(
         expect.objectContaining({
           version: 1,
           encrypted: true,
@@ -201,12 +167,12 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       );
 
       // replaceDatabaseData 호출 확인
-      expect(mockReplaceDatabaseData).toHaveBeenCalledTimes(1);
-      expect(mockReplaceDatabaseData).toHaveBeenCalledWith(mockDecryptedData);
+      expect(mockDB.mockReplaceDatabaseData).toHaveBeenCalledTimes(1);
+      expect(mockDB.mockReplaceDatabaseData).toHaveBeenCalledWith(mockDecryptedData);
 
       // setSession 호출 확인 (fileName, cryptoKey, salt 전달)
-      expect(mockSetSession).toHaveBeenCalledTimes(1);
-      const callArgs = mockSetSession.mock.calls[0][0];
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
+      const callArgs = mockSessionStore.mockSetSession.mock.calls[0][0];
       expect(callArgs).toEqual(
         expect.objectContaining({
           fileName: "test.json",
@@ -216,64 +182,62 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       );
 
       // saveFileDataToDB 호출 확인 (암호화된 데이터와 salt)
-      expect(mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockSaveFileDataToDB.mock.calls[0];
+      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(encryptedFile);
       expect(salt).toEqual(mockSalt);
 
       // setAccounts 호출 확인
-      expect(mockSetAccounts).toHaveBeenCalledTimes(1);
-      expect(mockSetAccounts).toHaveBeenCalledWith([]);
+      expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledTimes(1);
+      expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith(mockDecryptedData.accounts);
     });
 
     it("데이터가 있는 accounts도 정상 처리한다", async () => {
-      const decryptedWithAccounts = createValidKiyoFile({
-        accounts: [
-          {
-            id: 1,
-            templateId: 1,
-            title: "Test Account",
-            tags: ["tag1"],
-            favorite: true,
-            fields: [
-              {
-                id: "1-1",
-                label: "Field",
-                type: "text",
-                value: "value",
-                order: 0,
-              },
-            ],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          },
+      const testAccount = createTestAccount({
+        id: 1,
+        templateId: 1,
+        title: "Test Account",
+        tags: ["tag1"],
+        favorite: true,
+        fields: [
+          createTestField({
+            id: "1-1",
+            label: "Field",
+            type: "text",
+            value: "value",
+            order: 0,
+          }),
         ],
       });
-      mockDecryptData.mockResolvedValueOnce(decryptedWithAccounts);
+      const decryptedWithAccounts = createTestKiyoDataFile({
+        fileName: "test.json",
+        accounts: [testAccount],
+      });
+      mockEncryption.mockDecryptData.mockResolvedValueOnce(decryptedWithAccounts);
 
       const result = await openImportedDataFile(encryptedJsonString, "1234");
 
       expect(result).not.toBeNull();
       expect(result!.accounts).toHaveLength(1);
-      expect(mockReplaceDatabaseData).toHaveBeenCalledWith(
+      expect(mockDB.mockReplaceDatabaseData).toHaveBeenCalledWith(
         expect.objectContaining({
           accounts: decryptedWithAccounts.accounts,
         }),
       );
-      expect(mockSetAccounts).toHaveBeenCalledWith(
+      expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith(
         decryptedWithAccounts.accounts,
       );
     });
 
     it("isEncryptedKiyoFile이 false면 평문 로직으로 분기한다", async () => {
-      mockIsEncryptedKiyoFile.mockReturnValueOnce(false);
+      mockEncryption.mockIsEncryptedKiyoFile.mockReturnValueOnce(false);
 
       const result = await openImportedDataFile(validJsonString, "");
 
       expect(result).not.toBeNull();
-      expect(mockCreateCryptoKey).not.toHaveBeenCalled();
-      expect(mockDecryptData).not.toHaveBeenCalled();
+      expect(mockEncryption.mockCreateCryptoKey).not.toHaveBeenCalled();
+      expect(mockEncryption.mockDecryptData).not.toHaveBeenCalled();
     });
   });
 
@@ -289,81 +253,70 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
         },
       ];
 
-      for (const { desc, salt, mockSalt } of saltTestCases) {
+      for (const { salt, mockSalt } of saltTestCases) {
         vi.clearAllMocks();
 
         // Setup mocks for each iteration
-        mockSetSession = vi.fn().mockResolvedValue(undefined);
-        mockSetAccounts = vi.fn();
-        mockSaveFileDataToDB = vi.fn().mockResolvedValue(undefined);
-        mockReplaceDatabaseData = vi.fn().mockResolvedValue(undefined);
-        mockIsEncryptedKiyoFile = vi.fn().mockReturnValue(true);
-        mockCreateCryptoKey = vi
-          .fn()
-          .mockResolvedValue({
+        mockSessionStore = createMockSessionStore();
+        mockAccountStore = createMockAccountStoreWithGetState();
+        mockEncryption = createMockEncryption({
+          mockIsEncryptedKiyoFile: vi.fn().mockReturnValue(true),
+          mockCreateCryptoKey: vi.fn().mockResolvedValue({
             key: mockCryptoKey,
             salt: mockSalt || new Uint8Array(16),
-          });
-        mockDecryptData = vi.fn().mockResolvedValue(mockDecryptedData);
-        mockFromBase64 = vi
-          .fn()
-          .mockReturnValue(mockSalt || new Uint8Array(16));
-        mockIsNativePlatform = vi.fn().mockReturnValue(false);
-
-        (useSessionStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-          setSession: mockSetSession,
-          setCryptoKey: vi.fn(),
-          clearSession: vi.fn(),
+          }),
+          mockDecryptData: vi.fn().mockResolvedValue(mockDecryptedData),
         });
-        (useAccountStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-          setAccounts: mockSetAccounts,
+        mockCryptoUtils = createMockCryptoUtils({
+          mockFromBase64: vi.fn().mockReturnValue(mockSalt || new Uint8Array(16)),
         });
-        (saveFileDataToDB as ReturnType<typeof vi.fn>).mockImplementation(
-          mockSaveFileDataToDB,
-        );
-        (replaceDatabaseData as ReturnType<typeof vi.fn>).mockImplementation(
-          mockReplaceDatabaseData,
-        );
-        (
-          isEncryptedKiyoFile as unknown as ReturnType<typeof vi.fn>
-        ).mockImplementation(mockIsEncryptedKiyoFile);
-        (createCryptoKey as ReturnType<typeof vi.fn>).mockImplementation(
-          mockCreateCryptoKey,
-        );
-        (decryptData as ReturnType<typeof vi.fn>).mockImplementation(
-          mockDecryptData,
-        );
-        (fromBase64 as ReturnType<typeof vi.fn>).mockImplementation(
-          mockFromBase64,
-        );
-        (
-          Capacitor.isNativePlatform as ReturnType<typeof vi.fn>
-        ).mockImplementation(mockIsNativePlatform);
+        mockDB = createMockDB();
 
-        const file = createEncryptedFile({ salt });
+        // Configure mock implementations
+        vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+        vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
+        vi.mocked(isEncryptedKiyoFile).mockImplementation(
+          mockEncryption.mockIsEncryptedKiyoFile,
+        );
+        vi.mocked(createCryptoKey).mockImplementation(
+          mockEncryption.mockCreateCryptoKey,
+        );
+        vi.mocked(decryptData).mockImplementation(
+          mockEncryption.mockDecryptData,
+        );
+        vi.mocked(fromBase64).mockImplementation(
+          mockCryptoUtils.mockFromBase64,
+        );
+        vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
+        vi.mocked(replaceDatabaseData).mockImplementation(
+          mockDB.mockReplaceDatabaseData,
+        );
+        vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+
+        const file = createTestEncryptedFile({ salt });
         const jsonString = JSON.stringify(file);
 
         const result = await openImportedDataFile(jsonString, "1234");
 
         expect(result).toBeNull();
-        expect(mockCreateCryptoKey).not.toHaveBeenCalled();
-        expect(mockDecryptData).not.toHaveBeenCalled();
+        expect(mockEncryption.mockCreateCryptoKey).not.toHaveBeenCalled();
+        expect(mockEncryption.mockDecryptData).not.toHaveBeenCalled();
       }
     });
 
     it("createCryptoKey 실패 시 null을 반환한다", async () => {
-      mockCreateCryptoKey.mockRejectedValueOnce(
+      mockEncryption.mockCreateCryptoKey.mockRejectedValueOnce(
         new Error("Key creation failed"),
       );
 
       const result = await openImportedDataFile(encryptedJsonString, "1234");
 
       expect(result).toBeNull();
-      expect(mockDecryptData).not.toHaveBeenCalled();
+      expect(mockEncryption.mockDecryptData).not.toHaveBeenCalled();
     });
 
     it("decryptData 실패 시 null을 반환한다 (잘못된 PIN)", async () => {
-      mockDecryptData.mockRejectedValueOnce(new Error("Decryption failed"));
+      mockEncryption.mockDecryptData.mockRejectedValueOnce(new Error("Decryption failed"));
 
       const result = await openImportedDataFile(
         encryptedJsonString,
@@ -371,16 +324,16 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       );
 
       expect(result).toBeNull();
-      expect(mockReplaceDatabaseData).not.toHaveBeenCalled();
+      expect(mockDB.mockReplaceDatabaseData).not.toHaveBeenCalled();
       // setSession은 decryptData 이후에 호출되므로 decryptData 실패 시 호출되지 않음
-      expect(mockSetSession).not.toHaveBeenCalled();
-      expect(mockSaveFileDataToDB).not.toHaveBeenCalled();
-      expect(mockSetAccounts).not.toHaveBeenCalled();
+      expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
+      expect(mockDB.mockSaveFileDataToDB).not.toHaveBeenCalled();
+      expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 
     it("복호화된 데이터가 isKiyoFile 검증 실패 시 null을 반환한다", async () => {
       // fileName이 있는 유효하지 않은 데이터로 mock 설정 (normalizeDataFileName에서 에러 방지)
-      mockDecryptData.mockResolvedValueOnce({
+      mockEncryption.mockDecryptData.mockResolvedValueOnce({
         invalid: "data",
         fileName: "test.json",
       });
@@ -388,27 +341,27 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       const result = await openImportedDataFile(encryptedJsonString, "1234");
 
       expect(result).toBeNull();
-      expect(mockReplaceDatabaseData).not.toHaveBeenCalled();
+      expect(mockDB.mockReplaceDatabaseData).not.toHaveBeenCalled();
       // setSession은 decryptData 이후, isKiyoFile 검증 이전에 호출되므로 호출됨
-      expect(mockSetSession).toHaveBeenCalled();
-      expect(mockSaveFileDataToDB).not.toHaveBeenCalled();
-      expect(mockSetAccounts).not.toHaveBeenCalled();
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalled();
+      expect(mockDB.mockSaveFileDataToDB).not.toHaveBeenCalled();
+      expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 
     it("replaceDatabaseData 실패 시 null을 반환한다", async () => {
-      mockReplaceDatabaseData.mockRejectedValueOnce(new Error("DB error"));
+      mockDB.mockReplaceDatabaseData.mockRejectedValueOnce(new Error("DB error"));
 
       const result = await openImportedDataFile(encryptedJsonString, "1234");
 
       expect(result).toBeNull();
       // setSession은 replaceDatabaseData 이전에 호출되므로 호출됨
-      expect(mockSetSession).toHaveBeenCalled();
-      expect(mockSaveFileDataToDB).not.toHaveBeenCalled();
-      expect(mockSetAccounts).not.toHaveBeenCalled();
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalled();
+      expect(mockDB.mockSaveFileDataToDB).not.toHaveBeenCalled();
+      expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 
     it("saveFileDataToDB 실패 시 null을 반환한다", async () => {
-      mockSaveFileDataToDB.mockRejectedValueOnce(new Error("DB save failed"));
+      mockDB.mockSaveFileDataToDB.mockRejectedValueOnce(new Error("DB save failed"));
 
       const result = await openImportedDataFile(encryptedJsonString, "1234");
 
@@ -416,7 +369,7 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
     });
 
     it("setSession 실패 시 null을 반환한다", async () => {
-      mockSetSession.mockRejectedValueOnce(new Error("Session error"));
+      mockSessionStore.mockSetSession.mockRejectedValueOnce(new Error("Session error"));
 
       const result = await openImportedDataFile(encryptedJsonString, "1234");
 
@@ -428,42 +381,34 @@ describe("openImportedDataFile - 암호화 파일 테스트", () => {
       const invalidJson = "{ invalid json }";
       let result = await openImportedDataFile(invalidJson, "1234");
       expect(result).toBeNull();
-      expect(mockIsEncryptedKiyoFile).not.toHaveBeenCalled();
+      expect(mockEncryption.mockIsEncryptedKiyoFile).not.toHaveBeenCalled();
 
       // isEncryptedKiyoFile이 false 반환 (평문 로직으로 분기)
       vi.clearAllMocks();
-      mockIsEncryptedKiyoFile = vi.fn().mockReturnValue(false);
-      mockSetSession = vi.fn().mockResolvedValue(undefined);
-      mockSetAccounts = vi.fn();
-      mockSaveFileDataToDB = vi.fn().mockResolvedValue(undefined);
-      mockReplaceDatabaseData = vi.fn().mockResolvedValue(undefined);
-      mockIsNativePlatform = vi.fn().mockReturnValue(false);
+      mockSessionStore = createMockSessionStore();
+      mockAccountStore = createMockAccountStoreWithGetState();
+      mockEncryption = createMockEncryption({
+        mockIsEncryptedKiyoFile: vi.fn().mockReturnValue(false),
+      });
+      mockCryptoUtils = createMockCryptoUtils();
+      mockDB = createMockDB();
 
-      (useSessionStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-        setSession: mockSetSession,
-        setCryptoKey: vi.fn(),
-        clearSession: vi.fn(),
-      });
-      (useAccountStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
-        setAccounts: mockSetAccounts,
-      });
-      (saveFileDataToDB as ReturnType<typeof vi.fn>).mockImplementation(
-        mockSaveFileDataToDB,
+      // Configure mock implementations
+      vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+      vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
+      vi.mocked(isEncryptedKiyoFile).mockImplementation(
+        mockEncryption.mockIsEncryptedKiyoFile,
       );
-      (replaceDatabaseData as ReturnType<typeof vi.fn>).mockImplementation(
-        mockReplaceDatabaseData,
+      vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
+      vi.mocked(replaceDatabaseData).mockImplementation(
+        mockDB.mockReplaceDatabaseData,
       );
-      (
-        isEncryptedKiyoFile as unknown as ReturnType<typeof vi.fn>
-      ).mockImplementation(mockIsEncryptedKiyoFile);
-      (
-        Capacitor.isNativePlatform as ReturnType<typeof vi.fn>
-      ).mockImplementation(mockIsNativePlatform);
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
 
       result = await openImportedDataFile(validJsonString, "");
       expect(result).not.toBeNull();
-      expect(mockCreateCryptoKey).not.toHaveBeenCalled();
-      expect(mockDecryptData).not.toHaveBeenCalled();
+      expect(mockEncryption.mockCreateCryptoKey).not.toHaveBeenCalled();
+      expect(mockEncryption.mockDecryptData).not.toHaveBeenCalled();
     });
   });
 });

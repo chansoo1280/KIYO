@@ -6,7 +6,10 @@ import {
 } from "./fileStorage";
 import type { KiyoDataFile } from "./fileStorage";
 import type { EncryptedKiyoFile } from "../crypto/encryption";
-import type { Account, Template, Setting, Metadata } from "../models/account";
+import {
+  createTestKiyoDataFile,
+  createTestEncryptedFile,
+} from "../test/fixtures/databaseFixtures";
 
 describe("fileStorage - pure functions", () => {
   describe("normalizeDataFileName", () => {
@@ -74,16 +77,7 @@ describe("fileStorage - pure functions", () => {
   describe("isKiyoFile", () => {
     const createValidKiyoFile = (
       overrides: Partial<KiyoDataFile> = {},
-    ): KiyoDataFile => ({
-      version: 1,
-      fileName: "test.json",
-      updatedAt: Date.now(),
-      accounts: [] as Account[],
-      templates: [] as Template[],
-      settings: [] as Setting[],
-      metadata: [] as Metadata[],
-      ...overrides,
-    });
+    ): KiyoDataFile => createTestKiyoDataFile(overrides);
 
     describe("정상 입력", () => {
       it("올바른 KiyoDataFile 객체는 true를 반환한다", () => {
@@ -225,14 +219,7 @@ describe("fileStorage - pure functions", () => {
   describe("isEncryptedKiyoFile", () => {
     const createValidEncryptedFile = (
       overrides: Partial<EncryptedKiyoFile> = {},
-    ): EncryptedKiyoFile => ({
-      version: 1,
-      encrypted: true,
-      salt: "base64salt",
-      iv: "base64iv",
-      ciphertext: "base64ciphertext",
-      ...overrides,
-    });
+    ): EncryptedKiyoFile => createTestEncryptedFile(overrides);
 
     describe("정상 입력", () => {
       it("올바른 EncryptedKiyoFile 객체는 true를 반환한다", () => {

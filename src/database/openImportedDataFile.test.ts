@@ -259,13 +259,13 @@ describe("openImportedDataFile", () => {
 
     it("잘못된 version일 때 null을 반환한다 (1이 아닌 숫자, 문자열, 0, 음수)", async () => {
       const invalidVersions = [
-        { version: 2 as unknown as 1, desc: "1이 아닌 숫자" },
-        { version: "1" as unknown as 1, desc: "문자열" },
-        { version: 0 as unknown as 1, desc: "0" },
-        { version: -1 as unknown as 1, desc: "음수" },
+        { version: 2 as unknown as 1 },
+        { version: "1" as unknown as 1 },
+        { version: 0 as unknown as 1 },
+        { version: -1 as unknown as 1 },
       ];
 
-      for (const { version, desc } of invalidVersions) {
+      for (const { version } of invalidVersions) {
         vi.clearAllMocks();
         const invalidVersionFile = createValidKiyoFile({ version });
         const jsonString = JSON.stringify(invalidVersionFile);
@@ -282,33 +282,29 @@ describe("openImportedDataFile", () => {
 
     it("필수 필드(accounts, templates, settings, metadata)가 누락되거나 배열이 아닐 때 null을 반환한다", async () => {
       const invalidFields = [
-        { field: "accounts", value: undefined, desc: "누락" },
+        { field: "accounts", value: undefined },
         {
           field: "accounts",
           value: "not an array" as unknown as Account[],
-          desc: "배열 아님",
         },
-        { field: "templates", value: undefined, desc: "누락" },
+        { field: "templates", value: undefined },
         {
           field: "templates",
           value: "not an array" as unknown as Template[],
-          desc: "배열 아님",
         },
-        { field: "settings", value: undefined, desc: "누락" },
+        { field: "settings", value: undefined },
         {
           field: "settings",
           value: "not an array" as unknown as Setting[],
-          desc: "배열 아님",
         },
-        { field: "metadata", value: undefined, desc: "누락" },
+        { field: "metadata", value: undefined },
         {
           field: "metadata",
           value: "not an array" as unknown as Metadata[],
-          desc: "배열 아님",
         },
       ];
 
-      for (const { field, value, desc } of invalidFields) {
+      for (const { field, value } of invalidFields) {
         vi.clearAllMocks();
         const invalidFile = createValidKiyoFile({
           [field]: value,
@@ -323,14 +319,14 @@ describe("openImportedDataFile", () => {
 
     it("잘못된 타입의 입력(null, undefined, 숫자, 배열, 빈 문자열) 시 null을 반환한다", async () => {
       const invalidInputs = [
-        { input: "", desc: "빈 문자열" },
-        { input: null, desc: "null" },
-        { input: undefined, desc: "undefined" },
-        { input: 123, desc: "숫자" },
-        { input: [], desc: "배열" },
+        { input: "" },
+        { input: null },
+        { input: undefined },
+        { input: 123 },
+        { input: [] },
       ];
 
-      for (const { input, desc } of invalidInputs) {
+      for (const { input } of invalidInputs) {
         vi.clearAllMocks();
         // @ts-expect-error - 의도적으로 잘못된 타입 전달
         const result = await openImportedDataFile(input, "1234");

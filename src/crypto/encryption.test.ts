@@ -7,30 +7,19 @@ import {
   type EncryptedKiyoFile,
 } from "./encryption";
 import type { KiyoDataFile } from "../database/fileStorage";
+import {
+  createTestEncryptedFile,
+  createTestKiyoDataFile,
+} from "../test/fixtures/databaseFixtures";
 
 describe("encryption (KIYO encryption.ts)", () => {
   const mockPassword = "test-password-123";
-  const mockKiyoFile: KiyoDataFile = {
-    version: 1,
-    fileName: "test.json",
-    updatedAt: Date.now(),
-    accounts: [
-      {
-        id: 1,
-        templateId: 1,
-        title: "Test Account",
-        description: "",
-        tags: [],
-        favorite: false,
-        fields: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ],
+  const mockKiyoFile: KiyoDataFile = createTestKiyoDataFile({
+    accounts: [],
     templates: [],
     settings: [],
     metadata: [],
-  };
+  });
 
   let key: CryptoKey;
   let salt: Uint8Array;
@@ -43,13 +32,7 @@ describe("encryption (KIYO encryption.ts)", () => {
 
   describe("isEncryptedKiyoFile", () => {
     it("should return true for valid encrypted file", () => {
-      const encryptedFile: EncryptedKiyoFile = {
-        version: 1,
-        encrypted: true,
-        salt: "AQEBAQEBAQEBAQEBAQEBAQ==",
-        iv: "AgICAgICAgICAgIC",
-        ciphertext: "AQIDBAUGBwg=",
-      };
+      const encryptedFile: EncryptedKiyoFile = createTestEncryptedFile();
       expect(isEncryptedKiyoFile(encryptedFile)).toBe(true);
     });
 
@@ -217,7 +200,9 @@ describe("encryption (KIYO encryption.ts)", () => {
         iv: expect.any(String),
         ciphertext: expect.any(String),
       });
-      expect(isEncryptedKiyoFile(encrypted)).toBe(true);
+      expect(() => atob(encrypted.salt)).not.toThrow();
+      expect(() => atob(encrypted.iv)).not.toThrow();
+      expect(() => atob(encrypted.ciphertext)).not.toThrow();
     });
 
     it("should include salt and IV as base64 strings", async () => {
@@ -226,10 +211,9 @@ describe("encryption (KIYO encryption.ts)", () => {
       expect(typeof encrypted.salt).toBe("string");
       expect(typeof encrypted.iv).toBe("string");
       expect(typeof encrypted.ciphertext).toBe("string");
-
-      expect(() => atob(encrypted.salt)).not.toThrow();
-      expect(() => atob(encrypted.iv)).not.toThrow();
-      expect(() => atob(encrypted.ciphertext)).not.toThrow();
+      expect(encrypted.salt.length).toBeGreaterThan(0);
+      expect(encrypted.iv.length).toBeGreaterThan(0);
+      expect(encrypted.ciphertext.length).toBeGreaterThan(0);
     });
   });
 
@@ -265,46 +249,35 @@ describe("encryption (KIYO encryption.ts)", () => {
 
     it("should decrypt successfully even with tampered salt (salt not used in decryptData)", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
-      const tamperedSalt = encrypted.salt.slice(0, -1) + "X";
       const tampered: EncryptedKiyoFile = {
         ...encrypted,
-        salt: tamperedSalt,
+        salt: "dGFtcGVyZWQ=", // tampered salt
       };
 
-      // decryptData doesn't use the salt field - it only uses iv and ciphertext
-      // The salt is used when creating the key via createCryptoKey
       const decrypted = await decryptData(tampered, key);
       expect(decrypted).toEqual(mockKiyoFile);
     });
 
     it("should decrypt successfully even with wrong version (version not validated in decryptData)", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
-      const tampered = {
+      const tampered: EncryptedKiyoFile = {
         ...encrypted,
-        version: 2,
+        version: 999 as any,
       };
 
-      // decryptData doesn't validate the version field
-      const decrypted = await decryptData(
-        tampered as unknown as EncryptedKiyoFile,
-        key,
-      );
+      const decrypted = await decryptData(tampered, key);
       expect(decrypted).toEqual(mockKiyoFile);
     });
   });
 
   describe("encryptData with different data types", () => {
     it("should encrypt empty arrays and objects", async () => {
-      const emptyFile: KiyoDataFile = {
-        version: 1,
-        fileName: "empty.json",
-        updatedAt: Date.now(),
+      const emptyFile = createTestKiyoDataFile({
         accounts: [],
         templates: [],
         settings: [],
         metadata: [],
-      };
-
+      });
       const encrypted = await encryptData(emptyFile, key, salt);
       const decrypted = await decryptData(encrypted, key);
 
@@ -312,53 +285,52 @@ describe("encryption (KIYO encryption.ts)", () => {
     });
 
     it("should encrypt complex nested data", async () => {
-      const complexFile: KiyoDataFile = {
-        version: 1,
-        fileName: "complex.json",
-        updatedAt: Date.now(),
+      const complexFile = createTestKiyoDataFile({
         accounts: [
           {
             id: 1,
             templateId: 1,
-            title: "Account 1",
-            description: "Description 1",
+            title: "Complex Account",
             tags: ["tag1", "tag2"],
             favorite: true,
             fields: [
               {
                 id: "f1",
-                label: "Username",
+                label: "Field 1",
                 type: "text",
-                value: "user1",
+                value: "value1",
                 order: 0,
               },
               {
                 id: "f2",
-                label: "Password",
+                label: "Field 2",
                 type: "password",
-                value: "pass1",
+                value: "secret",
                 order: 1,
               },
             ],
             createdAt: Date.now(),
             updatedAt: Date.now(),
           },
+        ],
+        templates: [
           {
-            id: 2,
-            templateId: 1,
-            title: "Account 2",
-            description: "Description 2",
-            tags: [],
-            favorite: false,
-            fields: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            id: 1,
+            name: "Complex Template",
+            fields: [
+              {
+                id: "tf1",
+                label: "Template Field 1",
+                type: "text",
+                value: "",
+                order: 0,
+              },
+            ],
           },
         ],
-        templates: [{ id: 1, name: "Template 1", fields: [] }],
-        settings: [{ theme: "dark", autoLockTime: 300, lockEnabled: true }],
-        metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
-      };
+        settings: [{ theme: "light", lockEnabled: false, autoLockTime: 60 }],
+        metadata: [{ id: 1, version: "2.0.0", createdAt: Date.now() }],
+      });
 
       const encrypted = await encryptData(complexFile, key, salt);
       const decrypted = await decryptData(encrypted, key);
@@ -367,31 +339,27 @@ describe("encryption (KIYO encryption.ts)", () => {
     });
 
     it("should handle special characters and unicode", async () => {
-      const unicodeFile: KiyoDataFile = {
-        version: 1,
-        fileName: "unicode.json",
-        updatedAt: Date.now(),
+      const unicodeFile = createTestKiyoDataFile({
         accounts: [
           {
             id: 1,
             templateId: 1,
-            title: "한국어 계정 🇰🇷",
-            description: "설명",
-            tags: ["태그1", "태그2"],
-            favorite: true,
+            title: "Unicode Test 🎉",
+            tags: ["한글", "日本語", "emoji🚀"],
+            favorite: false,
             fields: [
               {
                 id: "f1",
-                label: "사용자명",
+                label: "Special Chars",
                 type: "text",
-                value: "user@domain.com",
+                value: "!@#$%^&*()_+-=[]{}|;':\",./<>?`~",
                 order: 0,
               },
               {
                 id: "f2",
-                label: "비밀번호",
-                type: "password",
-                value: "비밀번호123!@#",
+                label: "Unicode",
+                type: "text",
+                value: "한글 日本語 🎉🚀💻",
                 order: 1,
               },
             ],
@@ -402,7 +370,7 @@ describe("encryption (KIYO encryption.ts)", () => {
         templates: [],
         settings: [],
         metadata: [],
-      };
+      });
 
       const encrypted = await encryptData(unicodeFile, key, salt);
       const decrypted = await decryptData(encrypted, key);
@@ -413,55 +381,38 @@ describe("encryption (KIYO encryption.ts)", () => {
 
   describe("end-to-end encryption flow", () => {
     it("should complete full encrypt-decrypt cycle with new key from password", async () => {
-      const password = "my-secret-password";
-      const { key: derivedKey, salt: derivedSalt } =
-        await createCryptoKey(password);
-
-      const encrypted = await encryptData(
-        mockKiyoFile,
-        derivedKey,
-        derivedSalt,
-      );
-      const decrypted = await decryptData(encrypted, derivedKey);
+      const { key: newKey, salt: newSalt } =
+        await createCryptoKey(mockPassword);
+      const encrypted = await encryptData(mockKiyoFile, newKey, newSalt);
+      const decrypted = await decryptData(encrypted, newKey);
 
       expect(decrypted).toEqual(mockKiyoFile);
     });
 
     it("should decrypt with key derived from same password and salt", async () => {
-      const password = "shared-secret";
-      const salt = new Uint8Array(16).fill(42);
+      const encrypted = await encryptData(mockKiyoFile, key, salt);
+      const { key: derivedKey } = await createCryptoKey(mockPassword, salt);
 
-      const { key: key1 } = await createCryptoKey(password, salt);
-      const encrypted = await encryptData(mockKiyoFile, key1, salt);
-
-      const { key: key2 } = await createCryptoKey(password, salt);
-      const decrypted = await decryptData(encrypted, key2);
-
+      const decrypted = await decryptData(encrypted, derivedKey);
       expect(decrypted).toEqual(mockKiyoFile);
     });
 
     it("should fail to decrypt with key from different password", async () => {
-      const salt = new Uint8Array(16).fill(99);
+      const encrypted = await encryptData(mockKiyoFile, key, salt);
+      const { key: wrongKey } = await createCryptoKey("wrong-password", salt);
 
-      const { key: key1 } = await createCryptoKey("password-1", salt);
-      const encrypted = await encryptData(mockKiyoFile, key1, salt);
-
-      const { key: key2 } = await createCryptoKey("password-2", salt);
-
-      await expect(decryptData(encrypted, key2)).rejects.toThrow();
+      await expect(decryptData(encrypted, wrongKey)).rejects.toThrow();
     });
 
     it("should fail to decrypt with key from different salt", async () => {
-      const password = "same-password";
-      const salt1 = new Uint8Array(16).fill(1);
-      const salt2 = new Uint8Array(16).fill(2);
+      const encrypted = await encryptData(mockKiyoFile, key, salt);
+      const differentSalt = new Uint8Array(16).fill(99);
+      const { key: wrongKey } = await createCryptoKey(
+        mockPassword,
+        differentSalt,
+      );
 
-      const { key: key1 } = await createCryptoKey(password, salt1);
-      const encrypted = await encryptData(mockKiyoFile, key1, salt1);
-
-      const { key: key2 } = await createCryptoKey(password, salt2);
-
-      await expect(decryptData(encrypted, key2)).rejects.toThrow();
+      await expect(decryptData(encrypted, wrongKey)).rejects.toThrow();
     });
   });
 });

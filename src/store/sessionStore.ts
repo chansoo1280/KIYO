@@ -2,10 +2,12 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { clearActiveFileInfo, saveActiveFileInfo } from "../database/db";
 
-interface SessionState {
+export interface SessionState {
   activeFileName: string | null;
   cryptoKey: CryptoKey | null;
   salt: Uint8Array | null;
+  lastSyncError: string | null;
+  lastSyncErrorTime: number | null;
   setSession: ({
     fileName,
     cryptoKey,
@@ -17,6 +19,8 @@ interface SessionState {
   }) => Promise<void>;
   setCryptoKey: (key: CryptoKey, salt: Uint8Array) => Promise<void>;
   clearSession: () => Promise<void>;
+  setSyncError: (error: string | null) => void;
+  clearSyncError: () => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -25,13 +29,15 @@ export const useSessionStore = create<SessionState>()(
       activeFileName: null,
       cryptoKey: null,
       salt: null,
+      lastSyncError: null,
+      lastSyncErrorTime: null,
 
       setSession: async ({ fileName, cryptoKey, salt }) => {
-        set({
+        set((state) => ({
           activeFileName: fileName,
-          cryptoKey: cryptoKey ?? null,
-          salt: salt ?? null,
-        });
+          cryptoKey: cryptoKey ?? state.cryptoKey,
+          salt: salt ?? state.salt,
+        }));
         if (fileName) {
           await saveActiveFileInfo(fileName, salt || undefined);
         } else {
@@ -50,6 +56,14 @@ export const useSessionStore = create<SessionState>()(
       clearSession: async () => {
         set({ activeFileName: null, cryptoKey: null, salt: null });
         await clearActiveFileInfo();
+      },
+
+      setSyncError: (error: string | null) => {
+        set({ lastSyncError: error, lastSyncErrorTime: error ? Date.now() : null });
+      },
+
+      clearSyncError: () => {
+        set({ lastSyncError: null, lastSyncErrorTime: null });
       },
     }),
     {

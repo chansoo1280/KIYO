@@ -16,20 +16,24 @@ import {
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type {
-  Account,
-  Template,
-  Setting,
-  Metadata,
-  AccountField,
-} from "../models/account";
+import type { Account, Template, Setting, Metadata } from "../models/account";
 import type { KiyoDataFile } from "./fileStorage";
 import {
-  getTestAccounts,
-  getTestTemplates,
-  getTestFields,
-  getComplexTestTemplates,
-} from "../test/setup";
+  createTestAccount,
+  createTestAccounts,
+  createComplexAccount,
+  createTestField,
+} from "../test/fixtures/accountFixtures";
+import {
+  createTestTemplates,
+  createComplexTestTemplate,
+} from "../test/fixtures/templateFixtures";
+import {
+  getDefaultMetadata,
+  getDefaultSettings,
+  getEncryptedMetadata,
+  getEncryptedSettings,
+} from "../test/helpers/databaseTestHelpers";
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -55,11 +59,9 @@ vi.mock("@capacitor/filesystem", () => ({
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Restore Integration Tests", () => {
-  let testDbName: string;
-
   beforeAll(async () => {
     // Use a unique test database name to avoid conflicts
-    testDbName = `kiyo-test-db-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // (not used directly since we use the real "kiyo-db" name)
   });
 
   afterAll(async () => {
@@ -94,32 +96,12 @@ describe("fileStorage Restore Integration Tests", () => {
     await resetTestEnvironment();
   });
 
-  // ============================================
-  // Test Data Helpers
-  // ============================================
-
-  const getDefaultSettings = (): Setting[] => [
-    { theme: "dark", autoLockTime: 300, lockEnabled: true },
-  ];
-
-  const getDefaultMetadata = (): Metadata[] => [
-    { id: 1, version: "1.0.0", createdAt: Date.now() },
-  ];
-
-  const getEncryptedSettings = (): Setting[] => [
-    { theme: "dark", autoLockTime: 300, lockEnabled: true },
-  ];
-
-  const getEncryptedMetadata = (): Metadata[] => [
-    { id: 1, version: "1.0.0", createdAt: Date.now() },
-  ];
-
   // Helper to populate test data in database AND sync to account store
   const populateTestData = async (
-    accounts: Account[] = getTestAccounts(),
-    templates: Template[] = getTestTemplates(),
-    settings: Setting[] = getDefaultSettings(),
-    metadata: Metadata[] = getDefaultMetadata(),
+    accounts = createTestAccounts(2),
+    templates = createTestTemplates(2),
+    settings = getDefaultSettings(),
+    metadata = getDefaultMetadata(),
   ) => {
     const db = getDatabase();
     await db.accounts.bulkPut(accounts);
@@ -219,8 +201,8 @@ describe("fileStorage Restore Integration Tests", () => {
 
       verifyDataIntegrity(
         importedFile,
-        getTestAccounts(),
-        getTestTemplates(),
+        createTestAccounts(2),
+        createTestTemplates(2),
         getDefaultSettings(),
         getDefaultMetadata(),
       );
@@ -265,9 +247,22 @@ describe("fileStorage Restore Integration Tests", () => {
     it("암호화 백업 파일로 데이터 복원 시 올바른 PIN으로 복호화 성공 (cryptoKey, salt 검증)", async () => {
       const pin = "1234";
       await createDataFile("restore-encrypted.json", pin);
+
+      // Create accounts with specific field values
+      const accounts = [
+        createTestAccount({
+          id: 1,
+          fields: [createTestField({ id: "1-1", value: "value1" })],
+        }),
+        createTestAccount({
+          id: 2,
+          fields: [createTestField({ id: "2-1" })],
+        }),
+      ];
+
       await populateTestData(
-        getTestAccounts(),
-        getTestTemplates(),
+        accounts,
+        createTestTemplates(2),
         getEncryptedSettings(),
         getEncryptedMetadata(),
       );
@@ -279,8 +274,8 @@ describe("fileStorage Restore Integration Tests", () => {
 
       verifyDataIntegrity(
         importedFile,
-        getTestAccounts(),
-        getTestTemplates(),
+        accounts,
+        createTestTemplates(2),
         getEncryptedSettings(),
         getEncryptedMetadata(),
       );
@@ -313,12 +308,12 @@ describe("fileStorage Restore Integration Tests", () => {
         title: "Complex Account 🎉",
         tags: ["tag1", "tag2", "한글", "日本語", "emoji🚀"],
         favorite: true,
-        fields: getTestFields().slice(3, 13),
+        fields: createComplexAccount().fields,
         createdAt: Date.now() - 10000,
         updatedAt: Date.now(),
       };
 
-      const templates = getComplexTestTemplates();
+      const templates = [createComplexTestTemplate()];
 
       const settings: Setting[] = [
         { theme: "dark", autoLockTime: 300, lockEnabled: true },
@@ -381,13 +376,58 @@ describe("fileStorage Restore Integration Tests", () => {
       const now = Date.now();
 
       // 타임스탬프, 빈 값, 특수문자, 유니코드 모두 포함한 계정
+      // createComplexAccount() 필드: c-1(0) ~ c-10(9)
+      // 무결성 테스트용 필드: i-1~i-5 (getTestFields 인덱스 13~17)
+      // createComplexAccount에는 없으므로 직접 생성
       const account: Account = {
         id: 1,
         templateId: 1,
         title: "특수문자 테스트 🎉",
         tags: ["한글", "日本語", "emoji🚀"],
         favorite: true,
-        fields: getTestFields().slice(13, 18),
+        fields: [
+          createTestField({
+            id: "i-1",
+            label: "Password",
+            type: "password",
+            value: "p@ssw0rd!#$%^&*()_+-=[]{}|;':\",./<>?`~",
+            order: 0,
+          }),
+          createTestField({
+            id: "i-2",
+            label: "Note",
+            type: "text",
+            value: "Line 1\nLine 2\tTabbed\r\nWindows line ending",
+            order: 1,
+          }),
+          createTestField({
+            id: "i-3",
+            label: "JSON",
+            type: "text",
+            value: JSON.stringify({
+              unicode: "🎉🚀💻",
+              korean: "안녕하세요",
+              japanese: "こんにちは",
+              chinese: "你好",
+              special: "<script>alert('xss')</script>",
+            }),
+            order: 2,
+          }),
+          createTestField({
+            id: "i-4",
+            label: "Empty Value",
+            type: "text",
+            value: "",
+            order: 3,
+          }),
+          createTestField({
+            id: "i-5",
+            label: "Normal Value",
+            type: "text",
+            value: "normal",
+            order: 4,
+          }),
+        ],
         createdAt: now - 10000,
         updatedAt: now - 5000,
       };
@@ -503,13 +543,50 @@ describe("fileStorage Restore Integration Tests", () => {
       await createDataFile("complex-encrypted-restore.json", pin);
 
       const db = getDatabase();
+      // Use specific test fields (e-1 to e-5 from getTestFields) for encryption test
       const complexAccount: Account = {
         id: 1,
         templateId: 1,
         title: "Complex Encrypted 🎉",
         tags: ["encrypted", "complex", "nested", "한글"],
         favorite: true,
-        fields: getTestFields().slice(18, 23),
+        fields: [
+          createTestField({
+            id: "e-1",
+            label: "Field1",
+            type: "text",
+            value: "value1",
+            order: 0,
+          }),
+          createTestField({
+            id: "e-2",
+            label: "Field2",
+            type: "password",
+            value: "secret2",
+            order: 1,
+          }),
+          createTestField({
+            id: "e-3",
+            label: "Field3",
+            type: "email",
+            value: "test@test.com",
+            order: 2,
+          }),
+          createTestField({
+            id: "e-4",
+            label: "Field4",
+            type: "number",
+            value: "999",
+            order: 3,
+          }),
+          createTestField({
+            id: "e-5",
+            label: "Field5",
+            type: "text",
+            value: "한글 English 🌟",
+            order: 4,
+          }),
+        ],
         createdAt: Date.now() - 5000,
         updatedAt: Date.now(),
       };

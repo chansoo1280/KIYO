@@ -17,7 +17,12 @@ import {
   openImportedDataFile,
 } from "./fileStorage";
 import type { Account, Template, Setting, Metadata } from "../models/account";
-import { getTestAccounts, getTestTemplates } from "../test/setup";
+import { createTestAccounts } from "../test/fixtures/accountFixtures";
+import { createTestTemplates } from "../test/fixtures/templateFixtures";
+import {
+  createTestSetting,
+  createTestMetadata,
+} from "../test/fixtures/databaseFixtures";
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -118,20 +123,16 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // 2. 데이터 추가 (계정, 템플릿, 설정, 메타데이터)
       const db = getDatabase();
 
-      const testAccount: Account = getTestAccounts()[0];
+      const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
 
-      const testTemplate: Template = getTestTemplates()[0];
+      const testTemplate: Template = createTestTemplates(1)[0];
       await db.templates.put(testTemplate);
 
-      const settings: Setting[] = [
-        { theme: "dark", autoLockTime: 300, lockEnabled: true },
-      ];
+      const settings: Setting[] = [createTestSetting()];
       await db.settings.bulkPut(settings);
 
-      const metadata: Metadata[] = [
-        { id: 1, version: "1.0.0", createdAt: Date.now() - 5000 },
-      ];
+      const metadata: Metadata[] = [createTestMetadata()];
       await db.metadata.bulkPut(metadata);
 
       // 3. backupDataFile로 평문 백업
@@ -141,7 +142,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(backedUpFile.fileName).toBe("plain-backup.json");
       expect("encrypted" in backedUpFile).toBe(false);
       expect(backedUpFile.accounts).toHaveLength(1);
-      expect(backedUpFile.accounts[0].title).toBe("Account 1");
+      expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
       expect(backedUpFile.templates).toHaveLength(1);
       expect(backedUpFile.settings).toHaveLength(1);
       expect(backedUpFile.metadata).toHaveLength(1);
@@ -156,10 +157,10 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       await createDataFile("import-source.json", "");
 
       const db = getDatabase();
-      const testAccount: Account = getTestAccounts()[0];
+      const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
 
-      const testTemplate: Template = getTestTemplates()[0];
+      const testTemplate: Template = createTestTemplates(1)[0];
       await db.templates.put(testTemplate);
 
       // 2. 평문 백업
@@ -176,7 +177,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(importedFile!.version).toBe(1);
       expect("encrypted" in importedFile!).toBe(false);
       expect(importedFile!.accounts).toHaveLength(1);
-      expect(importedFile!.accounts[0].title).toBe("Account 1");
+      expect(importedFile!.accounts[0].title).toBe("Test Account 1");
       expect(importedFile!.templates).toHaveLength(1);
 
       // 세션이 업데이트되었는지 확인 (파일명은 데이터 내부의 fileName 사용)
@@ -188,12 +189,12 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // 계정 스토어도 업데이트되었는지 확인
       const accounts = useAccountStore.getState().accounts;
       expect(accounts).toHaveLength(1);
-      expect(accounts[0].title).toBe("Account 1");
+      expect(accounts[0].title).toBe("Test Account 1");
 
       // DB에도 데이터가 저장되었는지 확인
       const snapshot = await getDatabaseSnapshot("plain-backup.json");
       expect(snapshot.accounts).toHaveLength(1);
-      expect(snapshot.accounts[0].title).toBe("Account 1");
+      expect(snapshot.accounts[0].title).toBe("Test Account 1");
     });
 
     it("파일 lifecycle 전체 흐름이 정상 동작한다", async () => {
@@ -210,14 +211,10 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // 2. 데이터 추가 (계정, 템플릿, 설정, 메타데이터 모두)
       const db = getDatabase();
 
-      const accounts: Account[] = getTestAccounts();
-      const templates: Template[] = getTestTemplates();
-      const settings: Setting[] = [
-        { theme: "dark", autoLockTime: 300, lockEnabled: true },
-      ];
-      const metadata: Metadata[] = [
-        { id: 1, version: "1.0.0", createdAt: Date.now() - 5000 },
-      ];
+      const accounts: Account[] = createTestAccounts(2);
+      const templates: Template[] = createTestTemplates(2);
+      const settings: Setting[] = [createTestSetting()];
+      const metadata: Metadata[] = [createTestMetadata()];
 
       await db.accounts.bulkPut(accounts);
       await db.templates.bulkPut(templates);
@@ -245,8 +242,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(importedFile).not.toBeNull();
       expect(importedFile!.fileName).toBe("lifecycle-backup.json");
       expect(importedFile!.accounts).toHaveLength(2);
-      expect(importedFile!.accounts[0].title).toBe("Account 1");
-      expect(importedFile!.accounts[1].title).toBe("Account 2");
+      expect(importedFile!.accounts[0].title).toBe("Test Account 1");
+      expect(importedFile!.accounts[1].title).toBe("Test Account 2");
       expect(importedFile!.templates).toHaveLength(2);
       expect(importedFile!.settings).toHaveLength(1);
       expect(importedFile!.metadata).toHaveLength(1);
@@ -261,8 +258,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // 계정 스토어 확인
       const storeAccounts = useAccountStore.getState().accounts;
       expect(storeAccounts).toHaveLength(2);
-      expect(storeAccounts[0].title).toBe("Account 1");
-      expect(storeAccounts[1].title).toBe("Account 2");
+      expect(storeAccounts[0].title).toBe("Test Account 1");
+      expect(storeAccounts[1].title).toBe("Test Account 2");
 
       // DB 확인
       const snapshot = await getDatabaseSnapshot("lifecycle-backup.json");

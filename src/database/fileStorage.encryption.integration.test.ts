@@ -17,7 +17,8 @@ import {
   openImportedDataFile,
 } from "./fileStorage";
 import type { Account, Template } from "../models/account";
-import { getTestAccounts, getTestTemplates } from "../test/setup";
+import { createTestAccounts } from "../test/fixtures/accountFixtures";
+import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import { fromBase64 } from "../crypto/crypto.utils";
 import { isEncryptedKiyoFile } from "./fileStorage";
 import { decryptData, type EncryptedKiyoFile } from "../crypto/encryption";
@@ -158,9 +159,9 @@ describe("fileStorage Encryption Integration Tests", () => {
 
       // 2. DB에 데이터 추가
       const db = getDatabase();
-      const testAccount: Account = getTestAccounts()[0];
+      const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
-      const testTemplate: Template = getTestTemplates()[0];
+      const testTemplate: Template = createTestTemplates(1)[0];
       await db.templates.put(testTemplate);
 
       // 3. backupDataFile로 백업 (PIN으로 새 키 생성 - 세션 키와 다름)
@@ -174,7 +175,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(backedUpFile.fileName).toBe("encrypted-backup.json");
       expect("encrypted" in backedUpFile).toBe(false);
       expect(backedUpFile.accounts).toHaveLength(1);
-      expect(backedUpFile.accounts[0].title).toBe("Account 1");
+      expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
       expect(backedUpFile.templates).toHaveLength(1);
 
       // 검증: 세션은 변경되지 않아야 함 (shouldSetActiveFile=false)
@@ -205,7 +206,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       );
       const decrypted = await decryptData(savedEncryptedFile!, backupKey);
       expect(decrypted.accounts).toHaveLength(1);
-      expect(decrypted.accounts[0].title).toBe("Account 1");
+      expect(decrypted.accounts[0].title).toBe("Test Account 1");
       expect(decrypted.templates).toHaveLength(1);
     });
 
@@ -217,9 +218,9 @@ describe("fileStorage Encryption Integration Tests", () => {
 
       // 2. DB에 데이터 추가
       const db = getDatabase();
-      const testAccount: Account = getTestAccounts()[0];
+      const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
-      const testTemplate: Template = getTestTemplates()[0];
+      const testTemplate: Template = createTestTemplates(1)[0];
       await db.templates.put(testTemplate);
 
       // 3. backupDataFile로 암호화 백업
@@ -249,9 +250,9 @@ describe("fileStorage Encryption Integration Tests", () => {
 
       // 검증: 데이터 동일성 확인
       expect(importedFile!.accounts).toHaveLength(1);
-      expect(importedFile!.accounts[0].title).toBe("Account 1");
+      expect(importedFile!.accounts[0].title).toBe("Test Account 1");
       expect(importedFile!.templates).toHaveLength(1);
-      expect(importedFile!.templates[0].name).toBe("Template 1");
+      expect(importedFile!.templates[0].name).toBe("Test Template 1");
 
       // 검증: 세션에 cryptoKey와 salt 저장됨
       const sessionState = useSessionStore.getState();
@@ -263,12 +264,12 @@ describe("fileStorage Encryption Integration Tests", () => {
       // 검증: 계정 스토어 업데이트됨
       const storeAccounts = useAccountStore.getState().accounts;
       expect(storeAccounts).toHaveLength(1);
-      expect(storeAccounts[0].title).toBe("Account 1");
+      expect(storeAccounts[0].title).toBe("Test Account 1");
 
       // 검증: DB 복원됨 (평문 데이터로 저장)
       const snapshot = await getDatabaseSnapshot("encrypted-backup.json");
       expect(snapshot.accounts).toHaveLength(1);
-      expect(snapshot.accounts[0].title).toBe("Account 1");
+      expect(snapshot.accounts[0].title).toBe("Test Account 1");
       expect(snapshot.templates).toHaveLength(1);
     });
 
@@ -278,7 +279,7 @@ describe("fileStorage Encryption Integration Tests", () => {
 
       // 2. DB에 데이터 추가
       const db = getDatabase();
-      const testAccount: Account = getTestAccounts()[0];
+      const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
 
       // 3. backupDataFile로 암호화 백업
@@ -306,7 +307,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       // 검증: DB 변경 없음 (원본 데이터 유지)
       const snapshot = await getDatabaseSnapshot("encrypted-wrong-pin.json");
       expect(snapshot.accounts).toHaveLength(1);
-      expect(snapshot.accounts[0].title).toBe("Account 1");
+      expect(snapshot.accounts[0].title).toBe("Test Account 1");
 
       // 검증: accountStore 변경 없음 (애초에 데이터가 로드되지 않았으므로 빈 상태 유지)
       const storeAccounts = useAccountStore.getState().accounts;
@@ -324,11 +325,11 @@ describe("fileStorage Encryption Integration Tests", () => {
 
       // 2. DB에 데이터 추가
       const db = getDatabase();
-      const testAccount: Account = getTestAccounts()[0];
+      const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
 
       // 3. backupDataFile로 암호화 백업
-      const backedUpFile = await backupDataFile(
+      await backupDataFile(
         "encrypted-backup-tamper.json",
         TEST_PIN,
       );
@@ -359,7 +360,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       // 검증: DB 변경 없음
       const snapshot = await getDatabaseSnapshot("encrypted-tamper.json");
       expect(snapshot.accounts).toHaveLength(1);
-      expect(snapshot.accounts[0].title).toBe("Account 1");
+      expect(snapshot.accounts[0].title).toBe("Test Account 1");
 
       // 검증: accountStore 변경 없음 (애초에 데이터가 로드되지 않았으므로 빈 상태 유지)
       const storeAccounts = useAccountStore.getState().accounts;

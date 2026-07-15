@@ -16,6 +16,7 @@ import {
 } from "../database/db";
 import FileOpenDialog from "../components/FileOpenDialog";
 import { useAccountStore } from "../store/accountStore";
+import { FileStorageErrorCode, isFileStorageError } from "../errors/FileStorageError";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -74,20 +75,32 @@ const Home = () => {
   };
 
   const handleOpenFile = async ({ file, pin }: { file: File; pin: string }) => {
-    const data = await openImportedDataFile(await file.text(), pin);
+    try {
+      const data = await openImportedDataFile(await file.text(), pin);
 
-    if (!data) {
-      throw new Error("PIN 번호가 올바르지 않습니다.");
+      if (!isKiyoFile(data)) {
+        throw new Error("지원하지 않는 파일 형식입니다.");
+      }
+
+      navigate("/list", {
+        replace: true,
+      });
+      setShowOpenDialog(false);
+    } catch (error) {
+      if (isFileStorageError(error)) {
+        switch (error.code) {
+          case FileStorageErrorCode.INVALID_JSON:
+            throw new Error("파일 형식이 올바르지 않습니다. (JSON 파싱 오류)");
+          case FileStorageErrorCode.INVALID_FORMAT:
+            throw new Error("지원하지 않는 파일 형식입니다.");
+          case FileStorageErrorCode.INVALID_PIN:
+            throw new Error("PIN 번호가 올바르지 않습니다.");
+          default:
+            throw new Error(`파일 열기 실패: ${error.message}`);
+        }
+      }
+      throw error;
     }
-
-    if (!isKiyoFile(data)) {
-      throw new Error("지원하지 않는 파일 형식입니다.");
-    }
-
-    navigate("/list", {
-      replace: true,
-    });
-    setShowOpenDialog(false);
   };
 
   return (

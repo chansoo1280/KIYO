@@ -16,6 +16,7 @@ import {
   saveFileDataToDB,
 } from "./db";
 import { useAccountStore } from "../store/accountStore";
+import { FileStorageError, FileStorageErrorCode } from "../errors/FileStorageError";
 
 export interface KiyoDataFile {
   version: 1;
@@ -140,7 +141,7 @@ export const openImportedDataFile = async (
   try {
     parsedData = JSON.parse(data);
   } catch (error) {
-    console.error("Invalid JSON data:", error);
+    // JSON 파싱 실패 시 null 반환 (기존 동작 유지 - 암호화/평문 파일 모두)
     return null;
   }
 
@@ -160,7 +161,6 @@ export const openImportedDataFile = async (
       useAccountStore.getState().setAccounts(parsedData.accounts);
       return { ...parsedData, fileName: normalizedFileName };
     } catch (error) {
-      console.error("Failed to load plain data file:", error);
       return null;
     }
   }
@@ -168,14 +168,12 @@ export const openImportedDataFile = async (
   try {
     // 파일의 salt로 동일한 CryptoKey 생성
     if (!parsedData.salt || typeof parsedData.salt !== "string") {
-      console.error("Invalid salt in encrypted file");
       return null;
     }
 
     const salt = fromBase64(parsedData.salt);
     // Validate salt length (should be 16 bytes for AES-GCM)
     if (salt.byteLength !== 16) {
-      console.error("Invalid salt length");
       return null;
     }
 
@@ -198,7 +196,7 @@ export const openImportedDataFile = async (
     useAccountStore.getState().setAccounts(decrypted.accounts);
     return { ...decrypted, fileName: normalizedFileName };
   } catch (error) {
-    console.error("PIN 또는 파일이 올바르지 않습니다.", error);
+    // 복호화 실패는 PIN 불일치로 간주 - 기존 동작 유지: null 반환
     return null;
   }
 };
@@ -206,7 +204,14 @@ export const writeDataFile = async (
   data: EncryptedKiyoFile | KiyoDataFile,
   fileName: string,
 ): Promise<void> => {
-  if (!fileName) return;
+  if (!fileName) {
+    console.error("writeDataFile: fileName is empty");
+    throw FileStorageError.create(
+      FileStorageErrorCode.INVALID_FORMAT,
+      "fileName is empty",
+      { operation: "writeDataFile" }
+    );
+  }
   const normalizedFileName = normalizeDataFileName(fileName);
   if (!isNativeFileStorageAvailable()) {
     const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -220,11 +225,24 @@ export const writeDataFile = async (
     URL.revokeObjectURL(url);
     return;
   }
-  await Filesystem.writeFile({
-    path: normalizedFileName,
-    data: JSON.stringify(data, null, 2),
-    directory: Directory.Documents,
-    encoding: Encoding.UTF8,
-    recursive: true,
-  });
+  try {
+    await Filesystem.writeFile({
+      path: normalizedFileName,
+      data: JSON.stringify(data, null, 2),
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+      recursive: true,
+    });
+  } catch (error) {
+    console.error("writeDataFile: Filesystem.writeFile failed", error);
+    throw FileStorageError.create(
+      FileStorageErrorCode.WRITE_FAILED,
+      "Failed to write file",
+      {
+        originalError: error instanceof Error ? error : undefined,
+        fileName: normalizedFileName,
+        operation: "writeDataFile"
+      }
+    );
+  }
 };
