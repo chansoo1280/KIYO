@@ -17,7 +17,6 @@ describe("encryption (KIYO encryption.ts)", () => {
   const mockKiyoFile: KiyoDataFile = createTestKiyoDataFile({
     accounts: [],
     templates: [],
-    settings: [],
     metadata: [],
   });
 
@@ -275,7 +274,6 @@ describe("encryption (KIYO encryption.ts)", () => {
       const emptyFile = createTestKiyoDataFile({
         accounts: [],
         templates: [],
-        settings: [],
         metadata: [],
       });
       const encrypted = await encryptData(emptyFile, key, salt);
@@ -328,7 +326,6 @@ describe("encryption (KIYO encryption.ts)", () => {
             ],
           },
         ],
-        settings: [{ theme: "light", lockEnabled: false, autoLockTime: 60 }],
         metadata: [{ id: 1, version: "2.0.0", createdAt: Date.now() }],
       });
 
@@ -368,7 +365,6 @@ describe("encryption (KIYO encryption.ts)", () => {
           },
         ],
         templates: [],
-        settings: [],
         metadata: [],
       });
 

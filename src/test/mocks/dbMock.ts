@@ -29,7 +29,6 @@ const createMockKiyoDataFile = (): KiyoDataFile => ({
   updatedAt: Date.now(),
   accounts: [],
   templates: [],
-  settings: [],
   metadata: [],
 });
 

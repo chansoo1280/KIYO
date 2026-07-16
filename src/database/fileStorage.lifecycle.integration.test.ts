@@ -16,13 +16,14 @@ import {
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type { Account, Template, Setting, Metadata } from "../models/account";
+import type { Account, Template, FileMetadata } from "../models/account";
 import { createTestAccounts } from "../test/fixtures/accountFixtures";
 import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import {
-  createTestSetting,
   createTestMetadata,
 } from "../test/fixtures/databaseFixtures";
+
+type Metadata = FileMetadata;
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -76,7 +77,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
     await db.metadata.clear();
     await db.files.clear();
     await clearActiveFileInfo();
-    useSessionStore.getState().clearSession();
+    await useSessionStore.getState().clearSession();
     useAccountStore.getState().setAccounts([]);
     await db.accounts.clear();
     await db.templates.clear();
@@ -106,7 +107,6 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect("encrypted" in createdFile).toBe(false);
       expect(createdFile.accounts).toEqual([]);
       expect(createdFile.templates).toEqual([]);
-      expect(createdFile.settings).toEqual([]);
       expect(createdFile.metadata).toEqual([]);
 
       // 세션에 파일명이 저장되었는지 확인
@@ -129,10 +129,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       const testTemplate: Template = createTestTemplates(1)[0];
       await db.templates.put(testTemplate);
 
-      const settings: Setting[] = [createTestSetting()];
-      await db.settings.bulkPut(settings);
-
-      const metadata: Metadata[] = [createTestMetadata()];
+      const metadata: FileMetadata[] = [createTestMetadata()];
       await db.metadata.bulkPut(metadata);
 
       // 3. backupDataFile로 평문 백업
@@ -144,7 +141,6 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(backedUpFile.accounts).toHaveLength(1);
       expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
       expect(backedUpFile.templates).toHaveLength(1);
-      expect(backedUpFile.settings).toHaveLength(1);
       expect(backedUpFile.metadata).toHaveLength(1);
 
       // 백업 파일은 세션을 변경하지 않음 (shouldSetActiveFile=false)
@@ -208,17 +204,15 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(sessionState.activeFileName).toBe("lifecycle-test.json");
       expect(sessionState.cryptoKey).toBeNull();
 
-      // 2. 데이터 추가 (계정, 템플릿, 설정, 메타데이터 모두)
+      // 2. 데이터 추가 (계정, 템플릿, 메타데이터 모두)
       const db = getDatabase();
 
       const accounts: Account[] = createTestAccounts(2);
       const templates: Template[] = createTestTemplates(2);
-      const settings: Setting[] = [createTestSetting()];
       const metadata: Metadata[] = [createTestMetadata()];
 
       await db.accounts.bulkPut(accounts);
       await db.templates.bulkPut(templates);
-      await db.settings.bulkPut(settings);
       await db.metadata.bulkPut(metadata);
 
       // 3. backupDataFile로 평문 백업
@@ -226,7 +220,6 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
 
       expect(backedUpFile.accounts).toHaveLength(2);
       expect(backedUpFile.templates).toHaveLength(2);
-      expect(backedUpFile.settings).toHaveLength(1);
       expect(backedUpFile.metadata).toHaveLength(1);
       expect("encrypted" in backedUpFile).toBe(false);
 
@@ -245,7 +238,6 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(importedFile!.accounts[0].title).toBe("Test Account 1");
       expect(importedFile!.accounts[1].title).toBe("Test Account 2");
       expect(importedFile!.templates).toHaveLength(2);
-      expect(importedFile!.settings).toHaveLength(1);
       expect(importedFile!.metadata).toHaveLength(1);
       expect("encrypted" in importedFile!).toBe(false);
 
@@ -265,7 +257,6 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       const snapshot = await getDatabaseSnapshot("lifecycle-backup.json");
       expect(snapshot.accounts).toHaveLength(2);
       expect(snapshot.templates).toHaveLength(2);
-      expect(snapshot.settings).toHaveLength(1);
       expect(snapshot.metadata).toHaveLength(1);
     });
   });

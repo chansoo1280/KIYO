@@ -2,20 +2,20 @@
 // Test Data Helpers
 // ============================================
 
-import type { Setting, Metadata } from "../../models/account";
+import type { AppSettings, FileMetadata } from "../../models/account";
 
-export const getDefaultSettings = (): Setting[] => [
-  { theme: "dark", autoLockTime: 300, lockEnabled: true },
+export const getDefaultSettings = (): AppSettings[] => [
+  { theme: "dark", autoLockTime: 300, lockEnabled: true, fontSize: "medium", clipboardAutoClearTimeout: 30000 },
 ];
 
-export const getDefaultMetadata = (): Metadata[] => [
+export const getDefaultMetadata = (): FileMetadata[] => [
   { id: 1, version: "1.0.0", createdAt: Date.now() },
 ];
 
-export const getEncryptedSettings = (): Setting[] => [
-  { theme: "dark", autoLockTime: 300, lockEnabled: true },
+export const getEncryptedSettings = (): AppSettings[] => [
+  { theme: "dark", autoLockTime: 300, lockEnabled: true, fontSize: "medium", clipboardAutoClearTimeout: 30000 },
 ];
 
-export const getEncryptedMetadata = (): Metadata[] => [
+export const getEncryptedMetadata = (): FileMetadata[] => [
   { id: 1, version: "1.0.0", createdAt: Date.now() },
 ];

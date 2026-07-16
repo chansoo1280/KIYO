@@ -120,7 +120,6 @@ describe("backupDataFile", () => {
           fileName: "test.json",
           accounts: expect.any(Array),
           templates: expect.any(Array),
-          settings: expect.any(Array),
           metadata: expect.any(Array),
         }),
       );
@@ -163,7 +162,7 @@ describe("backupDataFile", () => {
       expect(mockSessionStore.mockSetCryptoKey).not.toHaveBeenCalled();
     });
 
-    it("데이터가 있는 accounts, templates, settings, metadata도 정상 백업한다", async () => {
+    it("데이터가 있는 accounts, templates, metadata도 정상 백업한다", async () => {
       const fullData = createTestKiyoDataFile({
         fileName: "full-data.json",
         accounts: [
@@ -186,7 +185,6 @@ describe("backupDataFile", () => {
         templates: [
           createTestTemplate({ id: 1, name: "Template 1", fields: [] }),
         ],
-        settings: [{ theme: "dark", autoLockTime: 300, lockEnabled: true }],
         metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
       });
       // Override the mock for this specific test
@@ -204,7 +202,6 @@ describe("backupDataFile", () => {
           fileName: "full-data.json",
           accounts: fullData.accounts,
           templates: fullData.templates,
-          settings: fullData.settings,
           metadata: fullData.metadata,
           version: 1,
         }),
@@ -259,7 +256,6 @@ describe("backupDataFile", () => {
           fileName: "test.json",
           accounts: expect.any(Array),
           templates: expect.any(Array),
-          settings: expect.any(Array),
           metadata: expect.any(Array),
         }),
       );
@@ -299,7 +295,6 @@ describe("backupDataFile", () => {
           fileName: "test.json",
           accounts: expect.any(Array),
           templates: expect.any(Array),
-          settings: expect.any(Array),
           metadata: expect.any(Array),
         }),
       );
@@ -338,7 +333,6 @@ describe("backupDataFile", () => {
           fileName: "test.json",
           accounts: expect.any(Array),
           templates: expect.any(Array),
-          settings: expect.any(Array),
           metadata: expect.any(Array),
         }),
       );

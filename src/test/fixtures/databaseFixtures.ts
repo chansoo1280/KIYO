@@ -3,23 +3,14 @@
 import type { KiyoDataFile } from "../../database/fileStorage";
 import type { EncryptedKiyoFile } from "../../crypto/encryption";
 import type { FileData } from "../../database/db";
-import type { Metadata, Setting } from "../../models/account";
+import type { FileMetadata } from "../../models/account";
 import { createTestAccounts } from "./accountFixtures.ts";
 import { createTestTemplates } from "./templateFixtures.ts";
 
 /**
- * 기본 Setting 테스트 데이터
+ * 기본 FileMetadata 테스트 데이터
  */
-export const createTestSetting = (): Setting => ({
-  theme: "dark",
-  lockEnabled: true,
-  autoLockTime: 30,
-});
-
-/**
- * 기본 Metadata 테스트 데이터
- */
-export const createTestMetadata = (): Metadata => ({
+export const createTestMetadata = (): FileMetadata => ({
   id: 1,
   version: "1.0.0",
   createdAt: Date.now(),
@@ -36,7 +27,6 @@ export const createTestKiyoDataFile = (
   updatedAt: Date.now(),
   accounts: createTestAccounts(),
   templates: createTestTemplates(),
-  settings: [createTestSetting()],
   metadata: [createTestMetadata()],
   ...overrides,
 });

@@ -45,7 +45,6 @@ export const mockEncryptionDefaults = {
     updatedAt: Date.now(),
     accounts: [],
     templates: [],
-    settings: [],
     metadata: [],
   } as KiyoDataFile,
   isEncryptedKiyoFile: false,

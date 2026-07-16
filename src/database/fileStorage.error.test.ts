@@ -14,7 +14,9 @@ import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
 import { createMockAccountStoreWithGetState } from "../test/mocks/accountStoreMock";
 import { createMockDB } from "../test/mocks/dbMock";
 import type { KiyoDataFile } from "./fileStorage";
-import type { Account, Template, Setting, Metadata } from "../models/account";
+import type { Account, Template, FileMetadata } from "../models/account";
+
+type Metadata = FileMetadata;
 
 vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: vi.fn(() => false) } }));
 vi.mock("@capacitor/filesystem", () => ({ Filesystem: { writeFile: vi.fn() } }));
@@ -33,7 +35,7 @@ describe("fileStorage - error handling", () => {
   const createValidKiyoFile = (overrides: Partial<KiyoDataFile> = {}): KiyoDataFile => ({
     version: 1, fileName: "test.json", updatedAt: Date.now(),
     accounts: [] as Account[], templates: [] as Template[],
-    settings: [] as Setting[], metadata: [] as Metadata[],
+    metadata: [] as Metadata[],
     ...overrides,
   });
 

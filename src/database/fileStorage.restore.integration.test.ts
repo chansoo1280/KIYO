@@ -16,7 +16,7 @@ import {
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type { Account, Template, Setting, Metadata } from "../models/account";
+import type { Account, Template, FileMetadata } from "../models/account";
 import type { KiyoDataFile } from "./fileStorage";
 import {
   createTestAccount,
@@ -30,10 +30,10 @@ import {
 } from "../test/fixtures/templateFixtures";
 import {
   getDefaultMetadata,
-  getDefaultSettings,
   getEncryptedMetadata,
-  getEncryptedSettings,
 } from "../test/helpers/databaseTestHelpers";
+
+type Metadata = FileMetadata;
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -82,7 +82,7 @@ describe("fileStorage Restore Integration Tests", () => {
     await db.metadata.clear();
     await db.files.clear();
     await clearActiveFileInfo();
-    useSessionStore.getState().clearSession();
+    await useSessionStore.getState().clearSession();
     useAccountStore.getState().setAccounts([]);
   };
 
@@ -100,13 +100,11 @@ describe("fileStorage Restore Integration Tests", () => {
   const populateTestData = async (
     accounts = createTestAccounts(2),
     templates = createTestTemplates(2),
-    settings = getDefaultSettings(),
     metadata = getDefaultMetadata(),
   ) => {
     const db = getDatabase();
     await db.accounts.bulkPut(accounts);
     await db.templates.bulkPut(templates);
-    await db.settings.bulkPut(settings);
     await db.metadata.bulkPut(metadata);
     // Sync to account store
     useAccountStore.getState().setAccounts(accounts);
@@ -137,13 +135,11 @@ describe("fileStorage Restore Integration Tests", () => {
     importedFile: KiyoDataFile | null,
     expectedAccounts: Account[],
     expectedTemplates: Template[],
-    expectedSettings: Setting[],
     expectedMetadata: Metadata[],
   ) => {
     expect(importedFile).not.toBeNull();
     expect(importedFile!.accounts).toHaveLength(expectedAccounts.length);
     expect(importedFile!.templates).toHaveLength(expectedTemplates.length);
-    expect(importedFile!.settings).toHaveLength(expectedSettings.length);
     expect(importedFile!.metadata).toHaveLength(expectedMetadata.length);
 
     // Verify accounts
@@ -166,14 +162,6 @@ describe("fileStorage Restore Integration Tests", () => {
       expect(actual.id).toBe(expected.id);
       expect(actual.name).toBe(expected.name);
       expect(actual.fields).toEqual(expected.fields);
-    });
-
-    // Verify settings
-    expectedSettings.forEach((expected, index) => {
-      const actual = importedFile!.settings[index];
-      expect(actual.theme).toBe(expected.theme);
-      expect(actual.autoLockTime).toBe(expected.autoLockTime);
-      expect(actual.lockEnabled).toBe(expected.lockEnabled);
     });
 
     // Verify metadata
@@ -203,7 +191,6 @@ describe("fileStorage Restore Integration Tests", () => {
         importedFile,
         createTestAccounts(2),
         createTestTemplates(2),
-        getDefaultSettings(),
         getDefaultMetadata(),
       );
 
@@ -218,7 +205,6 @@ describe("fileStorage Restore Integration Tests", () => {
       const snapshot = await getDatabaseSnapshot("restore-backup.json");
       expect(snapshot.accounts).toHaveLength(2);
       expect(snapshot.templates).toHaveLength(2);
-      expect(snapshot.settings).toHaveLength(1);
       expect(snapshot.metadata).toHaveLength(1);
 
       // 1-2. 빈 데이터 복원 검증 (기존 별도 테스트였던 것 통합)
@@ -237,7 +223,6 @@ describe("fileStorage Restore Integration Tests", () => {
       expect(emptyImported).not.toBeNull();
       expect(emptyImported!.accounts).toHaveLength(0);
       expect(emptyImported!.templates).toHaveLength(0);
-      expect(emptyImported!.settings).toHaveLength(0);
       expect(emptyImported!.metadata).toHaveLength(0);
       expect(emptyImported!.fileName).toBe("empty-backup.json");
     });
@@ -263,7 +248,6 @@ describe("fileStorage Restore Integration Tests", () => {
       await populateTestData(
         accounts,
         createTestTemplates(2),
-        getEncryptedSettings(),
         getEncryptedMetadata(),
       );
 
@@ -276,7 +260,6 @@ describe("fileStorage Restore Integration Tests", () => {
         importedFile,
         accounts,
         createTestTemplates(2),
-        getEncryptedSettings(),
         getEncryptedMetadata(),
       );
       expect("encrypted" in importedFile!).toBe(false); // 복호화된 평문 반환
@@ -294,9 +277,9 @@ describe("fileStorage Restore Integration Tests", () => {
     });
 
     // Test 3: 복잡한 데이터 복원
-    // Account, tags, fields, templates, settings, metadata 한 번에 검증
+    // Account, tags, fields, templates, metadata 한 번에 검증
     // 필드 순서(order), 다양한 필드 타입, 특수문자/유니코드 포함
-    it("복잡한 데이터 복원 - Account, tags, fields, templates, settings, metadata 모두 검증", async () => {
+    it("복잡한 데이터 복원 - Account, tags, fields, templates, metadata 모두 검증", async () => {
       await createDataFile("complex-restore.json", "");
 
       const db = getDatabase();
@@ -315,11 +298,6 @@ describe("fileStorage Restore Integration Tests", () => {
 
       const templates = [createComplexTestTemplate()];
 
-      const settings: Setting[] = [
-        { theme: "dark", autoLockTime: 300, lockEnabled: true },
-        { theme: "light", autoLockTime: 60, lockEnabled: false },
-      ];
-
       const metadata: Metadata[] = [
         { id: 1, version: "1.0.0", createdAt: Date.now() - 20000 },
         { id: 2, version: "1.1.0", createdAt: Date.now() - 10000 },
@@ -328,7 +306,6 @@ describe("fileStorage Restore Integration Tests", () => {
 
       await db.accounts.put(complexAccount);
       await db.templates.bulkPut(templates);
-      await db.settings.bulkPut(settings);
       await db.metadata.bulkPut(metadata);
       // Sync to account store
       useAccountStore.getState().setAccounts([complexAccount]);
@@ -341,7 +318,6 @@ describe("fileStorage Restore Integration Tests", () => {
         imported,
         [complexAccount],
         templates,
-        settings,
         metadata,
       );
 

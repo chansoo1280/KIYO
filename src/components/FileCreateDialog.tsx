@@ -88,7 +88,7 @@ const FileCreateDialog = ({
       errorMessage={errorMessage && !isModify ? errorMessage : undefined}
     >
       {/* 파일 이름 */}
-      <label className="mt-5 block text-sm font-medium text-slate-700">
+      <label className="mt-5 block text-sm font-medium text-[var(--color-text)]">
         파일 이름
       </label>
 
@@ -99,19 +99,19 @@ const FileCreateDialog = ({
             setFileName(e.target.value);
             setIsModify(true);
           }}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
         />
 
-        <span className="text-sm text-slate-500">.json</span>
+        <span className="text-sm text-[var(--color-text)]">.json</span>
       </div>
 
       {/* 암호화 여부 */}
-      <label className="mt-5 flex items-center gap-3 text-sm font-medium text-slate-700">
+      <label className="mt-5 flex items-center gap-3 text-sm font-medium text-[var(--color-text)]">
         <input
           type="checkbox"
           checked={encrypted}
           onChange={(e) => setEncrypted(e.target.checked)}
-          className="h-4 w-4"
+          className="h-4 w-4 accent-[var(--color-accent)]"
         />
         파일 암호화 사용
       </label>
@@ -119,7 +119,7 @@ const FileCreateDialog = ({
       {/* PIN */}
       {encrypted && (
         <div className="mt-4">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-[var(--color-text)]">
             PIN 번호
           </label>
 
@@ -130,7 +130,7 @@ const FileCreateDialog = ({
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="6자리 PIN"
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
         </div>
       )}

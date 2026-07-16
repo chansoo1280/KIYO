@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, devtools } from "zustand/middleware";
 import { clearActiveFileInfo, saveActiveFileInfo } from "../database/db";
 
 export interface SessionState {
@@ -24,54 +24,61 @@ export interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>()(
-  persist(
-    (set, get) => ({
-      activeFileName: null,
-      cryptoKey: null,
-      salt: null,
-      lastSyncError: null,
-      lastSyncErrorTime: null,
+  devtools(
+    persist(
+      (set, get) => ({
+        activeFileName: null,
+        cryptoKey: null,
+        salt: null,
+        lastSyncError: null,
+        lastSyncErrorTime: null,
 
-      setSession: async ({ fileName, cryptoKey, salt }) => {
-        set((state) => ({
-          activeFileName: fileName,
-          cryptoKey: cryptoKey ?? state.cryptoKey,
-          salt: salt ?? state.salt,
-        }));
-        if (fileName) {
-          await saveActiveFileInfo(fileName, salt || undefined);
-        } else {
+        setSession: async ({ fileName, cryptoKey, salt }) => {
+          set((state) => ({
+            activeFileName: fileName,
+            cryptoKey: cryptoKey ?? state.cryptoKey,
+            salt: salt ?? state.salt,
+          }));
+          if (fileName) {
+            await saveActiveFileInfo(fileName, salt || undefined);
+          } else {
+            await clearActiveFileInfo();
+          }
+        },
+
+        setCryptoKey: async (key, salt) => {
+          set({ cryptoKey: key, salt });
+          const { activeFileName } = get();
+          if (activeFileName) {
+            await saveActiveFileInfo(activeFileName, salt);
+          }
+        },
+
+        clearSession: async () => {
+          set({ activeFileName: null, cryptoKey: null, salt: null });
           await clearActiveFileInfo();
-        }
-      },
+        },
 
-      setCryptoKey: async (key, salt) => {
-        set({ cryptoKey: key, salt });
-        const { activeFileName } = get();
-        if (activeFileName) {
-          await saveActiveFileInfo(activeFileName, salt);
-        }
-      },
+        setSyncError: (error: string | null) => {
+          set({
+            lastSyncError: error,
+            lastSyncErrorTime: error ? Date.now() : null,
+          });
+        },
 
-      clearSession: async () => {
-        set({ activeFileName: null, cryptoKey: null, salt: null });
-        await clearActiveFileInfo();
-      },
-
-      setSyncError: (error: string | null) => {
-        set({ lastSyncError: error, lastSyncErrorTime: error ? Date.now() : null });
-      },
-
-      clearSyncError: () => {
-        set({ lastSyncError: null, lastSyncErrorTime: null });
-      },
-    }),
-    {
-      name: "kiyo-session",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        activeFileName: state.activeFileName,
+        clearSyncError: () => {
+          set({ lastSyncError: null, lastSyncErrorTime: null });
+        },
       }),
-    },
+      {
+        name: "kiyo-session",
+        storage: createJSONStorage(() => localStorage),
+        partialize: (state) => ({
+          activeFileName: state.activeFileName,
+          salt: state.salt,
+        }),
+      },
+    ),
+    { name: "session-store" },
   ),
 );

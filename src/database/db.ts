@@ -5,7 +5,7 @@ import { encryptData } from "../crypto/encryption";
 import { writeDataFile, type KiyoDataFile } from "../database/fileStorage";
 import { toBase64, fromBase64 } from "../crypto/crypto.utils";
 import type { EncryptedKiyoFile } from "../crypto/encryption";
-import type { Account, Metadata, Setting, Template } from "../models/account";
+import type { Account, Template, AppSettings, FileMetadata } from "../models/account";
 import { fixedTemplates, initialAccounts } from "./testdata";
 import { isFileStorageError } from "../errors/FileStorageError";
 
@@ -22,21 +22,24 @@ export interface FileData {
 export class KiyoDatabase extends Dexie {
   accounts!: Table<Account, number>;
   templates!: Table<Template, number>;
-  settings!: Table<Setting, number>;
-  metadata!: Table<Metadata, number>;
+  settings!: Table<AppSettings, number>;
+  metadata!: Table<FileMetadata, number>;
   files!: Table<FileData, number>;
 
   constructor() {
     super("kiyo-db");
-    this.version(5)
+    this.version(7)
       .stores({
         accounts:
           "id, templateId, title, *tags, favorite, createdAt, updatedAt",
         templates: "id, name",
-        settings: "++id, theme, lockEnabled, autoLockTime",
-        metadata: "id, version, createdAt, activeFileName, salt",
+        settings: "++id, theme, lockEnabled, autoLockTime, fontSize",
+        metadata: "id, version, createdAt",
         files: "++id, fileName, createdAt, updatedAt",
       })
+      .upgrade((transaction) =>
+        transaction.table("settings").toCollection().modify({ fontSize: "medium" }),
+      )
       .upgrade((transaction) =>
         transaction.table("accounts").toCollection().modify({ templateId: 1 }),
       );
@@ -53,9 +56,9 @@ export const getDatabaseSnapshot = async (
   updatedAt: Date.now(),
   accounts: await db.accounts.toArray(),
   templates: await db.templates.toArray(),
-  settings: await db.settings.toArray(),
   metadata: await db.metadata.toArray(),
   // Note: files table is intentionally excluded from JSON export
+  // Note: settings table is intentionally excluded from JSON export
 });
 
 export const syncDatabaseToFile = async (): Promise<void> => {
@@ -119,7 +122,7 @@ export const replaceDatabaseData = async (
       await db.metadata.clear();
       await db.accounts.bulkPut(data.accounts);
       await db.templates.bulkPut(data.templates);
-      await db.settings.bulkPut(data.settings);
+      // settings is no longer in KiyoDataFile - keep existing settings in DB
       await db.metadata.bulkPut(data.metadata);
     },
   );
@@ -148,6 +151,8 @@ export const initializeDevDatabase = async () => {
         theme: "light",
         lockEnabled: true,
         autoLockTime: 60,
+        fontSize: "medium",
+        clipboardAutoClearTimeout: 30000,
       });
 
       await db.metadata.put({

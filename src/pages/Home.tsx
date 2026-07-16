@@ -2,31 +2,30 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createDataFile,
-  fileExists,
-  isEncryptedKiyoFile,
   isKiyoFile,
   openImportedDataFile,
 } from "../database/fileStorage";
 import FileCreateDialog from "../components/FileCreateDialog";
 import {
-  db,
   getActiveFileInfo,
-  initializeDevDatabase,
-  loadAccountsFromDB,
 } from "../database/db";
 import FileOpenDialog from "../components/FileOpenDialog";
-import { useAccountStore } from "../store/accountStore";
-import { FileStorageErrorCode, isFileStorageError } from "../errors/FileStorageError";
+import {
+  FileStorageErrorCode,
+  isFileStorageError,
+} from "../errors/FileStorageError";
+import { useSessionStore } from "../store/sessionStore";
 
 const Home = () => {
   const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOpenDialog, setShowOpenDialog] = useState(false);
+  const { activeFileName, salt, cryptoKey } = useSessionStore((state) => state);
 
   const checkFileAndNavigate = async () => {
-    const { activeFileName, encrypted, fileData } = await getActiveFileInfo();
+    const { fileData } = await getActiveFileInfo();
     if (!activeFileName) return;
-    if (encrypted && isEncryptedKiyoFile(fileData)) {
+    if (!!salt && !cryptoKey) {
       navigate("/auth", {
         replace: true,
       });
@@ -35,16 +34,6 @@ const Home = () => {
       navigate("/list", { replace: true });
     }
   };
-  useEffect(() => {
-    const init = async () => {
-      console.log("DB name:", db.name);
-      console.log("DB version:", db.verno);
-      const files = await db.files.toArray();
-      console.log(files);
-    };
-
-    init();
-  }, []);
   useEffect(() => {
     checkFileAndNavigate();
   }, []);
@@ -58,18 +47,10 @@ const Home = () => {
     encrypted: boolean;
     pin: string;
   }) => {
-    const exists = await fileExists(fileName);
-    if (exists) {
-      throw new Error(`${fileName} 파일이 이미 존재합니다.`);
-    }
     if (encrypted && !pin) {
       throw new Error("핀번호를 입력하세요");
     }
-
     await createDataFile(fileName, pin);
-    if (!import.meta.env.DEV) await initializeDevDatabase();
-    const accounts = await loadAccountsFromDB();
-    useAccountStore.getState().setAccounts(accounts);
     navigate("/list", { replace: true });
     setShowCreateDialog(false);
   };
@@ -104,28 +85,30 @@ const Home = () => {
   };
 
   return (
-    <main className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
+    <main className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <header className="flex items-center gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[#aa3bff] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
+        <header className="flex items-center gap-3">
+          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
             K
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#aa3bff]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
               Start
             </p>
-            <h1 className="mt-1 text-4xl font-semibold text-slate-900">KIYO</h1>
+            <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
+              KIYO
+            </h1>
           </div>
         </header>
 
-        <section className="rounded-4xl border border-slate-200 bg-white p-7 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#aa3bff]">
+        <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
             Get started
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
             파일을 선택하세요
           </h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
             새 JSON 파일을 만들거나, 기존 KIYO JSON 파일을 불러올 수 있습니다.
           </p>
 
@@ -133,14 +116,14 @@ const Home = () => {
             <button
               type="button"
               onClick={() => setShowCreateDialog(true)}
-              className="rounded-full bg-[#aa3bff] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#8d2bd4]"
+              className="rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80"
             >
               파일 생성
             </button>
             <button
               type="button"
               onClick={() => setShowOpenDialog(true)}
-              className="rounded-full border-2 border-[#aa3bff] bg-white px-5 py-3 text-sm font-semibold text-[#aa3bff] shadow-sm transition hover:bg-[#faf5ff] hover:border-[#8d2bd4]"
+              className="rounded-full border-2 border-[var(--color-accent)] bg-[var(--color-bg)] px-5 py-3 text-sm font-semibold text-[var(--color-accent)] shadow-sm transition hover:bg-[var(--color-accent-bg)] hover:border-[var(--color-accent)]/80"
             >
               파일 선택
             </button>

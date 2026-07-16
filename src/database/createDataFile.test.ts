@@ -25,6 +25,8 @@ vi.mock("../crypto/encryption", () => ({
 // Mock db functions
 vi.mock("../database/db", () => ({
   saveFileDataToDB: vi.fn(),
+  loadAccountsFromDB: vi.fn().mockResolvedValue([]),
+  syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { useSessionStore } from "../store/sessionStore";
@@ -79,7 +81,6 @@ describe("createDataFile", () => {
       expect(result.fileName).toBe("test-file.json");
       expect(result.accounts).toEqual([]);
       expect(result.templates).toEqual([]);
-      expect(result.settings).toEqual([]);
       expect(result.metadata).toEqual([]);
       expect(typeof result.updatedAt).toBe("number");
     });
@@ -126,7 +127,6 @@ describe("createDataFile", () => {
           fileName: "test-file.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );
@@ -148,7 +148,6 @@ describe("createDataFile", () => {
           fileName: "my data.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );
@@ -183,7 +182,6 @@ describe("createDataFile", () => {
           fileName: "test-file.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );
@@ -226,7 +224,6 @@ describe("createDataFile", () => {
           fileName: "test-file.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );

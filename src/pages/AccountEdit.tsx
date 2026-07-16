@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField, FieldType } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
+import { PasswordGenerator } from "../components/PasswordGenerator";
 
 const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();
@@ -17,7 +18,20 @@ const AccountEditor = ({ account }: { account: Account }) => {
     [...account.fields].sort((a, b) => a.order - b.order),
   );
 
+  const [passwordGeneratorOpen, setPasswordGeneratorOpen] = useState<string | null>(null);
+
   const tagInput = useMemo(() => tags.join(", "), [tags]);
+
+  const openPasswordGenerator = (fieldId: string) => {
+    setPasswordGeneratorOpen(fieldId);
+  };
+
+  const handlePasswordGenerated = (password: string) => {
+    if (passwordGeneratorOpen) {
+      updateField(passwordGeneratorOpen, { value: password });
+      setPasswordGeneratorOpen(null);
+    }
+  };
 
   const handleTagInput = (value: string) => {
     const parsed = value
@@ -86,50 +100,50 @@ const AccountEditor = ({ account }: { account: Account }) => {
   };
 
   return (
-    <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
+    <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
         >
           ← 취소
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="rounded-full bg-[#aa3bff] px-4 py-2 text-sm font-semibold text-white shadow-sm"
+          className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
         >
           저장
         </button>
       </div>
 
-      <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <label className="block text-sm font-semibold text-slate-700">
+      <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
+        <label className="block text-sm font-semibold text-[var(--color-text)]">
           제목
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
         </label>
 
-        <label className="mt-4 block text-sm font-semibold text-slate-700">
+        <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
           태그
           <input
             value={tagInput}
             onChange={(event) => handleTagInput(event.target.value)}
             placeholder="예: work, finance"
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
         </label>
 
         <div className="mt-6 flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-700">항목</p>
+          <p className="text-sm font-semibold text-[var(--color-text)]">항목</p>
           <button
             type="button"
             onClick={addField}
-            className="rounded-full bg-[#f4efff] px-3 py-2 text-sm font-semibold text-[#7c3aed]"
+            className="rounded-full bg-[var(--color-accent-bg)] px-3 py-2 text-sm font-semibold text-[var(--color-accent)]"
           >
             + 항목 추가
           </button>
@@ -139,7 +153,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
           {fields.map((field) => (
             <div
               key={field.id}
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-3"
             >
               <div className="flex items-center justify-between gap-3">
                 <input
@@ -148,7 +162,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                     updateField(field.id, { label: event.target.value })
                   }
                   placeholder="항목 이름"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
                 <div className="flex items-center gap-2">
                   <select
@@ -158,7 +172,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                         type: event.target.value as FieldType,
                       })
                     }
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                   >
                     <option value="text">텍스트</option>
                     <option value="password">비밀번호</option>
@@ -166,13 +180,13 @@ const AccountEditor = ({ account }: { account: Account }) => {
                     <option value="number">숫자</option>
                     <option value="textarea">긴 텍스트</option>
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => removeField(field.id)}
-                    className="rounded-full border border-red-200 px-3 py-2 text-sm font-semibold text-red-600"
-                  >
-                    삭제
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => removeField(field.id)}
+                      className="rounded-full border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 dark:border-red-900 dark:text-red-400"
+                    >
+                      삭제
+                    </button>
                 </div>
               </div>
               {field.type === "textarea" ? (
@@ -181,18 +195,41 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                   rows={4}
                 />
               ) : field.type === "password" ? (
-                <input
-                  type="password"
-                  value={field.value}
-                  onChange={(event) =>
-                    updateField(field.id, { value: event.target.value })
-                  }
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
-                />
+                <div className="mt-2 relative">
+                  <input
+                    type="password"
+                    value={field.value}
+                    onChange={(event) =>
+                      updateField(field.id, { value: event.target.value })
+                    }
+                    className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 pr-12 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openPasswordGenerator(field.id)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text)] hover:text-[var(--color-accent)] transition-colors"
+                    aria-label="비밀번호 생성"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </button>
+                </div>
               ) : field.type === "email" ? (
                 <input
                   type="email"
@@ -200,7 +237,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               ) : (
                 <input
@@ -209,13 +246,19 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#aa3bff]"
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               )}
             </div>
           ))}
         </div>
       </article>
+
+      <PasswordGenerator
+        open={passwordGeneratorOpen !== null}
+        onClose={() => setPasswordGeneratorOpen(null)}
+        onApply={handlePasswordGenerated}
+      />
     </section>
   );
 };
@@ -234,15 +277,15 @@ const AccountEdit = () => {
 
   if (!account) {
     return (
-      <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
+      <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
         >
           ← 뒤로 가기
         </button>
-        <p className="mt-4 text-slate-600">수정할 계정 정보를 찾을 수 없습니다.</p>
+        <p className="mt-4 text-[var(--color-text)]">수정할 계정 정보를 찾을 수 없습니다.</p>
       </section>
     );
   }

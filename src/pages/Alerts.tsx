@@ -8,14 +8,14 @@ const Alerts = () => {
   ];
 
   return (
-    <section className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] pb-28 pt-6">
+    <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] pb-28 pt-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-5">
         <header className="flex items-center gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#aa3bff]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
               알림
             </p>
-            <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+            <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
               Notifications
             </h2>
           </div>
@@ -25,9 +25,9 @@ const Alerts = () => {
           {notifications.map((n) => (
             <article
               key={n.id}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
+              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 shadow-sm"
             >
-              <p className="text-sm text-slate-700">{n.text}</p>
+              <p className="text-sm text-[var(--color-text)]">{n.text}</p>
             </article>
           ))}
         </div>

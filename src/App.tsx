@@ -7,14 +7,31 @@ import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
 import Auth from "./pages/Auth";
 import { useAccountStore } from "./store/accountStore.ts";
+import { useSettingsStore } from "./store/settingsStore";
 import { useEffect } from "react";
 
 function App() {
   const initialize = useAccountStore((state) => state.initialize);
+  const initializeTheme = useSettingsStore((state) => state.initializeTheme);
+  const initializeFontSize = useSettingsStore((state) => state.initializeFontSize);
+  const initializeClipboardAutoClearTimeout = useSettingsStore((state) => state.initializeClipboardAutoClearTimeout);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    initializeTheme();
+  }, [initializeTheme]);
+
+  useEffect(() => {
+    initializeFontSize();
+  }, [initializeFontSize]);
+
+  useEffect(() => {
+    initializeClipboardAutoClearTimeout();
+  }, [initializeClipboardAutoClearTimeout]);
+
   return (
     <BrowserRouter>
       <Routes>

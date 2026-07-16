@@ -75,7 +75,7 @@ describe("fileStorage Encryption Integration Tests", () => {
     await db.metadata.clear();
     await db.files.clear();
     await clearActiveFileInfo();
-    useSessionStore.getState().clearSession();
+    await useSessionStore.getState().clearSession();
     useAccountStore.getState().setAccounts([]);
     await db.accounts.clear();
     await db.templates.clear();
@@ -123,7 +123,6 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect("encrypted" in createdFile).toBe(false);
       expect(createdFile.accounts).toEqual([]);
       expect(createdFile.templates).toEqual([]);
-      expect(createdFile.settings).toEqual([]);
       expect(createdFile.metadata).toEqual([]);
 
       // 검증: 세션에 cryptoKey와 salt가 저장되었는지 확인
@@ -177,6 +176,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(backedUpFile.accounts).toHaveLength(1);
       expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
       expect(backedUpFile.templates).toHaveLength(1);
+      expect(backedUpFile.metadata).toHaveLength(0);
 
       // 검증: 세션은 변경되지 않아야 함 (shouldSetActiveFile=false)
       const sessionAfterBackup = useSessionStore.getState();

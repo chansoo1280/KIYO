@@ -94,7 +94,6 @@ describe("fileStorage - pure functions", () => {
         const validFile = createValidKiyoFile({
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         });
         expect(isKiyoFile(validFile)).toBe(true);
@@ -115,7 +114,6 @@ describe("fileStorage - pure functions", () => {
             },
           ],
           templates: [{ id: 1, name: "Template", fields: [] }],
-          settings: [{ theme: "light", autoLockTime: 300, lockEnabled: true }],
           metadata: [{ id: 1, version: "1.0", createdAt: Date.now() }],
         });
         expect(isKiyoFile(validFile)).toBe(true);
@@ -162,16 +160,6 @@ describe("fileStorage - pure functions", () => {
           field: "templates",
           value: "not an array",
           description: "templates가 배열이 아니면",
-        },
-        {
-          field: "settings",
-          value: undefined,
-          description: "settings가 없으면",
-        },
-        {
-          field: "settings",
-          value: "not an array",
-          description: "settings가 배열이 아니면",
         },
         {
           field: "metadata",
@@ -261,7 +249,6 @@ describe("fileStorage - pure functions", () => {
             updatedAt: Date.now(),
             accounts: [],
             templates: [],
-            settings: [],
             metadata: [],
           },
           description: "KiyoDataFile 객체 (encrypted가 없음)",

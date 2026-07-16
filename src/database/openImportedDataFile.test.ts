@@ -9,7 +9,7 @@ import {
   isKiyoFile,
   type KiyoDataFile,
 } from "./fileStorage";
-import type { Account, Template, Setting, Metadata } from "../models/account";
+import type { Account, Template, Metadata } from "../models/account";
 
 // Mock Capacitor
 vi.mock("@capacitor/core", () => ({
@@ -66,7 +66,7 @@ describe("openImportedDataFile", () => {
   let mockIsEncryptedKiyoFile: ReturnType<typeof vi.fn>;
   let mockIsNativePlatform: ReturnType<typeof vi.fn>;
 
-  const createValidKiyoFile = (
+const createValidKiyoFile = (
     overrides: Partial<KiyoDataFile> = {},
   ): KiyoDataFile => ({
     version: 1,
@@ -74,7 +74,6 @@ describe("openImportedDataFile", () => {
     updatedAt: Date.now(),
     accounts: [] as Account[],
     templates: [] as Template[],
-    settings: [] as Setting[],
     metadata: [] as Metadata[],
     ...overrides,
   });
@@ -132,7 +131,6 @@ describe("openImportedDataFile", () => {
           fileName: "test.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );
@@ -146,7 +144,6 @@ describe("openImportedDataFile", () => {
           fileName: "test.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );
@@ -170,7 +167,6 @@ describe("openImportedDataFile", () => {
           fileName: "test.json",
           accounts: [],
           templates: [],
-          settings: [],
           metadata: [],
         }),
       );
@@ -181,7 +177,7 @@ describe("openImportedDataFile", () => {
       expect(mockSetAccounts).toHaveBeenCalledWith([]);
     });
 
-    it("데이터가 있는 accounts, templates, settings, metadata도 정상 처리한다", async () => {
+    it("데이터가 있는 accounts, templates, metadata도 정상 처리한다", async () => {
       const fullData = createValidKiyoFile({
         accounts: [
           {
@@ -203,9 +199,8 @@ describe("openImportedDataFile", () => {
             updatedAt: Date.now(),
           },
         ],
-        templates: [{ id: 1, name: "Template 1", fields: [] }],
-        settings: [{ theme: "dark", autoLockTime: 300, lockEnabled: true }],
-        metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
+            templates: [{ id: 1, name: "Template 1", fields: [] }],
+            metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
       });
       const jsonString = JSON.stringify(fullData);
 
@@ -214,13 +209,11 @@ describe("openImportedDataFile", () => {
       expect(result).not.toBeNull();
       expect(result!.accounts).toHaveLength(1);
       expect(result!.templates).toHaveLength(1);
-      expect(result!.settings).toHaveLength(1);
       expect(result!.metadata).toHaveLength(1);
       expect(mockReplaceDatabaseData).toHaveBeenCalledWith(
         expect.objectContaining({
           accounts: fullData.accounts,
           templates: fullData.templates,
-          settings: fullData.settings,
           metadata: fullData.metadata,
         }),
       );
@@ -280,7 +273,7 @@ describe("openImportedDataFile", () => {
       }
     });
 
-    it("필수 필드(accounts, templates, settings, metadata)가 누락되거나 배열이 아닐 때 null을 반환한다", async () => {
+    it("필수 필드(accounts, templates, metadata)가 누락되거나 배열이 아닐 때 null을 반환한다", async () => {
       const invalidFields = [
         { field: "accounts", value: undefined },
         {
@@ -291,11 +284,6 @@ describe("openImportedDataFile", () => {
         {
           field: "templates",
           value: "not an array" as unknown as Template[],
-        },
-        { field: "settings", value: undefined },
-        {
-          field: "settings",
-          value: "not an array" as unknown as Setting[],
         },
         { field: "metadata", value: undefined },
         {

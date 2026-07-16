@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
-import { getActiveFileInfo } from "../database/db";
-import {
-  createCryptoKey,
-  decryptData,
-  isEncryptedKiyoFile,
-} from "../crypto/encryption";
-import { isKiyoFile } from "../database/fileStorage";
+import { clearActiveFileInfo } from "../database/db";
+import { unlockFile, closeDataFile } from "../database/fileStorage";
 import { useAccountStore } from "../store/accountStore";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { activeFileName } = useSessionStore((state) => state);
-  const setSession = useSessionStore((state) => state.setSession);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -48,31 +42,14 @@ const Auth = () => {
     setError("");
 
     try {
-      // Get active file info (includes salt and encrypted file data)
-      const { salt, encrypted, fileData } = await getActiveFileInfo();
+      // Unlock file with PIN - fileStorage handles session internally
+      const decrypted = await unlockFile(fileName, pin);
 
-      if (!encrypted || !salt || !fileData || !isEncryptedKiyoFile(fileData)) {
-        setError("암호화된 파일이 아닙니다.");
-        setIsVerifying(false);
-        return;
-      }
-
-      // Create crypto key from PIN and file's salt
-      const { key } = await createCryptoKey(pin, salt);
-
-      // Try to decrypt the file data
-      const decrypted = await decryptData(fileData, key);
-
-      // Verify decrypted data is valid Kiyo file
-      if (!isKiyoFile(decrypted)) {
+      if (!decrypted) {
         setError("PIN 번호가 올바르지 않습니다.");
         setIsVerifying(false);
         return;
       }
-
-      // Decryption successful - store crypto key and salt in session
-      await setSession({ fileName, cryptoKey: key, salt });
-      useAccountStore.getState().setAccounts(decrypted.accounts);
 
       // Navigate to list page
       navigate("/list", { replace: true });
@@ -85,17 +62,18 @@ const Auth = () => {
   };
 
   return (
-    <main className="min-h-svh bg-[linear-gradient(180deg,#f8f7ff_0%,#ffffff_100%)] px-5 py-8">
+    <main className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center gap-4">
           <button
             type="button"
             onClick={async () => {
-              await useSessionStore.getState().clearSession();
-              useAccountStore.getState().resetToInitial();
+              await closeDataFile();
+              await clearActiveFileInfo();
+              await useAccountStore.getState().resetToInitial();
               navigate("/", { state: { selectFile: true } });
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text-h)]"
             aria-label="첫 화면으로 돌아가기"
           >
             <svg
@@ -112,42 +90,46 @@ const Auth = () => {
               />
             </svg>
           </button>
-          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[#aa3bff] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
+          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
             K
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#aa3bff]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
               Security
             </p>
-            <h1 className="mt-1 text-4xl font-semibold text-slate-900">KIYO</h1>
+            <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
+              KIYO
+            </h1>
           </div>
         </header>
 
-        <section className="rounded-4xl border border-slate-200 bg-white p-7 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#aa3bff]">
+        <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
             PIN Verification
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
             암호화된 파일입니다
           </h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
             핀번호를 입력하여 파일을 잠금 해제하세요.
           </p>
 
           {/* File info display */}
-          <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <p className="text-xs font-medium text-slate-500">파일 정보</p>
-            <p className="mt-1 text-sm font-mono text-slate-900 truncate">
+          <div className="mt-4 p-3 rounded-lg bg-[var(--color-code-bg)] border border-[var(--color-border)]">
+            <p className="text-xs font-medium text-[var(--color-text)]">
+              파일 정보
+            </p>
+            <p className="mt-1 text-sm font-mono text-[var(--color-text-h)] truncate">
               {fileName}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-[var(--color-text)]">
               내부 저장소 / Documents
             </p>
           </div>
 
           {error && (
             <div
-              className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm"
+              className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm dark:bg-red-900/30 dark:text-red-400"
               role="alert"
             >
               {error}
@@ -158,7 +140,7 @@ const Auth = () => {
             <div>
               <label
                 htmlFor="pin"
-                className="block text-sm font-medium text-slate-700"
+                className="block text-sm font-medium text-[var(--color-text)]"
               >
                 PIN 번호
               </label>
@@ -168,7 +150,7 @@ const Auth = () => {
                 value={pin}
                 onChange={(e) => handlePinChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
-                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 focus:border-[#aa3bff] focus:outline-none focus:ring-2 focus:ring-[#aa3bff]/20"
+                className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
                 placeholder="4자리 핀번호"
                 maxLength={6}
                 autoFocus
@@ -179,7 +161,7 @@ const Auth = () => {
               type="button"
               onClick={handleVerifyPin}
               disabled={isVerifying}
-              className="w-full rounded-full bg-[#aa3bff] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#8d2bd4] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isVerifying ? "확인 중..." : "확인"}
             </button>

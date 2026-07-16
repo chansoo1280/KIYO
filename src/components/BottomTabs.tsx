@@ -18,15 +18,15 @@ const BottomTabs = () => {
 
   return (
     <nav
-      className="fixed left-1/2 bottom-4 z-30 flex w-[min(92%,420px)] -translate-x-1/2 gap-2 rounded-full border border-slate-200 bg-white p-2 shadow-xl"
+      className="fixed left-1/2 bottom-4 z-30 flex w-[min(92%,420px)] -translate-x-1/2 gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] p-2 shadow-xl"
       aria-label="Bottom navigation"
     >
       <button
         type="button"
         className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${
           active === "alerts"
-            ? "bg-[#f4efff] text-[#7c3aed]"
-            : "text-slate-600 hover:bg-slate-100"
+            ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
+            : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
         }`}
         aria-label="Alerts"
         onClick={() => navigate("/alerts")}
@@ -38,8 +38,8 @@ const BottomTabs = () => {
         type="button"
         className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${
           active === "list"
-            ? "bg-[#f4efff] text-[#7c3aed]"
-            : "text-slate-600 hover:bg-slate-100"
+            ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
+            : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
         }`}
         aria-label="List"
         onClick={() => navigate("/list")}
@@ -51,8 +51,8 @@ const BottomTabs = () => {
         type="button"
         className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${
           active === "settings"
-            ? "bg-[#f4efff] text-[#7c3aed]"
-            : "text-slate-600 hover:bg-slate-100"
+            ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
+            : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
         }`}
         aria-label="Settings"
         onClick={() => navigate("/settings")}

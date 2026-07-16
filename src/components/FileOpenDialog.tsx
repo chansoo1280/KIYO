@@ -110,13 +110,13 @@ const FileOpenDialog = ({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="mt-5 w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+        className="mt-5 w-full rounded-2xl bg-[var(--color-code-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-border)]"
       >
         파일 선택
       </button>
 
       {file && (
-        <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm">
+        <div className="mt-5 rounded-2xl bg-[var(--color-code-bg)] p-4 text-sm text-[var(--color-text)]">
           <div>
             <span className="font-semibold">파일명:</span> {file.name}
           </div>
@@ -134,7 +134,7 @@ const FileOpenDialog = ({
 
       {encrypted && (
         <div className="mt-5">
-          <label className="text-sm font-medium text-slate-700">PIN 번호</label>
+          <label className="text-sm font-medium text-[var(--color-text)]">PIN 번호</label>
 
           <input
             type="password"
@@ -143,7 +143,7 @@ const FileOpenDialog = ({
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="6자리 PIN"
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
         </div>
       )}

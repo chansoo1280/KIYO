@@ -17,18 +17,32 @@
 // - createDataFile.test.ts
 
 import { vi, type Mock } from "vitest";
-import type { KiyoDataFile } from "../../database/fileStorage";
-import type {
-  Account,
-  Template,
-  Setting,
-  Metadata,
-} from "../../models/account";
-import type { EncryptedKiyoFile } from "../../crypto/encryption";
+import {
+  isNativeFileStorageAvailable,
+  type KiyoDataFile,
+} from "../../database/fileStorage";
+import type { Account } from "../../models/account";
+import {
+  createCryptoKey,
+  decryptData,
+  encryptData,
+  isEncryptedKiyoFile,
+  type EncryptedKiyoFile,
+} from "../../crypto/encryption";
 import {
   createTestKiyoDataFile,
   createTestEncryptedFile,
 } from "../fixtures/databaseFixtures";
+import { useSessionStore, type SessionState } from "../../store/sessionStore";
+import { useAccountStore, type AccountState } from "../../store/accountStore";
+import { Capacitor } from "@capacitor/core";
+import { toBase64, fromBase64 } from "../../crypto/crypto.utils";
+import {
+  saveFileDataToDB,
+  getDatabaseSnapshot,
+  replaceDatabaseData,
+  loadAccountsFromDB,
+} from "../../database/db";
 
 // ============================================
 // Mock Types
@@ -603,38 +617,3 @@ export const createValidJsonString = (
 export const createEncryptedJsonString = (
   overrides?: Partial<EncryptedKiyoFile>,
 ): string => JSON.stringify(createTestEncryptedFile(overrides));
-
-// ============================================
-// Import actual modules for vi.mocked() to work
-// ============================================
-
-import { useSessionStore, type SessionState } from "../../store/sessionStore";
-import { useAccountStore, type AccountState } from "../../store/accountStore";
-import {
-  isEncryptedKiyoFile,
-  createCryptoKey,
-  encryptData,
-  decryptData,
-} from "../../crypto/encryption";
-import { fromBase64, toBase64 } from "../../crypto/crypto.utils";
-import {
-  saveFileDataToDB,
-  replaceDatabaseData,
-  getDatabaseSnapshot,
-  loadAccountsFromDB,
-  isNativeFileStorageAvailable,
-} from "../../database/db";
-import { Capacitor } from "@capacitor/core";
-
-// ============================================
-// Export all types
-// ============================================
-
-export type {
-  KiyoDataFile,
-  Account,
-  Template,
-  Setting,
-  Metadata,
-  EncryptedKiyoFile,
-};

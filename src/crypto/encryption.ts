@@ -18,7 +18,7 @@ export const isEncryptedKiyoFile = (
   if (!value || typeof value !== "object") return false;
 
   const file = value as Partial<EncryptedKiyoFile>;
-  console.log(file);
+  // console.log(file);
 
   return (
     file.version === 1 &&
@@ -104,4 +104,28 @@ export const decryptData = async (
   );
 
   return JSON.parse(decoder.decode(decrypted));
+};
+
+export const isVerifyPin = async (
+  data: KiyoDataFile | EncryptedKiyoFile,
+  pin: string,
+): Promise<boolean> => {
+  // 데이터가 암호화되어 있지 않다면 에러 발생
+  if (!isEncryptedKiyoFile(data)) {
+    throw new Error("데이터가 암호화되어 있지 않습니다.");
+  }
+
+  try {
+    // PIN으로 CryptoKey 생성 (저장된 salt 사용)
+    const { key } = await createCryptoKey(pin, fromBase64(data.salt));
+
+    // 복호화 시도
+    await decryptData(data, key);
+
+    // 복호화 성공 시 true 반환
+    return true;
+  } catch {
+    // 복호화 실패 시 false 반환 (PIN이 틀린 경우)
+    return false;
+  }
 };

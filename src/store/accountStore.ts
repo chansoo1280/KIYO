@@ -30,7 +30,10 @@ export const useAccountStore = create<AccountState>()(
           initialized: true,
         });
       },
-      setAccounts: (accounts) => set({ accounts }),
+      setAccounts: async (accounts) => {
+        set({ accounts });
+        await syncDatabaseToFile();
+      },
 
       addAccount: async (account) => {
         const now = Date.now();

@@ -27,14 +27,26 @@ export interface Template {
   fields: AccountField[];
 }
 
-export interface Setting {
+export type FontSize = "small" | "medium" | "large";
+
+// App-wide settings (stored in DB settings table, NOT in data files)
+export interface AppSettings {
   theme: "light" | "dark";
   autoLockTime: number;
   lockEnabled: boolean;
+  fontSize: FontSize;
+  clipboardAutoClearTimeout: number; // 0 = disabled, otherwise milliseconds (e.g., 15000, 30000, 60000)
 }
 
-export interface Metadata {
+// Alias for backward compatibility with tests
+export type Setting = AppSettings;
+
+// File-specific metadata (stored in data files)
+export interface FileMetadata {
   id: number;
   version: string;
   createdAt: number;
 }
+
+// Alias for backward compatibility with tests
+export type Metadata = FileMetadata;
