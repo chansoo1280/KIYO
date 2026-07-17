@@ -273,7 +273,7 @@ export const writeDataFile = async (
     await Filesystem.writeFile({
       path: normalizedFileName,
       data: JSON.stringify(data, null, 2),
-      directory: Directory.Documents,
+      directory: Directory.Data,
       encoding: Encoding.UTF8,
       recursive: true,
     });

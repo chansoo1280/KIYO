@@ -4,4 +4,6 @@
     <string name="title_activity_main">kiyo</string>
     <string name="package_name">com.kiyo.app</string>
     <string name="custom_url_scheme">com.kiyo.app</string>
+    <string name="autofill_service_description">KIYO Password Manager Autofill Service</string>
+    <string name="autofill_service_settings_title">KIYO Autofill Settings</string>
 </resources>

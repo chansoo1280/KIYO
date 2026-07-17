@@ -6,6 +6,7 @@ import AccountEdit from "./pages/AccountEdit";
 import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
 import Auth from "./pages/Auth";
+import AutofillTestLogin from "./pages/AutofillTestLogin";
 import { useAccountStore } from "./store/accountStore.ts";
 import { useSettingsStore } from "./store/settingsStore";
 import { useEffect } from "react";
@@ -44,6 +45,7 @@ function App() {
         <Route path="/account/edit/:id" element={<AccountEdit />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/alerts" element={<Alerts />} />
+        <Route path="/autofill-test" element={<AutofillTestLogin />} />
       </Routes>
     </BrowserRouter>
   );

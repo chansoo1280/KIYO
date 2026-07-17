@@ -41,6 +41,7 @@ export const createAccountStoreMocks = () => {
   const mockDeleteAccount = vi.fn().mockResolvedValue(undefined);
   const mockGetAccountById = vi.fn().mockReturnValue(undefined);
   const mockResetToInitial = vi.fn().mockReturnValue(undefined);
+  const mockSyncToAutofill = vi.fn().mockResolvedValue(undefined);
 
   return {
     mockInitialize,
@@ -50,6 +51,7 @@ export const createAccountStoreMocks = () => {
     mockDeleteAccount,
     mockGetAccountById,
     mockResetToInitial,
+    mockSyncToAutofill,
   };
 };
 
@@ -62,8 +64,8 @@ export const createMockAccountStore = (
   const mocks = createAccountStoreMocks();
 
   return {
-    accounts: mockAccountStoreDefaults.accounts,
-    initialized: mockAccountStoreDefaults.initialized,
+    accounts: [] as Account[],
+    initialized: false,
     initialize: mocks.mockInitialize,
     setAccounts: mocks.mockSetAccounts,
     addAccount: mocks.mockAddAccount,
@@ -71,6 +73,7 @@ export const createMockAccountStore = (
     deleteAccount: mocks.mockDeleteAccount,
     getAccountById: mocks.mockGetAccountById,
     resetToInitial: mocks.mockResetToInitial,
+    syncToAutofill: mocks.mockSyncToAutofill,
     ...overrides,
   };
 };

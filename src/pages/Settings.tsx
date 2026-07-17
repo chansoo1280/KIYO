@@ -1,6 +1,7 @@
 import BottomTabs from "../components/BottomTabs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import {
   backupDataFile,
   isKiyoFile,
@@ -15,6 +16,8 @@ import PinChangeDialog from "../components/PinChangeDialog";
 import { useAccountStore } from "../store/accountStore";
 import { useSettingsStore } from "../store/settingsStore";
 import type { FontSize } from "../models/account";
+import { useAutofill } from "../hooks/useAutofill";
+import { AutofillSettings } from "../components/AutofillSettings";
 
 const CLIPBOARD_TIMEOUT_OPTIONS = [
   { value: 0, label: "끄기" },
@@ -106,6 +109,7 @@ const Settings = () => {
   };
 
   const isEncrypted = !!salt;
+  useAutofill();
 
   const handlePinChange = async (newPin: string) => {
     if (!activeFileName) {
@@ -247,6 +251,16 @@ const Settings = () => {
               </div> */}
             </div>
           </div>
+
+          {Capacitor.getPlatform() === 'android' && (
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
+                Autofill
+              </h3>
+              <AutofillSettings onMessage={setMessage} />
+            </div>
+          )}
+
           {message && (
             <p className="text-sm font-medium text-[var(--color-text)]">
               {message}

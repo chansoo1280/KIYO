@@ -3,6 +3,8 @@ import { devtools } from "zustand/middleware";
 import type { Account } from "../models/account";
 import { db, loadAccountsFromDB, syncDatabaseToFile } from "../database/db";
 import { initialAccounts } from "../database/testdata";
+import { Capacitor } from "@capacitor/core";
+import { KiyoAutofill } from "../plugins/kiyautofill";
 
 export interface AccountState {
   accounts: Account[];
@@ -15,6 +17,7 @@ export interface AccountState {
   deleteAccount: (id: number) => Promise<void>;
   getAccountById: (id: number) => Account | undefined;
   resetToInitial: () => void;
+  syncToAutofill: () => Promise<void>;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -29,10 +32,14 @@ export const useAccountStore = create<AccountState>()(
           accounts,
           initialized: true,
         });
+
+        // Sync to Android Autofill after initialization
+        await get().syncToAutofill();
       },
       setAccounts: async (accounts) => {
         set({ accounts });
         await syncDatabaseToFile();
+        await get().syncToAutofill();
       },
 
       addAccount: async (account) => {
@@ -56,6 +63,7 @@ export const useAccountStore = create<AccountState>()(
         });
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
         await syncDatabaseToFile();
+        await get().syncToAutofill();
         return newAccount;
       },
 
@@ -68,6 +76,7 @@ export const useAccountStore = create<AccountState>()(
           ),
         }));
         await syncDatabaseToFile();
+        await get().syncToAutofill();
       },
 
       deleteAccount: async (id) => {
@@ -76,6 +85,7 @@ export const useAccountStore = create<AccountState>()(
           accounts: state.accounts.filter((a) => a.id !== id),
         }));
         await syncDatabaseToFile();
+        await get().syncToAutofill();
       },
 
       getAccountById: (id) => get().accounts.find((a) => a.id === id),
@@ -87,8 +97,36 @@ export const useAccountStore = create<AccountState>()(
             await db.accounts.bulkAdd(initialAccounts);
             set({ accounts: initialAccounts });
             await syncDatabaseToFile();
+            await get().syncToAutofill();
           })
           .catch(console.error);
+      },
+
+      syncToAutofill: async () => {
+        // Only sync on Android platform
+        if (Capacitor.getPlatform() !== "android") {
+          return;
+        }
+
+        try {
+          const accounts = get().accounts;
+          const accountsJson = JSON.stringify(accounts);
+          const result = await KiyoAutofill.syncAccountsFromReact({
+            accountsJson,
+          });
+
+          if (result.success) {
+            console.log(
+              `[Autofill] Synced ${result.syncedCount} accounts, ${result.errorCount} errors`,
+            );
+          } else {
+            console.warn(
+              `[Autofill] Sync completed with errors: ${result.errorCount} errors`,
+            );
+          }
+        } catch (error) {
+          console.error("[Autofill] Failed to sync accounts:", error);
+        }
       },
     }),
     { name: "AccountStore" },

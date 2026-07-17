@@ -1,5 +1,18 @@
 package com.kiyo.app;
 
-import com.getcapacitor.BridgeActivity;
+import android.os.Bundle;
 
-public class MainActivity extends BridgeActivity {}
+import com.getcapacitor.BridgeActivity;
+import com.kiyo.app.capacitor.KiyoAutofillPlugin;
+
+public class MainActivity extends BridgeActivity {
+
+    public MainActivity() {
+        registerPlugin(KiyoAutofillPlugin.class);
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+    }
+}
