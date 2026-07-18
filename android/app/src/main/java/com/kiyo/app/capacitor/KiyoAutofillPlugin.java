@@ -176,6 +176,7 @@ public class KiyoAutofillPlugin extends Plugin {
                 String password = accountObj.getString("password");
                 String title = accountObj.optString("title", null);
                 String packageName = accountObj.optString("packageName", null);
+                String appName = accountObj.optString("appName", null);
                 String domain = accountObj.optString("domain", null);
                 boolean favorite = accountObj.optBoolean("favorite", false);
 
@@ -191,6 +192,8 @@ public class KiyoAutofillPlugin extends Plugin {
                     password,
                     title,
                     packageName,
+                    null,  // packageNames (JSON array) - will be populated by auto-learning
+                    appName,
                     domain,
                     System.currentTimeMillis(),
                     System.currentTimeMillis(),
@@ -243,6 +246,7 @@ public class KiyoAutofillPlugin extends Plugin {
             accountObj.put("password", account.password);
             accountObj.put("title", account.title);
             accountObj.put("packageName", account.packageName);
+            accountObj.put("appName", account.appName);
             accountObj.put("domain", account.domain);
             accountObj.put("createdAt", account.createdAt);
             accountObj.put("updatedAt", account.updatedAt);
@@ -267,6 +271,7 @@ public class KiyoAutofillPlugin extends Plugin {
         String password = call.getString("password");
         String title = call.getString("title");
         String packageName = call.getString("packageName");
+        String appName = call.getString("appName");
         String domain = call.getString("domain");
         boolean favorite = call.getBoolean("favorite", false);
 
@@ -281,6 +286,8 @@ public class KiyoAutofillPlugin extends Plugin {
             password,
             title,
             packageName,
+            null,  // packageNames (JSON array) - will be populated by auto-learning
+            appName,
             domain,
             System.currentTimeMillis(),
             System.currentTimeMillis(),
@@ -318,6 +325,7 @@ public class KiyoAutofillPlugin extends Plugin {
         String password = call.getString("password", existing.password);
         String title = call.getString("title", existing.title);
         String packageName = call.getString("packageName", existing.packageName);
+        String appName = call.getString("appName", existing.appName);
         String domain = call.getString("domain", existing.domain);
         boolean favorite = call.getBoolean("favorite", existing.favorite);
 
@@ -327,6 +335,8 @@ public class KiyoAutofillPlugin extends Plugin {
             password,
             title,
             packageName,
+            existing.packageNames,  // Preserve existing packageNames JSON array
+            appName,
             domain,
             existing.createdAt,
             System.currentTimeMillis(),
@@ -466,6 +476,55 @@ public class KiyoAutofillPlugin extends Plugin {
         } catch (Exception e) {
             Log.e(TAG, "Failed to invoke " + methodName, e);
             return null;
+        }
+    }
+
+    // SharedPreferences key for biometric setting
+    private static final String PREFS_NAME = "kiyo_autofill_prefs";
+    private static final String KEY_BIOMETRIC_ENABLED = "biometric_enabled";
+
+    @PluginMethod
+    public void setBiometricEnabled(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
+
+        Boolean enabled = call.getBoolean("enabled");
+        if (enabled == null) {
+            call.reject("enabled parameter is required");
+            return;
+        }
+
+        try {
+            android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, enabled).apply();
+            Log.d(TAG, "Biometric enabled setting saved: " + enabled);
+            call.resolve();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save biometric setting", e);
+            call.reject("Failed to save biometric setting: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void getBiometricEnabled(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
+
+        try {
+            android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            boolean enabled = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, true); // Default true
+            JSObject result = new JSObject();
+            result.put("enabled", enabled);
+            call.resolve(result);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to get biometric setting", e);
+            call.reject("Failed to get biometric setting: " + e.getMessage());
         }
     }
 }

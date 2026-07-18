@@ -126,7 +126,11 @@ const AccountList = () => {
         !searchQuery.trim() ||
         account.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.fields
-          .find((f) => f.label.toLowerCase() === "email")
+          .find(
+            (f) =>
+              f.label.toLowerCase() === "email" ||
+              f.label.toLowerCase() === "이메일",
+          )
           ?.value.toLowerCase()
           .includes(searchQuery.toLowerCase());
 
@@ -282,7 +286,9 @@ const AccountList = () => {
                   </div>
                   <p className="truncate text-sm text-[var(--color-text)]">
                     {account.fields.find(
-                      (field) => field.label.toLowerCase() === "email",
+                      (field) =>
+                        field.label.toLowerCase() === "email" ||
+                        field.label.toLowerCase() === "이메일",
                     )?.value ?? "No email"}
                   </p>
                 </div>

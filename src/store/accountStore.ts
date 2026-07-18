@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Account } from "../models/account";
-import { db, loadAccountsFromDB, syncDatabaseToFile } from "../database/db";
+import { db, loadAccountsFromDB, syncDatabaseToFile, saveAccountsToDB } from "../database/db";
 import { initialAccounts } from "../database/testdata";
 import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "../plugins/kiyautofill";
+import { useSessionStore } from "./sessionStore";
 
 export interface AccountState {
   accounts: Account[];
@@ -62,6 +63,10 @@ export const useAccountStore = create<AccountState>()(
           return createdAccount;
         });
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
+        
+        // Save with encryption if crypto key is available
+        const { cryptoKey } = useSessionStore.getState();
+        await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
         await syncDatabaseToFile();
         await get().syncToAutofill();
         return newAccount;
@@ -75,6 +80,10 @@ export const useAccountStore = create<AccountState>()(
             a.id === updatedAccount.id ? updatedAccount : a,
           ),
         }));
+        
+        // Save with encryption if crypto key is available
+        const { cryptoKey } = useSessionStore.getState();
+        await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
         await syncDatabaseToFile();
         await get().syncToAutofill();
       },
@@ -84,6 +93,10 @@ export const useAccountStore = create<AccountState>()(
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
         }));
+        
+        // Save with encryption if crypto key is available
+        const { cryptoKey } = useSessionStore.getState();
+        await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
         await syncDatabaseToFile();
         await get().syncToAutofill();
       },

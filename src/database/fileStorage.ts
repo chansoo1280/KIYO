@@ -17,6 +17,7 @@ import {
   loadAccountsFromDB,
   initializeDevDatabase,
   getActiveFileInfo,
+  migrateAccountsToEncryptedFormat,
 } from "./db";
 import { useAccountStore } from "../store/accountStore";
 import {
@@ -321,6 +322,9 @@ export const unlockFile = async (
     await replaceDatabaseData(decrypted);
     await saveFileDataToDB(normalizedFileName, fileData, salt);
     useAccountStore.getState().setAccounts(decrypted.accounts);
+
+    // Migrate existing plaintext accounts to encrypted format
+    await migrateAccountsToEncryptedFormat(key);
 
     return { ...decrypted, fileName: normalizedFileName };
   } catch (error) {

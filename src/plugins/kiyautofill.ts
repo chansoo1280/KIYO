@@ -34,6 +34,8 @@ export interface KiyoAutofillPlugin {
     accountsJson: string;
   }): Promise<SyncAccountsResult>;
   getAccountCount(): Promise<CountResult>;
+  setBiometricEnabled(options: { enabled: boolean }): Promise<void>;
+  getBiometricEnabled(): Promise<{ enabled: boolean }>;
 }
 
 export interface CountResult {

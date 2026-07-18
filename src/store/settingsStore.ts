@@ -2,18 +2,23 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { db } from "../database/db";
 import type { FontSize, Setting } from "../models/account";
+import { KiyoAutofill } from "../plugins/kiyautofill";
+import { Capacitor } from "@capacitor/core";
 
 export interface SettingsState {
   theme: "light" | "dark";
   fontSize: FontSize;
   clipboardAutoClearTimeout: number; // 0 = disabled, otherwise milliseconds
+  biometricEnabled: boolean; // Whether to use biometric authentication for autofill
   setTheme: (theme: "light" | "dark") => Promise<void>;
   toggleTheme: () => Promise<void>;
   setFontSize: (fontSize: FontSize) => Promise<void>;
   setClipboardAutoClearTimeout: (timeoutMs: number) => Promise<void>;
+  setBiometricEnabled: (enabled: boolean) => Promise<void>;
   initializeTheme: () => Promise<void>;
   initializeFontSize: () => Promise<void>;
   initializeClipboardAutoClearTimeout: () => Promise<void>;
+  initializeBiometricEnabled: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -22,6 +27,7 @@ export const useSettingsStore = create<SettingsState>()(
       theme: "light" as "light" | "dark",
       fontSize: "medium" as FontSize,
       clipboardAutoClearTimeout: 30000, // Default 30 seconds
+      biometricEnabled: true, // Default ON for biometric authentication
 
       setTheme: async (theme: "light" | "dark") => {
         set({ theme });
@@ -42,6 +48,7 @@ export const useSettingsStore = create<SettingsState>()(
           fontSize: settings?.fontSize ?? "medium",
           clipboardAutoClearTimeout:
             settings?.clipboardAutoClearTimeout ?? 30000,
+          biometricEnabled: settings?.biometricEnabled ?? true,
         };
         await db.settings.put(newSettings);
       },
@@ -71,6 +78,7 @@ export const useSettingsStore = create<SettingsState>()(
           fontSize,
           clipboardAutoClearTimeout:
             settings?.clipboardAutoClearTimeout ?? 30000,
+          biometricEnabled: settings?.biometricEnabled ?? true,
         };
         await db.settings.put(newSettings);
       },
@@ -85,8 +93,35 @@ export const useSettingsStore = create<SettingsState>()(
           lockEnabled: settings?.lockEnabled ?? false,
           fontSize: settings?.fontSize ?? "medium",
           clipboardAutoClearTimeout: timeoutMs,
+          biometricEnabled: settings?.biometricEnabled ?? true,
         };
         await db.settings.put(newSettings);
+      },
+
+      setBiometricEnabled: async (enabled: boolean) => {
+        set({ biometricEnabled: enabled });
+        // Persist to database
+        const settings = await db.settings.get(1);
+        const newSettings: Setting = {
+          theme: settings?.theme ?? "light",
+          autoLockTime: settings?.autoLockTime ?? 0,
+          lockEnabled: settings?.lockEnabled ?? false,
+          fontSize: settings?.fontSize ?? "medium",
+          clipboardAutoClearTimeout:
+            settings?.clipboardAutoClearTimeout ?? 30000,
+          biometricEnabled: enabled,
+        };
+        await db.settings.put(newSettings);
+        
+        // Sync with native Android Autofill Service via Capacitor plugin
+        if (Capacitor.getPlatform() === "android") {
+          try {
+            await KiyoAutofill.setBiometricEnabled({ enabled });
+            console.log("Biometric setting synced to Android Autofill Service:", enabled);
+          } catch (error) {
+            console.error("Failed to sync biometric setting to Android:", error);
+          }
+        }
       },
 
       initializeTheme: async () => {
@@ -126,6 +161,13 @@ export const useSettingsStore = create<SettingsState>()(
         const timeout = settings?.clipboardAutoClearTimeout ?? 30000;
         set({ clipboardAutoClearTimeout: timeout });
       },
+
+      initializeBiometricEnabled: async () => {
+        // Load biometric enabled setting from database
+        const settings = await db.settings.get(1);
+        const enabled = settings?.biometricEnabled ?? true;
+        set({ biometricEnabled: enabled });
+      },
     }),
     {
       name: "kiyo-settings",
@@ -134,6 +176,7 @@ export const useSettingsStore = create<SettingsState>()(
         theme: state.theme,
         fontSize: state.fontSize,
         clipboardAutoClearTimeout: state.clipboardAutoClearTimeout,
+        biometricEnabled: state.biometricEnabled,
       }),
     },
   ),

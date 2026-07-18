@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField, FieldType } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
 import { PasswordGenerator } from "../components/PasswordGenerator";
+import { WebsiteSelector } from "../components/WebsiteSelector";
+import { processWebsiteUrl } from "../utils/urlUtils";
 
 const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();
@@ -17,8 +19,21 @@ const AccountEditor = ({ account }: { account: Account }) => {
   const [fields, setFields] = useState<AccountField[]>(() =>
     [...account.fields].sort((a, b) => a.order - b.order),
   );
+  const [websiteUrl, setWebsiteUrl] = useState(account.websiteUrl ?? "");
+  const [domain, setDomain] = useState(account.domain ?? "");
 
   const [passwordGeneratorOpen, setPasswordGeneratorOpen] = useState<string | null>(null);
+  const [websiteSelectorOpen, setWebsiteSelectorOpen] = useState(false);
+
+  const handleWebsiteSelect = (preset: import("../models/websitePreset").WebsitePreset) => {
+    // Priority: user-entered websiteUrl/domain takes precedence
+    if (!websiteUrl) {
+      setWebsiteUrl(preset.websiteUrl);
+    }
+    if (!domain) {
+      setDomain(preset.domain);
+    }
+  };
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
@@ -83,6 +98,8 @@ const AccountEditor = ({ account }: { account: Account }) => {
       tags,
       favorite,
       fields: cleanedFields,
+      websiteUrl: websiteUrl || undefined,
+      domain: domain || undefined,
     };
 
     let savedAccount = updatedAccount;
@@ -127,6 +144,47 @@ const AccountEditor = ({ account }: { account: Account }) => {
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
         </label>
+
+        <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
+          웹사이트 URL (자동완성용)
+          <input
+            value={websiteUrl}
+            onChange={(event) => {
+              const { websiteUrl, domain } = processWebsiteUrl(event.target.value);
+              setWebsiteUrl(websiteUrl);
+              setDomain(domain ?? "");
+            }}
+            placeholder="https://www.example.com/login"
+            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+          />
+          {domain && (
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              자동완성 도메인: <code className="text-[var(--color-accent)]">{domain}</code>
+            </p>
+          )}
+        </label>
+
+        {/* Website Selector Button */}
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setWebsiteSelectorOpen(true)}
+            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)] transition-colors flex items-center justify-between"
+          >
+            <span>🌐 자주 쓰는 사이트에서 선택</span>
+            <svg className="w-5 h-5 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <WebsiteSelector
+          open={websiteSelectorOpen}
+          onClose={() => setWebsiteSelectorOpen(false)}
+          onSelect={handleWebsiteSelect}
+          currentTitle={title}
+          currentWebsiteUrl={websiteUrl}
+        />
 
         <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
           태그

@@ -19,6 +19,10 @@ export interface Account {
   fields: AccountField[];
   createdAt: number;
   updatedAt: number;
+  // URL/domain fields for Autofill Service integration
+  websiteUrl?: string;    // Original URL entered by user (e.g., "https://www.naver.com/login")
+  domain?: string;        // Normalized domain for web autofill matching (e.g., "naver.com")
+  packageName?: string;   // Android package name for app autofill matching (e.g., "com.nhn.android.search")
 }
 
 export interface Template {
@@ -36,6 +40,7 @@ export interface AppSettings {
   lockEnabled: boolean;
   fontSize: FontSize;
   clipboardAutoClearTimeout: number; // 0 = disabled, otherwise milliseconds (e.g., 15000, 30000, 60000)
+  biometricEnabled: boolean; // Whether to use biometric authentication for autofill
 }
 
 // Alias for backward compatibility with tests

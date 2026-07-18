@@ -8,6 +8,12 @@ import type { EncryptedKiyoFile } from "../crypto/encryption";
 import type { Account, Template, AppSettings, FileMetadata } from "../models/account";
 import { fixedTemplates, initialAccounts } from "./testdata";
 import { isFileStorageError } from "../errors/FileStorageError";
+import {
+  encryptAccountsSensitiveFields,
+  decryptAccountsSensitiveFields,
+  migrateAccountsToEncrypted,
+  hasEncryptedFields,
+} from "../crypto/fieldEncryption";
 
 export interface FileData {
   id: number;
@@ -28,10 +34,10 @@ export class KiyoDatabase extends Dexie {
 
   constructor() {
     super("kiyo-db");
-    this.version(7)
+    this.version(8)
       .stores({
         accounts:
-          "id, templateId, title, *tags, favorite, createdAt, updatedAt",
+          "id, templateId, title, *tags, favorite, createdAt, updatedAt, websiteUrl, domain, packageName",
         templates: "id, name",
         settings: "++id, theme, lockEnabled, autoLockTime, fontSize",
         metadata: "id, version, createdAt",
@@ -42,6 +48,9 @@ export class KiyoDatabase extends Dexie {
       )
       .upgrade((transaction) =>
         transaction.table("accounts").toCollection().modify({ templateId: 1 }),
+      )
+      .upgrade((transaction) =>
+        transaction.table("accounts").toCollection().modify({ websiteUrl: "", domain: "", packageName: "" }),
       );
   }
 }
@@ -153,6 +162,7 @@ export const initializeDevDatabase = async () => {
         autoLockTime: 60,
         fontSize: "medium",
         clipboardAutoClearTimeout: 30000,
+        biometricEnabled: true,
       });
 
       await db.metadata.put({
@@ -167,7 +177,74 @@ export const initializeDevDatabase = async () => {
 };
 
 export const loadAccountsFromDB = async (): Promise<Account[]> => {
-  return db.accounts.orderBy("updatedAt").reverse().toArray();
+  const accounts = await db.accounts.orderBy("updatedAt").reverse().toArray();
+  
+  // Check if we have a crypto key in session (encrypted file)
+  const { cryptoKey } = useSessionStore.getState();
+  
+  if (cryptoKey && accounts.length > 0) {
+    // Check if any account has encrypted fields
+    const hasEncrypted = accounts.some(hasEncryptedFields);
+    if (hasEncrypted) {
+      try {
+        return await decryptAccountsSensitiveFields(accounts, cryptoKey);
+      } catch (error) {
+        console.error("Failed to decrypt account fields:", error);
+        // Return accounts as-is if decryption fails
+        return accounts;
+      }
+    }
+  }
+  
+  return accounts;
+};
+
+/**
+ * Save accounts to database with field-level encryption for sensitive fields
+ */
+export const saveAccountsToDB = async (
+  accounts: Account[],
+  cryptoKey?: CryptoKey,
+): Promise<void> => {
+  let accountsToSave = accounts;
+  
+  // Encrypt sensitive fields if crypto key is available
+  if (cryptoKey && accounts.length > 0) {
+    try {
+      accountsToSave = await encryptAccountsSensitiveFields(accounts, cryptoKey);
+    } catch (error) {
+      console.error("Failed to encrypt account fields:", error);
+      // Save without encryption if encryption fails
+    }
+  }
+  
+  await db.accounts.bulkPut(accountsToSave);
+};
+
+/**
+ * Migrate existing plaintext accounts to encrypted format
+ * This should be called when unlocking an encrypted file for the first time
+ */
+export const migrateAccountsToEncryptedFormat = async (
+  cryptoKey: CryptoKey,
+): Promise<void> => {
+  const accounts = await db.accounts.toArray();
+  
+  if (accounts.length === 0) return;
+  
+  // Check if any accounts need migration
+  const needsMigration = accounts.some((account) => !hasEncryptedFields(account));
+  
+  if (needsMigration) {
+    try {
+      const migratedAccounts = await migrateAccountsToEncrypted(accounts, cryptoKey);
+      await db.accounts.bulkPut(migratedAccounts);
+      console.log(`Migrated ${migratedAccounts.length} accounts to encrypted format`);
+    } catch (error) {
+      console.error("Failed to migrate accounts to encrypted format:", error);
+      throw error;
+    }
+  }
 };
 
 // Save active file info to files table (update salt only, don't touch other fields)

@@ -10,6 +10,7 @@ export interface AutofillAccount {
   password: string;
   title?: string | null;
   packageName?: string | null;
+  appName?: string | null;
   domain?: string | null;
   createdAt: number;
   updatedAt: number;
@@ -21,6 +22,7 @@ export interface AutofillAccountInput {
   password: string;
   title?: string;
   packageName?: string;
+  appName?: string;
   domain?: string;
   favorite?: boolean;
 }
@@ -31,6 +33,7 @@ export interface AutofillAccountUpdate {
   password?: string;
   title?: string;
   packageName?: string;
+  appName?: string;
   domain?: string;
   favorite?: boolean;
 }

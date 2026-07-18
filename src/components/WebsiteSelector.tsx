@@ -1,0 +1,320 @@
+import { useState, useCallback, useMemo } from "react";
+import { BaseDialog } from "./BaseDialog";
+import type { WebsitePreset } from "../models/websitePreset";
+import { searchPresets, getPresetsByCategory } from "../data/websitePresets";
+
+interface WebsiteSelectorProps {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (preset: WebsitePreset) => void;
+  currentTitle?: string;
+  currentWebsiteUrl?: string;
+}
+
+interface RecommendationProps {
+  preset: WebsitePreset;
+  onApply: () => void;
+}
+
+const RecommendationCard = ({ preset, onApply }: RecommendationProps) => {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-[var(--color-text-h)] truncate">{preset.name}</p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)] truncate">{preset.domain}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onApply}
+          className="flex-shrink-0 rounded-full bg-[var(--color-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-accent)]/80 transition-colors"
+        >
+          적용
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const PresetItem = ({
+  preset,
+  onSelect,
+  isSelected,
+}: {
+  preset: WebsitePreset;
+  onSelect: () => void;
+  isSelected: boolean;
+}) => {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full text-left rounded-2xl border p-3 transition-all ${
+        isSelected
+          ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)]"
+          : "border-[var(--color-border)] bg-[var(--color-code-bg)] hover:bg-[var(--color-border)]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-[var(--color-text-h)] truncate">{preset.name}</p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)] truncate">{preset.domain}</p>
+        </div>
+        {isSelected && (
+          <svg
+            className="flex-shrink-0 w-5 h-5 text-[var(--color-accent)]"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+          >
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        )}
+      </div>
+    </button>
+  );
+};
+
+const CategorySection = ({
+  category,
+  presets,
+  searchQuery,
+  selectedPreset,
+  onSelectPreset,
+}: {
+  category: string;
+  presets: WebsitePreset[];
+  searchQuery: string;
+  selectedPreset: WebsitePreset | null;
+  onSelectPreset: (preset: WebsitePreset) => void;
+}) => {
+  const categoryLabels: Record<string, string> = {
+    email: "📧 이메일",
+    social: "💬 소셜",
+    development: "💻 개발",
+    entertainment: "🎮 엔터테인먼트",
+    gaming: "🎮 게임",
+    shopping: "🛒 쇼핑",
+    storage: "☁️ 스토리지",
+    other: "📦 기타",
+  };
+
+  // Filter presets by search query
+  const filteredPresets = useMemo(() => {
+    if (!searchQuery.trim()) return presets;
+    const normalizedQuery = searchQuery.toLowerCase().trim().replace(/\s+/g, "");
+    return presets.filter((preset) => {
+      const normalizedName = preset.name.toLowerCase().replace(/\s+/g, "");
+      if (normalizedName.includes(normalizedQuery)) return true;
+      return preset.aliases.some((alias) =>
+        alias.toLowerCase().replace(/\s+/g, "").includes(normalizedQuery)
+      );
+    });
+  }, [presets, searchQuery]);
+
+  if (filteredPresets.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+        {categoryLabels[category] || category}
+      </h3>
+      <div className="space-y-2">
+        {filteredPresets.map((preset) => (
+          <PresetItem
+            key={preset.id}
+            preset={preset}
+            isSelected={selectedPreset?.id === preset.id}
+            onSelect={() => onSelectPreset(preset)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const WebsiteSelector = ({
+  open,
+  onClose,
+  onSelect,
+  currentTitle = "",
+  currentWebsiteUrl = "",
+}: WebsiteSelectorProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState<WebsitePreset | null>(null);
+
+  // Category grouped presets
+  const presetsByCategory = useMemo(() => getPresetsByCategory(), []);
+
+  // Search results (flat list)
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return searchPresets(searchQuery);
+  }, [searchQuery]);
+
+  // Title-based recommendation - use useMemo to avoid setState in effect
+  const recommendation = useMemo(() => {
+    if (!currentTitle.trim() || currentWebsiteUrl) {
+      return { show: false, preset: null as WebsitePreset | null };
+    }
+
+    const results = searchPresets(currentTitle);
+    if (results.length > 0) {
+      return { show: true, preset: results[0] };
+    }
+    return { show: false, preset: null as WebsitePreset | null };
+  }, [currentTitle, currentWebsiteUrl]);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    setSelectedPreset(null);
+  }, []);
+
+  const handlePresetSelect = useCallback((preset: WebsitePreset) => {
+    setSelectedPreset(preset);
+  }, []);
+
+  const handleApplyRecommendation = useCallback(() => {
+    if (recommendation.preset) {
+      onSelect(recommendation.preset);
+      onClose();
+    }
+  }, [recommendation.preset, onSelect, onClose]);
+
+  const handleSelectPreset = useCallback((preset: WebsitePreset) => {
+    onSelect(preset);
+    onClose();
+  }, [onSelect, onClose]);
+
+  const handleSearchResultSelect = useCallback((preset: WebsitePreset) => {
+    onSelect(preset);
+    onClose();
+  }, [onSelect, onClose]);
+
+  return (
+    <BaseDialog
+      open={open}
+      title="사이트 선택"
+      description="자주 사용하는 사이트를 선택하면 URL과 도메인이 자동으로 입력됩니다."
+      onClose={onClose}
+      confirmLabel="선택 완료"
+      onConfirm={selectedPreset ? () => handleSelectPreset(selectedPreset) : undefined}
+      confirmDisabled={!selectedPreset && !recommendation.preset}
+    >
+      <div className="space-y-6 max-h-[60vh] overflow-y-auto">
+        {/* Search Input */}
+        <div>
+          <label className="sr-only">사이트 검색</label>
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="사이트 검색 (예: 구글, 네이버, github...)"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] pl-10 pr-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        {/* Title-based Recommendation */}
+        {recommendation.show && recommendation.preset && (
+          <div className="space-y-3 border-t border-[var(--color-border)] pt-4">
+            <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+              추천 사이트
+            </h3>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              제목 "{currentTitle}"을(를) 기반으로 추천합니다.
+            </p>
+            <RecommendationCard
+              preset={recommendation.preset}
+              onApply={handleApplyRecommendation}
+            />
+          </div>
+        )}
+
+        {/* Search Results */}
+        {searchQuery.trim() && searchResults.length > 0 && (
+          <div className="space-y-3 border-t border-[var(--color-border)] pt-4">
+            <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+              검색 결과 ({searchResults.length}개)
+            </h3>
+            <div className="space-y-2">
+              {searchResults.map((preset) => (
+                <PresetItem
+                  key={preset.id}
+                  preset={preset}
+                  isSelected={false}
+                  onSelect={() => handleSearchResultSelect(preset)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All Categories (when no search) */}
+        {!searchQuery.trim() && (
+          <div className="space-y-6">
+            {Object.entries(presetsByCategory).map(([category, presets]) => (
+              <CategorySection
+                key={category}
+                category={category}
+                presets={presets}
+                searchQuery={searchQuery}
+                selectedPreset={selectedPreset}
+                onSelectPreset={handlePresetSelect}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {searchQuery.trim() && searchResults.length === 0 && (
+          <div className="text-center py-8 text-[var(--color-text-muted)]">
+            <svg
+              className="mx-auto mb-2 w-12 h-12 opacity-50"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-sm">검색 결과가 없습니다.</p>
+            <p className="text-xs mt-1">직접 URL을 입력하거나 다른 키워드로 검색해보세요.</p>
+          </div>
+        )}
+
+        {/* Manual URL hint */}
+        {!searchQuery.trim() && (
+          <div className="border-t border-[var(--color-border)] pt-4">
+            <p className="text-xs text-[var(--color-text-muted)] text-center">
+              원하는 사이트가 없으신가요? 아래 URL 입력란에 직접 입력하실 수 있습니다.
+            </p>
+          </div>
+        )}
+      </div>
+    </BaseDialog>
+  );
+};
+
+export default WebsiteSelector;

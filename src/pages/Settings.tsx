@@ -40,6 +40,8 @@ const Settings = () => {
     setFontSize,
     clipboardAutoClearTimeout,
     setClipboardAutoClearTimeout,
+    biometricEnabled,
+    setBiometricEnabled,
   } = useSettingsStore();
   const defaultBackupFileName = (() => {
     const fileName = activeFileName?.replace(/\.json$/, "") ?? "kiyo";
@@ -173,6 +175,29 @@ const Settings = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
+                <span>생체인증 사용</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={biometricEnabled}
+                  onClick={() => setBiometricEnabled(!biometricEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 ${
+                    biometricEnabled
+                      ? "bg-[var(--color-accent)]"
+                      : "bg-[var(--color-border)]"
+                  }`}
+                  aria-label={
+                    biometricEnabled ? "생체인증 켜짐" : "생체인증 꺼짐"
+                  }
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-[var(--color-bg)] transition-transform ${
+                      biometricEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </div>
