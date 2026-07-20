@@ -1,7 +1,7 @@
 import type { Account, Template } from "../models/account";
 
 // Initial accounts for development
-export const initialAccounts: Account[] = [
+export const devAccounts: Account[] = [
   {
     id: 1,
     templateId: 1,

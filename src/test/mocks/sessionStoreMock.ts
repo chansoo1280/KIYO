@@ -12,6 +12,7 @@ export interface MockSessionStore {
   mockClearSession: Mock;
   mockSetSyncError: Mock;
   mockClearSyncError: Mock;
+  mockSetLastSyncTime: Mock;
 }
 
 // ============================================
@@ -24,6 +25,7 @@ export const mockSessionStoreDefaults = {
   salt: null as Uint8Array | null,
   lastSyncError: null as string | null,
   lastSyncErrorTime: null as number | null,
+  lastSyncTime: null as number | null,
 };
 
 // Type for CryptoKey (using global CryptoKey type)
@@ -42,6 +44,7 @@ export const createSessionStoreMocks = () => {
   const mockClearSession = vi.fn().mockResolvedValue(undefined);
   const mockSetSyncError = vi.fn();
   const mockClearSyncError = vi.fn();
+  const mockSetLastSyncTime = vi.fn();
 
   return {
     mockSetSession,
@@ -49,6 +52,7 @@ export const createSessionStoreMocks = () => {
     mockClearSession,
     mockSetSyncError,
     mockClearSyncError,
+    mockSetLastSyncTime,
   };
 };
 
@@ -67,12 +71,14 @@ export const createMockSessionStore = (
     salt: mockSessionStoreDefaults.salt,
     lastSyncError: mockSessionStoreDefaults.lastSyncError,
     lastSyncErrorTime: mockSessionStoreDefaults.lastSyncErrorTime,
+    lastSyncTime: mockSessionStoreDefaults.lastSyncTime,
     setSession: mocks.mockSetSession,
     setCryptoKey: mocks.mockSetCryptoKey,
     clearSession: mocks.mockClearSession,
     setSyncError: mocks.mockSetSyncError,
     clearSyncError: mocks.mockClearSyncError,
-    ...overrides,
+    setLastSyncTime: mocks.mockSetLastSyncTime,
+    ...(overrides ?? {}),
   };
 
   return {
@@ -82,6 +88,7 @@ export const createMockSessionStore = (
     mockClearSession: mocks.mockClearSession,
     mockSetSyncError: mocks.mockSetSyncError,
     mockClearSyncError: mocks.mockClearSyncError,
+    mockSetLastSyncTime: mocks.mockSetLastSyncTime,
   };
 };
 

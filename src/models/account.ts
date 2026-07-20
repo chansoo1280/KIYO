@@ -39,7 +39,6 @@ export interface AppSettings {
   autoLockTime: number;
   lockEnabled: boolean;
   fontSize: FontSize;
-  clipboardAutoClearTimeout: number; // 0 = disabled, otherwise milliseconds (e.g., 15000, 30000, 60000)
   biometricEnabled: boolean; // Whether to use biometric authentication for autofill
 }
 

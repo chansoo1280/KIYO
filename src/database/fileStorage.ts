@@ -103,18 +103,17 @@ export const createDataFile = async (
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
 
+  if (import.meta.env.DEV) await initializeDevDatabase();
+  const accounts = await loadAccountsFromDB();
+  useAccountStore.getState().setAccounts(accounts);
   const data: KiyoDataFile = {
     version: 1,
     fileName: normalizedFileName,
     updatedAt: Date.now(),
-    accounts: [],
+    accounts: accounts || [],
     templates: [],
     metadata: [],
   };
-
-  if (!import.meta.env.DEV) await initializeDevDatabase();
-  const accounts = await loadAccountsFromDB();
-  useAccountStore.getState().setAccounts(accounts);
   return saveDataFile(data, normalizedFileName, pin, true);
 };
 
@@ -338,4 +337,5 @@ export const unlockFile = async (
  */
 export const closeDataFile = async (): Promise<void> => {
   await useSessionStore.getState().clearSession();
+  await useAccountStore.getState().clearAccounts();
 };

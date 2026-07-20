@@ -10,11 +10,16 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import java.security.SecureRandom
 import java.security.spec.KeySpec
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Crypto utility for Autofill password encryption using AES-GCM.
  * Uses PBKDF2 with SHA-256 for key derivation (100,000 iterations).
  * AES-GCM with 256-bit key, 12-byte IV, 128-bit auth tag.
+ * 
+ * Performance optimization: Caches derived keys per salt to avoid
+ * repeated PBKDF2 iterations (100,000 iterations) on every encrypt/decrypt.
+ * Keys are cached in memory for the session lifetime.
  */
 object AutofillCrypto {
 
@@ -31,9 +36,14 @@ object AutofillCrypto {
     // In production, this should be derived from a secure source like Android Keystore
     private const val MASTER_SECRET = "KIYO_AUTOFILL_MASTER_SECRET_2024"
 
+    // In-memory session cache for derived keys (salt -> SecretKey)
+    // Keys are cached per session to avoid repeated PBKDF2 iterations
+    private val keyCache = ConcurrentHashMap<String, SecretKey>()
+
     /**
      * Encrypt a password using AES-GCM with PBKDF2 key derivation.
      * Returns Base64 encoded string: salt:iv:ciphertext
+     * Uses cached derived key if available for the salt.
      */
     fun encryptPassword(password: String): String {
         try {
@@ -41,8 +51,8 @@ object AutofillCrypto {
             val salt = ByteArray(SALT_LENGTH)
             SecureRandom().nextBytes(salt)
 
-            // Derive key from master secret + salt
-            val key = deriveKey(MASTER_SECRET, salt)
+            // Derive key from master secret + salt (uses cache if available)
+            val key = deriveKeyCached(MASTER_SECRET, salt)
 
             // Generate random IV
             val iv = ByteArray(IV_LENGTH)
@@ -71,6 +81,7 @@ object AutofillCrypto {
     /**
      * Decrypt a password encrypted with encryptPassword().
      * Expects Base64 encoded string: salt:iv:ciphertext
+     * Uses cached derived key if available for the salt.
      */
     fun decryptPassword(encryptedData: String): String {
         try {
@@ -85,8 +96,8 @@ object AutofillCrypto {
             val iv = combined.copyOfRange(SALT_LENGTH, SALT_LENGTH + IV_LENGTH)
             val ciphertext = combined.copyOfRange(SALT_LENGTH + IV_LENGTH, combined.size)
 
-            // Derive key from master secret + salt
-            val key = deriveKey(MASTER_SECRET, salt)
+            // Derive key from master secret + salt (uses cache if available)
+            val key = deriveKeyCached(MASTER_SECRET, salt)
 
             // Decrypt
             val cipher = Cipher.getInstance(CIPHER_ALGORITHM)
@@ -116,12 +127,54 @@ object AutofillCrypto {
     }
 
     /**
-     * Derive AES-256 key from password and salt using PBKDF2
+     * Derive AES-256 key from password and salt using PBKDF2.
+     * Uses in-memory session cache to avoid repeated PBKDF2 iterations.
+     * Cache key is Base64 encoded salt.
+     */
+    private fun deriveKeyCached(password: String, salt: ByteArray): SecretKey {
+        val saltKey = Base64.encodeToString(salt, Base64.NO_WRAP)
+        
+        // Check cache first
+        val cachedKey = keyCache[saltKey]
+        if (cachedKey != null) {
+            Log.d(TAG, "Using cached derived key for salt: $saltKey")
+            return cachedKey
+        }
+
+        // Derive new key (expensive PBKDF2 operation)
+        val key = deriveKey(password, salt)
+        
+        // Cache the derived key for this session
+        keyCache[saltKey] = key
+        Log.d(TAG, "Derived and cached new key for salt: $saltKey")
+        
+        return key
+    }
+
+    /**
+     * Derive AES-256 key from password and salt using PBKDF2 (100,000 iterations).
+     * This is the expensive operation that we cache.
      */
     private fun deriveKey(password: String, salt: ByteArray): SecretKey {
         val factory = SecretKeyFactory.getInstance(KEY_ALGORITHM)
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
         val secretKey = factory.generateSecret(spec)
         return SecretKeySpec(secretKey.encoded, "AES")
+    }
+
+    /**
+     * Clear the key cache (e.g., on app background, biometric re-auth, or logout).
+     * Should be called when the master secret might have changed or session ends.
+     */
+    fun clearKeyCache() {
+        keyCache.clear()
+        Log.d(TAG, "Key cache cleared")
+    }
+
+    /**
+     * Get current cache size (for debugging/monitoring)
+     */
+    fun getCacheSize(): Int {
+        return keyCache.size
     }
 }

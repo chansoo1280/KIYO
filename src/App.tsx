@@ -15,7 +15,6 @@ function App() {
   const initialize = useAccountStore((state) => state.initialize);
   const initializeTheme = useSettingsStore((state) => state.initializeTheme);
   const initializeFontSize = useSettingsStore((state) => state.initializeFontSize);
-  const initializeClipboardAutoClearTimeout = useSettingsStore((state) => state.initializeClipboardAutoClearTimeout);
 
   useEffect(() => {
     initialize();
@@ -28,10 +27,6 @@ function App() {
   useEffect(() => {
     initializeFontSize();
   }, [initializeFontSize]);
-
-  useEffect(() => {
-    initializeClipboardAutoClearTimeout();
-  }, [initializeClipboardAutoClearTimeout]);
 
   return (
     <BrowserRouter>

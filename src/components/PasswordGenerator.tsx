@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { BaseDialog } from "./BaseDialog";
 import { useSecureClipboard } from "../hooks/useSecureClipboard";
-import { useSettingsStore } from "../store/settingsStore";
 
 interface PasswordGeneratorProps {
   open: boolean;
@@ -77,17 +76,15 @@ export const PasswordGenerator = ({
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 설정에서 클립보드 자동 초기화 시간 가져오기
-  const clipboardAutoClearTimeout = useSettingsStore(
-    (state) => state.clipboardAutoClearTimeout
-  );
+  // 기본 클립보드 자동 초기화 시간 (30초)
+  const clipboardAutoClearTimeout = 30000;
 
-  // 보안 클립보드 훅 사용 (설정에서 가져온 시간 후 자동 초기화)
+  // 보안 클립보드 훅 사용 (기본 30초 후 자동 초기화)
   const { copyToClipboard, hasCopiedText, remainingTime } = useSecureClipboard({
     timeoutMs: clipboardAutoClearTimeout,
     successMessage: `비밀번호가 클립보드에 복사되었습니다. ${Math.round(clipboardAutoClearTimeout / 1000)}초 후 자동으로 지워집니다.`,
     errorMessage: "비밀번호 복사에 실패했습니다.",
-    disabled: clipboardAutoClearTimeout === 0,
+    disabled: false,
   });
 
   const generatePassword = useCallback(() => {

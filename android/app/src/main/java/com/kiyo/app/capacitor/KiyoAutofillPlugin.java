@@ -2,9 +2,12 @@ package com.kiyo.app.capacitor;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
+import android.util.Pair;
+import android.view.autofill.AutofillManager;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -15,18 +18,18 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import com.kiyo.app.autofill.AutofillRepository;
 
-import java.lang.reflect.Method;
 import java.util.List;
-import android.util.Pair;
 
 @CapacitorPlugin(name = "KiyoAutofill")
 public class KiyoAutofillPlugin extends Plugin {
 
     private static final String TAG = "KiyoAutofillPlugin";
-    private static final String AUTO_FILL_SERVICE_CLASS = "android.service.autofill.AutofillManager";
-    private static final String SETTINGS_CLASS = "android.provider.Settings";
 
     private AutofillRepository autofillRepository;
+
+    private AutofillManager getAutofillManager(Context context) {
+        return context.getSystemService(AutofillManager.class);
+    }
 
     @Override
     public void load() {
@@ -54,10 +57,10 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            Object autofillManager = getAutofillManager(context);
-            boolean enabled = autofillManager != null && invokeBooleanMethod(autofillManager, "isEnabled");
-            boolean hasService = autofillManager != null && invokeBooleanMethod(autofillManager, "hasEnabledAutofillServices");
-            String servicePackageName = autofillManager != null ? invokeStringMethod(autofillManager, "getAutofillServicePackageName") : null;
+            AutofillManager autofillManager = getAutofillManager(context);
+            boolean enabled = autofillManager != null && autofillManager.isEnabled();
+            boolean hasService = autofillManager != null && autofillManager.hasEnabledAutofillServices();
+            String servicePackageName = null; // getAutofillServicePackageName() is not available in public API
 
             Log.d(TAG, "isAutofillEnabled: enabled=" + enabled + ", hasService=" + hasService);
 
@@ -86,18 +89,33 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            // Open autofill settings using reflection to avoid compile-time dependency
-            Class<?> settingsClass = Class.forName(SETTINGS_CLASS);
-            String actionAutoFillSettings = (String) settingsClass.getField("ACTION_AUTO_FILL_SETTINGS").get(null);
-            
-            Intent intent = new Intent(actionAutoFillSettings);
+            // 1st priority: Request setting specific autofill service (API 26+)
+            // This shows a system dialog to enable our autofill service directly
+            // Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE = "android.settings.REQUEST_SET_AUTOFILL_SERVICE" (API 26+)
+            Intent intent = new Intent("android.settings.REQUEST_SET_AUTOFILL_SERVICE");
+            intent.setData(Uri.parse("package:" + context.getPackageName()));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
-
             call.resolve();
+        } catch (android.content.ActivityNotFoundException e) {
+            Log.w(TAG, "REQUEST_SET_AUTOFILL_SERVICE not found, trying fallback", e);
+            try {
+                // 2nd priority: Open general autofill settings screen
+                // Settings.ACTION_AUTOFILL_SETTINGS = "android.settings.AUTOFILL_SETTINGS" (API 26+)
+                Intent intent = new Intent("android.settings.AUTOFILL_SETTINGS");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                call.resolve();
+            } catch (android.content.ActivityNotFoundException e2) {
+                Log.e(TAG, "No autofill settings activity found", e2);
+                call.reject("자동완성 설정 화면을 찾을 수 없습니다.");
+            } catch (Exception e2) {
+                Log.e(TAG, "Error opening autofill settings fallback", e2);
+                call.reject("자동완성 설정 열기 실패: " + e2.getMessage());
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Error opening autofill settings", e);
-            call.reject("Failed to open autofill settings: " + e.getMessage());
+            Log.e(TAG, "Error requesting autofill service", e);
+            call.reject("자동완성 서비스 요청 실패: " + e.getMessage());
         }
     }
 
@@ -126,16 +144,17 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            Object autofillManager = getAutofillManager(context);
+            AutofillManager autofillManager = getAutofillManager(context);
             if (autofillManager == null) {
                 call.reject("AutofillManager not available");
                 return;
             }
 
-            String servicePackageName = invokeStringMethod(autofillManager, "getAutofillServicePackageName");
-            boolean isOurService = "com.kiyo.app".equals(servicePackageName);
-            boolean isEnabled = invokeBooleanMethod(autofillManager, "isEnabled");
-            boolean hasEnabledServices = invokeBooleanMethod(autofillManager, "hasEnabledAutofillServices");
+            // getAutofillServicePackageName() is not available in public API
+            String servicePackageName = null;
+            boolean isOurService = false;
+            boolean isEnabled = autofillManager.isEnabled();
+            boolean hasEnabledServices = autofillManager.hasEnabledAutofillServices();
 
             JSObject result = new JSObject();
             result.put("servicePackageName", servicePackageName);
@@ -186,13 +205,18 @@ public class KiyoAutofillPlugin extends Plugin {
                     continue;
                 }
 
+                // Convert single packageName to packageNames list
+                java.util.List<String> packageNames = new java.util.ArrayList<>();
+                if (packageName != null && !packageName.isEmpty()) {
+                    packageNames.add(packageName);
+                }
+
                 AutofillRepository.AutofillAccount account = new AutofillRepository.AutofillAccount(
                     -1L,  // id (auto-generated)
                     username,
                     password,
                     title,
-                    packageName,
-                    null,  // packageNames (JSON array) - will be populated by auto-learning
+                    packageNames,
                     appName,
                     domain,
                     System.currentTimeMillis(),
@@ -245,7 +269,17 @@ public class KiyoAutofillPlugin extends Plugin {
             accountObj.put("username", account.username);
             accountObj.put("password", account.password);
             accountObj.put("title", account.title);
-            accountObj.put("packageName", account.packageName);
+            // Use first package name for backward compatibility
+            String firstPackageName = account.packageNames != null && !account.packageNames.isEmpty() ? account.packageNames.get(0) : null;
+            accountObj.put("packageName", firstPackageName);
+            // Also include the full packageNames array
+            if (account.packageNames != null && !account.packageNames.isEmpty()) {
+                JSArray packageNamesArray = new JSArray();
+                for (String pkg : account.packageNames) {
+                    packageNamesArray.put(pkg);
+                }
+                accountObj.put("packageNames", packageNamesArray);
+            }
             accountObj.put("appName", account.appName);
             accountObj.put("domain", account.domain);
             accountObj.put("createdAt", account.createdAt);
@@ -280,13 +314,18 @@ public class KiyoAutofillPlugin extends Plugin {
             return;
         }
 
+        // Convert single packageName to packageNames list
+        java.util.List<String> packageNames = new java.util.ArrayList<>();
+        if (packageName != null && !packageName.isEmpty()) {
+            packageNames.add(packageName);
+        }
+
         AutofillRepository.AutofillAccount account = new AutofillRepository.AutofillAccount(
             -1L,  // id (auto-generated)
             username,
             password,
             title,
-            packageName,
-            null,  // packageNames (JSON array) - will be populated by auto-learning
+            packageNames,
             appName,
             domain,
             System.currentTimeMillis(),
@@ -324,18 +363,23 @@ public class KiyoAutofillPlugin extends Plugin {
         String username = call.getString("username", existing.username);
         String password = call.getString("password", existing.password);
         String title = call.getString("title", existing.title);
-        String packageName = call.getString("packageName", existing.packageName);
+        String packageName = call.getString("packageName", null);
         String appName = call.getString("appName", existing.appName);
         String domain = call.getString("domain", existing.domain);
         boolean favorite = call.getBoolean("favorite", existing.favorite);
+
+        // Handle packageNames list - if packageName is provided, add it to the list
+        java.util.List<String> packageNames = new java.util.ArrayList<>(existing.packageNames);
+        if (packageName != null && !packageName.isEmpty() && !packageNames.contains(packageName)) {
+            packageNames.add(packageName);
+        }
 
         AutofillRepository.AutofillAccount updated = new AutofillRepository.AutofillAccount(
             id,
             username,
             password,
             title,
-            packageName,
-            existing.packageNames,  // Preserve existing packageNames JSON array
+            packageNames,
             appName,
             domain,
             existing.createdAt,
@@ -445,37 +489,6 @@ public class KiyoAutofillPlugin extends Plugin {
         } catch (Exception e) {
             Log.e(TAG, "Error syncing accounts from React", e);
             call.reject("Failed to sync accounts: " + e.getMessage());
-        }
-    }
-
-    private Object getAutofillManager(Context context) {
-        try {
-            Class<?> autofillManagerClass = Class.forName(AUTO_FILL_SERVICE_CLASS);
-            Method getSystemService = Context.class.getMethod("getSystemService", Class.class);
-            return getSystemService.invoke(context, autofillManagerClass);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to get AutofillManager", e);
-            return null;
-        }
-    }
-
-    private boolean invokeBooleanMethod(Object obj, String methodName) {
-        try {
-            Method method = obj.getClass().getMethod(methodName);
-            return (Boolean) method.invoke(obj);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to invoke " + methodName, e);
-            return false;
-        }
-    }
-
-    private String invokeStringMethod(Object obj, String methodName) {
-        try {
-            Method method = obj.getClass().getMethod(methodName);
-            return (String) method.invoke(obj);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to invoke " + methodName, e);
-            return null;
         }
     }
 

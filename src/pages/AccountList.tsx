@@ -4,7 +4,6 @@ import type { Account, Template } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
 import BottomTabs from "../components/BottomTabs";
 import { useSessionStore } from "../store/sessionStore";
-import { useSettingsStore } from "../store/settingsStore";
 import { useSecureClipboard } from "../hooks/useSecureClipboard";
 import { fixedTemplates } from "../database/testdata";
 
@@ -34,17 +33,13 @@ const AccountList = () => {
   useEffect(() => {
     checkFileAndNavigate();
   }, []);
-  // 설정에서 클립보드 자동 초기화 시간 가져오기
-  const clipboardAutoClearTimeout = useSettingsStore(
-    (state) => state.clipboardAutoClearTimeout,
-  );
 
-  // 보안 클립보드 훅 사용
+  // 보안 클립보드 훅 사용 (자동 초기화 비활성화)
   const { copyToClipboard } = useSecureClipboard({
-    timeoutMs: clipboardAutoClearTimeout,
-    successMessage: `비밀번호가 클립보드에 복사되었습니다. ${Math.round(clipboardAutoClearTimeout / 1000)}초 후 자동으로 지워집니다.`,
+    timeoutMs: 0,
+    successMessage: "비밀번호가 클립보드에 복사되었습니다.",
     errorMessage: "비밀번호 복사에 실패했습니다.",
-    disabled: clipboardAutoClearTimeout === 0,
+    disabled: false,
   });
 
   const scrollToTop = () => {

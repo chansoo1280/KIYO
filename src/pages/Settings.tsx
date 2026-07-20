@@ -13,33 +13,25 @@ import { useSessionStore } from "../store/sessionStore";
 import FileCreateDialog from "../components/FileCreateDialog";
 import FileOpenDialog from "../components/FileOpenDialog";
 import PinChangeDialog from "../components/PinChangeDialog";
-import { useAccountStore } from "../store/accountStore";
 import { useSettingsStore } from "../store/settingsStore";
 import type { FontSize } from "../models/account";
 import { useAutofill } from "../hooks/useAutofill";
 import { AutofillSettings } from "../components/AutofillSettings";
 
-const CLIPBOARD_TIMEOUT_OPTIONS = [
-  { value: 0, label: "끄기" },
-  { value: 15000, label: "15초" },
-  { value: 30000, label: "30초" },
-  { value: 60000, label: "60초" },
-] as const;
-
 const Settings = () => {
+  useAutofill();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
   const { activeFileName, cryptoKey, salt } = useSessionStore((state) => state);
+  const isEncrypted = !!salt;
   const {
     theme,
     toggleTheme,
     fontSize,
     setFontSize,
-    clipboardAutoClearTimeout,
-    setClipboardAutoClearTimeout,
     biometricEnabled,
     setBiometricEnabled,
   } = useSettingsStore();
@@ -110,9 +102,6 @@ const Settings = () => {
     }
   };
 
-  const isEncrypted = !!salt;
-  useAutofill();
-
   const handlePinChange = async (newPin: string) => {
     if (!activeFileName) {
       throw new Error("활성 데이터 파일이 없습니다.");
@@ -158,23 +147,6 @@ const Settings = () => {
               </div>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
                 <span>자동잠금</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-                <span>클립보드 자동 초기화</span>
-                <select
-                  value={clipboardAutoClearTimeout}
-                  onChange={(e) =>
-                    setClipboardAutoClearTimeout(Number(e.target.value))
-                  }
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
-                  aria-label="클립보드 자동 초기화 시간 선택"
-                >
-                  {CLIPBOARD_TIMEOUT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
                 <span>생체인증 사용</span>
@@ -277,7 +249,7 @@ const Settings = () => {
             </div>
           </div>
 
-          {Capacitor.getPlatform() === 'android' && (
+          {Capacitor.getPlatform() === "android" && (
             <div>
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
                 Autofill
@@ -294,14 +266,13 @@ const Settings = () => {
         </section>
 
         <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
             <span>파일변경</span>
             <button
               type="button"
               className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
               onClick={async () => {
                 await closeDataFile();
-                useAccountStore.getState().resetToInitial();
                 navigate("/", { state: { selectFile: true } });
               }}
             >

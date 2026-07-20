@@ -3,20 +3,17 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
 import { useSecureClipboard } from "../hooks/useSecureClipboard";
-import { useSettingsStore } from "../store/settingsStore";
 
 const AccountDetail = () => {
-  // 설정에서 클립보드 자동 초기화 시간 가져오기
-  const clipboardAutoClearTimeout = useSettingsStore(
-    (state) => state.clipboardAutoClearTimeout
-  );
+  // 기본 클립보드 자동 초기화 시간 (30초)
+  const clipboardAutoClearTimeout = 30000;
 
-  // 보안 클립보드 훅 사용 (설정에서 가져온 시간 후 자동 초기화)
+  // 보안 클립보드 훅 사용 (기본 30초 후 자동 초기화)
   const { copyToClipboard } = useSecureClipboard({
     timeoutMs: clipboardAutoClearTimeout,
     successMessage: `비밀번호가 클립보드에 복사되었습니다. ${Math.round(clipboardAutoClearTimeout / 1000)}초 후 자동으로 지워집니다.`,
     errorMessage: "비밀번호 복사에 실패했습니다.",
-    disabled: clipboardAutoClearTimeout === 0,
+    disabled: false,
   });
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,12 +27,73 @@ const AccountDetail = () => {
   const account = storedAccount ?? (location.state?.account as Account | undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteAccount, updateAccount } = useAccountStore();
+  const [visiblePasswordFields, setVisiblePasswordFields] = useState<Set<string>>(new Set());
+
+  const togglePasswordVisibility = (fieldId: string) => {
+    setVisiblePasswordFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(fieldId)) {
+        next.delete(fieldId);
+      } else {
+        next.add(fieldId);
+      }
+      return next;
+    });
+  };
 
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
+      const isVisible = visiblePasswordFields.has(field.id);
       return (
         <div className="flex items-center justify-between gap-3">
-          <span className="font-semibold text-[var(--color-text-h)]">••••••••</span>
+          <span className="font-semibold text-[var(--color-text-h)] flex-1">
+            {isVisible ? field.value : "••••••••"}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility(field.id)}
+              className="text-[var(--color-text)] hover:text-[var(--color-accent)] transition-colors"
+              aria-label={isVisible ? "비밀번호 숨기기" : "비밀번호 보이기"}
+            >
+              {isVisible ? (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => void copyToClipboard(field.value)}
@@ -43,6 +101,7 @@ const AccountDetail = () => {
             >
               복사
             </button>
+          </div>
         </div>
       );
     }

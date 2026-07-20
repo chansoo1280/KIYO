@@ -62,8 +62,7 @@ export const PinChangeDialog = ({
       setErrorMessage("활성 데이터 파일이 없습니다.");
       return;
     }
-    const isVerifyed = await isVerifyPin(fileData, currentPin);
-    if (isEncrypted && !isVerifyed) {
+    if (isEncrypted && !(await isVerifyPin(fileData, currentPin))) {
       setErrorMessage("현재 PIN이 올바르지 않습니다.");
       return;
     }
@@ -71,6 +70,10 @@ export const PinChangeDialog = ({
     setIsLoading(true);
     try {
       await onConfirm(newPin);
+      setCurrentPin("");
+      setNewPin("");
+      setConfirmPin("");
+      setErrorMessage("");
       onClose();
     } catch (error) {
       setErrorMessage(

@@ -5,8 +5,13 @@ import { encryptData } from "../crypto/encryption";
 import { writeDataFile, type KiyoDataFile } from "../database/fileStorage";
 import { toBase64, fromBase64 } from "../crypto/crypto.utils";
 import type { EncryptedKiyoFile } from "../crypto/encryption";
-import type { Account, Template, AppSettings, FileMetadata } from "../models/account";
-import { fixedTemplates, initialAccounts } from "./testdata";
+import type {
+  Account,
+  Template,
+  AppSettings,
+  FileMetadata,
+} from "../models/account";
+import { fixedTemplates, devAccounts } from "./testdata";
 import { isFileStorageError } from "../errors/FileStorageError";
 import {
   encryptAccountsSensitiveFields,
@@ -39,18 +44,30 @@ export class KiyoDatabase extends Dexie {
         accounts:
           "id, templateId, title, *tags, favorite, createdAt, updatedAt, websiteUrl, domain, packageName",
         templates: "id, name",
-        settings: "++id, theme, lockEnabled, autoLockTime, fontSize",
+        settings: "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
         metadata: "id, version, createdAt",
         files: "++id, fileName, createdAt, updatedAt",
       })
       .upgrade((transaction) =>
-        transaction.table("settings").toCollection().modify({ fontSize: "medium" }),
+        transaction
+          .table("settings")
+          .toCollection()
+          .modify({ fontSize: "medium" }),
       )
       .upgrade((transaction) =>
         transaction.table("accounts").toCollection().modify({ templateId: 1 }),
       )
       .upgrade((transaction) =>
-        transaction.table("accounts").toCollection().modify({ websiteUrl: "", domain: "", packageName: "" }),
+        transaction
+          .table("accounts")
+          .toCollection()
+          .modify({ websiteUrl: "", domain: "", packageName: "" }),
+      )
+      .upgrade((transaction) =>
+        transaction
+          .table("settings")
+          .toCollection()
+          .modify({ biometricEnabled: true }),
       );
   }
 }
@@ -98,16 +115,16 @@ export const syncDatabaseToFile = async (): Promise<void> => {
       return;
     }
     await writeDataFile(encrypted, activeFileName);
-    
+
     // Clear any previous sync error on success
     useSessionStore.getState().clearSyncError();
   } catch (error) {
     console.error("syncDatabaseToFile failed:", error);
     // Store error in sessionStore for UI to display
-    const errorMessage = isFileStorageError(error) 
-      ? error.message 
-      : error instanceof Error 
-        ? error.message 
+    const errorMessage = isFileStorageError(error)
+      ? error.message
+      : error instanceof Error
+        ? error.message
         : "Unknown sync error";
     useSessionStore.getState().setSyncError(errorMessage);
     // Don't throw - auto-save should not break the app
@@ -152,7 +169,7 @@ export const initializeDevDatabase = async () => {
     db.settings,
     db.metadata,
     async () => {
-      await db.accounts.bulkPut(initialAccounts);
+      await db.accounts.bulkPut(devAccounts);
 
       await db.templates.bulkPut(fixedTemplates);
 
@@ -161,7 +178,6 @@ export const initializeDevDatabase = async () => {
         lockEnabled: true,
         autoLockTime: 60,
         fontSize: "medium",
-        clipboardAutoClearTimeout: 30000,
         biometricEnabled: true,
       });
 
@@ -178,10 +194,10 @@ export const initializeDevDatabase = async () => {
 
 export const loadAccountsFromDB = async (): Promise<Account[]> => {
   const accounts = await db.accounts.orderBy("updatedAt").reverse().toArray();
-  
+
   // Check if we have a crypto key in session (encrypted file)
   const { cryptoKey } = useSessionStore.getState();
-  
+
   if (cryptoKey && accounts.length > 0) {
     // Check if any account has encrypted fields
     const hasEncrypted = accounts.some(hasEncryptedFields);
@@ -195,7 +211,7 @@ export const loadAccountsFromDB = async (): Promise<Account[]> => {
       }
     }
   }
-  
+
   return accounts;
 };
 
@@ -207,17 +223,20 @@ export const saveAccountsToDB = async (
   cryptoKey?: CryptoKey,
 ): Promise<void> => {
   let accountsToSave = accounts;
-  
+
   // Encrypt sensitive fields if crypto key is available
   if (cryptoKey && accounts.length > 0) {
     try {
-      accountsToSave = await encryptAccountsSensitiveFields(accounts, cryptoKey);
+      accountsToSave = await encryptAccountsSensitiveFields(
+        accounts,
+        cryptoKey,
+      );
     } catch (error) {
       console.error("Failed to encrypt account fields:", error);
       // Save without encryption if encryption fails
     }
   }
-  
+
   await db.accounts.bulkPut(accountsToSave);
 };
 
@@ -229,17 +248,24 @@ export const migrateAccountsToEncryptedFormat = async (
   cryptoKey: CryptoKey,
 ): Promise<void> => {
   const accounts = await db.accounts.toArray();
-  
+
   if (accounts.length === 0) return;
-  
+
   // Check if any accounts need migration
-  const needsMigration = accounts.some((account) => !hasEncryptedFields(account));
-  
+  const needsMigration = accounts.some(
+    (account) => !hasEncryptedFields(account),
+  );
+
   if (needsMigration) {
     try {
-      const migratedAccounts = await migrateAccountsToEncrypted(accounts, cryptoKey);
+      const migratedAccounts = await migrateAccountsToEncrypted(
+        accounts,
+        cryptoKey,
+      );
       await db.accounts.bulkPut(migratedAccounts);
-      console.log(`Migrated ${migratedAccounts.length} accounts to encrypted format`);
+      console.log(
+        `Migrated ${migratedAccounts.length} accounts to encrypted format`,
+      );
     } catch (error) {
       console.error("Failed to migrate accounts to encrypted format:", error);
       throw error;
@@ -338,6 +364,11 @@ export const clearActiveFileInfo = async (fileName?: string): Promise<void> => {
   } else {
     await db.files.clear();
   }
+};
+
+// Clear accounts table only (preserves templates, settings, metadata, files)
+export const clearAccounts = async (): Promise<void> => {
+  await db.accounts.clear();
 };
 
 // Get database instance

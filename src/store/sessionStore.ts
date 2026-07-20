@@ -8,6 +8,7 @@ export interface SessionState {
   salt: Uint8Array | null;
   lastSyncError: string | null;
   lastSyncErrorTime: number | null;
+  lastSyncTime: number | null;
   setSession: ({
     fileName,
     cryptoKey,
@@ -21,6 +22,7 @@ export interface SessionState {
   clearSession: () => Promise<void>;
   setSyncError: (error: string | null) => void;
   clearSyncError: () => void;
+  setLastSyncTime: (time: number | null) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -32,6 +34,7 @@ export const useSessionStore = create<SessionState>()(
         salt: null,
         lastSyncError: null,
         lastSyncErrorTime: null,
+        lastSyncTime: null,
 
         setSession: async ({ fileName, cryptoKey, salt }) => {
           set((state) => ({
@@ -69,6 +72,10 @@ export const useSessionStore = create<SessionState>()(
         clearSyncError: () => {
           set({ lastSyncError: null, lastSyncErrorTime: null });
         },
+
+        setLastSyncTime: (time: number | null) => {
+          set({ lastSyncTime: time });
+        },
       }),
       {
         name: "kiyo-session",
@@ -76,6 +83,7 @@ export const useSessionStore = create<SessionState>()(
         partialize: (state) => ({
           activeFileName: state.activeFileName,
           salt: state.salt,
+          lastSyncTime: state.lastSyncTime,
         }),
       },
     ),

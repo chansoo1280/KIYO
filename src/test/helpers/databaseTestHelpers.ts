@@ -5,11 +5,11 @@
 import type { AppSettings, FileMetadata } from "../../models/account";
 
 export const getDefaultSettings = (): AppSettings[] => [
-  { theme: "dark", autoLockTime: 300, lockEnabled: true, fontSize: "medium", clipboardAutoClearTimeout: 30000, biometricEnabled: true },
+  { theme: "dark", autoLockTime: 300, lockEnabled: true, fontSize: "medium", biometricEnabled: true },
 ];
 
 export const getEncryptedSettings = (): AppSettings[] => [
-  { theme: "dark", autoLockTime: 300, lockEnabled: true, fontSize: "medium", clipboardAutoClearTimeout: 30000, biometricEnabled: true },
+  { theme: "dark", autoLockTime: 300, lockEnabled: true, fontSize: "medium", biometricEnabled: true },
 ];
 
 export const getEncryptedMetadata = (): FileMetadata[] => [

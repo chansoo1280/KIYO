@@ -1,8 +1,13 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Account } from "../models/account";
-import { db, loadAccountsFromDB, syncDatabaseToFile, saveAccountsToDB } from "../database/db";
-import { initialAccounts } from "../database/testdata";
+import {
+  db,
+  loadAccountsFromDB,
+  syncDatabaseToFile,
+  saveAccountsToDB,
+  clearAccounts,
+} from "../database/db";
 import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "../plugins/kiyautofill";
 import { useSessionStore } from "./sessionStore";
@@ -17,7 +22,7 @@ export interface AccountState {
   updateAccount: (account: Account) => Promise<void>;
   deleteAccount: (id: number) => Promise<void>;
   getAccountById: (id: number) => Account | undefined;
-  resetToInitial: () => void;
+  clearAccounts: () => void;
   syncToAutofill: () => Promise<void>;
 }
 
@@ -63,7 +68,7 @@ export const useAccountStore = create<AccountState>()(
           return createdAccount;
         });
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
-        
+
         // Save with encryption if crypto key is available
         const { cryptoKey } = useSessionStore.getState();
         await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
@@ -80,7 +85,7 @@ export const useAccountStore = create<AccountState>()(
             a.id === updatedAccount.id ? updatedAccount : a,
           ),
         }));
-        
+
         // Save with encryption if crypto key is available
         const { cryptoKey } = useSessionStore.getState();
         await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
@@ -93,7 +98,7 @@ export const useAccountStore = create<AccountState>()(
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
         }));
-        
+
         // Save with encryption if crypto key is available
         const { cryptoKey } = useSessionStore.getState();
         await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
@@ -103,16 +108,10 @@ export const useAccountStore = create<AccountState>()(
 
       getAccountById: (id) => get().accounts.find((a) => a.id === id),
 
-      resetToInitial: () => {
-        void db
-          .transaction("rw", db.accounts, async () => {
-            await db.accounts.clear();
-            await db.accounts.bulkAdd(initialAccounts);
-            set({ accounts: initialAccounts });
-            await syncDatabaseToFile();
-            await get().syncToAutofill();
-          })
-          .catch(console.error);
+      clearAccounts: async () => {
+        set({ accounts: [], initialized: false });
+        await clearAccounts();
+        await get().syncToAutofill();
       },
 
       syncToAutofill: async () => {

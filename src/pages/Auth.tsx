@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
-import { clearActiveFileInfo } from "../database/db";
 import { unlockFile, closeDataFile } from "../database/fileStorage";
-import { useAccountStore } from "../store/accountStore";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -69,8 +67,6 @@ const Auth = () => {
             type="button"
             onClick={async () => {
               await closeDataFile();
-              await clearActiveFileInfo();
-              await useAccountStore.getState().resetToInitial();
               navigate("/", { state: { selectFile: true } });
             }}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text-h)]"

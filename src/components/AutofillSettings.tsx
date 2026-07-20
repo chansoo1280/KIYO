@@ -3,10 +3,10 @@ import { Capacitor } from "@capacitor/core";
 import {
   KiyoAutofill,
   type AutofillStatus,
-  type AutofillServiceInfo,
   type SyncAccountsResult,
 } from "../plugins/kiyautofill";
 import { useAccountStore } from "../store/accountStore";
+import { useSessionStore } from "../store/sessionStore";
 
 interface AutofillSettingsProps {
   onMessage?: (message: string) => void;
@@ -16,9 +16,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   onMessage,
 }) => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
-  const [serviceInfo, setServiceInfo] = useState<AutofillServiceInfo | null>(
-    null,
-  );
+
   const [accountCount, setAccountCount] = useState<number>(0);
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +24,10 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   const [syncing, setSyncing] = useState(false);
 
   const { accounts } = useAccountStore();
+  const {
+    lastSyncTime: sessionLastSyncTime,
+    setLastSyncTime: setSessionLastSyncTime,
+  } = useSessionStore();
 
   const showMessage = useCallback(
     (message: string) => {
@@ -35,19 +37,24 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     [onMessage],
   );
 
+  // Sync lastSyncTime from session store to local state on mount
+  useEffect(() => {
+    if (sessionLastSyncTime !== null) {
+      setLastSyncTime(sessionLastSyncTime);
+    }
+  }, [sessionLastSyncTime]);
+
   const checkStatus = useCallback(async () => {
     if (Capacitor.getPlatform() !== "android") return;
 
     setLoading(true);
     setError(null);
     try {
-      const [statusResult, serviceInfoResult, countResult] = await Promise.all([
+      const [statusResult, countResult] = await Promise.all([
         KiyoAutofill.isAutofillEnabled(),
-        KiyoAutofill.getAutofillServiceInfo(),
         KiyoAutofill.getAccountCount(),
       ]);
       setStatus(statusResult);
-      setServiceInfo(serviceInfoResult);
       setAccountCount(countResult.count);
     } catch (err) {
       setError(err instanceof Error ? err.message : "상태 확인 실패");
@@ -89,6 +96,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
       if (result.success) {
         const now = Date.now();
         setLastSyncTime(now);
+        setSessionLastSyncTime(now); // Also save to session store
         showMessage(`자동완성 계정 ${result.syncedCount}개 동기화 완료`);
       } else {
         showMessage(`동기화 완료 (${result.errorCount}개 오류)`);
@@ -100,7 +108,13 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     } finally {
       setSyncing(false);
     }
-  }, [accounts, checkStatus, showMessage]);
+  }, [
+    accounts,
+    checkStatus,
+    showMessage,
+    setLastSyncTime,
+    setSessionLastSyncTime,
+  ]);
 
   const openAutofillSettings = useCallback(async () => {
     if (Capacitor.getPlatform() !== "android") return;
@@ -108,26 +122,15 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     await checkStatus();
   }, [checkStatus]);
 
-  // Load last sync time from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("kiyo_autofill_last_sync");
-    if (saved) {
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => setLastSyncTime(parseInt(saved, 10)), 0);
-    }
-  }, []);
-
   // Initial load
   useEffect(() => {
-    // Use setTimeout to avoid synchronous setState in effect
-    setTimeout(() => checkStatus(), 0);
+    checkStatus();
   }, [checkStatus]);
 
   // Refresh status when accounts change
   useEffect(() => {
     if (Capacitor.getPlatform() === "android") {
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => checkStatus(), 0);
+      checkStatus();
     }
   }, [accounts.length, checkStatus]);
 
@@ -159,9 +162,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
       .replace(/\.$/, "");
   };
 
-  const isEnabled = status?.enabled && serviceInfo?.isOurService;
-  const hasService = status?.hasService;
-  const servicePackageName = status?.servicePackageName;
+  const isEnabled = status?.enabled;
 
   return (
     <div className="space-y-3">
@@ -170,11 +171,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
         <div className="flex flex-col gap-1">
           <span className="font-medium">자동완성 서비스</span>
           <span className="text-xs text-[var(--color-text-muted)]">
-            {isEnabled
-              ? "KIYO 자동완성 활성화됨"
-              : hasService
-                ? `다른 자동완성 서비스 사용 중 (${servicePackageName})`
-                : "자동완성 서비스 비활성화됨"}
+            {isEnabled ? "자동완성 서비스 활성화됨" : "비활성화"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -233,20 +230,6 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
           {syncing ? "동기화 중..." : "동기화"}
         </button>
       </div>
-
-      {/* Service Info */}
-      {serviceInfo && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <div className="flex flex-col gap-1">
-            <span className="font-medium">서비스 정보</span>
-            <span className="text-xs text-[var(--color-text-muted)]">
-              패키지: {serviceInfo.servicePackageName || "없음"} |
-              {serviceInfo.isOurService ? "KIYO 서비스" : "타사 서비스"} |
-              {serviceInfo.isEnabled ? "활성화" : "비활성화"}
-            </span>
-          </div>
-        </div>
-      )}
 
       {error && (
         <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
