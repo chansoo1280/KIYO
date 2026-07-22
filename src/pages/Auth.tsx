@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
+import { useSettingsStore } from "../store/settingsStore";
 import { unlockFile, closeDataFile } from "../database/fileStorage";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { activeFileName } = useSessionStore((state) => state);
+  const { biometricEnabled } = useSettingsStore((state) => state);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showPinInput, setShowPinInput] = useState(!biometricEnabled);
 
   // Get fileName and isEncrypted from location state
   const fileName = activeFileName;
@@ -59,16 +62,32 @@ const Auth = () => {
     }
   };
 
+  const handleBiometricAuth = () => {
+    // Placeholder for biometric authentication
+    // Actual biometric authentication will be implemented via native Android plugin
+    console.log("Biometric authentication requested (placeholder)");
+    // TODO: Call native biometric authentication via KiyoAutofill plugin
+    // For now, just show a message
+    setError("생체 인증은 준비 중입니다. PIN 번호를 입력해주세요.");
+  };
+
+  const handleShowPinInput = () => {
+    setShowPinInput(true);
+    setError("");
+  };
+
+  const handleBackToHome = async () => {
+    await closeDataFile();
+    navigate("/", { state: { selectFile: true } });
+  };
+
   return (
     <main className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center gap-4">
           <button
             type="button"
-            onClick={async () => {
-              await closeDataFile();
-              navigate("/", { state: { selectFile: true } });
-            }}
+            onClick={handleBackToHome}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text-h)]"
             aria-label="첫 화면으로 돌아가기"
           >
@@ -100,68 +119,184 @@ const Auth = () => {
         </header>
 
         <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
-            PIN Verification
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
-            암호화된 파일입니다
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
-            핀번호를 입력하여 파일을 잠금 해제하세요.
-          </p>
+          {biometricEnabled ? (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+                KIYO 잠금 해제
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
+                {fileName}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
+                생체 인증 또는 PIN 번호로 파일을 잠금 해제하세요.
+              </p>
 
-          {/* File info display */}
-          <div className="mt-4 p-3 rounded-lg bg-[var(--color-code-bg)] border border-[var(--color-border)]">
-            <p className="text-xs font-medium text-[var(--color-text)]">
-              파일 정보
-            </p>
-            <p className="mt-1 text-sm font-mono text-[var(--color-text-h)] truncate">
-              {fileName}
-            </p>
-            <p className="mt-1 text-xs text-[var(--color-text)]">
-              내부 저장소 / Documents
-            </p>
-          </div>
+              {/* File info display */}
+              <div className="mt-4 p-3 rounded-lg bg-[var(--color-code-bg)] border border-[var(--color-border)]">
+                <p className="text-xs font-medium text-[var(--color-text)]">
+                  파일 정보
+                </p>
+                <p className="mt-1 text-sm font-mono text-[var(--color-text-h)] truncate">
+                  {fileName}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-text)]">
+                  내부 저장소 / Documents
+                </p>
+              </div>
 
-          {error && (
-            <div
-              className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm dark:bg-red-900/30 dark:text-red-400"
-              role="alert"
-            >
-              {error}
-            </div>
+              {error && (
+                <div
+                  className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm dark:bg-red-900/30 dark:text-red-400"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
+
+              <div className="mt-6 space-y-4">
+                {/* Biometric authentication button */}
+                <button
+                  type="button"
+                  onClick={handleBiometricAuth}
+                  disabled={isVerifying}
+                  className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                  </svg>
+                  지문으로 열기
+                </button>
+
+                {/* Divider */}
+                <div className="relative flex items-center">
+                  <div className="flex-grow border-t border-[var(--color-border)]" />
+                  <span className="px-4 text-xs text-[var(--color-text)] uppercase tracking-[0.24em]">
+                    또는
+                  </span>
+                </div>
+
+                {/* PIN input button */}
+                <button
+                  type="button"
+                  onClick={handleShowPinInput}
+                  disabled={isVerifying}
+                  className="w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-semibold text-[var(--color-text-h)] shadow-sm transition hover:bg-[var(--color-code-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  PIN 번호 입력
+                </button>
+              </div>
+
+              {/* PIN Input Form - shown when showPinInput is true */}
+              {showPinInput && (
+                <div className="mt-6 space-y-4 animate-fade-in">
+                  <div>
+                    <label
+                      htmlFor="pin"
+                      className="block text-sm font-medium text-[var(--color-text)]"
+                    >
+                      PIN 번호
+                    </label>
+                    <input
+                      id="pin"
+                      type="password"
+                      value={pin}
+                      onChange={(e) => handlePinChange(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
+                      className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+                      placeholder="4자리 핀번호"
+                      maxLength={6}
+                      autoFocus
+                      disabled={isVerifying}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyPin}
+                    disabled={isVerifying}
+                    className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isVerifying ? "확인 중..." : "확인"}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            // Biometric disabled - show PIN input directly
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+                PIN Verification
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
+                암호화된 파일입니다
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
+                핀번호를 입력하여 파일을 잠금 해제하세요.
+              </p>
+
+              {/* File info display */}
+              <div className="mt-4 p-3 rounded-lg bg-[var(--color-code-bg)] border border-[var(--color-border)]">
+                <p className="text-xs font-medium text-[var(--color-text)]">
+                  파일 정보
+                </p>
+                <p className="mt-1 text-sm font-mono text-[var(--color-text-h)] truncate">
+                  {fileName}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-text)]">
+                  내부 저장소 / Documents
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm dark:bg-red-900/30 dark:text-red-400"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
+
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label
+                    htmlFor="pin"
+                    className="block text-sm font-medium text-[var(--color-text)]"
+                  >
+                    PIN 번호
+                  </label>
+                  <input
+                    id="pin"
+                    type="password"
+                    value={pin}
+                    onChange={(e) => handlePinChange(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
+                    className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+                    placeholder="4자리 핀번호"
+                    maxLength={6}
+                    autoFocus
+                    disabled={isVerifying}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleVerifyPin}
+                  disabled={isVerifying}
+                  className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isVerifying ? "확인 중..." : "확인"}
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="mt-6 space-y-4">
-            <div>
-              <label
-                htmlFor="pin"
-                className="block text-sm font-medium text-[var(--color-text)]"
-              >
-                PIN 번호
-              </label>
-              <input
-                id="pin"
-                type="password"
-                value={pin}
-                onChange={(e) => handlePinChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
-                className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
-                placeholder="4자리 핀번호"
-                maxLength={6}
-                autoFocus
-                disabled={isVerifying}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleVerifyPin}
-              disabled={isVerifying}
-              className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isVerifying ? "확인 중..." : "확인"}
-            </button>
-          </div>
         </section>
       </div>
     </main>

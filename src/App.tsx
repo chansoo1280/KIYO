@@ -15,6 +15,7 @@ function App() {
   const initialize = useAccountStore((state) => state.initialize);
   const initializeTheme = useSettingsStore((state) => state.initializeTheme);
   const initializeFontSize = useSettingsStore((state) => state.initializeFontSize);
+  const initializeBiometricEnabled = useSettingsStore((state) => state.initializeBiometricEnabled);
 
   useEffect(() => {
     initialize();
@@ -27,6 +28,10 @@ function App() {
   useEffect(() => {
     initializeFontSize();
   }, [initializeFontSize]);
+
+  useEffect(() => {
+    initializeBiometricEnabled();
+  }, [initializeBiometricEnabled]);
 
   return (
     <BrowserRouter>
