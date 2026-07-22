@@ -15,6 +15,10 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
       enabled: false,
       hasService: false,
       servicePackageName: null,
+      isOurService: false,
+      isEnabled: false,
+      hasEnabledServices: false,
+      serviceClassName: null,
     };
   }
 
@@ -37,6 +41,7 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
       isOurService: false,
       isEnabled: false,
       hasEnabledServices: false,
+      serviceClassName: null,
     };
   }
 

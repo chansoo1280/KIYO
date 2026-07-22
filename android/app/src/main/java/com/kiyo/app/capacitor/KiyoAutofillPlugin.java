@@ -1,5 +1,6 @@
 package com.kiyo.app.capacitor;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -24,6 +25,7 @@ import java.util.List;
 public class KiyoAutofillPlugin extends Plugin {
 
     private static final String TAG = "KiyoAutofillPlugin";
+    private static final String KIYO_PACKAGE_NAME = "com.kiyo.app";
 
     private AutofillRepository autofillRepository;
 
@@ -41,6 +43,75 @@ public class KiyoAutofillPlugin extends Plugin {
         }
     }
 
+    /**
+     * 현재 활성화된 Autofill Service의 ComponentName을 반환합니다.
+     * API 28+: AutofillManager.getAutofillServiceComponentName()
+     * API 26-27: Settings.Secure.AUTOFILL_SERVICE 파싱
+     */
+    private ComponentName getActiveAutofillService(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            // API 28+ (Android 9+)
+            AutofillManager autofillManager = getAutofillManager(context);
+            if (autofillManager != null) {
+                return autofillManager.getAutofillServiceComponentName();
+            }
+        } else {
+            // API 26-27 (Android 8.x)
+            String serviceString = Settings.Secure.getString(
+                context.getContentResolver(),
+                "autofill_service"
+            );
+            if (serviceString != null && !serviceString.isEmpty()) {
+                return ComponentName.unflattenFromString(serviceString);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 현재 활성 Autofill Service의 패키지명을 반환합니다.
+     */
+    private String getActiveAutofillServicePackageName(Context context) {
+        ComponentName service = getActiveAutofillService(context);
+        return service != null ? service.getPackageName() : null;
+    }
+
+    /**
+     * 현재 활성 Autofill Service가 KIYO 서비스인지 확인합니다.
+     */
+    private boolean isKiyoAutofillServiceActive(Context context) {
+        String activePackageName = getActiveAutofillServicePackageName(context);
+        return KIYO_PACKAGE_NAME.equals(activePackageName);
+    }
+
+    /**
+     * Autofill 상태 정보를 담은 JSObject를 생성합니다.
+     */
+    private JSObject buildAutofillStatus(Context context) {
+        AutofillManager autofillManager = getAutofillManager(context);
+        boolean isEnabled = autofillManager != null && autofillManager.isEnabled();
+        boolean hasEnabledServices = autofillManager != null && autofillManager.hasEnabledAutofillServices();
+        
+        String servicePackageName = getActiveAutofillServicePackageName(context);
+        boolean isOurService = KIYO_PACKAGE_NAME.equals(servicePackageName);
+        
+        // KIYO 서비스가 활성화된 경우에만 enabled = true
+        boolean enabled = isOurService && isEnabled;
+
+        ComponentName service = getActiveAutofillService(context);
+        String serviceClassName = service != null ? service.getClassName() : null;
+
+        JSObject result = new JSObject();
+        result.put("enabled", enabled);
+        result.put("hasService", hasEnabledServices);
+        result.put("servicePackageName", servicePackageName);
+        result.put("isOurService", isOurService);
+        result.put("serviceClassName", serviceClassName);
+        result.put("isEnabled", isEnabled);
+        result.put("hasEnabledServices", hasEnabledServices);
+        return result;
+    }
+
     @PluginMethod
     public void isAutofillEnabled(PluginCall call) {
         Context context = getContext();
@@ -52,22 +123,16 @@ public class KiyoAutofillPlugin extends Plugin {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             JSObject result = new JSObject();
             result.put("enabled", false);
+            result.put("hasService", false);
+            result.put("servicePackageName", null);
+            result.put("isOurService", false);
             call.resolve(result);
             return;
         }
 
         try {
-            AutofillManager autofillManager = getAutofillManager(context);
-            boolean enabled = autofillManager != null && autofillManager.isEnabled();
-            boolean hasService = autofillManager != null && autofillManager.hasEnabledAutofillServices();
-            String servicePackageName = null; // getAutofillServicePackageName() is not available in public API
-
-            Log.d(TAG, "isAutofillEnabled: enabled=" + enabled + ", hasService=" + hasService);
-
-            JSObject result = new JSObject();
-            result.put("enabled", enabled);
-            result.put("hasService", hasService);
-            result.put("servicePackageName", servicePackageName);
+            JSObject result = buildAutofillStatus(context);
+            Log.d(TAG, "isAutofillEnabled: " + result.toString());
             call.resolve(result);
         } catch (Exception e) {
             Log.e(TAG, "Error checking autofill status", e);
@@ -144,23 +209,8 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            AutofillManager autofillManager = getAutofillManager(context);
-            if (autofillManager == null) {
-                call.reject("AutofillManager not available");
-                return;
-            }
-
-            // getAutofillServicePackageName() is not available in public API
-            String servicePackageName = null;
-            boolean isOurService = false;
-            boolean isEnabled = autofillManager.isEnabled();
-            boolean hasEnabledServices = autofillManager.hasEnabledAutofillServices();
-
-            JSObject result = new JSObject();
-            result.put("servicePackageName", servicePackageName);
-            result.put("isOurService", isOurService);
-            result.put("isEnabled", isEnabled);
-            result.put("hasEnabledServices", hasEnabledServices);
+            JSObject result = buildAutofillStatus(context);
+            Log.d(TAG, "getAutofillServiceInfo: " + result.toString());
             call.resolve(result);
         } catch (Exception e) {
             Log.e(TAG, "Error getting autofill service info", e);
@@ -190,7 +240,7 @@ public class KiyoAutofillPlugin extends Plugin {
         for (int i = 0; i < accountsArray.length(); i++) {
             try {
                 org.json.JSONObject accountObj = accountsArray.getJSONObject(i);
-                
+
                 String username = accountObj.getString("username");
                 String password = accountObj.getString("password");
                 String title = accountObj.optString("title", null);
@@ -248,16 +298,15 @@ public class KiyoAutofillPlugin extends Plugin {
 
         String packageName = call.getString("packageName");
         String domain = call.getString("domain");
-        String username = call.getString("username");
+        boolean favoritesOnly = call.getBoolean("favoritesOnly", false);
 
         List<AutofillRepository.AutofillAccount> accounts;
-
         if (packageName != null && !packageName.isEmpty()) {
             accounts = autofillRepository.findByPackageName(packageName);
         } else if (domain != null && !domain.isEmpty()) {
             accounts = autofillRepository.findByDomain(domain);
-        } else if (username != null && !username.isEmpty()) {
-            accounts = autofillRepository.searchByUsername(username);
+        } else if (favoritesOnly) {
+            accounts = autofillRepository.getFavoriteAccounts();
         } else {
             accounts = autofillRepository.getAllAccounts();
         }
@@ -269,17 +318,7 @@ public class KiyoAutofillPlugin extends Plugin {
             accountObj.put("username", account.username);
             accountObj.put("password", account.password);
             accountObj.put("title", account.title);
-            // Use first package name for backward compatibility
-            String firstPackageName = account.packageNames != null && !account.packageNames.isEmpty() ? account.packageNames.get(0) : null;
-            accountObj.put("packageName", firstPackageName);
-            // Also include the full packageNames array
-            if (account.packageNames != null && !account.packageNames.isEmpty()) {
-                JSArray packageNamesArray = new JSArray();
-                for (String pkg : account.packageNames) {
-                    packageNamesArray.put(pkg);
-                }
-                accountObj.put("packageNames", packageNamesArray);
-            }
+            accountObj.put("packageNames", new JSArray(account.packageNames));
             accountObj.put("appName", account.appName);
             accountObj.put("domain", account.domain);
             accountObj.put("createdAt", account.createdAt);
@@ -290,54 +329,6 @@ public class KiyoAutofillPlugin extends Plugin {
 
         JSObject result = new JSObject();
         result.put("accounts", accountsArray);
-        result.put("count", accounts.size());
-        call.resolve(result);
-    }
-
-    @PluginMethod
-    public void addAccount(PluginCall call) {
-        if (autofillRepository == null) {
-            call.reject("AutofillRepository not initialized");
-            return;
-        }
-
-        String username = call.getString("username");
-        String password = call.getString("password");
-        String title = call.getString("title");
-        String packageName = call.getString("packageName");
-        String appName = call.getString("appName");
-        String domain = call.getString("domain");
-        boolean favorite = call.getBoolean("favorite", false);
-
-        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
-            call.reject("Username and password are required");
-            return;
-        }
-
-        // Convert single packageName to packageNames list
-        java.util.List<String> packageNames = new java.util.ArrayList<>();
-        if (packageName != null && !packageName.isEmpty()) {
-            packageNames.add(packageName);
-        }
-
-        AutofillRepository.AutofillAccount account = new AutofillRepository.AutofillAccount(
-            -1L,  // id (auto-generated)
-            username,
-            password,
-            title,
-            packageNames,
-            appName,
-            domain,
-            System.currentTimeMillis(),
-            System.currentTimeMillis(),
-            favorite
-        );
-
-        long id = autofillRepository.insertAccount(account);
-
-        JSObject result = new JSObject();
-        result.put("id", id);
-        result.put("success", true);
         call.resolve(result);
     }
 

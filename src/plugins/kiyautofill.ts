@@ -4,6 +4,10 @@ export interface AutofillStatus {
   enabled: boolean;
   hasService: boolean;
   servicePackageName: string | null;
+  isOurService: boolean;
+  isEnabled: boolean;
+  hasEnabledServices: boolean;
+  serviceClassName: string | null;
 }
 
 export interface AutofillServiceInfo {
@@ -11,6 +15,7 @@ export interface AutofillServiceInfo {
   isOurService: boolean;
   isEnabled: boolean;
   hasEnabledServices: boolean;
+  serviceClassName: string | null;
 }
 
 export interface PingResponse {

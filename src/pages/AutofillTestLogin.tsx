@@ -34,11 +34,11 @@ const AutofillTestLogin = () => {
             Android Autofill 테스트
           </h2>
           <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
-            Android AutofillService 테스트용 임시 로그인 화면입니다.
-            저장된 계정 정보로 자동완성 기능을 테스트하세요.
+            Android AutofillService 테스트용 임시 로그인 화면입니다. 저장된 계정
+            정보로 자동완성 기능을 테스트하세요.
           </p>
 
-          <div className="mt-6 space-y-4">
+          <form autoComplete="on" className="mt-6 space-y-4">
             {/* Email Field */}
             <div>
               <label
@@ -48,9 +48,9 @@ const AutofillTestLogin = () => {
                 이메일
               </label>
               <input
-                id="email"
+                id="username"
                 type="email"
-                autoComplete="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
@@ -86,7 +86,7 @@ const AutofillTestLogin = () => {
             >
               로그인
             </button>
-          </div>
+          </form>
 
           {/* Info Section */}
           <div className="mt-6 p-3 rounded-lg bg-[var(--color-code-bg)] border border-[var(--color-border)]">
@@ -94,11 +94,17 @@ const AutofillTestLogin = () => {
               Autofill 힌트 설정
             </p>
             <ul className="mt-2 space-y-1 text-xs text-[var(--color-text)] font-mono">
-              <li>이메일: <code>autoComplete="email"</code> (username/email 힌트)</li>
-              <li>비밀번호: <code>autoComplete="current-password"</code> (password 힌트)</li>
+              <li>
+                이메일: <code>autoComplete="email"</code> (username/email 힌트)
+              </li>
+              <li>
+                비밀번호: <code>autoComplete="current-password"</code> (password
+                힌트)
+              </li>
             </ul>
             <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-              Android AutofillService가 이 힌트를 인식하여 저장된 계정 정보를 제안합니다.
+              Android AutofillService가 이 힌트를 인식하여 저장된 계정 정보를
+              제안합니다.
             </p>
           </div>
         </section>

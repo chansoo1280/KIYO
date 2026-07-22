@@ -163,6 +163,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   };
 
   const isEnabled = status?.enabled;
+  const isOurService = status?.isOurService;
 
   return (
     <div className="space-y-3">
@@ -171,12 +172,16 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
         <div className="flex flex-col gap-1">
           <span className="font-medium">자동완성 서비스</span>
           <span className="text-xs text-[var(--color-text-muted)]">
-            {isEnabled ? "자동완성 서비스 활성화됨" : "비활성화"}
+            {isOurService
+              ? "KIYO 자동완성 활성화됨"
+              : isEnabled
+                ? "다른 자동완성 서비스 사용 중"
+                : "자동완성이 비활성화되어 있습니다."}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`w-2 h-2 rounded-full ${isEnabled ? "bg-green-500" : "bg-gray-400"}`}
+            className={`w-2 h-2 rounded-full ${isEnabled ? "bg-green-500" : isOurService ? "bg-yellow-500" : "bg-gray-400"}`}
           />
           {isEnabled ? (
             <button
