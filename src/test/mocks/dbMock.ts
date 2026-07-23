@@ -17,6 +17,7 @@ export interface MockDB {
   mockClearActiveFileInfo: Mock;
   mockGetActiveFileInfo: Mock;
   mockGetDatabase: Mock;
+  mockInitializeDatabase: Mock;
 }
 
 // ============================================
@@ -86,6 +87,7 @@ export const createDBMocks = () => {
     .fn()
     .mockResolvedValue(mockDBDefaults.getActiveFileInfo);
   const mockGetDatabase = vi.fn().mockReturnValue(mockDBDefaults.getDatabase);
+  const mockInitializeDatabase = vi.fn().mockResolvedValue(undefined);
 
   return {
     mockSaveFileDataToDB,
@@ -98,6 +100,7 @@ export const createDBMocks = () => {
     mockClearActiveFileInfo,
     mockGetActiveFileInfo,
     mockGetDatabase,
+    mockInitializeDatabase,
   };
 };
 
@@ -118,6 +121,7 @@ export const createMockDB = (overrides?: Partial<MockDB>): MockDB => {
     mockClearActiveFileInfo: mocks.mockClearActiveFileInfo,
     mockGetActiveFileInfo: mocks.mockGetActiveFileInfo,
     mockGetDatabase: mocks.mockGetDatabase,
+    mockInitializeDatabase: mocks.mockInitializeDatabase,
     ...overrides,
   };
 };

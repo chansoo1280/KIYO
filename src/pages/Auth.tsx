@@ -1,19 +1,35 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
-import { useSettingsStore } from "../store/settingsStore";
-import { unlockFile, closeDataFile } from "../database/fileStorage";
+import { useBiometricAuth } from "../hooks/useBiometricAuth";
+import {
+  unlockFile,
+  closeDataFile,
+  isEncryptedKiyoFile,
+  isKiyoFile,
+  normalizeDataFileName,
+} from "../database/fileStorage";
+import { decryptData } from "../crypto/encryption";
+import { useAccountStore } from "../store/accountStore";
+import {
+  getDatabaseSnapshot,
+  migrateAccountsToEncryptedFormat,
+} from "../database/db";
+import { replaceDatabaseData, saveFileDataToDB } from "../database/db";
+import useBiometricAuthStore from "../store/biometricAuthStore";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { activeFileName } = useSessionStore((state) => state);
-  const { biometricEnabled } = useSettingsStore((state) => state);
+  const { activeFileName, salt } = useSessionStore((state) => state);
+  const { biometricEnabled, initializeBiometricAuthStore } =
+    useBiometricAuthStore((state) => state);
+  const { authenticate } = useBiometricAuth();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [showPinInput, setShowPinInput] = useState(!biometricEnabled);
 
-  // Get fileName and isEncrypted from location state
+  // Get fileName from session store
   const fileName = activeFileName;
 
   useEffect(() => {
@@ -62,13 +78,77 @@ const Auth = () => {
     }
   };
 
-  const handleBiometricAuth = () => {
-    // Placeholder for biometric authentication
-    // Actual biometric authentication will be implemented via native Android plugin
-    console.log("Biometric authentication requested (placeholder)");
-    // TODO: Call native biometric authentication via KiyoAutofill plugin
-    // For now, just show a message
-    setError("생체 인증은 준비 중입니다. PIN 번호를 입력해주세요.");
+  const handleBiometricAuth = async () => {
+    // Check availability using the hook
+    const availability = await initializeBiometricAuthStore();
+    if (!availability.isAvailable) {
+      setError(
+        availability.error ||
+          "생체 인증을 사용할 수 없습니다. PIN 번호를 입력해주세요.",
+      );
+      return;
+    }
+
+    setIsVerifying(true);
+    setError("");
+
+    try {
+      const result = await authenticate();
+      if (result === null) {
+        setIsVerifying(false);
+        return;
+      }
+      if (result.success && result.cryptoKey) {
+        // Use the cryptoKey from biometric authentication to unlock the file
+        if (!fileName || !salt) {
+          setError("세션 정보가 없습니다. 다시 시도해주세요.");
+          setIsVerifying(false);
+          return;
+        }
+
+        const normalizedFileName = fileName;
+        const fileData = await getDatabaseSnapshot(normalizedFileName);
+
+        if (!fileData || !isEncryptedKiyoFile(fileData)) {
+          setError("파일 정보를 찾을 수 없습니다.");
+          setIsVerifying(false);
+          return;
+        }
+
+        try {
+          const decrypted = await decryptData(fileData, result.cryptoKey);
+
+          if (!isKiyoFile(decrypted)) {
+            setError("파일 데이터가 올바르지 않습니다.");
+            setIsVerifying(false);
+            return;
+          }
+
+          const normalizedFileName = normalizeDataFileName(decrypted.fileName);
+          await useSessionStore.getState().setSession({
+            fileName: normalizedFileName,
+            cryptoKey: result.cryptoKey,
+            salt,
+          });
+          await replaceDatabaseData(decrypted);
+          await saveFileDataToDB(normalizedFileName, fileData, salt);
+          useAccountStore.getState().setAccounts(decrypted.accounts);
+
+          // Migrate existing plaintext accounts to encrypted format
+          await migrateAccountsToEncryptedFormat(result.cryptoKey);
+
+          navigate("/list", { replace: true });
+        } catch (decryptError) {
+          console.error("Biometric decryption failed:", decryptError);
+          setError("생체 인증 복호화에 실패했습니다. PIN 번호를 입력해주세요.");
+          setIsVerifying(false);
+        }
+      }
+    } catch (err) {
+      console.error("Biometric authentication failed:", err);
+      setError("생체 인증에 실패했습니다. PIN 번호를 입력해주세요.");
+      setIsVerifying(false);
+    }
   };
 
   const handleShowPinInput = () => {

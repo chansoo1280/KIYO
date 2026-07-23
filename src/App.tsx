@@ -10,12 +10,17 @@ import AutofillTestLogin from "./pages/AutofillTestLogin";
 import { useAccountStore } from "./store/accountStore.ts";
 import { useSettingsStore } from "./store/settingsStore";
 import { useEffect } from "react";
+import useBiometricAuthStore from "./store/biometricAuthStore.ts";
 
 function App() {
   const initialize = useAccountStore((state) => state.initialize);
   const initializeTheme = useSettingsStore((state) => state.initializeTheme);
-  const initializeFontSize = useSettingsStore((state) => state.initializeFontSize);
-  const initializeBiometricEnabled = useSettingsStore((state) => state.initializeBiometricEnabled);
+  const initializeFontSize = useSettingsStore(
+    (state) => state.initializeFontSize,
+  );
+  const initializeBiometricAuthStore = useBiometricAuthStore(
+    (state) => state.initializeBiometricAuthStore,
+  );
 
   useEffect(() => {
     initialize();
@@ -30,8 +35,8 @@ function App() {
   }, [initializeFontSize]);
 
   useEffect(() => {
-    initializeBiometricEnabled();
-  }, [initializeBiometricEnabled]);
+    initializeBiometricAuthStore();
+  }, [initializeBiometricAuthStore]);
 
   return (
     <BrowserRouter>

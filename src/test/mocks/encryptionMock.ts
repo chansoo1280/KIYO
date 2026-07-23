@@ -60,15 +60,15 @@ export const mockEncryptionDefaults = {
  * Creates mock functions for encryption module
  */
 export const createEncryptionMocks = () => {
-  const mockCreateCryptoKey = vi
-    .fn()
-    .mockResolvedValue(mockEncryptionDefaults.createCryptoKey);
-  const mockEncryptData = vi
-    .fn()
-    .mockResolvedValue(mockEncryptionDefaults.encryptData);
-  const mockDecryptData = vi
-    .fn()
-    .mockResolvedValue(mockEncryptionDefaults.decryptData);
+  const mockCreateCryptoKey = vi.fn().mockImplementation(async () => {
+    return mockEncryptionDefaults.createCryptoKey;
+  });
+  const mockEncryptData = vi.fn().mockImplementation(async () => {
+    return mockEncryptionDefaults.encryptData;
+  });
+  const mockDecryptData = vi.fn().mockImplementation(async () => {
+    return mockEncryptionDefaults.decryptData;
+  });
   const mockIsEncryptedKiyoFile = vi
     .fn()
     .mockReturnValue(mockEncryptionDefaults.isEncryptedKiyoFile);
@@ -145,5 +145,5 @@ export const encryptionMock = {
   createMockEncryption,
   createCryptoUtilsMocks,
   createMockCryptoUtils,
-  defaults: mockEncryptionDefaults,
+  mockEncryptionDefaults,
 };

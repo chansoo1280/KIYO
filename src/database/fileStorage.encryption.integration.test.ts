@@ -22,26 +22,45 @@ import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import { fromBase64 } from "../crypto/crypto.utils";
 import { isEncryptedKiyoFile } from "./fileStorage";
 import { decryptData, type EncryptedKiyoFile } from "../crypto/encryption";
+import * as db from "./db";
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
   registerPlugin: vi.fn(() => ({
-    isAutofillEnabled: vi.fn().mockResolvedValue({ enabled: false, hasService: false, servicePackageName: null }),
-    getAutofillServiceInfo: vi.fn().mockResolvedValue({ isEnabled: false, isOurService: false, servicePackageName: null }),
+    isAutofillEnabled: vi
+      .fn()
+      .mockResolvedValue({
+        enabled: false,
+        hasService: false,
+        servicePackageName: null,
+      }),
+    getAutofillServiceInfo: vi
+      .fn()
+      .mockResolvedValue({
+        isEnabled: false,
+        isOurService: false,
+        servicePackageName: null,
+      }),
     requestAutofillEnable: vi.fn().mockResolvedValue(undefined),
     getAccountCount: vi.fn().mockResolvedValue({ count: 0 }),
-    syncAccountsFromReact: vi.fn().mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
-    syncAccounts: vi.fn().mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
+    syncAccountsFromReact: vi
+      .fn()
+      .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
+    syncAccounts: vi
+      .fn()
+      .mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
     getAccounts: vi.fn().mockResolvedValue({ accounts: [], count: 0 }),
     addAccount: vi.fn().mockResolvedValue({ id: 1, success: true }),
     updateAccount: vi.fn().mockResolvedValue({ updated: true, id: 1 }),
     deleteAccount: vi.fn().mockResolvedValue({ deleted: true, id: 1 }),
     toggleFavorite: vi.fn().mockResolvedValue({ success: true, id: 1 }),
-    clearAllAccounts: vi.fn().mockResolvedValue({ deletedCount: 0, success: true }),
+    clearAllAccounts: vi
+      .fn()
+      .mockResolvedValue({ deletedCount: 0, success: true }),
   })),
   Capacitor: {
     isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => 'web'),
+    getPlatform: vi.fn(() => "web"),
   },
 }));
 
@@ -101,6 +120,7 @@ describe("fileStorage Encryption Integration Tests", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await resetTestEnvironment();
+    vi.spyOn(db, "initializeDatabase").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -344,10 +364,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       await db.accounts.put(testAccount);
 
       // 3. backupDataFile로 암호화 백업
-      await backupDataFile(
-        "encrypted-backup-tamper.json",
-        TEST_PIN,
-      );
+      await backupDataFile("encrypted-backup-tamper.json", TEST_PIN);
 
       // 4. DB에서 저장된 암호화 파일 가져오기 (실제 저장된 암호화 데이터)
       const savedEncryptedFile = await getEncryptedFileFromDB(

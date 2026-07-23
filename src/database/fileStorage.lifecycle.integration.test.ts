@@ -20,6 +20,7 @@ import type { Account, Template, FileMetadata } from "../models/account";
 import { createTestAccounts } from "../test/fixtures/accountFixtures";
 import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import { createTestMetadata } from "../test/fixtures/databaseFixtures";
+import * as db from "./db";
 
 type Metadata = FileMetadata;
 
@@ -114,6 +115,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await resetTestEnvironment();
+    vi.spyOn(db, "initializeDatabase").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {

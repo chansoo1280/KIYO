@@ -44,7 +44,8 @@ export class KiyoDatabase extends Dexie {
         accounts:
           "id, templateId, title, *tags, favorite, createdAt, updatedAt, websiteUrl, domain, packageName",
         templates: "id, name",
-        settings: "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
+        settings:
+          "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
         metadata: "id, version, createdAt",
         files: "++id, fileName, createdAt, updatedAt",
       })
@@ -154,10 +155,19 @@ export const replaceDatabaseData = async (
   );
 };
 
-export const initializeDevDatabase = async () => {
+export const initializeDatabase = async () => {
   console.log("Initializing database...");
-  if (!import.meta.env.DEV) return;
-
+  if (!import.meta.env.DEV) {
+    await db.transaction("rw", db.templates, db.metadata, async () => {
+      await db.templates.bulkPut(fixedTemplates);
+      await db.metadata.put({
+        id: 1,
+        version: "1.0.0",
+        createdAt: Date.now(),
+      });
+    });
+    return;
+  }
   const count = await db.accounts.count();
 
   if (count > 0) return;
@@ -166,21 +176,10 @@ export const initializeDevDatabase = async () => {
     "rw",
     db.accounts,
     db.templates,
-    db.settings,
     db.metadata,
     async () => {
       await db.accounts.bulkPut(devAccounts);
-
       await db.templates.bulkPut(fixedTemplates);
-
-      await db.settings.put({
-        theme: "light",
-        lockEnabled: true,
-        autoLockTime: 60,
-        fontSize: "medium",
-        biometricEnabled: true,
-      });
-
       await db.metadata.put({
         id: 1,
         version: "1.0.0",

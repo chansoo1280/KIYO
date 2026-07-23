@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createDataFile } from "./fileStorage";
-import type { EncryptedKiyoFile } from "../crypto/encryption";
-import { createCryptoKey, encryptData } from "../crypto/encryption";
+import {
+  createCryptoKey,
+  encryptData,
+  type EncryptedKiyoFile,
+} from "../crypto/encryption";
 import { saveFileDataToDB } from "../database/db";
 
 // Import common mocks
 import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
-import { createMockEncryption } from "../test/mocks/encryptionMock";
+import {
+  createMockEncryption,
+  mockEncryptionDefaults,
+} from "../test/mocks/encryptionMock";
 import { createMockDB } from "../test/mocks/dbMock";
 
 // Mock sessionStore
@@ -24,9 +30,10 @@ vi.mock("../crypto/encryption", () => ({
 
 // Mock db functions
 vi.mock("../database/db", () => ({
-  saveFileDataToDB: vi.fn(),
+  saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
   loadAccountsFromDB: vi.fn().mockResolvedValue([]),
   syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
+  initializeDatabase: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { useSessionStore } from "../store/sessionStore";
@@ -38,13 +45,8 @@ describe("createDataFile", () => {
 
   const mockCryptoKey = {} as CryptoKey;
   const mockSalt = new Uint8Array(16);
-  const mockEncryptedData: EncryptedKiyoFile = {
-    version: 1,
-    encrypted: true,
-    salt: "base64salt",
-    iv: "base64iv",
-    ciphertext: "base64ciphertext",
-  };
+  const mockEncryptedData: EncryptedKiyoFile =
+    mockEncryptionDefaults.encryptData;
 
   beforeEach(() => {
     // Create fresh mocks for each test
@@ -54,18 +56,16 @@ describe("createDataFile", () => {
 
     // Configure mock implementations
     vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+    vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
+
     vi.mocked(createCryptoKey).mockImplementation(
       mockEncryption.mockCreateCryptoKey,
     );
     vi.mocked(encryptData).mockImplementation(mockEncryption.mockEncryptData);
-    vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
-
-    // Override specific mock implementations for createDataFile tests
     mockEncryption.mockCreateCryptoKey.mockResolvedValue({
       key: mockCryptoKey,
       salt: mockSalt,
     });
-    mockEncryption.mockEncryptData.mockResolvedValue(mockEncryptedData);
   });
 
   afterEach(() => {

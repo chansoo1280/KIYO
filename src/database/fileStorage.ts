@@ -15,9 +15,9 @@ import {
   getDatabaseSnapshot,
   saveFileDataToDB,
   loadAccountsFromDB,
-  initializeDevDatabase,
   getActiveFileInfo,
   migrateAccountsToEncryptedFormat,
+  initializeDatabase,
 } from "./db";
 import { useAccountStore } from "../store/accountStore";
 import {
@@ -102,8 +102,7 @@ export const createDataFile = async (
   pin?: string,
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
-
-  if (import.meta.env.DEV) await initializeDevDatabase();
+  await initializeDatabase();
   const accounts = await loadAccountsFromDB();
   useAccountStore.getState().setAccounts(accounts);
   const data: KiyoDataFile = {
