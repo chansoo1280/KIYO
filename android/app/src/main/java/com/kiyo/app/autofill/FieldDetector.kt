@@ -12,6 +12,27 @@ object FieldDetector {
 
     private const val TAG = "FieldDetector"
 
+    fun findFocusedNode(
+        node: AssistStructure.ViewNode
+    ): AssistStructure.ViewNode? {
+
+        if (node.isFocused) {
+            return node
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChildAt(i)
+
+            val result = findFocusedNode(child)
+
+            if (result != null) {
+                return result
+            }
+        }
+
+        return null
+    }
+
     /**
      * 후위 순회(post-order traversal)로 최적의 필드 후보 찾기
      * 자식 노드를 먼저 평가한 후 현재 노드 평가

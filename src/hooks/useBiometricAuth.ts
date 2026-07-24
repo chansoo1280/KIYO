@@ -4,7 +4,7 @@ import {
   BiometryErrorType,
   BiometricAuth,
 } from "@aparajita/capacitor-biometric-auth";
-import { fromBase64, toBase64 } from "../crypto/crypto.utils";
+import { exportCryptoKey, fromBase64 } from "../crypto/crypto.utils";
 import { SecureStorage } from "@aparajita/capacitor-secure-storage";
 
 type BiometricAuthResult = { success: true; cryptoKey: CryptoKey } | null;
@@ -264,9 +264,7 @@ export const useBiometricAuth = () => {
   const saveCryptoKey = async (cryptoKey: CryptoKey): Promise<boolean> => {
     try {
       const CRYPTO_KEY_KEY = "biometric_crypto_key";
-      const rawKey = await crypto.subtle.exportKey("raw", cryptoKey);
-
-      const base64Key = toBase64(new Uint8Array(rawKey));
+      const base64Key = await exportCryptoKey(cryptoKey);
       await SecureStorage.set(CRYPTO_KEY_KEY, base64Key);
       return true;
     } catch (error) {

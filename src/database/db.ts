@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import Dexie, { type Table } from "dexie";
 import { useSessionStore } from "../store/sessionStore";
-import { encryptData } from "../crypto/encryption";
+import { encryptData, isEncryptedKiyoFile } from "../crypto/encryption";
 import { writeDataFile, type KiyoDataFile } from "../database/fileStorage";
 import { toBase64, fromBase64 } from "../crypto/crypto.utils";
 import type { EncryptedKiyoFile } from "../crypto/encryption";
@@ -16,7 +16,6 @@ import { isFileStorageError } from "../errors/FileStorageError";
 import {
   encryptAccountsSensitiveFields,
   decryptAccountsSensitiveFields,
-  migrateAccountsToEncrypted,
   hasEncryptedFields,
 } from "../crypto/fieldEncryption";
 
@@ -243,34 +242,34 @@ export const saveAccountsToDB = async (
  * Migrate existing plaintext accounts to encrypted format
  * This should be called when unlocking an encrypted file for the first time
  */
-export const migrateAccountsToEncryptedFormat = async (
-  cryptoKey: CryptoKey,
-): Promise<void> => {
-  const accounts = await db.accounts.toArray();
+// export const migrateAccountsToEncryptedFormat = async (
+//   cryptoKey: CryptoKey,
+// ): Promise<void> => {
+//   const accounts = await db.accounts.toArray();
 
-  if (accounts.length === 0) return;
+//   if (accounts.length === 0) return;
 
-  // Check if any accounts need migration
-  const needsMigration = accounts.some(
-    (account) => !hasEncryptedFields(account),
-  );
+//   // Check if any accounts need migration
+//   const needsMigration = accounts.some(
+//     (account) => !hasEncryptedFields(account),
+//   );
 
-  if (needsMigration) {
-    try {
-      const migratedAccounts = await migrateAccountsToEncrypted(
-        accounts,
-        cryptoKey,
-      );
-      await db.accounts.bulkPut(migratedAccounts);
-      console.log(
-        `Migrated ${migratedAccounts.length} accounts to encrypted format`,
-      );
-    } catch (error) {
-      console.error("Failed to migrate accounts to encrypted format:", error);
-      throw error;
-    }
-  }
-};
+//   if (needsMigration) {
+//     try {
+//       const migratedAccounts = await migrateAccountsToEncrypted(
+//         accounts,
+//         cryptoKey,
+//       );
+//       await db.accounts.bulkPut(migratedAccounts);
+//       console.log(
+//         `Migrated ${migratedAccounts.length} accounts to encrypted format`,
+//       );
+//     } catch (error) {
+//       console.error("Failed to migrate accounts to encrypted format:", error);
+//       throw error;
+//     }
+//   }
+// };
 
 // Save active file info to files table (update salt only, don't touch other fields)
 export const saveActiveFileInfo = async (
@@ -328,10 +327,11 @@ export const saveFileDataToDB = async (
   fileData: KiyoDataFile | EncryptedKiyoFile,
   salt?: Uint8Array,
 ): Promise<void> => {
+  await db.files.clear();
   const now = Date.now();
 
   // Check if the data itself is encrypted (EncryptedKiyoFile has encrypted: true property)
-  const isEncrypted = "encrypted" in fileData && fileData.encrypted === true;
+  const isEncrypted = isEncryptedKiyoFile(fileData);
 
   const fileDataRecord: FileData = {
     id: Date.now(), // Assign a unique ID
@@ -343,11 +343,6 @@ export const saveFileDataToDB = async (
     updatedAt: now,
   };
   await db.files.put(fileDataRecord);
-};
-
-// Clear file data for a specific file
-export const clearFileData = async (fileName: string): Promise<void> => {
-  await db.files.where("fileName").equals(fileName).delete();
 };
 
 // Get all file names from files table

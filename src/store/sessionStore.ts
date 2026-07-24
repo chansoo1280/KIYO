@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, devtools } from "zustand/middleware";
-import { clearActiveFileInfo, saveActiveFileInfo } from "../database/db";
 
 export interface SessionState {
   activeFileName: string | null;
@@ -28,7 +27,7 @@ export interface SessionState {
 export const useSessionStore = create<SessionState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         activeFileName: null,
         cryptoKey: null,
         salt: null,
@@ -42,24 +41,14 @@ export const useSessionStore = create<SessionState>()(
             cryptoKey: cryptoKey ?? state.cryptoKey,
             salt: salt ?? state.salt,
           }));
-          if (fileName) {
-            await saveActiveFileInfo(fileName, salt || undefined);
-          } else {
-            await clearActiveFileInfo();
-          }
         },
 
         setCryptoKey: async (key, salt) => {
           set({ cryptoKey: key, salt });
-          const { activeFileName } = get();
-          if (activeFileName) {
-            await saveActiveFileInfo(activeFileName, salt);
-          }
         },
 
         clearSession: async () => {
           set({ activeFileName: null, cryptoKey: null, salt: null });
-          await clearActiveFileInfo();
         },
 
         setSyncError: (error: string | null) => {

@@ -9,6 +9,7 @@ import type {
 } from "./kiyautofill";
 
 export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
+  private sessionValue: { key?: string; isLock: boolean } | null = null;
   async isAutofillEnabled(): Promise<AutofillStatus> {
     console.warn("KiyoAutofill: isAutofillEnabled not available on web");
     return {
@@ -60,11 +61,26 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
   }
 
   async setBiometricEnabled({ enabled }: { enabled: boolean }): Promise<void> {
-    console.warn("KiyoAutofill: setBiometricEnabled not available on web", enabled);
+    console.warn(
+      "KiyoAutofill: setBiometricEnabled not available on web",
+      enabled,
+    );
   }
 
   async getBiometricEnabled(): Promise<{ enabled: boolean }> {
     console.warn("KiyoAutofill: getBiometricEnabled not available on web");
     return { enabled: true };
+  }
+
+  async saveSession(options: { key?: string; isLock: boolean }): Promise<void> {
+    this.sessionValue = options;
+  }
+
+  async clearSession(): Promise<void> {
+    this.sessionValue = null;
+  }
+
+  async hasSession(): Promise<{ hasSession: boolean }> {
+    return { hasSession: this.sessionValue !== null };
   }
 }

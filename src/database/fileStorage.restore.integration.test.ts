@@ -145,7 +145,7 @@ describe("fileStorage Restore Integration Tests", () => {
   const backupAndRestore = async (fileName: string, pin: string) => {
     const backedUp = await backupDataFile(fileName, pin);
     const backupJson = JSON.stringify(backedUp);
-    return openImportedDataFile(backupJson, pin);
+    return openImportedDataFile(backupJson, pin, fileName);
   };
 
   // Helper to backup encrypted and restore
@@ -158,7 +158,7 @@ describe("fileStorage Restore Integration Tests", () => {
       .first();
     const encryptedFileData = JSON.parse(fileRecord!.fileData);
     const encryptedJsonString = JSON.stringify(encryptedFileData);
-    return openImportedDataFile(encryptedJsonString, pin);
+    return openImportedDataFile(encryptedJsonString, pin, fileName);
   };
 
   // Comprehensive data integrity verification
@@ -249,7 +249,11 @@ describe("fileStorage Restore Integration Tests", () => {
       await createDataFile("empty-restore.json", "");
       const emptyBackedUp = await backupDataFile("empty-backup.json", "");
       const emptyBackupJson = JSON.stringify(emptyBackedUp);
-      const emptyImported = await openImportedDataFile(emptyBackupJson, "");
+      const emptyImported = await openImportedDataFile(
+        emptyBackupJson,
+        "",
+        "empty-backup.json",
+      );
 
       expect(emptyImported).not.toBeNull();
       expect(emptyImported!.accounts).toHaveLength(0);
@@ -343,7 +347,11 @@ describe("fileStorage Restore Integration Tests", () => {
 
       const backedUp = await backupDataFile("complex-backup.json", "");
       const backupJson = JSON.stringify(backedUp);
-      const imported = await openImportedDataFile(backupJson, "");
+      const imported = await openImportedDataFile(
+        backupJson,
+        "",
+        "complex-backup.json",
+      );
 
       verifyDataIntegrity(imported, [complexAccount], templates, metadata);
 
@@ -439,7 +447,11 @@ describe("fileStorage Restore Integration Tests", () => {
 
       const backedUp = await backupDataFile("integrity-backup.json", "");
       const backupJson = JSON.stringify(backedUp);
-      const imported = await openImportedDataFile(backupJson, "");
+      const imported = await openImportedDataFile(
+        backupJson,
+        "",
+        "integrity-backup.json",
+      );
 
       expect(imported).not.toBeNull();
       const importedAccount = imported!.accounts[0];
@@ -525,7 +537,11 @@ describe("fileStorage Restore Integration Tests", () => {
       expect(backedUp.accounts).toHaveLength(20);
 
       const backupJson = JSON.stringify(backedUp);
-      const imported = await openImportedDataFile(backupJson, "");
+      const imported = await openImportedDataFile(
+        backupJson,
+        "",
+        "large-backup.json",
+      );
 
       expect(imported).not.toBeNull();
       expect(imported!.accounts).toHaveLength(20);
@@ -609,7 +625,11 @@ describe("fileStorage Restore Integration Tests", () => {
       const encryptedJsonString = JSON.stringify(encryptedFileData);
 
       // 올바른 PIN으로 복원
-      const imported = await openImportedDataFile(encryptedJsonString, pin);
+      const imported = await openImportedDataFile(
+        encryptedJsonString,
+        pin,
+        "complex-encrypted-backup.json",
+      );
 
       expect(imported).not.toBeNull();
       expect(imported!.accounts).toHaveLength(1);

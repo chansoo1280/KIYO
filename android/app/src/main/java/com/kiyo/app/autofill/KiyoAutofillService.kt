@@ -27,7 +27,9 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.collections.any
-
+import com.kiyo.app.security.SecuritySession
+import android.content.Intent
+import com.kiyo.app.MainActivity
 /**
  * Android Autofill Service for KIYO Password Manager
  * Provides autofill functionality for Android apps (API 26+)
@@ -57,6 +59,15 @@ class KiyoAutofillService : AutofillService() {
         executor.shutdown()
         super.onDestroy()
         Log.d(TAG, "AutofillService destroyed")
+    }
+
+    private fun openKiyoApp() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            putExtra("reason", "autofill_auth_required")
+        }
+
+        startActivity(intent)
     }
 
     /**
@@ -92,6 +103,13 @@ class KiyoAutofillService : AutofillService() {
                 if (BuildConfig.DEBUG) {
                     ViewNodeUtils.dumpViewNodeTree(rootViewNode, 0)
                 }
+                val focusedNode = FieldDetector.findFocusedNode(rootViewNode)
+                if (focusedNode == null) {
+                    callback.onSuccess(null)
+                    return@execute
+                }
+
+
 
                 // Find best username and password field candidates using unified detection logic
                 val usernameCandidate = FieldDetector.findBestFieldCandidate(
@@ -136,6 +154,20 @@ class KiyoAutofillService : AutofillService() {
                 if (accounts.isEmpty()) {
                     Log.d(TAG, "No matching accounts found")
                     handler.post { callback.onSuccess(null) }
+                    return@execute
+                }
+                
+                val key = SecuritySession.get()
+                Log.d(TAG, "SecuritySession :: ${key}")
+
+                if (key == null) {
+                    val response = FillResponseBuilder.createAuthResponse(
+                        this@KiyoAutofillService,
+                        usernameId,
+                        passwordId
+                    )
+
+                    handler.post { callback.onSuccess(response) }
                     return@execute
                 }
 

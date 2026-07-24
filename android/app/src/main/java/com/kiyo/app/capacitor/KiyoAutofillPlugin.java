@@ -18,6 +18,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import com.kiyo.app.autofill.AutofillRepository;
+import com.kiyo.app.security.SecuritySession;
 
 import java.util.List;
 
@@ -530,5 +531,38 @@ public class KiyoAutofillPlugin extends Plugin {
             Log.e(TAG, "Failed to get biometric setting", e);
             call.reject("Failed to get biometric setting: " + e.getMessage());
         }
+    }
+
+    @PluginMethod
+    public void saveSession(PluginCall call) {
+        String key = call.getString("key");
+        boolean isLock = call.getBoolean("isLock", false);
+
+        if (key == null && isLock) {
+            call.reject("key parameter is required when locked");
+            return;
+        }
+
+        SecuritySession.INSTANCE.save(key, isLock);
+
+        Log.d(TAG, "Session saved. isLock=" + isLock);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void clearSession(PluginCall call) {
+        SecuritySession.INSTANCE.clear();
+
+        Log.d(TAG, "Session cleared");
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void hasSession(PluginCall call) {
+        boolean hasSession = SecuritySession.INSTANCE.hasSession();
+
+        JSObject result = new JSObject();
+        result.put("hasSession", hasSession);
+        call.resolve(result);
     }
 }

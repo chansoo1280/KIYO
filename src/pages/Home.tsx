@@ -6,9 +6,7 @@ import {
   openImportedDataFile,
 } from "../database/fileStorage";
 import FileCreateDialog from "../components/FileCreateDialog";
-import {
-  getActiveFileInfo,
-} from "../database/db";
+import { getActiveFileInfo } from "../database/db";
 import FileOpenDialog from "../components/FileOpenDialog";
 import {
   FileStorageErrorCode,
@@ -20,23 +18,23 @@ const Home = () => {
   const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOpenDialog, setShowOpenDialog] = useState(false);
-  const { activeFileName, salt, cryptoKey } = useSessionStore((state) => state);
+  const { activeFileName } = useSessionStore((state) => state);
 
-  const checkFileAndNavigate = async () => {
-    const { fileData } = await getActiveFileInfo();
-    if (!activeFileName) return;
-    if (!!salt && !cryptoKey) {
-      navigate("/auth", {
-        replace: true,
-      });
-      return;
-    } else if (isKiyoFile(fileData)) {
-      navigate("/list", { replace: true });
-    }
-  };
   useEffect(() => {
+    const checkFileAndNavigate = async () => {
+      const { fileData, encrypted } = await getActiveFileInfo();
+      if (!activeFileName) return;
+      if (encrypted) {
+        navigate("/auth", {
+          replace: true,
+        });
+        return;
+      } else if (isKiyoFile(fileData)) {
+        navigate("/list", { replace: true });
+      }
+    };
     checkFileAndNavigate();
-  }, []);
+  }, [navigate]);
 
   const handleCreateFile = async ({
     fileName,
@@ -57,7 +55,11 @@ const Home = () => {
 
   const handleOpenFile = async ({ file, pin }: { file: File; pin: string }) => {
     try {
-      const data = await openImportedDataFile(await file.text(), pin);
+      const data = await openImportedDataFile(
+        await file.text(),
+        pin,
+        file.name,
+      );
 
       if (!isKiyoFile(data)) {
         throw new Error("지원하지 않는 파일 형식입니다.");

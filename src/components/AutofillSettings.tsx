@@ -125,14 +125,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   // Initial load
   useEffect(() => {
     checkStatus();
-  }, [checkStatus]);
-
-  // Refresh status when accounts change
-  useEffect(() => {
-    if (Capacitor.getPlatform() === "android") {
-      checkStatus();
-    }
-  }, [accounts.length, checkStatus]);
+  }, []);
 
   if (Capacitor.getPlatform() !== "android") {
     return (

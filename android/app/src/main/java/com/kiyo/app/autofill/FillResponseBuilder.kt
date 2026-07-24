@@ -18,6 +18,41 @@ object FillResponseBuilder {
 
     private const val TAG = "FillResponseBuilder"
 
+    fun createAuthResponse(
+        context: Context,
+        usernameId: AutofillId?,
+        passwordId: AutofillId?
+    ): FillResponse {
+
+        val presentation = RemoteViews(
+            context.packageName,
+            R.layout.autofill_auth_item
+        )
+
+        presentation.setTextViewText(
+            R.id.tv_message,
+            "🔒 잠금 해제하여 자동완성을 사용하세요."
+        )
+
+        val datasetBuilder = Dataset.Builder(presentation)
+
+        usernameId?.let {
+            datasetBuilder.setValue(
+                it,
+                AutofillValue.forText("")
+            )
+        } ?: passwordId?.let {
+            datasetBuilder.setValue(
+                it,
+                AutofillValue.forText("")
+            )
+        }
+
+        return FillResponse.Builder()
+            .addDataset(datasetBuilder.build())
+            .build()
+    }
+
     /**
      * FillResponse 생성
      * 

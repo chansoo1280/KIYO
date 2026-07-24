@@ -17,43 +17,44 @@ import { useSettingsStore } from "../store/settingsStore";
 import { useBiometricAuthStore } from "../store/biometricAuthStore";
 import { useBiometricAuth } from "../hooks/useBiometricAuth";
 import type { FontSize } from "../models/account";
-import { useAutofill } from "../hooks/useAutofill";
 import { AutofillSettings } from "../components/AutofillSettings";
+import { getActiveFileInfo } from "../database/db";
 
 const Settings = () => {
-  useAutofill();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
-  const { activeFileName, cryptoKey, salt } = useSessionStore((state) => state);
-  const isEncrypted = !!salt;
+  const { activeFileName: fileName, cryptoKey } = useSessionStore(
+    (state) => state,
+  );
   const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
-  const {
-    isAvailable,
-    biometricEnabled,
-    setBiometricEnabled,
-  } = useBiometricAuthStore();
+  const { isAvailable, biometricEnabled, setBiometricEnabled } =
+    useBiometricAuthStore();
+  const [isEncrypted, setIsEncrypted] = useState(false);
 
   const { enableBiometric, disableBiometric } = useBiometricAuth();
   const defaultBackupFileName = (() => {
-    const fileName = activeFileName?.replace(/\.json$/, "") ?? "kiyo";
-    const isBackup = /-backup$/i.test(fileName);
+    const isBackup = /-backup$/i.test(
+      fileName?.replace(/\.json$/, "") ?? "kiyo",
+    );
     return `${fileName}${isBackup ? "" : "-backup"}.json`;
   })();
   const checkFileAndNavigate = async () => {
-    if (!activeFileName) {
-      navigate("/", {
-        replace: true,
-      });
-      return;
-    } else if (!!salt && !cryptoKey) {
-      navigate("/auth", {
-        replace: true,
-      });
-      return;
-    }
+    // const { activeFileName, encrypted } = await getActiveFileInfo();
+    // setIsEncrypted(encrypted);
+    // if (!activeFileName) {
+    //   navigate("/", {
+    //     replace: true,
+    //   });
+    //   return;
+    // } else if (encrypted) {
+    //   navigate("/auth", {
+    //     replace: true,
+    //   });
+    //   return;
+    // }
   };
   useEffect(() => {
     checkFileAndNavigate();
@@ -67,6 +68,7 @@ const Settings = () => {
     encrypted: boolean;
     pin: string;
   }) => {
+    const { activeFileName } = await getActiveFileInfo();
     const exists = activeFileName === fileName;
     if (exists) {
       const overwrite = window.confirm(
@@ -86,7 +88,7 @@ const Settings = () => {
   };
 
   const handleRestore = async ({ file, pin }: { file: File; pin: string }) => {
-    const data = await openImportedDataFile(await file.text(), pin);
+    const data = await openImportedDataFile(await file.text(), pin, file.name);
     if (!data) {
       throw new Error("PIN 번호가 올바르지 않습니다.");
     }
@@ -105,11 +107,12 @@ const Settings = () => {
   };
 
   const handlePinChange = async (newPin: string) => {
+    const { activeFileName, encrypted } = await getActiveFileInfo();
     if (!activeFileName) {
       throw new Error("활성 데이터 파일이 없습니다.");
     }
 
-    if (isEncrypted) {
+    if (encrypted) {
       // 암호화된 파일: 현재 PIN 검증 후 변경
       if (!cryptoKey) {
         throw new Error("암호화 키 정보가 없습니다.");
@@ -173,7 +176,9 @@ const Settings = () => {
                       if (!biometricEnabled) {
                         // 생체인증 켜기 - cryptoKey 필요
                         if (!cryptoKey) {
-                          setMessage("암호화 키가 없습니다. PIN을 입력해주세요.");
+                          setMessage(
+                            "암호화 키가 없습니다. PIN을 입력해주세요.",
+                          );
                           return;
                         }
                         try {

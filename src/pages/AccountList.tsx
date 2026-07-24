@@ -6,6 +6,7 @@ import BottomTabs from "../components/BottomTabs";
 import { useSessionStore } from "../store/sessionStore";
 import { useSecureClipboard } from "../hooks/useSecureClipboard";
 import { fixedTemplates } from "../database/testdata";
+import { getActiveFileInfo } from "../database/db";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -15,23 +16,24 @@ const AccountList = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const { activeFileName, salt, cryptoKey } = useSessionStore((state) => state);
+  const { activeFileName: fileName } = useSessionStore((state) => state);
 
-  const checkFileAndNavigate = async () => {
-    if (!activeFileName) {
-      navigate("/", {
-        replace: true,
-      });
-      return;
-    } else if (!!salt && !cryptoKey) {
-      navigate("/auth", {
-        replace: true,
-      });
-      return;
-    }
-  };
   useEffect(() => {
-    checkFileAndNavigate();
+    // const checkFileAndNavigate = async () => {
+    //   const { activeFileName, encrypted } = await getActiveFileInfo();
+    //   if (!activeFileName) {
+    //     navigate("/", {
+    //       replace: true,
+    //     });
+    //     return;
+    //   } else if (encrypted) {
+    //     navigate("/auth", {
+    //       replace: true,
+    //     });
+    //     return;
+    //   }
+    // };
+    // checkFileAndNavigate();
   }, []);
 
   // 보안 클립보드 훅 사용 (자동 초기화 비활성화)
@@ -160,9 +162,9 @@ const AccountList = () => {
             <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
               My accounts
             </h2>
-            {activeFileName && (
+            {fileName && (
               <p className="mt-1 text-sm text-[var(--color-text)]">
-                {activeFileName}
+                {fileName}
               </p>
             )}
           </div>

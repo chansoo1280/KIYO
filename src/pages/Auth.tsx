@@ -12,15 +12,15 @@ import {
 import { decryptData } from "../crypto/encryption";
 import { useAccountStore } from "../store/accountStore";
 import {
-  getDatabaseSnapshot,
-  migrateAccountsToEncryptedFormat,
+  getActiveFileInfo,
+  replaceDatabaseData,
+  saveFileDataToDB,
 } from "../database/db";
-import { replaceDatabaseData, saveFileDataToDB } from "../database/db";
 import useBiometricAuthStore from "../store/biometricAuthStore";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { activeFileName, salt } = useSessionStore((state) => state);
+  const { activeFileName: fileName, salt } = useSessionStore((state) => state);
   const { biometricEnabled, initializeBiometricAuthStore } =
     useBiometricAuthStore((state) => state);
   const { authenticate } = useBiometricAuth();
@@ -29,15 +29,16 @@ const Auth = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showPinInput, setShowPinInput] = useState(!biometricEnabled);
 
-  // Get fileName from session store
-  const fileName = activeFileName;
-
   useEffect(() => {
-    if (!fileName) {
-      navigate("/", { replace: true });
-      return;
-    }
-  }, [fileName, navigate]);
+    const checkFileAndNavigate = async () => {
+      const { activeFileName, encrypted } = await getActiveFileInfo();
+      if (!activeFileName || !encrypted) {
+        navigate("/", { replace: true });
+        return;
+      }
+    };
+    checkFileAndNavigate();
+  }, [navigate]);
 
   const handlePinChange = (value: string) => {
     setPin(value);
@@ -72,7 +73,7 @@ const Auth = () => {
       navigate("/list", { replace: true });
     } catch (err) {
       console.error("PIN verification failed:", err);
-      setError("PIN 번호가 올바르지 않습니다.");
+      setError(`PIN verification failed:${err}`);
     } finally {
       setIsVerifying(false);
     }
@@ -106,8 +107,7 @@ const Auth = () => {
           return;
         }
 
-        const normalizedFileName = fileName;
-        const fileData = await getDatabaseSnapshot(normalizedFileName);
+        const fileData = await getActiveFileInfo();
 
         if (!fileData || !isEncryptedKiyoFile(fileData)) {
           setError("파일 정보를 찾을 수 없습니다.");
@@ -130,12 +130,9 @@ const Auth = () => {
             cryptoKey: result.cryptoKey,
             salt,
           });
-          await replaceDatabaseData(decrypted);
           await saveFileDataToDB(normalizedFileName, fileData, salt);
+          await replaceDatabaseData(decrypted);
           useAccountStore.getState().setAccounts(decrypted.accounts);
-
-          // Migrate existing plaintext accounts to encrypted format
-          await migrateAccountsToEncryptedFormat(result.cryptoKey);
 
           navigate("/list", { replace: true });
         } catch (decryptError) {
