@@ -86,6 +86,16 @@ vi.mock("@capacitor/filesystem", () => ({
     UTF8: "utf8",
   },
 }));
+
+// Mock KiyoAutofill plugin
+vi.mock("../plugins/kiyautofill", () => ({
+  KiyoAutofill: {
+    saveSession: vi.fn().mockResolvedValue(undefined),
+    clearSession: vi.fn().mockResolvedValue(undefined),
+    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
+  },
+}));
+
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Restore Integration Tests", () => {

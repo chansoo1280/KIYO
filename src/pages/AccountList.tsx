@@ -6,7 +6,6 @@ import BottomTabs from "../components/BottomTabs";
 import { useSessionStore } from "../store/sessionStore";
 import { useSecureClipboard } from "../hooks/useSecureClipboard";
 import { fixedTemplates } from "../database/testdata";
-import { getActiveFileInfo } from "../database/db";
 
 const AccountList = () => {
   const navigate = useNavigate();

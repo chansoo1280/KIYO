@@ -14,22 +14,36 @@ import type { Account, Template, Metadata } from "../models/account";
 // Mock Capacitor
 vi.mock("@capacitor/core", () => ({
   registerPlugin: vi.fn(() => ({
-    isAutofillEnabled: vi.fn().mockResolvedValue({ enabled: false, hasService: false, servicePackageName: null }),
-    getAutofillServiceInfo: vi.fn().mockResolvedValue({ isEnabled: false, isOurService: false, servicePackageName: null }),
+    isAutofillEnabled: vi.fn().mockResolvedValue({
+      enabled: false,
+      hasService: false,
+      servicePackageName: null,
+    }),
+    getAutofillServiceInfo: vi.fn().mockResolvedValue({
+      isEnabled: false,
+      isOurService: false,
+      servicePackageName: null,
+    }),
     requestAutofillEnable: vi.fn().mockResolvedValue(undefined),
     getAccountCount: vi.fn().mockResolvedValue({ count: 0 }),
-    syncAccountsFromReact: vi.fn().mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
-    syncAccounts: vi.fn().mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
+    syncAccountsFromReact: vi
+      .fn()
+      .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
+    syncAccounts: vi
+      .fn()
+      .mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
     getAccounts: vi.fn().mockResolvedValue({ accounts: [], count: 0 }),
     addAccount: vi.fn().mockResolvedValue({ id: 1, success: true }),
     updateAccount: vi.fn().mockResolvedValue({ updated: true, id: 1 }),
     deleteAccount: vi.fn().mockResolvedValue({ deleted: true, id: 1 }),
     toggleFavorite: vi.fn().mockResolvedValue({ success: true, id: 1 }),
-    clearAllAccounts: vi.fn().mockResolvedValue({ deletedCount: 0, success: true }),
+    clearAllAccounts: vi
+      .fn()
+      .mockResolvedValue({ deletedCount: 0, success: true }),
   })),
   Capacitor: {
     isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => 'web'),
+    getPlatform: vi.fn(() => "web"),
   },
 }));
 
@@ -50,6 +64,15 @@ vi.mock("../store/accountStore", () => ({
     getState: vi.fn(() => ({
       setAccounts: vi.fn(),
     })),
+  },
+}));
+
+// Mock KiyoAutofill plugin
+vi.mock("../plugins/kiyautofill", () => ({
+  KiyoAutofill: {
+    saveSession: vi.fn().mockResolvedValue(undefined),
+    clearSession: vi.fn().mockResolvedValue(undefined),
+    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
   },
 }));
 
@@ -81,7 +104,7 @@ describe("openImportedDataFile", () => {
   let mockIsEncryptedKiyoFile: ReturnType<typeof vi.fn>;
   let mockIsNativePlatform: ReturnType<typeof vi.fn>;
 
-const createValidKiyoFile = (
+  const createValidKiyoFile = (
     overrides: Partial<KiyoDataFile> = {},
   ): KiyoDataFile => ({
     version: 1,
@@ -137,7 +160,11 @@ const createValidKiyoFile = (
 
   describe("정상 케이스", () => {
     it("유효한 JSON 문자열을 파싱하고 KiyoDataFile을 반환하며 모든 후속 처리를 수행한다", async () => {
-      const result = await openImportedDataFile(validJsonString, "1234");
+      const result = await openImportedDataFile(
+        validJsonString,
+        "1234",
+        "test.json",
+      );
 
       expect(result).not.toBeNull();
       expect(result).toEqual(
@@ -214,12 +241,16 @@ const createValidKiyoFile = (
             updatedAt: Date.now(),
           },
         ],
-            templates: [{ id: 1, name: "Template 1", fields: [] }],
-            metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
+        templates: [{ id: 1, name: "Template 1", fields: [] }],
+        metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
       });
       const jsonString = JSON.stringify(fullData);
 
-      const result = await openImportedDataFile(jsonString, "1234");
+      const result = await openImportedDataFile(
+        jsonString,
+        "1234",
+        "test.json",
+      );
 
       expect(result).not.toBeNull();
       expect(result!.accounts).toHaveLength(1);
@@ -236,7 +267,7 @@ const createValidKiyoFile = (
     });
 
     it("fileName은 데이터 내부의 fileName을 사용한다 (setSession과 saveFileDataToDB에 전달)", async () => {
-      await openImportedDataFile(validJsonString, "1234");
+      await openImportedDataFile(validJsonString, "1234", "test.json");
 
       expect(mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "test.json" }),
@@ -255,8 +286,7 @@ const createValidKiyoFile = (
   describe("실패 케이스", () => {
     it("JSON 파싱 실패 시 null을 반환한다", async () => {
       const invalidJson = "{ invalid json }";
-
-      const result = await openImportedDataFile(invalidJson, "1234");
+      const result = await openImportedDataFile(invalidJson, "1234", "test.json");
 
       expect(result).toBeNull();
       expect(mockReplaceDatabaseData).not.toHaveBeenCalled();
@@ -278,7 +308,7 @@ const createValidKiyoFile = (
         const invalidVersionFile = createValidKiyoFile({ version });
         const jsonString = JSON.stringify(invalidVersionFile);
 
-        const result = await openImportedDataFile(jsonString, "1234");
+        const result = await openImportedDataFile(jsonString, "1234", "test.json");
 
         expect(result).toBeNull();
         expect(mockReplaceDatabaseData).not.toHaveBeenCalled();
@@ -314,7 +344,7 @@ const createValidKiyoFile = (
         } as Partial<KiyoDataFile>);
         const jsonString = JSON.stringify(invalidFile);
 
-        const result = await openImportedDataFile(jsonString, "1234");
+        const result = await openImportedDataFile(jsonString, "1234", "test.json");
 
         expect(result).toBeNull();
       }
@@ -341,7 +371,7 @@ const createValidKiyoFile = (
     it("replaceDatabaseData 실패 시 null을 반환하고 후속 처리를 하지 않는다", async () => {
       mockReplaceDatabaseData.mockRejectedValueOnce(new Error("DB error"));
 
-      const result = await openImportedDataFile(validJsonString, "1234");
+      const result = await openImportedDataFile(validJsonString, "1234", "test.json");
 
       expect(result).toBeNull();
       expect(mockSetSession).not.toHaveBeenCalled();
@@ -352,7 +382,7 @@ const createValidKiyoFile = (
     it("saveFileDataToDB 실패 시 null을 반환한다", async () => {
       mockSaveFileDataToDB.mockRejectedValueOnce(new Error("DB save failed"));
 
-      const result = await openImportedDataFile(validJsonString, "1234");
+      const result = await openImportedDataFile(validJsonString, "1234", "test.json");
 
       expect(result).toBeNull();
     });
@@ -360,7 +390,11 @@ const createValidKiyoFile = (
     it("setSession 실패 시 null을 반환한다", async () => {
       mockSetSession.mockRejectedValueOnce(new Error("Session error"));
 
-      const result = await openImportedDataFile(validJsonString, "1234");
+      const result = await openImportedDataFile(
+        validJsonString,
+        "1234",
+        "test.json",
+      );
 
       expect(result).toBeNull();
     });
@@ -370,7 +404,11 @@ const createValidKiyoFile = (
     it("isEncryptedKiyoFile이 true를 반환하면 암호화 로직으로 분기한다 (평문 테스트에서는 mock이 false 반환)", async () => {
       // 이 테스트는 평문 파일만 테스트하므로 isEncryptedKiyoFile mock이 false를 반환함
       // 암호화 파일 테스트는 별도 테스트 파일에서 수행
-      const result = await openImportedDataFile(validJsonString, "1234");
+      const result = await openImportedDataFile(
+        validJsonString,
+        "1234",
+        "test.json",
+      );
 
       expect(result).not.toBeNull();
       expect(mockIsEncryptedKiyoFile).toHaveBeenCalled();

@@ -78,6 +78,15 @@ vi.mock("@capacitor/filesystem", () => ({
   },
 }));
 
+// Mock KiyoAutofill plugin
+vi.mock("../plugins/kiyautofill", () => ({
+  KiyoAutofill: {
+    saveSession: vi.fn().mockResolvedValue(undefined),
+    clearSession: vi.fn().mockResolvedValue(undefined),
+    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
+  },
+}));
+
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Encryption Integration Tests", () => {
@@ -275,6 +284,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       const importedFile = await openImportedDataFile(
         encryptedJsonString,
         TEST_PIN,
+        "encrypted-backup.json",
       );
 
       // 검증: 복호화 성공, 평문 데이터 반환
@@ -334,6 +344,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       const importedFile = await openImportedDataFile(
         encryptedJsonString,
         WRONG_PIN,
+        "encrypted-backup-wrong-pin.json",
       );
 
       // 검증: null 반환
@@ -384,6 +395,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       const importedFile = await openImportedDataFile(
         tamperedJsonString,
         TEST_PIN,
+        "encrypted-backup-tamper.json",
       );
 
       // 검증: 복호화 실패, null 반환

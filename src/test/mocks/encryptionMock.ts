@@ -13,6 +13,17 @@ export interface MockEncryption {
   mockIsEncryptedKiyoFile: Mock;
   mockFromBase64: Mock;
   mockToBase64: Mock;
+  mockExportCryptoKey: Mock;
+}
+
+export interface MockEncryptionOverrides {
+  mockCreateCryptoKey?: Mock;
+  mockEncryptData?: Mock;
+  mockDecryptData?: Mock;
+  mockIsEncryptedKiyoFile?: Mock;
+  mockFromBase64?: Mock;
+  mockToBase64?: Mock;
+  mockExportCryptoKey?: Mock;
 }
 
 export interface MockCryptoUtils {
@@ -50,6 +61,7 @@ export const mockEncryptionDefaults = {
   isEncryptedKiyoFile: false,
   fromBase64: createMockSalt(),
   toBase64: "bW9ja0Jhc2U2NA==",
+  exportCryptoKey: new ArrayBuffer(32),
 };
 
 // ============================================
@@ -76,6 +88,7 @@ export const createEncryptionMocks = () => {
     .fn()
     .mockReturnValue(mockEncryptionDefaults.fromBase64);
   const mockToBase64 = vi.fn().mockReturnValue(mockEncryptionDefaults.toBase64);
+  const mockExportCryptoKey = vi.fn().mockResolvedValue(mockEncryptionDefaults.exportCryptoKey);
 
   return {
     mockCreateCryptoKey,
@@ -84,6 +97,7 @@ export const createEncryptionMocks = () => {
     mockIsEncryptedKiyoFile,
     mockFromBase64,
     mockToBase64,
+    mockExportCryptoKey,
   };
 };
 
@@ -91,18 +105,18 @@ export const createEncryptionMocks = () => {
  * Creates a mock encryption object with proper types
  */
 export const createMockEncryption = (
-  overrides?: Partial<MockEncryption>,
+  overrides?: MockEncryptionOverrides,
 ): MockEncryption => {
   const mocks = createEncryptionMocks();
 
   return {
-    mockCreateCryptoKey: mocks.mockCreateCryptoKey,
-    mockEncryptData: mocks.mockEncryptData,
-    mockDecryptData: mocks.mockDecryptData,
-    mockIsEncryptedKiyoFile: mocks.mockIsEncryptedKiyoFile,
-    mockFromBase64: mocks.mockFromBase64,
-    mockToBase64: mocks.mockToBase64,
-    ...overrides,
+    mockCreateCryptoKey: overrides?.mockCreateCryptoKey ?? mocks.mockCreateCryptoKey,
+    mockEncryptData: overrides?.mockEncryptData ?? mocks.mockEncryptData,
+    mockDecryptData: overrides?.mockDecryptData ?? mocks.mockDecryptData,
+    mockIsEncryptedKiyoFile: overrides?.mockIsEncryptedKiyoFile ?? mocks.mockIsEncryptedKiyoFile,
+    mockFromBase64: overrides?.mockFromBase64 ?? mocks.mockFromBase64,
+    mockToBase64: overrides?.mockToBase64 ?? mocks.mockToBase64,
+    mockExportCryptoKey: overrides?.mockExportCryptoKey ?? mocks.mockExportCryptoKey,
   };
 };
 

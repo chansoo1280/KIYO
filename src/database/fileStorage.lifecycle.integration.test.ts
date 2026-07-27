@@ -74,6 +74,15 @@ vi.mock("@capacitor/filesystem", () => ({
   },
 }));
 
+// Mock KiyoAutofill plugin
+vi.mock("../plugins/kiyautofill", () => ({
+  KiyoAutofill: {
+    saveSession: vi.fn().mockResolvedValue(undefined),
+    clearSession: vi.fn().mockResolvedValue(undefined),
+    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
+  },
+}));
+
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Lifecycle Intergration Tests", () => {
@@ -194,7 +203,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       const backupJsonString = JSON.stringify(backedUpFile);
 
       // 4. openImportedDataFile로 가져오기 (PIN 없이 평문 파일로)
-      const importedFile = await openImportedDataFile(backupJsonString, "");
+      // 파일명은 백업 데이터의 fileName 속성에서 가져옴
+      const importedFile = await openImportedDataFile(backupJsonString, "", backedUpFile.fileName);
 
       expect(importedFile).not.toBeNull();
       expect(importedFile!.fileName).toBe("plain-backup.json");
@@ -258,7 +268,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       const backupJsonString = JSON.stringify(backedUpFile);
 
       // 5. openImportedDataFile로 가져오기
-      const importedFile = await openImportedDataFile(backupJsonString, "");
+      const importedFile = await openImportedDataFile(backupJsonString, "", backedUpFile.fileName);
 
       expect(importedFile).not.toBeNull();
       expect(importedFile!.fileName).toBe("lifecycle-backup.json");
@@ -300,7 +310,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
 
       // openImportedDataFile - 파일명은 데이터 내부에서 가져옴
       const backupJson = JSON.stringify(backedUp);
-      const imported = await openImportedDataFile(backupJson, "");
+      const imported = await openImportedDataFile(backupJson, "", backedUp.fileName);
       expect(imported!.fileName).toBe("backup file.json");
     });
 
@@ -312,7 +322,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(backedUp.fileName).toBe("noext-backup.json");
 
       const backupJson = JSON.stringify(backedUp);
-      const imported = await openImportedDataFile(backupJson, "");
+      const imported = await openImportedDataFile(backupJson, "", backedUp.fileName);
       expect(imported!.fileName).toBe("noext-backup.json");
     });
 

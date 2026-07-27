@@ -83,7 +83,7 @@ describe("fileStorage - error handling", () => {
 
   describe("openImportedDataFile", () => {
     it("잘못된 JSON → null 반환 (INVALID_JSON 상황)", async () => {
-      const result = await openImportedDataFile("{ invalid json }", "1234");
+      const result = await openImportedDataFile("{ invalid json }", "1234", "test.json");
       expect(result).toBeNull();
     });
 
@@ -93,12 +93,12 @@ describe("fileStorage - error handling", () => {
       vi.mocked(isEncryptedKiyoFile).mockImplementation(mockEncryption.mockIsEncryptedKiyoFile);
       vi.mocked(createCryptoKey).mockImplementation(mockEncryption.mockCreateCryptoKey);
 
-      const result = await openImportedDataFile(encryptedJsonString, "wrong-pin");
+      const result = await openImportedDataFile(encryptedJsonString, "wrong-pin", "test.json");
       expect(result).toBeNull();
     });
 
     it("잘못된 파일 형식 → null 반환 (INVALID_FORMAT 상황)", async () => {
-      const result = await openImportedDataFile(JSON.stringify(createValidKiyoFile({ version: 2 as unknown as 1 })), "1234");
+      const result = await openImportedDataFile(JSON.stringify(createValidKiyoFile({ version: 2 as unknown as 1 })), "1234", "test.json");
       expect(result).toBeNull();
     });
   });

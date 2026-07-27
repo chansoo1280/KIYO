@@ -28,6 +28,21 @@ vi.mock("../crypto/encryption", () => ({
   encryptData: vi.fn(),
 }));
 
+// Mock crypto utils
+vi.mock("../crypto/crypto.utils", () => ({
+  exportCryptoKey: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
+  fromBase64: vi.fn(),
+}));
+
+// Mock KiyoAutofill plugin
+vi.mock("../plugins/kiyautofill", () => ({
+  KiyoAutofill: {
+    saveSession: vi.fn().mockResolvedValue(undefined),
+    clearSession: vi.fn().mockResolvedValue(undefined),
+    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
+  },
+}));
+
 // Mock db functions
 vi.mock("../database/db", () => ({
   saveFileDataToDB: vi.fn().mockResolvedValue(undefined),

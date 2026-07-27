@@ -39,9 +39,9 @@ export const createTestEncryptedFile = (
 ): EncryptedKiyoFile => ({
   version: 1,
   encrypted: true,
-  salt: "c2FsdA==",
-  iv: "aXY=",
-  ciphertext: "Y2lwaGVydGV4dA==",
+  salt: "bW9ja1NhbHQxMjM0NTY3OA==", // 16 bytes base64 encoded (mockSalt12345678)
+  iv: "bW9ja1ZlY3RvcjEyMzQ=", // 12 bytes base64 encoded (mockVector1234)
+  ciphertext: "bW9ja0NpcGhlcnRleHQxMjM0NTY3ODkwYWJjZGVm", // base64 encoded
   ...overrides,
 });
 

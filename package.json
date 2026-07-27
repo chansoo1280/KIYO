@@ -10,8 +10,10 @@
     "android:build": "npm run build && npx cap sync android && npx cap open android && cd android && gradlew.bat assembleDebug",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:ui": "vitest --ui"
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --typecheck",
+    "test:ui": "vitest --ui",
+    "check": "npm run typecheck && npm run test"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",

@@ -32,7 +32,7 @@ const Settings = () => {
   const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
   const { isAvailable, biometricEnabled, setBiometricEnabled } =
     useBiometricAuthStore();
-  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [isEncrypted] = useState(false);
 
   const { enableBiometric, disableBiometric } = useBiometricAuth();
   const defaultBackupFileName = (() => {

@@ -233,7 +233,7 @@ export const openImportedDataFile = async (
 // PIN 변경: 활성 데이터 파일을 새 PIN으로 재암호화
 // currentPin이 빈 문자열인 경우: 암호화되지 않은 파일에 새 PIN으로 암호화 설정
 export const changePin = async (newPin: string): Promise<void> => {
-  const { activeFileName, salt, encrypted } = await getActiveFileInfo();
+  const { activeFileName, encrypted } = await getActiveFileInfo();
   const { cryptoKey } = await useSessionStore.getState();
 
   if (!activeFileName) {
