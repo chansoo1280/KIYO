@@ -23,7 +23,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 | **Native Bridge**  | Capacitor 8 (Android)                                           |
 | **Local DB**       | Dexie.js (IndexedDB)                                            |
 | **Crypto**         | Web Crypto API (PBKDF2 + AES-GCM)                               |
-| **Android Native** | Kotlin, AutofillService (API 26+), Room Database                |
+| **Android Native** | Kotlin, AutofillService (API 26+), SQLiteOpenHelper             |
 | **Testing**        | Vitest (unit/integration)                                       |
 
 ## Architecture
@@ -36,7 +36,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
        │                                           │
        ▼                                           ▼
 ┌─────────────┐                           ┌──────────────────┐
-│  IndexedDB  │                           │   Room Database  │
+│  IndexedDB  │                           │ SQLite Database  │
 │  (Dexie)    │                           │ (Autofill Repo)  │
 │  - 계정/설정 │                           │  - 자동완성용 계정 │
 └─────────────┘                           └──────────────────┘
@@ -69,12 +69,12 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 
 ### 데이터 저장소별 보안
 
-| 데이터           | 저장소                   | 암호화                     | 비고                                                |
-| ---------------- | ------------------------ | -------------------------- | --------------------------------------------------- |
-| 메인 계정 데이터 | 파일 시스템 (Documents)  | AES-GCM (PIN 기반)         | 사용자 파일로 백업/이동 가능                        |
-| 자동완성용 계정  | Room Database (Native)   | AES-GCM (Autofill 전용 키) | Android 샌드박스 보호, 시스템 자동완성 API 요구사항 |
-| 앱 설정          | IndexedDB (Dexie)        | 평문                       | 테마, 폰트 등 비민감 설정                           |
-| 세션 키          | 메모리 (SecuritySession) | N/A                        | 인메모리, 프로세스 종료 시 소멸                     |
+| 데이터           | 저장소                   | 암호화             | 비고                            |
+| ---------------- | ------------------------ | ------------------ | ------------------------------- |
+| 메인 계정 데이터 | 파일 시스템 (Documents)  | AES-GCM (PIN 기반) | 사용자 파일로 백업/이동 가능    |
+| 자동완성용 계정  | SQLite Database (Native) | 앱 내부 저장소     | AutofillService 전용 캐시       |
+| 앱 설정          | IndexedDB (Dexie)        | 평문               | 테마, 폰트 등 비민감 설정       |
+| 세션 키          | 메모리 (SecuritySession) | N/A                | 인메모리, 프로세스 종료 시 소멸 |
 
 ## Installation
 
