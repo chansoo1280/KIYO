@@ -34,3 +34,8 @@ export const exportCryptoKey = async (
     throw error;
   }
 };
+
+export const toBase64Url = (bytes: Uint8Array): string => {
+  const base64 = toBase64(bytes);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+};

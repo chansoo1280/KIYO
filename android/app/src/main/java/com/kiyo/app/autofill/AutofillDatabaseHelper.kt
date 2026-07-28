@@ -1,26 +1,22 @@
 package com.kiyo.app.autofill
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import net.zetetic.database.sqlcipher.SQLiteDatabase
 
 /**
- * SQLite database helper for Android Autofill Service.
- * Stores minimal account information for autofill: username, password, title, packageNames/domain.
- * This is separate from the main IndexedDB storage used by the React app.
- * Uses package_names JSON array for multiple package names per account.
+ * SQLCipher-based database helper for Android Autofill Service.
+ * Uses AES-256 encryption via SQLCipher.
+ * Database key is provided externally (from DatabaseKeyManager).
  */
-class AutofillDatabaseHelper(context: Context) : SQLiteOpenHelper(
-    context,
-    DATABASE_NAME,
-    null,
-    DATABASE_VERSION
+class AutofillDatabaseHelper(
+    private val context: Context,
+    private val encryptionKey: ByteArray
 ) {
 
     companion object {
         private const val DATABASE_NAME = "kiyo_autofill.db"
-        private const val DATABASE_VERSION = 5
+        private const val DATABASE_VERSION = 6 // Incremented for encryption migration
         private const val TAG = "AutofillDatabaseHelper"
 
         // Table name
@@ -31,7 +27,7 @@ class AutofillDatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COLUMN_USERNAME = "username"
         const val COLUMN_PASSWORD = "password"
         const val COLUMN_TITLE = "title"
-        const val COLUMN_PACKAGE_NAMES = "package_names"  // JSON array for multiple package names
+        const val COLUMN_PACKAGE_NAMES = "package_names"
         const val COLUMN_APP_NAME = "app_name"
         const val COLUMN_DOMAIN = "domain"
         const val COLUMN_CREATED_AT = "created_at"
@@ -39,14 +35,72 @@ class AutofillDatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COLUMN_FAVORITE = "favorite"
     }
 
-    override fun onCreate(db: SQLiteDatabase) {
+    private var database: SQLiteDatabase? = null
+
+    /**
+     * Get readable database (opens with encryption key if not already open)
+     */
+    fun getReadableDatabase(): SQLiteDatabase {
+        return getDatabase(SQLiteDatabase.OPEN_READONLY)
+    }
+
+    /**
+     * Get writable database (opens with encryption key if not already open)
+     */
+    fun getWritableDatabase(): SQLiteDatabase {
+        return getDatabase(SQLiteDatabase.OPEN_READWRITE)
+    }
+
+    private fun getDatabase(flags: Int): SQLiteDatabase {
+        val db = database
+        if (db != null && db.isOpen) {
+            return db
+        }
+
+
+        val dbFile = context.getDatabasePath(DATABASE_NAME)
+        dbFile.parentFile?.mkdirs()
+
+        val newDb = SQLiteDatabase.openOrCreateDatabase(
+    dbFile,
+    encryptionKey,
+    null,
+    null
+)
+        database = newDb
+
+        val cursor = newDb.rawQuery("PRAGMA user_version", null)
+
+        var version = 0
+
+        if (cursor.moveToFirst()) {
+            version = cursor.getInt(0)
+        }
+
+        cursor.close()
+
+        return newDb
+    }
+
+    /**
+     * Close the database
+     */
+    fun close() {
+        database?.close()
+        database = null
+    }
+
+    /**
+     * Create database schema
+     */
+    private fun onCreate(db: SQLiteDatabase) {
         val createTableSql = """
             CREATE TABLE $TABLE_ACCOUNTS (
                 $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_USERNAME TEXT NOT NULL,
                 $COLUMN_PASSWORD TEXT NOT NULL,
                 $COLUMN_TITLE TEXT,
-                $COLUMN_PACKAGE_NAMES TEXT,  -- JSON array for multiple package names
+                $COLUMN_PACKAGE_NAMES TEXT,
                 $COLUMN_APP_NAME TEXT,
                 $COLUMN_DOMAIN TEXT,
                 $COLUMN_CREATED_AT INTEGER NOT NULL,
@@ -63,18 +117,29 @@ class AutofillDatabaseHelper(context: Context) : SQLiteOpenHelper(
         db.execSQL("CREATE INDEX idx_autofill_username ON $TABLE_ACCOUNTS($COLUMN_USERNAME)")
         db.execSQL("CREATE INDEX idx_autofill_app_name ON $TABLE_ACCOUNTS($COLUMN_APP_NAME)")
 
-        Log.d(TAG, "Autofill database created successfully (package_names only)")
+        Log.d(TAG, "Autofill database created successfully (encrypted with SQLCipher)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        Log.w(TAG, "Upgrading database from version $oldVersion to $newVersion - dropping and recreating table")
-        // Autofill DB is a cache synced from React IndexedDB - safe to drop and recreate
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_ACCOUNTS")
-        onCreate(db)
+    /**
+     * Upgrade database schema
+     */
+    private fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        Log.w(TAG, "Upgrading database from version $oldVersion to $newVersion")
+
+        // For autofill DB (cache synced from React), safe to drop and recreate
+        if (oldVersion < 6) {
+            // Version 6: Migration to encrypted database - drop and recreate
+            Log.w(TAG, "Migrating to encrypted database - dropping and recreating table")
+            db.execSQL("DROP TABLE IF EXISTS $TABLE_ACCOUNTS")
+            onCreate(db)
+        }
     }
 
-    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        Log.w(TAG, "Downgrading database from version $oldVersion to $newVersion - dropping tables")
+    /**
+     * Downgrade database (drop and recreate)
+     */
+    fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        Log.w(TAG, "Downgrading database from version $oldVersion to $newVersion")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_ACCOUNTS")
         onCreate(db)
     }

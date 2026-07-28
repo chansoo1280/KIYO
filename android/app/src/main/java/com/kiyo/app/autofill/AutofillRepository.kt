@@ -3,9 +3,13 @@ package com.kiyo.app.autofill
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
-import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import android.util.Pair
+
+import com.kiyo.app.security.DatabaseKeyManager
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmStatic
@@ -21,16 +25,26 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Repository for Autofill account data operations.
- * Provides CRUD operations for the autofill SQLite database.
+ * Provides CRUD operations for the autofill SQLite database (encrypted via SQLCipher).
  * All database operations run on a background thread via ExecutorService.
  */
 class AutofillRepository(private val context: Context) {
 
-    private val dbHelper = AutofillDatabaseHelper(context)
+    private val dbHelper = AutofillDatabaseHelper(context, getEncryptionKeyBlocking())
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     companion object {
         private const val TAG = "AutofillRepository"
+    }
+
+    /**
+     * Get encryption key synchronously (blocking) for database helper initialization.
+     * Uses runBlocking to bridge from non-coroutine context to suspend function.
+     */
+    private fun getEncryptionKeyBlocking(): ByteArray {
+        return runBlocking(Dispatchers.IO) {
+            DatabaseKeyManager.getKey(context).encoded
+        }
     }
 
     /**
@@ -85,13 +99,8 @@ class AutofillRepository(private val context: Context) {
          */
         companion object {
             fun fromCursor(cursor: Cursor): AutofillAccount {
-                val encryptedPassword = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PASSWORD))
-                val password = if (AutofillCrypto.isEncrypted(encryptedPassword)) {
-                    AutofillCrypto.decryptPassword(encryptedPassword)
-                } else {
-                    // Legacy plaintext password (for backward compatibility)
-                    encryptedPassword
-                }
+                // Password is stored in plaintext since DB is encrypted via SQLCipher
+                val password = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PASSWORD))
 
                 // Parse packageNames JSON array
                 val packageNamesJson = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PACKAGE_NAMES))
@@ -135,21 +144,11 @@ class AutofillRepository(private val context: Context) {
      */
     fun insertAccount(account: AutofillAccount): Long {
         return executor.submit<Long> {
-            val db = dbHelper.writableDatabase
+            val db = dbHelper.getWritableDatabase()
             val values = accountToContentValues(account)
             val id = db.insert(AutofillDatabaseHelper.TABLE_ACCOUNTS, null, values)
             Log.d(TAG, "Inserted account with id: $id, username: ${account.username}")
             id
-        }.get()
-    }
-
-    /**
-     * Insert a new account with password encryption
-     */
-    fun insertAccountEncrypted(account: AutofillAccount): Long {
-        return executor.submit<Long> {
-            val encryptedAccount = account.copy(password = AutofillCrypto.encryptPassword(account.password))
-            insertAccount(encryptedAccount)
         }.get()
     }
 
@@ -174,7 +173,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun updateAccount(account: AutofillAccount): Int {
         return executor.submit<Int> {
-            val db = dbHelper.writableDatabase
+            val db = dbHelper.getWritableDatabase()
             val values = accountToContentValues(account)
             val count = db.update(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
@@ -192,7 +191,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun deleteAccount(id: Long): Int {
         return executor.submit<Int> {
-            val db = dbHelper.writableDatabase
+            val db = dbHelper.getWritableDatabase()
             val count = db.delete(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 "${AutofillDatabaseHelper.COLUMN_ID} = ?",
@@ -209,7 +208,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun findByUsernameAndPackage(username: String, packageName: String?, domain: String?): AutofillAccount? {
         return executor.submit<AutofillAccount?> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val selection = StringBuilder("${AutofillDatabaseHelper.COLUMN_USERNAME} = ?")
             val selectionArgs = mutableListOf(username)
 
@@ -249,7 +248,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun findByUsername(username: String): AutofillAccount? {
         return executor.submit<AutofillAccount?> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -263,7 +262,7 @@ class AutofillRepository(private val context: Context) {
 
             cursor.use { c ->
                 if (c.moveToFirst()) {
-                    cursorToAccount(c)
+                    AutofillAccount.fromCursor(c)
                 } else {
                     null
                 }
@@ -277,7 +276,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun findByPackageName(packageName: String): List<AutofillAccount> {
         return executor.submit<List<AutofillAccount>> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -304,7 +303,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun findByDomain(domain: String): List<AutofillAccount> {
         return executor.submit<List<AutofillAccount>> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -318,7 +317,7 @@ class AutofillRepository(private val context: Context) {
             cursor.use { c ->
                 val accounts = mutableListOf<AutofillAccount>()
                 while (c.moveToNext()) {
-                    accounts.add(cursorToAccount(c))
+                    accounts.add(AutofillAccount.fromCursor(c))
                 }
                 accounts
             }
@@ -335,7 +334,7 @@ class AutofillRepository(private val context: Context) {
         }
         
         return executor.submit<List<AutofillAccount>> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             
             // First try exact domain match
             var cursor = db.query(
@@ -351,7 +350,7 @@ class AutofillRepository(private val context: Context) {
             val accounts = mutableListOf<AutofillAccount>()
             cursor.use { c ->
                 while (c.moveToNext()) {
-                    accounts.add(cursorToAccount(c))
+                    accounts.add(AutofillAccount.fromCursor(c))
                 }
             }
             
@@ -373,7 +372,7 @@ class AutofillRepository(private val context: Context) {
                         )
                         cursor.use { c ->
                             while (c.moveToNext()) {
-                                accounts.add(cursorToAccount(c))
+                                accounts.add(AutofillAccount.fromCursor(c))
                             }
                         }
                         if (accounts.isNotEmpty()) break
@@ -390,7 +389,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun searchByUsername(query: String): List<AutofillAccount> {
         return executor.submit<List<AutofillAccount>> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -404,7 +403,7 @@ class AutofillRepository(private val context: Context) {
             cursor.use { c ->
                 val accounts = mutableListOf<AutofillAccount>()
                 while (c.moveToNext()) {
-                    accounts.add(cursorToAccount(c))
+                    accounts.add(AutofillAccount.fromCursor(c))
                 }
                 accounts
             }
@@ -416,7 +415,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun getAllAccounts(): List<AutofillAccount> {
         return executor.submit<List<AutofillAccount>> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -430,7 +429,7 @@ class AutofillRepository(private val context: Context) {
             cursor.use { c ->
                 val accounts = mutableListOf<AutofillAccount>()
                 while (c.moveToNext()) {
-                    accounts.add(cursorToAccount(c))
+                    accounts.add(AutofillAccount.fromCursor(c))
                 }
                 accounts
             }
@@ -442,7 +441,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun getFavoriteAccounts(): List<AutofillAccount> {
         return executor.submit<List<AutofillAccount>> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -456,7 +455,7 @@ class AutofillRepository(private val context: Context) {
             cursor.use { c ->
                 val accounts = mutableListOf<AutofillAccount>()
                 while (c.moveToNext()) {
-                    accounts.add(cursorToAccount(c))
+                    accounts.add(AutofillAccount.fromCursor(c))
                 }
                 accounts
             }
@@ -481,7 +480,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun getAccountById(id: Long): AutofillAccount? {
         return executor.submit<AutofillAccount?> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.query(
                 AutofillDatabaseHelper.TABLE_ACCOUNTS,
                 null,
@@ -495,7 +494,7 @@ class AutofillRepository(private val context: Context) {
 
             cursor.use { c ->
                 if (c.moveToFirst()) {
-                    cursorToAccount(c)
+                    AutofillAccount.fromCursor(c)
                 } else {
                     null
                 }
@@ -563,7 +562,7 @@ class AutofillRepository(private val context: Context) {
 
             try {
                 val jsonArray = JSONArray(accountsJson)
-                val db = dbHelper.writableDatabase
+                val db = dbHelper.getWritableDatabase()
                 db.beginTransaction()
 
                 try {
@@ -575,9 +574,8 @@ class AutofillRepository(private val context: Context) {
                             val accountJson = jsonArray.getJSONObject(i)
                             val autofillAccount = parseReactAccount(accountJson)
                             if (autofillAccount != null) {
-                                // Encrypt password before storing
-                                val encryptedAccount = autofillAccount.copy(password = AutofillCrypto.encryptPassword(autofillAccount.password))
-                                val values = accountToContentValues(encryptedAccount)
+                                // Store password directly (DB is encrypted via SQLCipher)
+                                val values = accountToContentValues(autofillAccount)
                                 val id = db.insert(AutofillDatabaseHelper.TABLE_ACCOUNTS, null, values)
                                 if (id != -1L) {
                                     syncedCount++
@@ -755,97 +753,11 @@ class AutofillRepository(private val context: Context) {
     }
 
     /**
-     * Convert Cursor to AutofillAccount with password decryption
-     */
-    private fun cursorToAccount(cursor: Cursor): AutofillAccount {
-        val encryptedPassword = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PASSWORD))
-        val password = if (AutofillCrypto.isEncrypted(encryptedPassword)) {
-            AutofillCrypto.decryptPassword(encryptedPassword)
-        } else {
-            // Legacy plaintext password (for backward compatibility)
-            encryptedPassword
-        }
-
-        // Parse packageNames JSON array
-        val packageNamesJson = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PACKAGE_NAMES))
-        val packageNames = if (packageNamesJson != null && packageNamesJson.isNotEmpty()) {
-            try {
-                val jsonArray = JSONArray(packageNamesJson)
-                val list = mutableListOf<String>()
-                for (i in 0 until jsonArray.length()) {
-                    val pkg = jsonArray.getString(i)
-                    if (pkg.isNotEmpty()) {
-                        list.add(pkg)
-                    }
-                }
-                list
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse packageNames JSON: $packageNamesJson", e)
-                emptyList()
-            }
-        } else {
-            emptyList()
-        }
-
-        return AutofillAccount(
-            id = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_ID)),
-            username = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_USERNAME)),
-            password = password,
-            title = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_TITLE)),
-            packageNames = packageNames,
-            appName = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_APP_NAME)),
-            domain = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_DOMAIN)),
-            createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_CREATED_AT)),
-            updatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_UPDATED_AT)),
-            favorite = cursor.getInt(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_FAVORITE)) == 1
-        )
-    }
-
-    /**
-     * Convert Cursor to AutofillAccount without password decryption (for admin/export)
-     */
-    private fun cursorToAccountRaw(cursor: Cursor): AutofillAccount {
-        // Parse packageNames JSON array
-        val packageNamesJson = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PACKAGE_NAMES))
-        val packageNames = if (packageNamesJson != null && packageNamesJson.isNotEmpty()) {
-            try {
-                val jsonArray = JSONArray(packageNamesJson)
-                val list = mutableListOf<String>()
-                for (i in 0 until jsonArray.length()) {
-                    val pkg = jsonArray.getString(i)
-                    if (pkg.isNotEmpty()) {
-                        list.add(pkg)
-                    }
-                }
-                list
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse packageNames JSON: $packageNamesJson", e)
-                emptyList()
-            }
-        } else {
-            emptyList()
-        }
-
-        return AutofillAccount(
-            id = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_ID)),
-            username = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_USERNAME)),
-            password = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PASSWORD)),
-            title = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_TITLE)),
-            packageNames = packageNames,
-            appName = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_APP_NAME)),
-            domain = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_DOMAIN)),
-            createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_CREATED_AT)),
-            updatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_UPDATED_AT)),
-            favorite = cursor.getInt(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_FAVORITE)) == 1
-        )
-    }
-
-    /**
      * Get total account count
      */
     fun getAccountCount(): Int {
         return executor.submit<Int> {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val cursor = db.rawQuery("SELECT COUNT(*) FROM ${AutofillDatabaseHelper.TABLE_ACCOUNTS}", null)
             cursor.use { c ->
                 if (c.moveToFirst()) c.getInt(0) else 0
@@ -858,7 +770,7 @@ class AutofillRepository(private val context: Context) {
      */
     fun deleteAllAccounts(): Int {
         return executor.submit<Int> {
-            val db = dbHelper.writableDatabase
+            val db = dbHelper.getWritableDatabase()
             db.delete(AutofillDatabaseHelper.TABLE_ACCOUNTS, null, null)
         }.get()
     }
