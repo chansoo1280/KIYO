@@ -1,0 +1,81 @@
+name: Auto Changelog
+
+on:
+  push:
+    branches: [v2]
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get merged PRs since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+          
+          echo "Generating changelog for $RANGE"
+          
+          # Get merged PRs
+          PRS=$(git log $RANGE --grep="Merge pull request" --pretty=format:"%s" | head -20)
+          echo "PRs merged:"
+          echo "$PRS"
+          
+          # Generate changelog entry
+          DATE=$(date +%Y-%m-%d)
+          VERSION=$(cat package.json | grep '"version"' | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d ' ')
+          
+          cat << EOF > changelog-entry.md
+## [$VERSION] - $(date +%Y-%m-%d)
+
+### Merged PRs
+$PRS
+
+EOF
+          cat changelog-entry.md
+      
+      - name: Update CHANGELOG.md
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            sed -i '1i\' CHANGELOG.md
+            cat changelog-entry.md CHANGELOG.md > CHANGELOG.new && mv CHANGELOG.new CHANGELOG.md
+          else
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            cat changelog-entry.md >> CHANGELOG.md
+          fi
+          rm changelog-entry.md
+      
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog [skip ci]" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
