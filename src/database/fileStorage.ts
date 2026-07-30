@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
-import type { Account, FileMetadata, Template } from "../models/account";
+import type { Account, FileMetadata,  } from "../models/account";
 import {
   createCryptoKey,
   decryptData,
@@ -20,11 +20,14 @@ import {
   clearActiveFileInfo,
 } from "./db";
 import { useAccountStore } from "../store/accountStore";
+import { templateStorage } from "./templateStorage";
 import {
   FileStorageError,
   FileStorageErrorCode,
 } from "../errors/FileStorageError";
 import { KiyoAutofill } from "../plugins/kiyautofill";
+import type { Template } from "../models/template";
+import { useTemplateStore } from "../store/templateStore";
 
 export interface KiyoDataFile {
   version: 1;
@@ -115,15 +118,20 @@ export const createDataFile = async (
   pin?: string,
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
+
   await initializeDatabase();
   const accounts = await loadAccountsFromDB();
   useAccountStore.getState().setAccounts(accounts);
+
+  await templateStorage.init();
+  const templates = await templateStorage.getAll();
+  useTemplateStore.getState().loadTemplates();
   const data: KiyoDataFile = {
     version: 1,
     fileName: normalizedFileName,
     updatedAt: Date.now(),
     accounts: accounts || [],
-    templates: [],
+    templates: templates || [],
     metadata: [],
   };
   return saveDataFile(data, normalizedFileName, pin, true);

@@ -9,7 +9,8 @@ import {
   isKiyoFile,
   type KiyoDataFile,
 } from "./fileStorage";
-import type { Account, Template, Metadata } from "../models/account";
+import type { Account, Metadata } from "../models/account";
+import type { Template } from "../models/template";
 
 // Mock Capacitor
 vi.mock("@capacitor/core", () => ({
@@ -241,7 +242,7 @@ describe("openImportedDataFile", () => {
             updatedAt: Date.now(),
           },
         ],
-        templates: [{ id: 1, name: "Template 1", fields: [] }],
+        templates: [{ id: "1", name: "Template 1", description: "", icon: "📋", sortOrder: 0, fields: [], createdAt: Date.now(), updatedAt: Date.now() }],
         metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
       });
       const jsonString = JSON.stringify(fullData);

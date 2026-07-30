@@ -1,4 +1,6 @@
-export type FieldType = "text" | "password" | "email" | "number" | "textarea";
+import type { FieldType } from "../types/fieldTypes";
+
+export type { FieldType } from "../types/fieldTypes";
 
 export interface AccountField {
   id: string;
@@ -7,6 +9,7 @@ export interface AccountField {
   type: FieldType;
   value: string;
   order: number;
+  options?: string[];
 }
 
 export interface Account {
@@ -23,12 +26,6 @@ export interface Account {
   websiteUrl?: string;    // Original URL entered by user (e.g., "https://www.naver.com/login")
   domain?: string;        // Normalized domain for web autofill matching (e.g., "naver.com")
   packageName?: string;   // Android package name for app autofill matching (e.g., "com.nhn.android.search")
-}
-
-export interface Template {
-  id: number;
-  name: string;
-  fields: AccountField[];
 }
 
 export type FontSize = "small" | "medium" | "large";

@@ -16,7 +16,8 @@ import {
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type { Account, Template, FileMetadata } from "../models/account";
+import type { Account, FileMetadata } from "../models/account";
+import type { Template } from "../models/template";
 import type { KiyoDataFile } from "./fileStorage";
 import {
   createTestAccount,
@@ -27,6 +28,7 @@ import {
 import {
   createTestTemplates,
   createComplexTestTemplate,
+  getBuiltinTemplates,
 } from "../test/fixtures/templateFixtures";
 import {
   getDefaultMetadata,
@@ -198,11 +200,19 @@ describe("fileStorage Restore Integration Tests", () => {
     });
 
     // Verify templates
-    expectedTemplates.forEach((expected, index) => {
-      const actual = importedFile!.templates[index];
-      expect(actual.id).toBe(expected.id);
-      expect(actual.name).toBe(expected.name);
-      expect(actual.fields).toEqual(expected.fields);
+    // Builtin templates come first (sortOrder 0-5), then test templates (sortOrder 6+)
+    expectedTemplates.forEach((expected) => {
+      // Find matching template by name
+      const actual = importedFile!.templates.find(t => t.name === expected.name);
+      expect(actual).toBeDefined();
+      // Skip builtin template verification (they have random UUIDs)
+      if (!expected.id.startsWith("builtin-")) {
+        expect(actual!.id).toBe(expected.id);
+        expect(actual!.fields).toEqual(expected.fields);
+      } else {
+        // For builtin templates, just verify name and fields match
+        expect(actual!.fields).toEqual(expected.fields);
+      }
     });
 
     // Verify metadata
@@ -228,10 +238,17 @@ describe("fileStorage Restore Integration Tests", () => {
 
       const importedFile = await backupAndRestore("restore-backup.json", "");
 
+      // Expected: 6 builtin + 2 test templates = 8 total
+      // Builtin templates have Korean names, test templates are "Test Template 1", "Test Template 2"
+      const expectedTemplates = [
+        ...createTestTemplates(2),
+        ...getBuiltinTemplates(),
+      ];
+
       verifyDataIntegrity(
         importedFile,
         createTestAccounts(2),
-        createTestTemplates(2),
+        expectedTemplates,
         getDefaultMetadata(),
       );
 
@@ -245,7 +262,8 @@ describe("fileStorage Restore Integration Tests", () => {
       // DB 확인
       const snapshot = await getDatabaseSnapshot("restore-backup.json");
       expect(snapshot.accounts).toHaveLength(2);
-      expect(snapshot.templates).toHaveLength(2);
+      // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
+      expect(snapshot.templates).toHaveLength(8);
       expect(snapshot.metadata).toHaveLength(1);
 
       // 1-2. 빈 데이터 복원 검증 (기존 별도 테스트였던 것 통합)
@@ -267,7 +285,8 @@ describe("fileStorage Restore Integration Tests", () => {
 
       expect(emptyImported).not.toBeNull();
       expect(emptyImported!.accounts).toHaveLength(0);
-      expect(emptyImported!.templates).toHaveLength(0);
+      // Builtin templates are seeded (6 templates)
+      expect(emptyImported!.templates).toHaveLength(6);
       expect(emptyImported!.metadata).toHaveLength(0);
       expect(emptyImported!.fileName).toBe("empty-backup.json");
     });
@@ -301,10 +320,16 @@ describe("fileStorage Restore Integration Tests", () => {
         pin,
       );
 
+      // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
+      const expectedTemplates = [
+        ...createTestTemplates(2),
+        ...getBuiltinTemplates(),
+      ];
+
       verifyDataIntegrity(
         importedFile,
         accounts,
-        createTestTemplates(2),
+        expectedTemplates,
         getEncryptedMetadata(),
       );
       expect("encrypted" in importedFile!).toBe(false); // 복호화된 평문 반환
@@ -363,7 +388,18 @@ describe("fileStorage Restore Integration Tests", () => {
         "complex-backup.json",
       );
 
-      verifyDataIntegrity(imported, [complexAccount], templates, metadata);
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      const expectedTemplates = [
+        ...templates,
+        ...getBuiltinTemplates(),
+      ];
+
+      verifyDataIntegrity(
+        imported,
+        [complexAccount],
+        expectedTemplates,
+        metadata,
+      );
 
       // 필드 순서(order) 정확히 유지되는지 검증 (별도 테스트였던 것 통합)
       const fields = imported!.accounts[0].fields;

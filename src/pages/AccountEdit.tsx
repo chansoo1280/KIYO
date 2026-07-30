@@ -232,29 +232,35 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
                 <div className="flex items-center gap-2">
-                  <select
-                    value={field.type}
-                    onChange={(event) =>
-                      updateField(field.id, {
-                        type: event.target.value as FieldType,
-                      })
-                    }
-                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-                  >
-                    <option value="text">텍스트</option>
-                    <option value="password">비밀번호</option>
-                    <option value="email">이메일</option>
-                    <option value="number">숫자</option>
-                    <option value="textarea">긴 텍스트</option>
-                  </select>
-                    <button
-                      type="button"
-                      onClick={() => removeField(field.id)}
-                      className="rounded-full border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 dark:border-red-900 dark:text-red-400"
-                    >
-                      삭제
-                    </button>
-                </div>
+                                  <select
+                                    value={field.type}
+                                    onChange={(event) =>
+                                      updateField(field.id, {
+                                        type: event.target.value as FieldType,
+                                      })
+                                    }
+                                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                                  >
+                                    <option value="text">텍스트</option>
+                                    <option value="password">비밀번호</option>
+                                    <option value="email">이메일</option>
+                                    <option value="url">URL</option>
+                                    <option value="number">숫자</option>
+                                    <option value="textarea">긴 텍스트</option>
+                                    <option value="totp">TOTP (2FA)</option>
+                                    <option value="select">선택</option>
+                                    <option value="date">날짜</option>
+                                    <option value="secureText">암호화 텍스트</option>
+                                    <option value="secureTextarea">암호화 긴 텍스트</option>
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeField(field.id)}
+                                    className="rounded-full border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 dark:border-red-900 dark:text-red-400"
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
               </div>
               {field.type === "textarea" ? (
                 <textarea

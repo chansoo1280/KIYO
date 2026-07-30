@@ -14,7 +14,8 @@ import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
 import { createMockAccountStoreWithGetState } from "../test/mocks/accountStoreMock";
 import { createMockDB } from "../test/mocks/dbMock";
 import type { KiyoDataFile } from "./fileStorage";
-import type { Account, Template, FileMetadata } from "../models/account";
+import type { Account, FileMetadata } from "../models/account";
+import type { Template } from "../models/template";
 
 type Metadata = FileMetadata;
 

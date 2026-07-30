@@ -7,11 +7,11 @@ import { toBase64, fromBase64 } from "../crypto/crypto.utils";
 import type { EncryptedKiyoFile } from "../crypto/encryption";
 import type {
   Account,
-  Template,
   AppSettings,
   FileMetadata,
 } from "../models/account";
-import { fixedTemplates, devAccounts } from "./testdata";
+import type { Template } from "../models/template";
+import { devAccounts } from "./testdata";
 import { isFileStorageError } from "../errors/FileStorageError";
 import {
   encryptAccountsSensitiveFields,
@@ -31,18 +31,18 @@ export interface FileData {
 
 export class KiyoDatabase extends Dexie {
   accounts!: Table<Account, number>;
-  templates!: Table<Template, number>;
+  templates!: Table<Template, string>; // 사용자 템플릿 (기존 accountTemplates -> templates로 이름 변경)
   settings!: Table<AppSettings, number>;
   metadata!: Table<FileMetadata, number>;
   files!: Table<FileData, number>;
 
   constructor() {
     super("kiyo-db");
-    this.version(8)
+    this.version(10)
       .stores({
         accounts:
           "id, templateId, title, *tags, favorite, createdAt, updatedAt, websiteUrl, domain, packageName",
-        templates: "id, name",
+        templates: "++id, name, sortOrder, updatedAt", // 템플릿 테이블 (기존 accountTemplates -> templates로 이름 변경)
         settings:
           "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
         metadata: "id, version, createdAt",
@@ -69,6 +69,7 @@ export class KiyoDatabase extends Dexie {
           .toCollection()
           .modify({ biometricEnabled: true }),
       );
+    // v10: templates 테이블 이름 변경 (accountTemplates -> templates), 마이그레이션 없음
   }
 }
 
@@ -157,8 +158,7 @@ export const replaceDatabaseData = async (
 export const initializeDatabase = async () => {
   console.log("Initializing database...");
   if (!import.meta.env.DEV) {
-    await db.transaction("rw", db.templates, db.metadata, async () => {
-      await db.templates.bulkPut(fixedTemplates);
+    await db.transaction("rw", db.metadata, async () => {
       await db.metadata.put({
         id: 1,
         version: "1.0.0",
@@ -174,11 +174,9 @@ export const initializeDatabase = async () => {
   await db.transaction(
     "rw",
     db.accounts,
-    db.templates,
     db.metadata,
     async () => {
       await db.accounts.bulkPut(devAccounts);
-      await db.templates.bulkPut(fixedTemplates);
       await db.metadata.put({
         id: 1,
         version: "1.0.0",

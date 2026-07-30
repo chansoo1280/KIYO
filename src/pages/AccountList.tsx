@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Account, Template } from "../models/account";
+import type { Account } from "../models/account";
 import { useAccountStore } from "../store/accountStore";
 import BottomTabs from "../components/BottomTabs";
 import { useSessionStore } from "../store/sessionStore";
 import { useSecureClipboard } from "../hooks/useSecureClipboard";
-import { fixedTemplates } from "../database/testdata";
+import TemplatePicker from "../components/TemplatePicker";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -49,28 +49,6 @@ const AccountList = () => {
 
   const handleAccountClick = (account: Account) => {
     navigate(`/account/${account.id}`, { state: { account } });
-  };
-
-  const handleSelectTemplate = (template: Template) => {
-    const newAccount: Account = {
-      id: 0,
-      templateId: template.id,
-      title: "",
-      tags: [],
-      favorite: false,
-      createdAt: 0,
-      updatedAt: 0,
-      fields: template.fields.map((field, index) => ({
-        ...field,
-        id: `template-${template.id}-${index + 1}`,
-        accountId: 0,
-        value: "",
-        order: index + 1,
-      })),
-    };
-
-    setShowTemplatePicker(false);
-    navigate("/account/edit", { state: { account: newAccount } });
   };
 
   // Get available tags based on filtered accounts (for AND search)
@@ -331,61 +309,10 @@ const AccountList = () => {
       </div>
 
       {showTemplatePicker && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-5 sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="template-picker-title"
-          onClick={() => setShowTemplatePicker(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl bg-[var(--color-bg)] p-6 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
-                  새 계정
-                </p>
-                <h2
-                  id="template-picker-title"
-                  className="mt-1 text-xl font-semibold text-[var(--color-text-h)]"
-                >
-                  템플릿 선택
-                </h2>
-                <p className="mt-1 text-sm text-[var(--color-text)]">
-                  기본 항목을 선택한 뒤 내용을 입력하세요.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTemplatePicker(false)}
-                className="rounded-full p-2 text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
-                aria-label="템플릿 선택 닫기"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              {fixedTemplates.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => handleSelectTemplate(template)}
-                  className="rounded-2xl border border-[var(--color-border)] p-4 text-left transition hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-bg)]"
-                >
-                  <p className="font-semibold text-[var(--color-text-h)]">
-                    {template.name}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-text)]">
-                    {template.fields.map((field) => field.label).join(", ")}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TemplatePicker
+          open={showTemplatePicker}
+          onClose={() => setShowTemplatePicker(false)}
+        />
       )}
 
       <BottomTabs />

@@ -1,4 +1,4 @@
-import type { Account, Template } from "../models/account";
+import type { Account } from "../models/account";
 
 // Initial accounts for development
 export const devAccounts: Account[] = [
@@ -58,73 +58,4 @@ export const devAccounts: Account[] = [
   },
 ];
 
-// Fixed templates
-export const fixedTemplates: Template[] = [
-  {
-    id: 1,
-    name: "로그인",
-    fields: [
-      {
-        id: "email",
-        label: "이메일",
-        type: "email",
-        value: "",
-        order: 1,
-      },
-      {
-        id: "password",
-        label: "비밀번호",
-        type: "password",
-        value: "",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "API 키",
-    fields: [
-      {
-        id: "api-key",
-        label: "API Key",
-        type: "password",
-        value: "",
-        order: 1,
-      },
-      {
-        id: "secret",
-        label: "Secret",
-        type: "password",
-        value: "",
-        order: 2,
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "카드",
-    fields: [
-      {
-        id: "card-number",
-        label: "카드 번호",
-        type: "text",
-        value: "",
-        order: 1,
-      },
-      {
-        id: "expiry-date",
-        label: "유효기간",
-        type: "text",
-        value: "",
-        order: 2,
-      },
-      {
-        id: "cvc",
-        label: "CVC",
-        type: "password",
-        value: "",
-        order: 3,
-      },
-    ],
-  },
-];
+

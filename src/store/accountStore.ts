@@ -17,7 +17,7 @@ export interface AccountState {
   initialized: boolean;
 
   initialize: () => Promise<void>;
-  setAccounts: (accounts: Account[]) => void;
+  setAccounts: (accounts: Account[]) => Promise<void>;
   addAccount: (account: Account) => Promise<Account>;
   updateAccount: (account: Account) => Promise<void>;
   deleteAccount: (id: number) => Promise<void>;

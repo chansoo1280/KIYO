@@ -1,4 +1,5 @@
 import { fromBase64, toBase64 } from "./crypto.utils";
+import { isEncryptedType } from "../types/fieldTypes";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -70,9 +71,7 @@ export const decryptField = async (
 
 /**
  * Encrypt sensitive fields in an Account object
- * Sensitive fields: fields[].value (for password, email, etc. types), notes
- * Non-sensitive fields (kept as plaintext): id, templateId, title, description, tags, favorite, 
- *   createdAt, updatedAt, websiteUrl, domain, packageName, fields[].id, fields[].label, fields[].type, fields[].order
+ * Sensitive fields are determined by field type: password, totp, secureText, secureTextarea
  */
 export const encryptAccountSensitiveFields = async (
   account: import("../models/account").Account,
@@ -80,10 +79,8 @@ export const encryptAccountSensitiveFields = async (
 ): Promise<import("../models/account").Account> => {
   const encryptedFields = await Promise.all(
     account.fields.map(async (field) => {
-      // Encrypt sensitive field types: password, email, and any field with sensitive content
-      const sensitiveTypes: import("../models/account").FieldType[] = ["password", "email"];
-      const isSensitive = sensitiveTypes.includes(field.type) || field.type === "textarea";
-      
+      const isSensitive = isEncryptedType(field.type);
+
       if (isSensitive && field.value) {
         const encryptedValue = await encryptField(field.value, key);
         return {

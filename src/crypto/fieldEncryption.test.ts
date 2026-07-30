@@ -73,6 +73,30 @@ describe("fieldEncryption", () => {
           value: "1234567890",
           order: 4,
         },
+        {
+          id: "1-6",
+          accountId: 1,
+          label: "TOTP Secret",
+          type: "totp",
+          value: "JBSWY3DPEHPK3PXP",
+          order: 5,
+        },
+        {
+          id: "1-7",
+          accountId: 1,
+          label: "Secure Text",
+          type: "secureText",
+          value: "secret-api-key",
+          order: 6,
+        },
+        {
+          id: "1-8",
+          accountId: 1,
+          label: "Secure Notes",
+          type: "secureTextarea",
+          value: "Secret notes content",
+          order: 7,
+        },
       ],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -155,7 +179,7 @@ describe("fieldEncryption", () => {
   });
 
   describe("encryptAccountSensitiveFields / decryptAccountSensitiveFields", () => {
-    it("should encrypt sensitive fields (password, email, textarea)", async () => {
+    it("should encrypt sensitive fields (password, totp, secureText, secureTextarea)", async () => {
       const encryptedAccount = await encryptAccountSensitiveFields(testAccount, testKey);
       
       // Check that sensitive fields are encrypted
@@ -167,18 +191,14 @@ describe("fieldEncryption", () => {
       expect(emailField).toBeDefined();
       expect(notesField).toBeDefined();
       
-      // These should be encrypted (JSON string of EncryptedField)
+      // Only password should be encrypted (JSON string of EncryptedField)
       expect(() => JSON.parse(passwordField!.value)).not.toThrow();
-      expect(() => JSON.parse(emailField!.value)).not.toThrow();
-      expect(() => JSON.parse(notesField!.value)).not.toThrow();
+      // Email and textarea should remain plaintext
+      expect(emailField!.value).toBe("test@example.com");
+      expect(notesField!.value).toBe("Some notes here");
       
       const parsedPassword = JSON.parse(passwordField!.value);
-      const parsedEmail = JSON.parse(emailField!.value);
-      const parsedNotes = JSON.parse(notesField!.value);
-      
       expect(isEncryptedField(parsedPassword)).toBe(true);
-      expect(isEncryptedField(parsedEmail)).toBe(true);
-      expect(isEncryptedField(parsedNotes)).toBe(true);
     });
 
     it("should NOT encrypt non-sensitive fields (text, number)", async () => {

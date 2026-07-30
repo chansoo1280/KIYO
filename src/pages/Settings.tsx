@@ -277,6 +277,16 @@ const Settings = () => {
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
+                <span>템플릿 관리</span>
+                <button
+                  type="button"
+                  onClick={() => navigate("/templates")}
+                  className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
+                >
+                  관리
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
                 <span>백업</span>
                 <button
                   type="button"

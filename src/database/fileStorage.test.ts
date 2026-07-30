@@ -113,7 +113,7 @@ describe("fileStorage - pure functions", () => {
               updatedAt: Date.now(),
             },
           ],
-          templates: [{ id: 1, name: "Template", fields: [] }],
+          templates: [{ id: "1", name: "Template", description: "", icon: "📋", sortOrder: 0, fields: [], createdAt: Date.now(), updatedAt: Date.now() }],
           metadata: [{ id: 1, version: "1.0", createdAt: Date.now() }],
         });
         expect(isKiyoFile(validFile)).toBe(true);

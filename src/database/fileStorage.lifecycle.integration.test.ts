@@ -16,11 +16,12 @@ import {
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type { Account, Template, FileMetadata } from "../models/account";
+import type { Account,  FileMetadata } from "../models/account";
 import { createTestAccounts } from "../test/fixtures/accountFixtures";
 import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import { createTestMetadata } from "../test/fixtures/databaseFixtures";
 import * as db from "./db";
+import type { Template } from "../models/template";
 
 type Metadata = FileMetadata;
 
@@ -143,7 +144,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(createdFile.version).toBe(1);
       expect("encrypted" in createdFile).toBe(false);
       expect(createdFile.accounts).toEqual([]);
-      expect(createdFile.templates).toEqual([]);
+      // 내장 템플릿 6개가 자동 시드됨
+      expect(createdFile.templates).toHaveLength(6);
       expect(createdFile.metadata).toEqual([]);
 
       // 세션에 파일명이 저장되었는지 확인
@@ -177,7 +179,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect("encrypted" in backedUpFile).toBe(false);
       expect(backedUpFile.accounts).toHaveLength(1);
       expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
-      expect(backedUpFile.templates).toHaveLength(1);
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      expect(backedUpFile.templates).toHaveLength(7);
       expect(backedUpFile.metadata).toHaveLength(1);
 
       // 백업 파일은 세션을 변경하지 않음 (shouldSetActiveFile=false)
@@ -212,7 +215,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect("encrypted" in importedFile!).toBe(false);
       expect(importedFile!.accounts).toHaveLength(1);
       expect(importedFile!.accounts[0].title).toBe("Test Account 1");
-      expect(importedFile!.templates).toHaveLength(1);
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      expect(importedFile!.templates).toHaveLength(7);
 
       // 세션이 업데이트되었는지 확인 (파일명은 데이터 내부의 fileName 사용)
       const updatedSession = useSessionStore.getState();
@@ -257,7 +261,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       const backedUpFile = await backupDataFile("lifecycle-backup.json", "");
 
       expect(backedUpFile.accounts).toHaveLength(2);
-      expect(backedUpFile.templates).toHaveLength(2);
+      // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
+      expect(backedUpFile.templates).toHaveLength(8);
       expect(backedUpFile.metadata).toHaveLength(1);
       expect("encrypted" in backedUpFile).toBe(false);
 
@@ -275,7 +280,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(importedFile!.accounts).toHaveLength(2);
       expect(importedFile!.accounts[0].title).toBe("Test Account 1");
       expect(importedFile!.accounts[1].title).toBe("Test Account 2");
-      expect(importedFile!.templates).toHaveLength(2);
+      // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
+      expect(importedFile!.templates).toHaveLength(8);
       expect(importedFile!.metadata).toHaveLength(1);
       expect("encrypted" in importedFile!).toBe(false);
 
@@ -294,7 +300,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // DB 확인
       const snapshot = await getDatabaseSnapshot("lifecycle-backup.json");
       expect(snapshot.accounts).toHaveLength(2);
-      expect(snapshot.templates).toHaveLength(2);
+      // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
+      expect(snapshot.templates).toHaveLength(8);
       expect(snapshot.metadata).toHaveLength(1);
     });
   });

@@ -7,6 +7,8 @@ import Settings from "./pages/Settings.tsx";
 import Alerts from "./pages/Alerts.tsx";
 import Auth from "./pages/Auth";
 import AutofillTestLogin from "./pages/AutofillTestLogin";
+import TemplateList from "./pages/TemplateList";
+import TemplateEdit from "./pages/TemplateEdit";
 import { useAccountStore } from "./store/accountStore.ts";
 import { useSettingsStore } from "./store/settingsStore";
 import { useEffect } from "react";
@@ -51,6 +53,9 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/autofill-test" element={<AutofillTestLogin />} />
+        <Route path="/templates" element={<TemplateList />} />
+        <Route path="/templates/new" element={<TemplateEdit />} />
+        <Route path="/templates/:id/edit" element={<TemplateEdit />} />
       </Routes>
     </BrowserRouter>
   );

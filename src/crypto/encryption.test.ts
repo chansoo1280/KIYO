@@ -313,17 +313,22 @@ describe("encryption (KIYO encryption.ts)", () => {
         ],
         templates: [
           {
-            id: 1,
+            id: "1",
             name: "Complex Template",
+            description: "",
+            icon: "📋",
+            sortOrder: 0,
             fields: [
               {
-                id: "tf1",
                 label: "Template Field 1",
                 type: "text",
-                value: "",
-                order: 0,
+                placeholder: "",
+                defaultValue: "",
+                options: [],
               },
             ],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           },
         ],
         metadata: [{ id: 1, version: "2.0.0", createdAt: Date.now() }],

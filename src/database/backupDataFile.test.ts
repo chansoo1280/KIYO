@@ -198,7 +198,7 @@ describe("backupDataFile", () => {
           }),
         ],
         templates: [
-          createTestTemplate({ id: 1, name: "Template 1", fields: [] }),
+          createTestTemplate({ id: "1", name: "Template 1", fields: [] }),
         ],
         metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
       });

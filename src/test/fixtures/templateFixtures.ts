@@ -1,19 +1,17 @@
-// src/test/fixtures/templateFixtures.ts
-
-import type { Template } from "../../models/account";
-import type { AccountField } from "../../models/account";
+import type { Template, TemplateField } from "../../models/template";
+import { BUILTIN_TEMPLATES } from "../../data/builtinTemplates";
 
 /**
  * 기본 TemplateField 생성
  */
 export const createTestTemplateField = (
-  overrides: Partial<AccountField> = {},
-): AccountField => ({
-  id: "template-field-1",
+  overrides: Partial<TemplateField> = {},
+): TemplateField => ({
   label: "Field",
   type: "text",
-  value: "",
-  order: 0,
+  placeholder: "",
+  defaultValue: "",
+  options: [],
   ...overrides,
 });
 
@@ -23,22 +21,29 @@ export const createTestTemplateField = (
 export const createTestTemplate = (
   overrides: Partial<Template> = {},
 ): Template => ({
-  id: 1,
+  id: "1",
   name: "Test Template",
+  description: "",
+  icon: "📋",
+  sortOrder: 0,
   fields: [
     createTestTemplateField({
-      id: "template-field-1",
       label: "Username",
       type: "text",
-      order: 0,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
     createTestTemplateField({
-      id: "template-field-2",
       label: "Password",
       type: "password",
-      order: 1,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
   ],
+  createdAt: 1000,
+  updatedAt: 1000,
   ...overrides,
 });
 
@@ -48,7 +53,7 @@ export const createTestTemplate = (
 export const createTestTemplates = (count = 1): Template[] => {
   return Array.from({ length: count }, (_, index) =>
     createTestTemplate({
-      id: index + 1,
+      id: `${index + 1}`,
       name: `Test Template ${index + 1}`,
     }),
   );
@@ -61,57 +66,81 @@ export const createTestTemplates = (count = 1): Template[] => {
 export const createComplexTestTemplate = (
   overrides: Partial<Template> = {},
 ): Template => ({
-  id: 1,
+  id: "1",
   name: "Complex Template",
+  description: "",
+  icon: "📋",
+  sortOrder: 0,
   fields: [
     createTestTemplateField({
-      id: "complex-text",
       label: "Text",
       type: "text",
-      order: 0,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
 
     createTestTemplateField({
-      id: "complex-password",
       label: "Password",
       type: "password",
-      order: 1,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
 
     createTestTemplateField({
-      id: "complex-email",
       label: "Email",
       type: "email",
-      order: 2,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
 
     createTestTemplateField({
-      id: "complex-number",
       label: "Number",
       type: "number",
-      order: 3,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
 
     createTestTemplateField({
-      id: "complex-url",
       label: "URL",
-      type: "text",
-      order: 4,
+      type: "url",
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
 
     createTestTemplateField({
-      id: "complex-otp",
       label: "OTP",
-      type: "text",
-      order: 5,
+      type: "totp",
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
 
     createTestTemplateField({
-      id: "complex-unicode",
       label: "Unicode",
       type: "text",
-      order: 6,
+      placeholder: "",
+      defaultValue: "",
+      options: [],
     }),
   ],
+  createdAt: 1000,
+  updatedAt: 1000,
   ...overrides,
 });
+
+/**
+ * 내장 템플릿들 (BUILTIN_TEMPLATES) - 테스트용 타임스탬프 추가
+ */
+export const getBuiltinTemplates = (timestamp = Date.now()): Template[] => {
+  return BUILTIN_TEMPLATES.map((t, i) => ({
+    ...t,
+    id: `builtin-${i}`,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }));
+};

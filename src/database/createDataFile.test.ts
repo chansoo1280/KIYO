@@ -44,12 +44,16 @@ vi.mock("../plugins/kiyautofill", () => ({
 }));
 
 // Mock db functions
-vi.mock("../database/db", () => ({
+vi.mock("../database/db", async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
   saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
   loadAccountsFromDB: vi.fn().mockResolvedValue([]),
   syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
   initializeDatabase: vi.fn().mockResolvedValue(undefined),
-}));
+}
+});
 
 import { useSessionStore } from "../store/sessionStore";
 
@@ -95,7 +99,7 @@ describe("createDataFile", () => {
       expect(result.version).toBe(1);
       expect(result.fileName).toBe("test-file.json");
       expect(result.accounts).toEqual([]);
-      expect(result.templates).toEqual([]);
+      expect(result.templates).toHaveLength(6); // 내장 템플릿 6개 시드됨
       expect(result.metadata).toEqual([]);
       expect(typeof result.updatedAt).toBe("number");
     });
@@ -141,7 +145,14 @@ describe("createDataFile", () => {
           version: 1,
           fileName: "test-file.json",
           accounts: [],
-          templates: [],
+          templates: expect.arrayContaining([
+            expect.objectContaining({ name: "로그인" }),
+            expect.objectContaining({ name: "API 키" }),
+            expect.objectContaining({ name: "신용/체크카드" }),
+            expect.objectContaining({ name: "은행 계좌" }),
+            expect.objectContaining({ name: "Wi-Fi" }),
+            expect.objectContaining({ name: "보안 메모" }),
+          ]),
           metadata: [],
         }),
       );
@@ -162,7 +173,14 @@ describe("createDataFile", () => {
           version: 1,
           fileName: "my data.json",
           accounts: [],
-          templates: [],
+          templates: expect.arrayContaining([
+            expect.objectContaining({ name: "로그인" }),
+            expect.objectContaining({ name: "API 키" }),
+            expect.objectContaining({ name: "신용/체크카드" }),
+            expect.objectContaining({ name: "은행 계좌" }),
+            expect.objectContaining({ name: "Wi-Fi" }),
+            expect.objectContaining({ name: "보안 메모" }),
+          ]),
           metadata: [],
         }),
       );
@@ -196,7 +214,14 @@ describe("createDataFile", () => {
           version: 1,
           fileName: "test-file.json",
           accounts: [],
-          templates: [],
+          templates: expect.arrayContaining([
+            expect.objectContaining({ name: "로그인" }),
+            expect.objectContaining({ name: "API 키" }),
+            expect.objectContaining({ name: "신용/체크카드" }),
+            expect.objectContaining({ name: "은행 계좌" }),
+            expect.objectContaining({ name: "Wi-Fi" }),
+            expect.objectContaining({ name: "보안 메모" }),
+          ]),
           metadata: [],
         }),
       );
@@ -238,7 +263,14 @@ describe("createDataFile", () => {
           version: 1,
           fileName: "test-file.json",
           accounts: [],
-          templates: [],
+          templates: expect.arrayContaining([
+            expect.objectContaining({ name: "로그인" }),
+            expect.objectContaining({ name: "API 키" }),
+            expect.objectContaining({ name: "신용/체크카드" }),
+            expect.objectContaining({ name: "은행 계좌" }),
+            expect.objectContaining({ name: "Wi-Fi" }),
+            expect.objectContaining({ name: "보안 메모" }),
+          ]),
           metadata: [],
         }),
       );

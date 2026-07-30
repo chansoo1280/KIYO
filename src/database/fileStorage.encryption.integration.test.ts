@@ -16,7 +16,8 @@ import {
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type { Account, Template } from "../models/account";
+import type { Account } from "../models/account";
+import type { Template } from "../models/template";
 import { createTestAccounts } from "../test/fixtures/accountFixtures";
 import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import { fromBase64 } from "../crypto/crypto.utils";
@@ -161,13 +162,14 @@ describe("fileStorage Encryption Integration Tests", () => {
       const createdFile = await createDataFile(fileName, TEST_PIN);
 
       // 검증: 반환값은 평문 데이터 (암호화되지 않음)
-      expect(createdFile).toBeDefined();
-      expect(createdFile.fileName).toBe("encrypted-create.json");
-      expect(createdFile.version).toBe(1);
-      expect("encrypted" in createdFile).toBe(false);
-      expect(createdFile.accounts).toEqual([]);
-      expect(createdFile.templates).toEqual([]);
-      expect(createdFile.metadata).toEqual([]);
+            expect(createdFile).toBeDefined();
+            expect(createdFile.fileName).toBe("encrypted-create.json");
+            expect(createdFile.version).toBe(1);
+            expect("encrypted" in createdFile).toBe(false);
+            expect(createdFile.accounts).toEqual([]);
+            // 내장 템플릿 6개가 자동 시드됨
+            expect(createdFile.templates).toHaveLength(6);
+            expect(createdFile.metadata).toEqual([]);
 
       // 검증: 세션에 cryptoKey와 salt가 저장되었는지 확인
       const sessionState = useSessionStore.getState();
@@ -219,7 +221,8 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect("encrypted" in backedUpFile).toBe(false);
       expect(backedUpFile.accounts).toHaveLength(1);
       expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
-      expect(backedUpFile.templates).toHaveLength(1);
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      expect(backedUpFile.templates).toHaveLength(7);
       expect(backedUpFile.metadata).toHaveLength(0);
 
       // 검증: 세션은 변경되지 않아야 함 (shouldSetActiveFile=false)
@@ -251,7 +254,8 @@ describe("fileStorage Encryption Integration Tests", () => {
       const decrypted = await decryptData(savedEncryptedFile!, backupKey);
       expect(decrypted.accounts).toHaveLength(1);
       expect(decrypted.accounts[0].title).toBe("Test Account 1");
-      expect(decrypted.templates).toHaveLength(1);
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      expect(decrypted.templates).toHaveLength(7);
     });
 
     it("올바른 PIN으로 암호화 파일을 복원한다", async () => {
@@ -292,13 +296,15 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(importedFile!.fileName).toBe("encrypted-backup.json");
       expect(importedFile!.version).toBe(1);
       expect("encrypted" in importedFile!).toBe(false); // 복호화된 평문 파일
-
-      // 검증: 데이터 동일성 확인
+      // 검증: 복원된 데이터 검증
+      expect(importedFile).not.toBeNull();
       expect(importedFile!.accounts).toHaveLength(1);
       expect(importedFile!.accounts[0].title).toBe("Test Account 1");
-      expect(importedFile!.templates).toHaveLength(1);
-      expect(importedFile!.templates[0].name).toBe("Test Template 1");
-
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      expect(importedFile!.templates).toHaveLength(7);
+      // 테스트 템플릿이 포함되어 있는지 확인 (내장 템플릿 6개 뒤에 추가됨)
+      expect(importedFile!.templates.find(t => t.name === "Test Template 1")).toBeDefined();
+      expect(importedFile!.metadata).toHaveLength(0);
       // 검증: 세션에 cryptoKey와 salt 저장됨
       const sessionState = useSessionStore.getState();
       expect(sessionState.activeFileName).toBe("encrypted-backup.json");
@@ -315,7 +321,8 @@ describe("fileStorage Encryption Integration Tests", () => {
       const snapshot = await getDatabaseSnapshot("encrypted-backup.json");
       expect(snapshot.accounts).toHaveLength(1);
       expect(snapshot.accounts[0].title).toBe("Test Account 1");
-      expect(snapshot.templates).toHaveLength(1);
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      expect(snapshot.templates).toHaveLength(7);
     });
 
     it("잘못된 PIN이면 복원하지 않는다", async () => {
