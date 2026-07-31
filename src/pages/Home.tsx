@@ -5,8 +5,8 @@ import {
   isKiyoFile,
   openImportedDataFile,
 } from "../database/fileStorage";
+import { fileTable } from "../database/fileTable";
 import FileCreateDialog from "../components/FileCreateDialog";
-import { getActiveFileInfo } from "../database/db";
 import FileOpenDialog from "../components/FileOpenDialog";
 import {
   FileStorageErrorCode,
@@ -22,7 +22,7 @@ const Home = () => {
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
-      const { fileData, encrypted } = await getActiveFileInfo();
+      const { fileData, encrypted } = await fileTable.getActiveFileInfo();
       if (!activeFileName) return;
       if (encrypted) {
         navigate("/auth", {

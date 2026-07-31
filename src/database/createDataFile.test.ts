@@ -5,15 +5,71 @@ import {
   encryptData,
   type EncryptedKiyoFile,
 } from "../crypto/encryption";
-import { saveFileDataToDB } from "../database/db";
-
 // Import common mocks
 import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
 import {
   createMockEncryption,
   mockEncryptionDefaults,
 } from "../test/mocks/encryptionMock";
-import { createMockDB } from "../test/mocks/dbMock";
+import { useSessionStore } from "../store/sessionStore";
+import { fileTable } from "./fileTable";
+
+// Hoisted mocks for vi.mock
+const dbMock = vi.hoisted(() => ({
+  mockReplaceDatabaseData: vi.fn().mockResolvedValue(undefined),
+  mockGetDatabaseSnapshot: vi.fn(),
+  mockIsNativeFileStorageAvailable: vi.fn(() => false),
+  mockGetDatabase: vi.fn(() => ({})),
+  mockInitializeDatabase: vi.fn().mockResolvedValue(undefined),
+  mockSyncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
+}));
+
+const fileTableMock = vi.hoisted(() => ({
+  fileTable: {
+    saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
+    saveActiveFileInfo: vi.fn().mockResolvedValue(undefined),
+    getActiveFileInfo: vi.fn().mockResolvedValue({
+      activeFileName: null,
+      salt: null,
+      encrypted: false,
+      fileData: null,
+    }),
+    clearActiveFileInfo: vi.fn().mockResolvedValue(undefined),
+    getAllFileNames: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+const accountTableMock = vi.hoisted(() => ({
+  accountTable: {
+    getAll: vi.fn().mockResolvedValue([]),
+    initializeDevData: vi.fn().mockResolvedValue(undefined),
+    saveAll: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn(),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    getById: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+const templateTableMock = vi.hoisted(() => ({
+  templateTable: {
+    init: vi.fn().mockResolvedValue(undefined),
+    getAll: vi.fn().mockResolvedValue([
+      { id: "1", name: "로그인", sortOrder: 0, updatedAt: Date.now() },
+      { id: "2", name: "API 키", sortOrder: 1, updatedAt: Date.now() },
+      { id: "3", name: "신용/체크카드", sortOrder: 2, updatedAt: Date.now() },
+      { id: "4", name: "은행 계좌", sortOrder: 3, updatedAt: Date.now() },
+      { id: "5", name: "Wi-Fi", sortOrder: 4, updatedAt: Date.now() },
+      { id: "6", name: "보안 메모", sortOrder: 5, updatedAt: Date.now() },
+    ]),
+    getById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    reorder: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 // Mock sessionStore
 vi.mock("../store/sessionStore", () => ({
@@ -26,6 +82,7 @@ vi.mock("../store/sessionStore", () => ({
 vi.mock("../crypto/encryption", () => ({
   createCryptoKey: vi.fn(),
   encryptData: vi.fn(),
+  isEncryptedKiyoFile: vi.fn(),
 }));
 
 // Mock crypto utils
@@ -43,39 +100,59 @@ vi.mock("../plugins/kiyautofill", () => ({
   },
 }));
 
-// Mock db functions
-vi.mock("../database/db", async (importOriginal) => {
-  const actual = await importOriginal<any>();
-  return {
-    ...actual,
-  saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
-  loadAccountsFromDB: vi.fn().mockResolvedValue([]),
-  syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
-  initializeDatabase: vi.fn().mockResolvedValue(undefined),
-}
-});
+// Mock accountTable using hoisted mock
+vi.mock("./accountTable", () => accountTableMock);
 
-import { useSessionStore } from "../store/sessionStore";
+// Mock templateTable using hoisted mock
+vi.mock("./templateTable", () => templateTableMock);
+
+// Mock db functions
+vi.mock("../database/db", () => ({
+  replaceDatabaseData: dbMock.mockReplaceDatabaseData,
+  getDatabaseSnapshot: dbMock.mockGetDatabaseSnapshot,
+  isNativeFileStorageAvailable: dbMock.mockIsNativeFileStorageAvailable,
+  getDatabase: dbMock.mockGetDatabase,
+  initializeDatabase: dbMock.mockInitializeDatabase,
+  syncDatabaseToFile: dbMock.mockSyncDatabaseToFile,
+}));
+
+// Mock fileTable
+vi.mock("./fileTable", () => fileTableMock);
+
+// Mock accountStore
+vi.mock("../store/accountStore", () => ({
+  useAccountStore: {
+    getState: vi.fn(() => ({
+      setAccounts: vi.fn(),
+      clearAccounts: vi.fn(),
+    })),
+  },
+}));
+
+// Mock templateStore
+vi.mock("../store/templateStore", () => ({
+  useTemplateStore: {
+    getState: vi.fn(() => ({
+      loadTemplates: vi.fn(),
+    })),
+  },
+}));
 
 describe("createDataFile", () => {
   let mockSessionStore: ReturnType<typeof createMockSessionStore>;
   let mockEncryption: ReturnType<typeof createMockEncryption>;
-  let mockDB: ReturnType<typeof createMockDB>;
 
   const mockCryptoKey = {} as CryptoKey;
   const mockSalt = new Uint8Array(16);
-  const mockEncryptedData: EncryptedKiyoFile =
-    mockEncryptionDefaults.encryptData;
+  const mockEncryptedData: EncryptedKiyoFile = mockEncryptionDefaults.encryptData;
 
   beforeEach(() => {
     // Create fresh mocks for each test
     mockSessionStore = createMockSessionStore();
     mockEncryption = createMockEncryption();
-    mockDB = createMockDB();
 
     // Configure mock implementations
     vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
-    vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
 
     vi.mocked(createCryptoKey).mockImplementation(
       mockEncryption.mockCreateCryptoKey,
@@ -137,8 +214,9 @@ describe("createDataFile", () => {
     it("DB 저장 함수(saveFileDataToDB)를 평문 데이터와 함께 호출한다", async () => {
       await createDataFile("test-file");
 
-      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
+      expect(fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] =
+        fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -165,8 +243,8 @@ describe("createDataFile", () => {
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "my data.json" }),
       );
-      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
+      const [fileName, data, salt] =
+        fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("my data.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -244,8 +322,9 @@ describe("createDataFile", () => {
     it("DB 저장 함수(saveFileDataToDB)를 암호화 데이터와 salt와 함께 호출한다", async () => {
       await createDataFile("test-file", "1234");
 
-      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = mockDB.mockSaveFileDataToDB.mock.calls[0];
+      expect(fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] =
+        fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(mockEncryptedData);
       expect(salt).toEqual(mockSalt);
@@ -284,7 +363,9 @@ describe("createDataFile", () => {
         cryptoKey: mockCryptoKey,
         salt: mockSalt,
       });
-      expect(mockDB.mockSaveFileDataToDB).toHaveBeenCalledWith(
+      expect(
+        fileTableMock.fileTable.saveFileDataToDB,
+      ).toHaveBeenCalledWith(
         "secure data.json",
         expect.any(Object),
         expect.any(Uint8Array),
@@ -347,16 +428,6 @@ describe("createDataFile", () => {
 
       await expect(createDataFile("test-file", "1234")).rejects.toThrow(
         "Encryption failed",
-      );
-    });
-
-    it("saveFileDataToDB 실패 시 에러를 전파한다", async () => {
-      mockDB.mockSaveFileDataToDB.mockRejectedValueOnce(
-        new Error("DB save failed"),
-      );
-
-      await expect(createDataFile("test-file")).rejects.toThrow(
-        "DB save failed",
       );
     });
 

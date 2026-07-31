@@ -2,13 +2,13 @@ import { db } from "./db";
 import type { Template } from "../models/template";
 import { BUILTIN_TEMPLATES } from "../data/builtinTemplates";
 
-export const templateStorage = {
+export const templateTable = {
   async init(): Promise<void> {
     const count = await db.templates.count();
     if (count === 0) {
       // DB가 비어있으면 내장 템플릿 시드
       for (const builtin of BUILTIN_TEMPLATES) {
-        await templateStorage.create(builtin);
+        await templateTable.create(builtin);
       }
     }
   },

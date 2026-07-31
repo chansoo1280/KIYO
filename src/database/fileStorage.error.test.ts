@@ -5,7 +5,6 @@ import { useSessionStore } from "../store/sessionStore";
 import { useAccountStore } from "../store/accountStore";
 import { isEncryptedKiyoFile, createCryptoKey, decryptData } from "../crypto/encryption";
 import { fromBase64 } from "../crypto/crypto.utils";
-import { saveFileDataToDB, replaceDatabaseData, getDatabaseSnapshot } from "./db";
 import { openImportedDataFile, writeDataFile } from "./fileStorage";
 import { FileStorageError, FileStorageErrorCode, isFileStorageError } from "../errors/FileStorageError";
 import { createTestEncryptedFile } from "../test/fixtures/databaseFixtures";
@@ -16,6 +15,7 @@ import { createMockDB } from "../test/mocks/dbMock";
 import type { KiyoDataFile } from "./fileStorage";
 import type { Account, FileMetadata } from "../models/account";
 import type { Template } from "../models/template";
+import { getDatabaseSnapshot, replaceDatabaseData } from "./db";
 
 type Metadata = FileMetadata;
 
@@ -39,12 +39,32 @@ vi.mock("@capacitor/core", () => ({
     getPlatform: vi.fn(() => 'web'),
   },
 }));
-vi.mock("@capacitor/filesystem", () => ({ Filesystem: { writeFile: vi.fn() } }));
+vi.mock("@capacitor/filesystem", () => ({ 
+  Filesystem: { writeFile: vi.fn() },
+  Directory: { Documents: "DOCUMENTS" },
+  Encoding: { UTF8: "utf8" },
+}));
 vi.mock("../store/sessionStore", () => ({ useSessionStore: { getState: vi.fn() } }));
 vi.mock("../store/accountStore", () => ({ useAccountStore: { getState: vi.fn() } }));
 vi.mock("../crypto/encryption", () => ({ isEncryptedKiyoFile: vi.fn(), createCryptoKey: vi.fn(), decryptData: vi.fn(), encryptData: vi.fn() }));
 vi.mock("../crypto/crypto.utils", () => ({ fromBase64: vi.fn(), toBase64: vi.fn() }));
-vi.mock("./db", () => ({ saveFileDataToDB: vi.fn(), replaceDatabaseData: vi.fn(), getDatabaseSnapshot: vi.fn(), loadAccountsFromDB: vi.fn(), isNativeFileStorageAvailable: vi.fn(() => false) }));
+
+// Mock fileTable as an object
+const fileTableMock = vi.hoisted(() => ({
+  fileTable: {
+    saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
+  }
+}));
+
+vi.mock("./fileTable", () => fileTableMock);
+
+// Mock db functions (without saveFileDataToDB)
+vi.mock("./db", () => ({
+  replaceDatabaseData: vi.fn(),
+  getDatabaseSnapshot: vi.fn(),
+  loadAccountsFromDB: vi.fn(),
+  isNativeFileStorageAvailable: vi.fn(() => false),
+}));
 
 describe("fileStorage - error handling", () => {
   let mockSessionStore: ReturnType<typeof createMockSessionStore>;
@@ -74,7 +94,6 @@ describe("fileStorage - error handling", () => {
     vi.mocked(createCryptoKey).mockImplementation(mockEncryption.mockCreateCryptoKey);
     vi.mocked(decryptData).mockImplementation(mockEncryption.mockDecryptData);
     vi.mocked(fromBase64).mockImplementation(mockEncryption.mockFromBase64);
-    vi.mocked(saveFileDataToDB).mockImplementation(mockDB.mockSaveFileDataToDB);
     vi.mocked(replaceDatabaseData).mockImplementation(mockDB.mockReplaceDatabaseData);
     vi.mocked(getDatabaseSnapshot).mockImplementation(mockDB.mockGetDatabaseSnapshot);
     vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
@@ -83,24 +102,21 @@ describe("fileStorage - error handling", () => {
   afterEach(() => vi.resetAllMocks());
 
   describe("openImportedDataFile", () => {
-    it("잘못된 JSON → null 반환 (INVALID_JSON 상황)", async () => {
-      const result = await openImportedDataFile("{ invalid json }", "1234", "test.json");
-      expect(result).toBeNull();
+    it("잘못된 JSON → JSON 파싱 실패 반환 (INVALID_JSON 상황)", async () => {
+      await expect(openImportedDataFile("{ invalid json }", "1234", "test.json")).rejects.toThrow("JSON 파싱 실패")
     });
 
-    it("잘못된 PIN → null 반환 (INVALID_PIN 상황)", async () => {
+    it("잘못된 PIN → PIN 불일치 반환 (INVALID_PIN 상황)", async () => {
       mockEncryption.mockIsEncryptedKiyoFile.mockReturnValue(true);
       mockEncryption.mockCreateCryptoKey.mockRejectedValueOnce(new Error("Invalid PIN"));
       vi.mocked(isEncryptedKiyoFile).mockImplementation(mockEncryption.mockIsEncryptedKiyoFile);
       vi.mocked(createCryptoKey).mockImplementation(mockEncryption.mockCreateCryptoKey);
 
-      const result = await openImportedDataFile(encryptedJsonString, "wrong-pin", "test.json");
-      expect(result).toBeNull();
+      await expect(openImportedDataFile(encryptedJsonString, "wrong-pin", "test.json")).rejects.toThrow("PIN 불일치")
     });
 
-    it("잘못된 파일 형식 → null 반환 (INVALID_FORMAT 상황)", async () => {
-      const result = await openImportedDataFile(JSON.stringify(createValidKiyoFile({ version: 2 as unknown as 1 })), "1234", "test.json");
-      expect(result).toBeNull();
+    it("잘못된 파일 형식 → is not KiyoFile 반환 (INVALID_FORMAT 상황)", async () => {
+      await expect(openImportedDataFile(JSON.stringify(createValidKiyoFile({ version: 2 as unknown as 1 })), "1234", "test.json")).rejects.toThrow("is not KiyoFile");
     });
   });
 

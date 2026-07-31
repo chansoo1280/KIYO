@@ -1,23 +1,18 @@
 import { vi, type Mock } from "vitest";
 import type { KiyoDataFile } from "../../database/fileStorage";
-import type { Account } from "../../models/account";
 
 // ============================================
-// Database Mock Types
+// Database Mock Types (for db.ts functions only)
 // ============================================
 
 export interface MockDB {
-  mockSaveFileDataToDB: Mock;
+  // db.ts functions only
   mockReplaceDatabaseData: Mock;
   mockGetDatabaseSnapshot: Mock;
-  mockLoadAccountsFromDB: Mock;
-  mockIsNativeFileStorageAvailable: Mock;
-  mockClearFileData: Mock;
-  mockGetAllFileNames: Mock;
-  mockClearActiveFileInfo: Mock;
-  mockGetActiveFileInfo: Mock;
-  mockGetDatabase: Mock;
   mockInitializeDatabase: Mock;
+  mockGetDatabase: Mock;
+  mockIsNativeFileStorageAvailable: Mock;
+  mockSyncDatabaseToFile: Mock;
 }
 
 // ============================================
@@ -34,73 +29,45 @@ const createMockKiyoDataFile = (): KiyoDataFile => ({
 });
 
 export const mockDBDefaults = {
-  saveFileDataToDB: undefined,
+  // db.ts functions
   replaceDatabaseData: undefined,
   getDatabaseSnapshot: createMockKiyoDataFile(),
-  loadAccountsFromDB: [] as Account[],
-  isNativeFileStorageAvailable: false,
-  clearFileData: undefined,
-  getAllFileNames: [] as string[],
-  clearActiveFileInfo: undefined,
-  getActiveFileInfo: {
-    activeFileName: null as string | null,
-    salt: null as Uint8Array | null,
-    encrypted: false,
-    fileData: null as KiyoDataFile | null,
-  },
+  initializeDatabase: undefined,
   getDatabase: {} as any,
+  isNativeFileStorageAvailable: false,
+  syncDatabaseToFile: undefined,
 };
 
 // ============================================
-// Mock Factory Functions
+// Mock Factory Functions (for creating fresh typed mocks in tests)
 // ============================================
 
 /**
- * Creates mock functions for database module
+ * Creates mock functions for database module (db.ts)
  */
 export const createDBMocks = () => {
-  const mockSaveFileDataToDB = vi
-    .fn()
-    .mockResolvedValue(mockDBDefaults.saveFileDataToDB);
   const mockReplaceDatabaseData = vi
     .fn()
     .mockResolvedValue(mockDBDefaults.replaceDatabaseData);
   const mockGetDatabaseSnapshot = vi
     .fn()
     .mockResolvedValue(mockDBDefaults.getDatabaseSnapshot);
-  const mockLoadAccountsFromDB = vi
-    .fn()
-    .mockResolvedValue(mockDBDefaults.loadAccountsFromDB);
+  const mockInitializeDatabase = vi.fn().mockResolvedValue(undefined);
+  const mockGetDatabase = vi.fn().mockReturnValue(mockDBDefaults.getDatabase);
   const mockIsNativeFileStorageAvailable = vi
     .fn()
     .mockReturnValue(mockDBDefaults.isNativeFileStorageAvailable);
-  const mockClearFileData = vi
+  const mockSyncDatabaseToFile = vi
     .fn()
-    .mockResolvedValue(mockDBDefaults.clearFileData);
-  const mockGetAllFileNames = vi
-    .fn()
-    .mockResolvedValue(mockDBDefaults.getAllFileNames);
-  const mockClearActiveFileInfo = vi
-    .fn()
-    .mockResolvedValue(mockDBDefaults.clearActiveFileInfo);
-  const mockGetActiveFileInfo = vi
-    .fn()
-    .mockResolvedValue(mockDBDefaults.getActiveFileInfo);
-  const mockGetDatabase = vi.fn().mockReturnValue(mockDBDefaults.getDatabase);
-  const mockInitializeDatabase = vi.fn().mockResolvedValue(undefined);
+    .mockResolvedValue(mockDBDefaults.syncDatabaseToFile);
 
   return {
-    mockSaveFileDataToDB,
     mockReplaceDatabaseData,
     mockGetDatabaseSnapshot,
-    mockLoadAccountsFromDB,
-    mockIsNativeFileStorageAvailable,
-    mockClearFileData,
-    mockGetAllFileNames,
-    mockClearActiveFileInfo,
-    mockGetActiveFileInfo,
-    mockGetDatabase,
     mockInitializeDatabase,
+    mockGetDatabase,
+    mockIsNativeFileStorageAvailable,
+    mockSyncDatabaseToFile,
   };
 };
 
@@ -111,17 +78,30 @@ export const createMockDB = (overrides?: Partial<MockDB>): MockDB => {
   const mocks = createDBMocks();
 
   return {
-    mockSaveFileDataToDB: mocks.mockSaveFileDataToDB,
     mockReplaceDatabaseData: mocks.mockReplaceDatabaseData,
     mockGetDatabaseSnapshot: mocks.mockGetDatabaseSnapshot,
-    mockLoadAccountsFromDB: mocks.mockLoadAccountsFromDB,
-    mockIsNativeFileStorageAvailable: mocks.mockIsNativeFileStorageAvailable,
-    mockClearFileData: mocks.mockClearFileData,
-    mockGetAllFileNames: mocks.mockGetAllFileNames,
-    mockClearActiveFileInfo: mocks.mockClearActiveFileInfo,
-    mockGetActiveFileInfo: mocks.mockGetActiveFileInfo,
-    mockGetDatabase: mocks.mockGetDatabase,
     mockInitializeDatabase: mocks.mockInitializeDatabase,
+    mockGetDatabase: mocks.mockGetDatabase,
+    mockIsNativeFileStorageAvailable: mocks.mockIsNativeFileStorageAvailable,
+    mockSyncDatabaseToFile: mocks.mockSyncDatabaseToFile,
+    ...overrides,
+  };
+};
+
+/**
+ * Creates a mock for db module import
+ * Usage: vi.mock("./db", () => ({ ...createMockDBModule(), ... }))
+ */
+export const createMockDBModule = (overrides?: Partial<MockDB>) => {
+  const mocks = createDBMocks();
+
+  return {
+    replaceDatabaseData: mocks.mockReplaceDatabaseData,
+    getDatabaseSnapshot: mocks.mockGetDatabaseSnapshot,
+    initializeDatabase: mocks.mockInitializeDatabase,
+    getDatabase: mocks.mockGetDatabase,
+    isNativeFileStorageAvailable: mocks.mockIsNativeFileStorageAvailable,
+    syncDatabaseToFile: mocks.mockSyncDatabaseToFile,
     ...overrides,
   };
 };
@@ -133,5 +113,6 @@ export const createMockDB = (overrides?: Partial<MockDB>): MockDB => {
 export const dbMock = {
   createMocks: createDBMocks,
   createMockDB,
+  createMockModule: createMockDBModule,
   defaults: mockDBDefaults,
 };

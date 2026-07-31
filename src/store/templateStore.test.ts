@@ -1,34 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useTemplateStore } from "./templateStore";
-import { templateStorage } from "../database/templateStorage";
+import { templateTable } from "../database/templateTable";
 import type { Template } from "../models/template";
 import { BUILTIN_TEMPLATES } from "../data/builtinTemplates";
 
-// templateStorage 모듈 전체 모킹 (내부에서 db 사용하므로)
-vi.mock("../database/templateStorage", () => ({
-  templateStorage: {
+// templateTable 모듈 전체 모킹 (내부에서 db 사용하므로)
+vi.mock("../database/templateTable", () => ({
+  templateTable: {
     getAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
     reorder: vi.fn(),
     init: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// db 모킹 (templateStorage 내부에서 사용)
-vi.mock("../database/db", () => ({
-  db: {
-    templates: {
-      count: vi.fn(),
-      toArray: vi.fn(),
-      get: vi.fn(),
-      add: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      orderBy: vi.fn().mockReturnThis(),
-    },
-    transaction: vi.fn(),
   },
 }));
 
@@ -43,7 +27,7 @@ describe("templateStore", () => {
 
   describe("loadTemplates", () => {
     it("DB가 비어있으면 내장 템플릿 6개를 시드하고 로드한다", async () => {
-      // createDataFile에서 templateStorage.init()을 호출하여 시드함
+      // createDataFile에서 templateTable.init()을 호출하여 시드함
       // loadTemplates에서는 이미 시드된 데이터(getAll 반환)를 로드
       const seededTemplates = BUILTIN_TEMPLATES.map((t, i) => ({
         ...t,
@@ -51,8 +35,8 @@ describe("templateStore", () => {
         createdAt: 1000 + i,
         updatedAt: 1000 + i,
       }));
-      // templateStorage.getAll()이 시드된 템플릿 반환 (init에서 시드 완료 후)
-      vi.fn(templateStorage.getAll).mockResolvedValueOnce(seededTemplates);
+      // templateTable.getAll()이 시드된 템플릿 반환 (init에서 시드 완료 후)
+      vi.fn(templateTable.getAll).mockResolvedValueOnce(seededTemplates);
 
       await useTemplateStore.getState().loadTemplates();
 
@@ -67,7 +51,7 @@ describe("templateStore", () => {
         "보안 메모",
       ]);
       // create는 init에서 호출됨, loadTemplates에서는 호출되지 않음
-      expect(templateStorage.create).not.toHaveBeenCalled();
+      expect(templateTable.create).not.toHaveBeenCalled();
     });
 
     it("DB에 데이터가 있으면 시드 없이 그대로 로드한다", async () => {
@@ -83,19 +67,19 @@ describe("templateStore", () => {
           updatedAt: 1000,
         },
       ];
-      // templateStorage.getAll()이 기존 데이터 반환 (init에서 이미 데이터 있음 확인)
-      vi.fn(templateStorage.getAll).mockResolvedValueOnce(existingTemplates);
+      // templateTable.getAll()이 기존 데이터 반환 (init에서 이미 데이터 있음 확인)
+      vi.fn(templateTable.getAll).mockResolvedValueOnce(existingTemplates);
 
       await useTemplateStore.getState().loadTemplates();
 
       const state = useTemplateStore.getState();
       expect(state.templates).toHaveLength(1);
       expect(state.templates[0].name).toBe("커스텀 템플릿");
-      expect(templateStorage.create).not.toHaveBeenCalled();
+      expect(templateTable.create).not.toHaveBeenCalled();
     });
 
     it("에러 발생 시 isLoading만 false로 설정한다", async () => {
-      vi.fn(templateStorage.getAll).mockRejectedValueOnce(new Error("DB error"));
+      vi.fn(templateTable.getAll).mockRejectedValueOnce(new Error("DB error"));
 
       await useTemplateStore.getState().loadTemplates();
 
@@ -122,7 +106,7 @@ describe("templateStore", () => {
           updatedAt: 1000,
         };
 
-        vi.fn(templateStorage.create).mockResolvedValueOnce(created);
+        vi.fn(templateTable.create).mockResolvedValueOnce(created);
 
         const result = await useTemplateStore.getState().createTemplate(newTemplate);
 

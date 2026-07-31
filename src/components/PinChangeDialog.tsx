@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BaseDialog } from "./BaseDialog";
-import { getActiveFileInfo } from "../database/db";
+import { fileTable } from "../database/fileTable";
 import { isVerifyPin } from "../crypto/encryption";
 
 interface PinChangeDialogProps {
@@ -57,7 +57,7 @@ export const PinChangeDialog = ({
       setErrorMessage("현재 PIN과 다른 PIN을 입력하세요.");
       return;
     }
-    const { fileData } = await getActiveFileInfo();
+    const { fileData } = await fileTable.getActiveFileInfo();
     if (!fileData) {
       setErrorMessage("활성 데이터 파일이 없습니다.");
       return;

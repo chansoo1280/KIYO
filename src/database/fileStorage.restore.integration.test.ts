@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { useSessionStore } from "../store/sessionStore";
 import { useAccountStore } from "../store/accountStore";
-import { getDatabaseSnapshot, getDatabase, clearActiveFileInfo } from "./db";
+import { getDatabaseSnapshot, getDatabase } from "./db";
 import {
   createDataFile,
   backupDataFile,
@@ -19,6 +19,7 @@ import {
 import type { Account, FileMetadata } from "../models/account";
 import type { Template } from "../models/template";
 import type { KiyoDataFile } from "./fileStorage";
+import { fileTable } from "./fileTable";
 import {
   createTestAccount,
   createTestAccounts,
@@ -34,8 +35,7 @@ import {
   getDefaultMetadata,
   getEncryptedMetadata,
 } from "../test/helpers/databaseTestHelpers";
-
-import * as db from "./db";
+import { accountTable } from "./accountTable";
 
 type Metadata = FileMetadata;
 
@@ -123,7 +123,7 @@ describe("fileStorage Restore Integration Tests", () => {
     await db.settings.clear();
     await db.metadata.clear();
     await db.files.clear();
-    await clearActiveFileInfo();
+    await fileTable.clearActiveFileInfo();
     await useSessionStore.getState().clearSession();
     useAccountStore.getState().setAccounts([]);
   };
@@ -131,7 +131,7 @@ describe("fileStorage Restore Integration Tests", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await resetTestEnvironment();
-    vi.spyOn(db, "initializeDatabase").mockResolvedValue(undefined);
+        vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -287,7 +287,7 @@ describe("fileStorage Restore Integration Tests", () => {
       expect(emptyImported!.accounts).toHaveLength(0);
       // Builtin templates are seeded (6 templates)
       expect(emptyImported!.templates).toHaveLength(6);
-      expect(emptyImported!.metadata).toHaveLength(0);
+      expect(emptyImported!.metadata).toHaveLength(1);
       expect(emptyImported!.fileName).toBe("empty-backup.json");
     });
 

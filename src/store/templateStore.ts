@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { templateStorage } from "../database/templateStorage";
+import { templateTable } from "../database/templateTable";
 import type { Template } from "../models/template";
 
 interface TemplateState {
@@ -22,7 +22,7 @@ export const useTemplateStore = create<TemplateState>()(
       loadTemplates: async () => {
         set({ isLoading: true });
         try {
-          const dbTemplates = await templateStorage.getAll();
+          const dbTemplates = await templateTable.getAll();
           set({ templates: dbTemplates, isLoading: false });
         } catch (error) {
           console.error("Failed to load templates:", error);
@@ -31,7 +31,7 @@ export const useTemplateStore = create<TemplateState>()(
       },
 
       createTemplate: async (template) => {
-        const newTemplate = await templateStorage.create(template);
+        const newTemplate = await templateTable.create(template);
         set((state) => ({
           templates: [...state.templates, newTemplate].sort((a, b) => a.sortOrder - b.sortOrder),
         }));
@@ -39,7 +39,7 @@ export const useTemplateStore = create<TemplateState>()(
       },
 
       updateTemplate: async (id, patch) => {
-        await templateStorage.update(id, patch);
+        await templateTable.update(id, patch);
         set((state) => ({
           templates: state.templates
             .map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t))
@@ -48,14 +48,14 @@ export const useTemplateStore = create<TemplateState>()(
       },
 
       deleteTemplate: async (id) => {
-        await templateStorage.delete(id);
+        await templateTable.delete(id);
         set((state) => ({
           templates: state.templates.filter((t) => t.id !== id),
         }));
       },
 
       reorderTemplates: async (ids) => {
-        await templateStorage.reorder(ids);
+        await templateTable.reorder(ids);
         set((state) => ({
           templates: ids
             .map((id, index) => {

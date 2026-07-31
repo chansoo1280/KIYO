@@ -1,6 +1,6 @@
-import type { FieldType } from "../types/fieldTypes";
+import type { FieldType } from "./fieldTypes";
 
-export type { FieldType } from "../types/fieldTypes";
+export type { FieldType } from "./fieldTypes";
 
 export interface AccountField {
   id: string;

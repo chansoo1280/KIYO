@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { useSessionStore } from "../store/sessionStore";
 import { useAccountStore } from "../store/accountStore";
-import { getDatabaseSnapshot, getDatabase, clearActiveFileInfo } from "./db";
+import { getDatabaseSnapshot, getDatabase,  } from "./db";
 import {
   createDataFile,
   backupDataFile,
@@ -23,7 +23,8 @@ import { createTestTemplates } from "../test/fixtures/templateFixtures";
 import { fromBase64 } from "../crypto/crypto.utils";
 import { isEncryptedKiyoFile } from "./fileStorage";
 import { decryptData, type EncryptedKiyoFile } from "../crypto/encryption";
-import * as db from "./db";
+import { accountTable } from "./accountTable";
+import { fileTable } from "./fileTable";
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -118,7 +119,7 @@ describe("fileStorage Encryption Integration Tests", () => {
     await db.settings.clear();
     await db.metadata.clear();
     await db.files.clear();
-    await clearActiveFileInfo();
+    await fileTable.clearActiveFileInfo();
     await useSessionStore.getState().clearSession();
     useAccountStore.getState().setAccounts([]);
     await db.accounts.clear();
@@ -130,7 +131,7 @@ describe("fileStorage Encryption Integration Tests", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await resetTestEnvironment();
-    vi.spyOn(db, "initializeDatabase").mockResolvedValue(undefined);
+    vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -162,14 +163,14 @@ describe("fileStorage Encryption Integration Tests", () => {
       const createdFile = await createDataFile(fileName, TEST_PIN);
 
       // 검증: 반환값은 평문 데이터 (암호화되지 않음)
-            expect(createdFile).toBeDefined();
-            expect(createdFile.fileName).toBe("encrypted-create.json");
-            expect(createdFile.version).toBe(1);
-            expect("encrypted" in createdFile).toBe(false);
-            expect(createdFile.accounts).toEqual([]);
-            // 내장 템플릿 6개가 자동 시드됨
-            expect(createdFile.templates).toHaveLength(6);
-            expect(createdFile.metadata).toEqual([]);
+      expect(createdFile).toBeDefined();
+      expect(createdFile.fileName).toBe("encrypted-create.json");
+      expect(createdFile.version).toBe(1);
+      expect("encrypted" in createdFile).toBe(false);
+      expect(createdFile.accounts).toEqual([]);
+      // 내장 템플릿 6개가 자동 시드됨
+      expect(createdFile.templates).toHaveLength(6);
+      expect(createdFile.metadata).toEqual([]);
 
       // 검증: 세션에 cryptoKey와 salt가 저장되었는지 확인
       const sessionState = useSessionStore.getState();
@@ -223,7 +224,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(backedUpFile.accounts[0].title).toBe("Test Account 1");
       // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
       expect(backedUpFile.templates).toHaveLength(7);
-      expect(backedUpFile.metadata).toHaveLength(0);
+      expect(backedUpFile.metadata).toHaveLength(1);
 
       // 검증: 세션은 변경되지 않아야 함 (shouldSetActiveFile=false)
       const sessionAfterBackup = useSessionStore.getState();
@@ -304,7 +305,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(importedFile!.templates).toHaveLength(7);
       // 테스트 템플릿이 포함되어 있는지 확인 (내장 템플릿 6개 뒤에 추가됨)
       expect(importedFile!.templates.find(t => t.name === "Test Template 1")).toBeDefined();
-      expect(importedFile!.metadata).toHaveLength(0);
+      expect(importedFile!.metadata).toHaveLength(1);
       // 검증: 세션에 cryptoKey와 salt 저장됨
       const sessionState = useSessionStore.getState();
       expect(sessionState.activeFileName).toBe("encrypted-backup.json");
@@ -333,6 +334,8 @@ describe("fileStorage Encryption Integration Tests", () => {
       const db = getDatabase();
       const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
+      const testTemplate: Template = createTestTemplates(1)[0];
+      await db.templates.put(testTemplate);
 
       // 3. backupDataFile로 암호화 백업
       await backupDataFile("encrypted-backup-wrong-pin.json", TEST_PIN);
@@ -348,14 +351,12 @@ describe("fileStorage Encryption Integration Tests", () => {
       const encryptedJsonString = JSON.stringify(savedEncryptedFile);
 
       // 6. openImportedDataFile로 잘못된 PIN으로 복원 시도
-      const importedFile = await openImportedDataFile(
+      await expect(openImportedDataFile(
         encryptedJsonString,
         WRONG_PIN,
         "encrypted-backup-wrong-pin.json",
-      );
+      )).rejects.toThrow("PIN 불일치");
 
-      // 검증: null 반환
-      expect(importedFile).toBeNull();
 
       // 검증: DB 변경 없음 (원본 데이터 유지)
       const snapshot = await getDatabaseSnapshot("encrypted-wrong-pin.json");
@@ -380,6 +381,8 @@ describe("fileStorage Encryption Integration Tests", () => {
       const db = getDatabase();
       const testAccount: Account = createTestAccounts(1)[0];
       await db.accounts.put(testAccount);
+      const testTemplate: Template = createTestTemplates(1)[0];
+      await db.templates.put(testTemplate);
 
       // 3. backupDataFile로 암호화 백업
       await backupDataFile("encrypted-backup-tamper.json", TEST_PIN);
@@ -399,14 +402,11 @@ describe("fileStorage Encryption Integration Tests", () => {
       const tamperedJsonString = JSON.stringify(tamperedFile);
 
       // 6. openImportedDataFile로 올바른 PIN으로 복원 시도 (변조된 데이터로)
-      const importedFile = await openImportedDataFile(
+      await expect(openImportedDataFile(
         tamperedJsonString,
         TEST_PIN,
         "encrypted-backup-tamper.json",
-      );
-
-      // 검증: 복호화 실패, null 반환
-      expect(importedFile).toBeNull();
+      )).rejects.toThrow("PIN 불일치");
 
       // 검증: DB 변경 없음
       const snapshot = await getDatabaseSnapshot("encrypted-tamper.json");

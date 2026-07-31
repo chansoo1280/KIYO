@@ -15,10 +15,9 @@ import FileOpenDialog from "../components/FileOpenDialog";
 import PinChangeDialog from "../components/PinChangeDialog";
 import { useSettingsStore } from "../store/settingsStore";
 import { useBiometricAuthStore } from "../store/biometricAuthStore";
-import { useBiometricAuth } from "../hooks/useBiometricAuth";
 import type { FontSize } from "../models/account";
 import { AutofillSettings } from "../components/AutofillSettings";
-import { getActiveFileInfo } from "../database/db";
+import { fileTable } from "../database/fileTable";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -30,11 +29,9 @@ const Settings = () => {
     (state) => state,
   );
   const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
-  const { isAvailable, biometricEnabled, setBiometricEnabled } =
+  const { isAvailable, biometricEnabled, setBiometricEnabled, enableBiometric, disableBiometric } =
     useBiometricAuthStore();
   const [isEncrypted] = useState(false);
-
-  const { enableBiometric, disableBiometric } = useBiometricAuth();
   const defaultBackupFileName = (() => {
     const isBackup = /-backup$/i.test(
       fileName?.replace(/\.json$/, "") ?? "kiyo",
@@ -42,7 +39,7 @@ const Settings = () => {
     return `${fileName}${isBackup ? "" : "-backup"}.json`;
   })();
   const checkFileAndNavigate = async () => {
-    // const { activeFileName, encrypted } = await getActiveFileInfo();
+    // const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
     // setIsEncrypted(encrypted);
     // if (!activeFileName) {
     //   navigate("/", {
@@ -68,7 +65,7 @@ const Settings = () => {
     encrypted: boolean;
     pin: string;
   }) => {
-    const { activeFileName } = await getActiveFileInfo();
+    const { activeFileName } = await fileTable.getActiveFileInfo();
     const exists = activeFileName === fileName;
     if (exists) {
       const overwrite = window.confirm(
@@ -107,7 +104,7 @@ const Settings = () => {
   };
 
   const handlePinChange = async (newPin: string) => {
-    const { activeFileName, encrypted } = await getActiveFileInfo();
+    const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
     if (!activeFileName) {
       throw new Error("활성 데이터 파일이 없습니다.");
     }

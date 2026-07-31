@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
-import { useBiometricAuth } from "../hooks/useBiometricAuth";
 import {
   unlockFile,
   closeDataFile,
@@ -11,19 +10,15 @@ import {
 } from "../database/fileStorage";
 import { decryptData } from "../crypto/encryption";
 import { useAccountStore } from "../store/accountStore";
-import {
-  getActiveFileInfo,
-  replaceDatabaseData,
-  saveFileDataToDB,
-} from "../database/db";
+import { replaceDatabaseData } from "../database/db";
+import { fileTable } from "../database/fileTable";
 import useBiometricAuthStore from "../store/biometricAuthStore";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { activeFileName: fileName, salt } = useSessionStore((state) => state);
-  const { biometricEnabled, initializeBiometricAuthStore } =
+  const { biometricEnabled, initializeBiometricAuthStore, authenticate } =
     useBiometricAuthStore((state) => state);
-  const { authenticate } = useBiometricAuth();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -31,7 +26,7 @@ const Auth = () => {
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await getActiveFileInfo();
+      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
       if (!activeFileName || !encrypted) {
         navigate("/", { replace: true });
         return;
@@ -107,7 +102,7 @@ const Auth = () => {
           return;
         }
 
-        const fileData = await getActiveFileInfo();
+        const fileData = await fileTable.getActiveFileInfo();
 
         if (!fileData || !isEncryptedKiyoFile(fileData)) {
           setError("파일 정보를 찾을 수 없습니다.");
@@ -130,7 +125,7 @@ const Auth = () => {
             cryptoKey: result.cryptoKey,
             salt,
           });
-          await saveFileDataToDB(normalizedFileName, fileData, salt);
+          await fileTable.saveFileDataToDB(normalizedFileName, fileData, salt);
           await replaceDatabaseData(decrypted);
           useAccountStore.getState().setAccounts(decrypted.accounts);
 

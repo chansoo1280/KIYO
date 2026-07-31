@@ -1,4 +1,4 @@
-import type { FieldType } from "../types/fieldTypes";
+import type { FieldType } from "./fieldTypes";
 
 export interface Template {
   id: string;

@@ -10,18 +10,18 @@ import {
 } from "vitest";
 import { useSessionStore } from "../store/sessionStore";
 import { useAccountStore } from "../store/accountStore";
-import { getDatabaseSnapshot, getDatabase } from "./db";
+import { getDatabaseSnapshot, getDatabase} from "./db";
 import {
   createDataFile,
   backupDataFile,
   openImportedDataFile,
 } from "./fileStorage";
-import type { Account,  FileMetadata } from "../models/account";
+import type { Account, FileMetadata } from "../models/account";
 import { createTestAccounts } from "../test/fixtures/accountFixtures";
 import { createTestTemplates } from "../test/fixtures/templateFixtures";
-import { createTestMetadata } from "../test/fixtures/databaseFixtures";
-import * as db from "./db";
 import type { Template } from "../models/template";
+import { accountTable } from "./accountTable";
+import { createTestMetadata } from "../test/fixtures/databaseFixtures";
 
 type Metadata = FileMetadata;
 
@@ -125,7 +125,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await resetTestEnvironment();
-    vi.spyOn(db, "initializeDatabase").mockResolvedValue(undefined);
+        vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {

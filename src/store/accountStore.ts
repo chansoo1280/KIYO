@@ -2,12 +2,9 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Account } from "../models/account";
 import {
-  db,
-  loadAccountsFromDB,
   syncDatabaseToFile,
-  saveAccountsToDB,
-  clearAccounts,
 } from "../database/db";
+import { accountTable } from "../database/accountTable";
 import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "../plugins/kiyautofill";
 import { useSessionStore } from "./sessionStore";
@@ -22,7 +19,7 @@ export interface AccountState {
   updateAccount: (account: Account) => Promise<void>;
   deleteAccount: (id: number) => Promise<void>;
   getAccountById: (id: number) => Account | undefined;
-  clearAccounts: () => void;
+  clearAccounts: () => Promise<void>;
   syncToAutofill: () => Promise<void>;
 }
 
@@ -32,7 +29,7 @@ export const useAccountStore = create<AccountState>()(
       accounts: [],
       initialized: false,
       initialize: async () => {
-        const accounts = await loadAccountsFromDB();
+        const accounts = await accountTable.getAll();
 
         set({
           accounts,
@@ -44,65 +41,76 @@ export const useAccountStore = create<AccountState>()(
       },
       setAccounts: async (accounts) => {
         set({ accounts });
-        await syncDatabaseToFile();
+        await accountTable.saveAll(accounts);
+        const sessionState = useSessionStore.getState();
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+          clearSyncError: sessionState.clearSyncError,
+          setSyncError: sessionState.setSyncError,
+        });
         await get().syncToAutofill();
       },
 
       addAccount: async (account) => {
-        const now = Date.now();
-        const newAccount = await db.transaction("rw", db.accounts, async () => {
-          const lastAccount = await db.accounts.orderBy("id").last();
-          const id = (lastAccount?.id ?? 0) + 1;
-          const createdAccount: Account = {
-            ...account,
-            id,
-            createdAt: now,
-            updatedAt: now,
-            fields: account.fields.map((field, index) => ({
-              ...field,
-              id: `${id}-${index + 1}`,
-              accountId: id,
-            })),
-          };
-          await db.accounts.add(createdAccount);
-          return createdAccount;
+        const newAccount = await accountTable.create({
+          ...account,
         });
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
 
-        // Save with encryption if crypto key is available
-        const { cryptoKey } = useSessionStore.getState();
-        await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
-        await syncDatabaseToFile();
+        const sessionState = useSessionStore.getState();
+        const allAccounts = get().accounts;
+        await accountTable.saveAll(allAccounts, sessionState.cryptoKey ?? undefined);
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+          clearSyncError: sessionState.clearSyncError,
+          setSyncError: sessionState.setSyncError,
+        });
         await get().syncToAutofill();
         return newAccount;
       },
 
       updateAccount: async (account) => {
         const updatedAccount = { ...account, updatedAt: Date.now() };
-        await db.accounts.put(updatedAccount);
+        await accountTable.update(updatedAccount);
         set((state) => ({
           accounts: state.accounts.map((a) =>
             a.id === updatedAccount.id ? updatedAccount : a,
           ),
         }));
 
-        // Save with encryption if crypto key is available
-        const { cryptoKey } = useSessionStore.getState();
-        await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
-        await syncDatabaseToFile();
+        const sessionState = useSessionStore.getState();
+        const allAccounts = get().accounts;
+        await accountTable.saveAll(allAccounts, sessionState.cryptoKey ?? undefined);
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+          clearSyncError: sessionState.clearSyncError,
+          setSyncError: sessionState.setSyncError,
+        });
         await get().syncToAutofill();
       },
 
       deleteAccount: async (id) => {
-        await db.accounts.delete(id);
+        await accountTable.delete(id);
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
         }));
 
-        // Save with encryption if crypto key is available
-        const { cryptoKey } = useSessionStore.getState();
-        await saveAccountsToDB(get().accounts, cryptoKey ?? undefined);
-        await syncDatabaseToFile();
+        const sessionState = useSessionStore.getState();
+        const allAccounts = get().accounts;
+        await accountTable.saveAll(allAccounts, sessionState.cryptoKey ?? undefined);
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+          clearSyncError: sessionState.clearSyncError,
+          setSyncError: sessionState.setSyncError,
+        });
         await get().syncToAutofill();
       },
 
@@ -110,7 +118,7 @@ export const useAccountStore = create<AccountState>()(
 
       clearAccounts: async () => {
         set({ accounts: [], initialized: false });
-        await clearAccounts();
+        await accountTable.clear();
         await get().syncToAutofill();
       },
 
