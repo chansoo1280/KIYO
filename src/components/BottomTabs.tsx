@@ -5,8 +5,8 @@ const BottomTabs = () => {
   const location = useLocation();
   const active = (() => {
     switch (location.pathname) {
-      case "/alerts":
-        return "alerts";
+      case "/templates":
+        return "templates";
       case "/settings":
         return "settings";
       case "/list":
@@ -24,14 +24,14 @@ const BottomTabs = () => {
       <button
         type="button"
         className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${
-          active === "alerts"
+          active === "templates"
             ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
             : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
         }`}
-        aria-label="Alerts"
-        onClick={() => navigate("/alerts")}
+        aria-label="Templates"
+        onClick={() => navigate("/templates")}
       >
-        🔔
+        📄
       </button>
 
       <button

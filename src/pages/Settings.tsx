@@ -24,9 +24,7 @@ const Settings = () => {
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
-  const { activeFileName: fileName, cryptoKey } = useSessionStore(
-    (state) => state,
-  );
+  const { activeFileName: fileName, cryptoKey } = useSessionStore();
   const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
   const [isEncrypted] = useState(false);
   const defaultBackupFileName = (() => {
@@ -199,16 +197,6 @@ const Settings = () => {
               Data
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-                <span>템플릿 관리</span>
-                <button
-                  type="button"
-                  onClick={() => navigate("/templates")}
-                  className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-                >
-                  관리
-                </button>
-              </div>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
                 <span>백업</span>
                 <button

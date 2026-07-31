@@ -57,16 +57,16 @@ class AutofillDatabaseHelper(
             return db
         }
 
-
         val dbFile = context.getDatabasePath(DATABASE_NAME)
         dbFile.parentFile?.mkdirs()
 
         val newDb = SQLiteDatabase.openOrCreateDatabase(
-    dbFile,
-    encryptionKey,
-    null,
-    null
-)
+            dbFile,
+            encryptionKey,
+            null,
+            null
+        )
+
         database = newDb
 
         val cursor = newDb.rawQuery("PRAGMA user_version", null)
@@ -78,6 +78,19 @@ class AutofillDatabaseHelper(
         }
 
         cursor.close()
+
+        when {
+            version == 0 -> {
+                // First creation
+                onCreate(newDb)
+                newDb.execSQL("PRAGMA user_version = $DATABASE_VERSION")
+            }
+
+            version < DATABASE_VERSION -> {
+                onUpgrade(newDb, version, DATABASE_VERSION)
+                newDb.execSQL("PRAGMA user_version = $DATABASE_VERSION")
+            }
+        }
 
         return newDb
     }

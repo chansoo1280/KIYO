@@ -4,7 +4,6 @@ import AccountList from "@/pages/AccountList";
 import AccountDetail from "@/pages/AccountDetail";
 import AccountEdit from "@/pages/AccountEdit";
 import Settings from "@/pages/Settings";
-import Alerts from "@/pages/Alerts";
 import Auth from "@/pages/Auth";
 import AutofillTestLogin from "@/pages/AutofillTestLogin";
 import TemplateList from "@/pages/TemplateList";
@@ -43,7 +42,6 @@ function App() {
         <Route path="/account/edit" element={<AccountEdit />} />
         <Route path="/account/edit/:id" element={<AccountEdit />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="/alerts" element={<Alerts />} />
         <Route path="/autofill-test" element={<AutofillTestLogin />} />
         <Route path="/templates" element={<TemplateList />} />
         <Route path="/templates/new" element={<TemplateEdit />} />
