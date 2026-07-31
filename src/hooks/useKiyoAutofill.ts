@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { KiyoAutofill, type AutofillStatus, type AutofillServiceInfo, type PingResponse } from '../plugins/kiyautofill';
+import { KiyoAutofill, type AutofillStatus, type AutofillServiceInfo, type PingResponse } from '@/plugins/kiyautofill';
 
 export interface UseKiyoAutofillReturn {
   status: AutofillStatus | null;

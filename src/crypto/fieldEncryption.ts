@@ -1,5 +1,5 @@
-import { fromBase64, toBase64 } from "./crypto.utils";
-import { isEncryptedType } from "../models/fieldTypes";
+import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
+import { isEncryptedType } from "@/models/fieldTypes";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

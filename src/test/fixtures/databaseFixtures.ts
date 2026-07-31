@@ -1,11 +1,11 @@
 // src/test/fixtures/databaseFixtures.ts
 
-import type { KiyoDataFile } from "../../database/fileStorage";
-import type { EncryptedKiyoFile } from "../../crypto/encryption";
-import type { FileData } from "../../database/db";
-import type { FileMetadata } from "../../models/account";
-import { createTestAccounts } from "./accountFixtures.ts";
-import { createTestTemplates } from "./templateFixtures.ts";
+import type { KiyoDataFile } from "@/database/fileStorage";
+import type { EncryptedKiyoFile } from "@/crypto/encryption";
+import type { FileData } from "@/database/db";
+import type { FileMetadata } from "@/models/account";
+import { createTestAccounts } from "@/test/fixtures/accountFixtures";
+import { createTestTemplates } from "@/test/fixtures/templateFixtures";
 
 /**
  * 기본 FileMetadata 테스트 데이터

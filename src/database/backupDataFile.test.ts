@@ -1,108 +1,63 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { backupDataFile } from "./fileStorage";
+import { backupDataFile } from "@/database/fileStorage";
 import {
   createCryptoKey,
   encryptData,
   isEncryptedKiyoFile,
-} from "../crypto/encryption";
-import { useSessionStore } from "../store/sessionStore";
-import { Capacitor } from "@capacitor/core";
+} from "@/crypto/encryption";
+import { useSessionStore } from "@/store/sessionStore";
 
 import {
   createTestEncryptedFile,
   createTestKiyoDataFile,
-} from "../test/fixtures/databaseFixtures";
+} from "@/test/fixtures/databaseFixtures";
 import {
   createTestAccount,
   createTestField,
   createTestAccounts,
-} from "../test/fixtures/accountFixtures";
+} from "@/test/fixtures/accountFixtures";
 import {
   createTestTemplate,
   getBuiltinTemplates,
-} from "../test/fixtures/templateFixtures";
+} from "@/test/fixtures/templateFixtures";
 
 // Import common mocks
-import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
-import { createMockEncryption } from "../test/mocks/encryptionMock";
+import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
+import { createMockEncryption } from "@/test/mocks/encryptionMock";
 
 // ============================================
 // Hoisted Mocks - MUST be at module top level for vi.mock
 // ============================================
 
-const hoistedDBMocks = vi.hoisted(() => ({
-  mockReplaceDatabaseData: vi.fn().mockResolvedValue(undefined),
-  mockGetDatabaseSnapshot: vi.fn(),
-  mockInitializeDatabase: vi.fn().mockResolvedValue(undefined),
-  mockGetDatabase: vi.fn(() => ({})),
-  mockIsNativeFileStorageAvailable: vi.fn(() => false),
-  mockSyncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
+const DBMocks = vi.hoisted(() => ({
+  getDatabaseSnapshot: vi.fn(),
+  getDatabase: vi.fn(() => ({})),
 }));
 
-const hoistedFileTableMocks = vi.hoisted(() => ({
+const fileTableMocks = vi.hoisted(() => ({
   fileTable: {
     saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
-    saveActiveFileInfo: vi.fn().mockResolvedValue(undefined),
-    getActiveFileInfo: vi.fn().mockResolvedValue({
-      activeFileName: null,
-      salt: null,
-      encrypted: false,
-      fileData: null,
-    }),
-    clearActiveFileInfo: vi.fn().mockResolvedValue(undefined),
-    getAllFileNames: vi.fn().mockResolvedValue([]),
   },
 }));
 
+// Mock db functions
+vi.mock("@/database/db", () => DBMocks);
+
+// Mock fileTable - use hoisted mock directly like createDataFile.test.ts
+vi.mock("@/database/fileTable", () => fileTableMocks);
 // Mock sessionStore
-vi.mock("../store/sessionStore", () => ({
+vi.mock("@/store/sessionStore", () => ({
   useSessionStore: {
     getState: vi.fn(),
   },
 }));
 
 // Mock crypto functions
-vi.mock("../crypto/encryption", () => ({
+vi.mock("@/crypto/encryption", () => ({
   createCryptoKey: vi.fn(),
   encryptData: vi.fn(),
   isEncryptedKiyoFile: vi.fn(),
 }));
-
-// Mock crypto utils
-vi.mock("../crypto/crypto.utils", () => ({
-  exportCryptoKey: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-  fromBase64: vi.fn(),
-}));
-
-// Mock KiyoAutofill plugin
-vi.mock("../plugins/kiyautofill", () => ({
-  KiyoAutofill: {
-    saveSession: vi.fn().mockResolvedValue(undefined),
-    clearSession: vi.fn().mockResolvedValue(undefined),
-    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
-  },
-}));
-
-// Mock Capacitor
-vi.mock("@capacitor/core", () => ({
-  Capacitor: {
-    isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => "web"),
-  },
-}));
-
-// Mock db functions
-vi.mock("../database/db", () => ({
-  replaceDatabaseData: hoistedDBMocks.mockReplaceDatabaseData,
-  getDatabaseSnapshot: hoistedDBMocks.mockGetDatabaseSnapshot,
-  initializeDatabase: hoistedDBMocks.mockInitializeDatabase,
-  getDatabase: hoistedDBMocks.mockGetDatabase,
-  isNativeFileStorageAvailable: hoistedDBMocks.mockIsNativeFileStorageAvailable,
-  syncDatabaseToFile: hoistedDBMocks.mockSyncDatabaseToFile,
-}));
-
-// Mock fileTable - use hoisted mock directly like createDataFile.test.ts
-vi.mock("./fileTable", () => hoistedFileTableMocks);
 
 describe("backupDataFile", () => {
   let mockSessionStore: ReturnType<typeof createMockSessionStore>;
@@ -126,7 +81,6 @@ describe("backupDataFile", () => {
     vi.mocked(isEncryptedKiyoFile).mockImplementation(
       mockEncryption.mockIsEncryptedKiyoFile,
     );
-    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
 
     // Override specific mock implementations for backupDataFile tests
     mockEncryption.mockCreateCryptoKey.mockResolvedValue({
@@ -137,7 +91,7 @@ describe("backupDataFile", () => {
     mockEncryption.mockIsEncryptedKiyoFile.mockReturnValue(false);
 
     // getDatabaseSnapshot mock - returns simple data without triggering real DB
-    hoistedDBMocks.mockGetDatabaseSnapshot.mockImplementation(
+    DBMocks.getDatabaseSnapshot.mockImplementation(
       async (fileName: string) => ({
         version: 1,
         fileName,
@@ -157,16 +111,16 @@ describe("backupDataFile", () => {
     it("DB snapshot을 생성한다 (getDatabaseSnapshot 호출)", async () => {
       await backupDataFile("test.json", "");
 
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledTimes(1);
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledWith("test.json");
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledTimes(1);
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith("test.json");
     });
 
     it("JSON 변환 후 파일 저장을 호출한다 (writeDataFile을 통해)", async () => {
       await backupDataFile("test.json", "");
 
       // saveFileDataToDB가 평문 데이터와 함께 호출되는지 확인
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = hoistedFileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -242,14 +196,14 @@ describe("backupDataFile", () => {
         metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
       });
       // Override the mock for this specific test
-      hoistedDBMocks.mockGetDatabaseSnapshot.mockResolvedValueOnce(fullData);
+      DBMocks.getDatabaseSnapshot.mockResolvedValueOnce(fullData);
 
       const result = await backupDataFile("full-data.json", "");
 
       expect(result).toEqual(fullData);
       // Check that saveFileDataToDB was called with the right filename and data containing expected properties
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = hoistedFileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("full-data.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -266,11 +220,11 @@ describe("backupDataFile", () => {
     it("fileName 정규화가 적용된다", async () => {
       await backupDataFile("  my-backup  ", "");
 
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledWith(
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith(
         "my-backup.json",
       );
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = hoistedFileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("my-backup.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -286,11 +240,11 @@ describe("backupDataFile", () => {
     it("확장자가 없는 파일명에 .json을 추가한다", async () => {
       await backupDataFile("backup", "");
 
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledWith(
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith(
         "backup.json",
       );
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = hoistedFileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("backup.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -328,8 +282,8 @@ describe("backupDataFile", () => {
     it("DB snapshot을 생성한다 (getDatabaseSnapshot 호출)", async () => {
       await backupDataFile("test.json", "1234");
 
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledTimes(1);
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledWith("test.json");
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledTimes(1);
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith("test.json");
     });
 
     it("createCryptoKey를 PIN과 함께 호출한다", async () => {
@@ -367,8 +321,8 @@ describe("backupDataFile", () => {
     it("fileName 정규화가 적용된다", async () => {
       await backupDataFile("  test  ", "");
 
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, , salt] = hoistedFileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, , salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(salt).toBeUndefined();
     });
@@ -395,7 +349,7 @@ describe("backupDataFile", () => {
       await backupDataFile("  secure data  ", "1234");
 
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledWith(
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledWith(
         "secure data.json",
         expect.any(Object),
         expect.any(Uint8Array),
@@ -405,8 +359,8 @@ describe("backupDataFile", () => {
     it("DB 저장 함수(saveFileDataToDB)를 암호화 데이터와 salt와 함께 호출한다", async () => {
       await backupDataFile("test.json", "1234");
 
-      expect(hoistedFileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = hoistedFileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(mockEncryptedFile);
       expect(salt).toEqual(mockSalt);
@@ -415,7 +369,7 @@ describe("backupDataFile", () => {
 
   describe("에러 처리", () => {
     it("getDatabaseSnapshot 실패 시 에러를 전파한다", async () => {
-      hoistedDBMocks.mockGetDatabaseSnapshot.mockRejectedValueOnce(
+      DBMocks.getDatabaseSnapshot.mockRejectedValueOnce(
         new Error("DB snapshot failed"),
       );
 
@@ -445,7 +399,7 @@ describe("backupDataFile", () => {
     });
 
     it("saveFileDataToDB 실패 시 에러를 전파한다", async () => {
-      hoistedFileTableMocks.fileTable.saveFileDataToDB.mockRejectedValueOnce(
+      fileTableMocks.fileTable.saveFileDataToDB.mockRejectedValueOnce(
         new Error("DB save failed"),
       );
 
@@ -473,7 +427,7 @@ describe("backupDataFile", () => {
     it("기본 파일명 'kiyo-data'를 사용한다 (빈 문자열 입력 시)", async () => {
       await backupDataFile("", "");
 
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledWith(
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith(
         "kiyo-data.json",
       );
       // shouldSetActiveFile=false이므로 setSession 호출되지 않음
@@ -483,7 +437,7 @@ describe("backupDataFile", () => {
     it("공백만 있는 입력도 기본 파일명으로 처리한다", async () => {
       await backupDataFile("   ", "");
 
-      expect(hoistedDBMocks.mockGetDatabaseSnapshot).toHaveBeenCalledWith(
+      expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith(
         "kiyo-data.json",
       );
       // shouldSetActiveFile=false이므로 setSession 호출되지 않음

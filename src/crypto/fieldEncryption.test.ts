@@ -11,9 +11,9 @@ import {
   migrateAccountsToEncrypted,
   isEncryptedField,
   type EncryptedField,
-} from "./fieldEncryption";
-import type { Account } from "../models/account";
-import { createCryptoKey } from "./encryption";
+} from "@/crypto/fieldEncryption";
+import type { Account } from "@/models/account";
+import { createCryptoKey } from "@/crypto/encryption";
 
 describe("fieldEncryption", () => {
   let testKey: CryptoKey;

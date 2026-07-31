@@ -5,12 +5,12 @@ import {
   decryptData,
   isEncryptedKiyoFile,
   type EncryptedKiyoFile,
-} from "./encryption";
-import type { KiyoDataFile } from "../database/fileStorage";
+} from "@/crypto/encryption";
+import type { KiyoDataFile } from "@/database/fileStorage";
 import {
   createTestEncryptedFile,
   createTestKiyoDataFile,
-} from "../test/fixtures/databaseFixtures";
+} from "@/test/fixtures/databaseFixtures";
 
 describe("encryption (KIYO encryption.ts)", () => {
   const mockPassword = "test-password-123";

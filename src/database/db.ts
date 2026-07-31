@@ -1,15 +1,15 @@
 import { Capacitor } from "@capacitor/core";
 import Dexie, { type Table } from "dexie";
-import { encryptData } from "../crypto/encryption";
-import { writeDataFile, type KiyoDataFile } from "../database/fileStorage";
+import { encryptData } from "@/crypto/encryption";
+import { writeDataFile, type KiyoDataFile } from "@/database/fileStorage";
 import type {
   Account,
   AppSettings,
   FileMetadata,
-} from "../models/account";
-import type { Template } from "../models/template";
-import { isFileStorageError } from "../errors/FileStorageError";
-import { fileTable } from "./fileTable";
+} from "@/models/account";
+import type { Template } from "@/models/template";
+import { isFileStorageError } from "@/errors/FileStorageError";
+import { fileTable } from "@/database/fileTable";
 
 export interface FileData {
   id: number;

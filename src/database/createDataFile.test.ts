@@ -1,142 +1,40 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { createDataFile } from "./fileStorage";
+import { createDataFile } from "@/database/fileStorage";
 import {
   createCryptoKey,
   encryptData,
   type EncryptedKiyoFile,
-} from "../crypto/encryption";
+} from "@/crypto/encryption";
 // Import common mocks
-import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
+import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
 import {
   createMockEncryption,
   mockEncryptionDefaults,
-} from "../test/mocks/encryptionMock";
-import { useSessionStore } from "../store/sessionStore";
-import { fileTable } from "./fileTable";
-
+} from "@/test/mocks/encryptionMock";
+import { useSessionStore } from "@/store/sessionStore";
+import { fileTable } from "@/database/fileTable";
 // Hoisted mocks for vi.mock
-const dbMock = vi.hoisted(() => ({
-  mockReplaceDatabaseData: vi.fn().mockResolvedValue(undefined),
-  mockGetDatabaseSnapshot: vi.fn(),
-  mockIsNativeFileStorageAvailable: vi.fn(() => false),
-  mockGetDatabase: vi.fn(() => ({})),
-  mockInitializeDatabase: vi.fn().mockResolvedValue(undefined),
-  mockSyncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
-}));
-
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
     saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
-    saveActiveFileInfo: vi.fn().mockResolvedValue(undefined),
-    getActiveFileInfo: vi.fn().mockResolvedValue({
-      activeFileName: null,
-      salt: null,
-      encrypted: false,
-      fileData: null,
-    }),
-    clearActiveFileInfo: vi.fn().mockResolvedValue(undefined),
-    getAllFileNames: vi.fn().mockResolvedValue([]),
-  },
-}));
-
-const accountTableMock = vi.hoisted(() => ({
-  accountTable: {
-    getAll: vi.fn().mockResolvedValue([]),
-    initializeDevData: vi.fn().mockResolvedValue(undefined),
-    saveAll: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(undefined),
-    create: vi.fn(),
-    update: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
-    getById: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-const templateTableMock = vi.hoisted(() => ({
-  templateTable: {
-    init: vi.fn().mockResolvedValue(undefined),
-    getAll: vi.fn().mockResolvedValue([
-      { id: "1", name: "로그인", sortOrder: 0, updatedAt: Date.now() },
-      { id: "2", name: "API 키", sortOrder: 1, updatedAt: Date.now() },
-      { id: "3", name: "신용/체크카드", sortOrder: 2, updatedAt: Date.now() },
-      { id: "4", name: "은행 계좌", sortOrder: 3, updatedAt: Date.now() },
-      { id: "5", name: "Wi-Fi", sortOrder: 4, updatedAt: Date.now() },
-      { id: "6", name: "보안 메모", sortOrder: 5, updatedAt: Date.now() },
-    ]),
-    getById: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
-    reorder: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
 // Mock sessionStore
-vi.mock("../store/sessionStore", () => ({
+vi.mock("@/store/sessionStore", () => ({
   useSessionStore: {
     getState: vi.fn(),
   },
 }));
 
 // Mock crypto functions
-vi.mock("../crypto/encryption", () => ({
+vi.mock("@/crypto/encryption", () => ({
   createCryptoKey: vi.fn(),
   encryptData: vi.fn(),
-  isEncryptedKiyoFile: vi.fn(),
-}));
-
-// Mock crypto utils
-vi.mock("../crypto/crypto.utils", () => ({
-  exportCryptoKey: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-  fromBase64: vi.fn(),
-}));
-
-// Mock KiyoAutofill plugin
-vi.mock("../plugins/kiyautofill", () => ({
-  KiyoAutofill: {
-    saveSession: vi.fn().mockResolvedValue(undefined),
-    clearSession: vi.fn().mockResolvedValue(undefined),
-    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
-  },
-}));
-
-// Mock accountTable using hoisted mock
-vi.mock("./accountTable", () => accountTableMock);
-
-// Mock templateTable using hoisted mock
-vi.mock("./templateTable", () => templateTableMock);
-
-// Mock db functions
-vi.mock("../database/db", () => ({
-  replaceDatabaseData: dbMock.mockReplaceDatabaseData,
-  getDatabaseSnapshot: dbMock.mockGetDatabaseSnapshot,
-  isNativeFileStorageAvailable: dbMock.mockIsNativeFileStorageAvailable,
-  getDatabase: dbMock.mockGetDatabase,
-  initializeDatabase: dbMock.mockInitializeDatabase,
-  syncDatabaseToFile: dbMock.mockSyncDatabaseToFile,
 }));
 
 // Mock fileTable
-vi.mock("./fileTable", () => fileTableMock);
-
-// Mock accountStore
-vi.mock("../store/accountStore", () => ({
-  useAccountStore: {
-    getState: vi.fn(() => ({
-      setAccounts: vi.fn(),
-      clearAccounts: vi.fn(),
-    })),
-  },
-}));
-
-// Mock templateStore
-vi.mock("../store/templateStore", () => ({
-  useTemplateStore: {
-    getState: vi.fn(() => ({
-      loadTemplates: vi.fn(),
-    })),
-  },
-}));
+vi.mock("@/database/fileTable", () => fileTableMock);
 
 describe("createDataFile", () => {
   let mockSessionStore: ReturnType<typeof createMockSessionStore>;

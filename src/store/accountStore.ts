@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Account } from "../models/account";
+import type { Account } from "@/models/account";
 import {
   syncDatabaseToFile,
-} from "../database/db";
-import { accountTable } from "../database/accountTable";
+} from "@/database/db";
+import { accountTable } from "@/database/accountTable";
 import { Capacitor } from "@capacitor/core";
-import { KiyoAutofill } from "../plugins/kiyautofill";
-import { useSessionStore } from "./sessionStore";
+import { KiyoAutofill } from "@/plugins/kiyautofill";
+import { useSessionStore } from "@/store/sessionStore";
 
 export interface AccountState {
   accounts: Account[];

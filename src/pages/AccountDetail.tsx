@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import type { Account, AccountField } from "../models/account";
-import { useAccountStore } from "../store/accountStore";
-import { useSecureClipboard } from "../hooks/useSecureClipboard";
+import type { Account, AccountField } from "@/models/account";
+import { useAccountStore } from "@/store/accountStore";
+import { useSecureClipboard } from "@/hooks/useSecureClipboard";
 
 const AccountDetail = () => {
   // 기본 클립보드 자동 초기화 시간 (30초)

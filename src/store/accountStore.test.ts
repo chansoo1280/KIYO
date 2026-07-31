@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { useAccountStore } from "./accountStore";
-import { createTestAccount, createTestAccounts } from "../test/fixtures/accountFixtures";
+import { useAccountStore } from "@/store/accountStore";
+import { createTestAccount, createTestAccounts } from "@/test/fixtures/accountFixtures";
 
 describe("accountStore - State Management Tests", () => {
   let initialState: ReturnType<typeof useAccountStore.getState>;

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { BaseDialog } from "./BaseDialog";
-import { useSecureClipboard } from "../hooks/useSecureClipboard";
+import { BaseDialog } from "@/components/BaseDialog";
+import { useSecureClipboard } from "@/hooks/useSecureClipboard";
 
 interface PasswordGeneratorProps {
   open: boolean;

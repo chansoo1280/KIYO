@@ -6,7 +6,7 @@ import type {
   PingResponse,
   SyncAccountsResult,
   CountResult,
-} from "./kiyautofill";
+} from "@/plugins/kiyautofill";
 
 export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
   private sessionValue: { key?: string; isLock: boolean } | null = null;

@@ -1,20 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useTemplateStore } from "./templateStore";
-import { templateTable } from "../database/templateTable";
-import type { Template } from "../models/template";
-import { BUILTIN_TEMPLATES } from "../data/builtinTemplates";
-
-// templateTable 모듈 전체 모킹 (내부에서 db 사용하므로)
-vi.mock("../database/templateTable", () => ({
-  templateTable: {
-    getAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    reorder: vi.fn(),
-    init: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+import { useTemplateStore } from "@/store/templateStore";
+import { templateTable } from "@/database/templateTable";
+import type { Template } from "@/models/template";
+import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 
 describe("templateStore", () => {
   beforeEach(() => {

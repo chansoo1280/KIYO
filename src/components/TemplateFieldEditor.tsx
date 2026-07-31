@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { TemplateField } from "../models/template";
-import type { FieldType } from "../models/fieldTypes";
+import type { TemplateField } from "@/models/template";
+import type { FieldType } from "@/models/fieldTypes";
 
 interface TemplateFieldEditorProps {
   field: TemplateField;

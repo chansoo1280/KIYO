@@ -1,6 +1,6 @@
-import { useTemplateStore } from "../store/templateStore";
-import type { Template } from "../models/template";
-import type { Account, AccountField } from "../models/account";
+import { useTemplateStore } from "@/store/templateStore";
+import type { Template } from "@/models/template";
+import type { Account, AccountField } from "@/models/account";
 import { useNavigate } from "react-router-dom";
 
 interface TemplatePickerProps {

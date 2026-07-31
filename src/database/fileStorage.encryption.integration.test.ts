@@ -8,23 +8,23 @@ import {
   beforeAll,
   afterAll,
 } from "vitest";
-import { useSessionStore } from "../store/sessionStore";
-import { useAccountStore } from "../store/accountStore";
-import { getDatabaseSnapshot, getDatabase,  } from "./db";
+import { useSessionStore } from "@/store/sessionStore";
+import { useAccountStore } from "@/store/accountStore";
+import { getDatabaseSnapshot, getDatabase,  } from "@/database/db";
 import {
   createDataFile,
   backupDataFile,
   openImportedDataFile,
-} from "./fileStorage";
-import type { Account } from "../models/account";
-import type { Template } from "../models/template";
-import { createTestAccounts } from "../test/fixtures/accountFixtures";
-import { createTestTemplates } from "../test/fixtures/templateFixtures";
-import { fromBase64 } from "../crypto/crypto.utils";
-import { isEncryptedKiyoFile } from "./fileStorage";
-import { decryptData, type EncryptedKiyoFile } from "../crypto/encryption";
-import { accountTable } from "./accountTable";
-import { fileTable } from "./fileTable";
+} from "@/database/fileStorage";
+import type { Account } from "@/models/account";
+import type { Template } from "@/models/template";
+import { createTestAccounts } from "@/test/fixtures/accountFixtures";
+import { createTestTemplates } from "@/test/fixtures/templateFixtures";
+import { fromBase64 } from "@/crypto/crypto.utils";
+import { isEncryptedKiyoFile } from "@/database/fileStorage";
+import { decryptData, type EncryptedKiyoFile } from "@/crypto/encryption";
+import { accountTable } from "@/database/accountTable";
+import { fileTable } from "@/database/fileTable";
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -81,7 +81,7 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 
 // Mock KiyoAutofill plugin
-vi.mock("../plugins/kiyautofill", () => ({
+vi.mock("@/plugins/kiyautofill", () => ({
   KiyoAutofill: {
     saveSession: vi.fn().mockResolvedValue(undefined),
     clearSession: vi.fn().mockResolvedValue(undefined),

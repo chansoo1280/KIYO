@@ -1,6 +1,6 @@
-import { db } from "./db";
-import type { Template } from "../models/template";
-import { BUILTIN_TEMPLATES } from "../data/builtinTemplates";
+import { db } from "@/database/db";
+import type { Template } from "@/models/template";
+import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 
 export const templateTable = {
   async init(): Promise<void> {

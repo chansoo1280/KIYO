@@ -8,95 +8,35 @@ import {
   beforeAll,
   afterAll,
 } from "vitest";
-import { useSessionStore } from "../store/sessionStore";
-import { useAccountStore } from "../store/accountStore";
-import { getDatabaseSnapshot, getDatabase } from "./db";
+import { useSessionStore } from "@/store/sessionStore";
+import { useAccountStore } from "@/store/accountStore";
+import { getDatabaseSnapshot, getDatabase } from "@/database/db";
 import {
   createDataFile,
   backupDataFile,
   openImportedDataFile,
-} from "./fileStorage";
-import type { Account, FileMetadata } from "../models/account";
-import type { Template } from "../models/template";
-import type { KiyoDataFile } from "./fileStorage";
-import { fileTable } from "./fileTable";
+} from "@/database/fileStorage";
+import type { Account, FileMetadata } from "@/models/account";
+import type { Template } from "@/models/template";
+import type { KiyoDataFile } from "@/database/fileStorage";
+import { fileTable } from "@/database/fileTable";
 import {
   createTestAccount,
   createTestAccounts,
   createComplexAccount,
   createTestField,
-} from "../test/fixtures/accountFixtures";
+} from "@/test/fixtures/accountFixtures";
 import {
   createTestTemplates,
   createComplexTestTemplate,
   getBuiltinTemplates,
-} from "../test/fixtures/templateFixtures";
+} from "@/test/fixtures/templateFixtures";
 import {
   getDefaultMetadata,
-  getEncryptedMetadata,
-} from "../test/helpers/databaseTestHelpers";
-import { accountTable } from "./accountTable";
+} from "@/test/helpers/databaseTestHelpers";
+import { accountTable } from "@/database/accountTable";
 
 type Metadata = FileMetadata;
-
-// Mock Capacitor - web platform
-vi.mock("@capacitor/core", () => ({
-  registerPlugin: vi.fn(() => ({
-    isAutofillEnabled: vi.fn().mockResolvedValue({
-      enabled: false,
-      hasService: false,
-      servicePackageName: null,
-    }),
-    getAutofillServiceInfo: vi.fn().mockResolvedValue({
-      isEnabled: false,
-      isOurService: false,
-      servicePackageName: null,
-    }),
-    requestAutofillEnable: vi.fn().mockResolvedValue(undefined),
-    getAccountCount: vi.fn().mockResolvedValue({ count: 0 }),
-    syncAccountsFromReact: vi
-      .fn()
-      .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
-    syncAccounts: vi
-      .fn()
-      .mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
-    getAccounts: vi.fn().mockResolvedValue({ accounts: [], count: 0 }),
-    addAccount: vi.fn().mockResolvedValue({ id: 1, success: true }),
-    updateAccount: vi.fn().mockResolvedValue({ updated: true, id: 1 }),
-    deleteAccount: vi.fn().mockResolvedValue({ deleted: true, id: 1 }),
-    toggleFavorite: vi.fn().mockResolvedValue({ success: true, id: 1 }),
-    clearAllAccounts: vi
-      .fn()
-      .mockResolvedValue({ deletedCount: 0, success: true }),
-  })),
-  Capacitor: {
-    isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => "web"),
-  },
-}));
-
-// Mock Filesystem for web platform
-vi.mock("@capacitor/filesystem", () => ({
-  Filesystem: {
-    writeFile: vi.fn().mockResolvedValue(undefined),
-    readFile: vi.fn().mockRejectedValue(new Error("File not found")),
-  },
-  Directory: {
-    Documents: "DOCUMENTS",
-  },
-  Encoding: {
-    UTF8: "utf8",
-  },
-}));
-
-// Mock KiyoAutofill plugin
-vi.mock("../plugins/kiyautofill", () => ({
-  KiyoAutofill: {
-    saveSession: vi.fn().mockResolvedValue(undefined),
-    clearSession: vi.fn().mockResolvedValue(undefined),
-    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
-  },
-}));
 
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
@@ -312,7 +252,7 @@ describe("fileStorage Restore Integration Tests", () => {
       await populateTestData(
         accounts,
         createTestTemplates(2),
-        getEncryptedMetadata(),
+        getDefaultMetadata(),
       );
 
       const importedFile = await backupEncryptedAndRestore(
@@ -330,7 +270,7 @@ describe("fileStorage Restore Integration Tests", () => {
         importedFile,
         accounts,
         expectedTemplates,
-        getEncryptedMetadata(),
+        getDefaultMetadata(),
       );
       expect("encrypted" in importedFile!).toBe(false); // 복호화된 평문 반환
 

@@ -1,9 +1,9 @@
-import { db } from "./db";
-import { toBase64, fromBase64 } from "../crypto/crypto.utils";
-import { isEncryptedKiyoFile } from "../crypto/encryption";
-import type { KiyoDataFile } from "./fileStorage";
-import type { EncryptedKiyoFile } from "../crypto/encryption";
-import type { FileData } from "./db";
+import { db } from "@/database/db";
+import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
+import { isEncryptedKiyoFile } from "@/crypto/encryption";
+import type { KiyoDataFile } from "@/database/fileStorage";
+import type { EncryptedKiyoFile } from "@/crypto/encryption";
+import type { FileData } from "@/database/db";
 
 interface ActiveFileInfo {
   activeFileName: string | null;

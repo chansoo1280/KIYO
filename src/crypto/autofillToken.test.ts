@@ -3,7 +3,7 @@ import {
   createAutofillToken,
   isAutofillTokenValid,
   type AutofillToken,
-} from "./autofillToken";
+} from "@/crypto/autofillToken";
 
 describe("autofillToken", () => {
   describe("createAutofillToken", () => {

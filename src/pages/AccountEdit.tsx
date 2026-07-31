@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import type { Account, AccountField, FieldType } from "../models/account";
-import { useAccountStore } from "../store/accountStore";
-import { PasswordGenerator } from "../components/PasswordGenerator";
-import { WebsiteSelector } from "../components/WebsiteSelector";
-import { processWebsiteUrl } from "../utils/urlUtils";
+import type { Account, AccountField, FieldType } from "@/models/account";
+import { useAccountStore } from "@/store/accountStore";
+import { PasswordGenerator } from "@/components/PasswordGenerator";
+import { WebsiteSelector } from "@/components/WebsiteSelector";
+import { processWebsiteUrl } from "@/utils/urlUtils";
 
 const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();

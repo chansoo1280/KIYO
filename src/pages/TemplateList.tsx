@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import BottomTabs from "../components/BottomTabs";
-import { useTemplateStore } from "../store/templateStore";
+import BottomTabs from "@/components/BottomTabs";
+import { useTemplateStore } from "@/store/templateStore";
 
 const TemplateList = () => {
   const navigate = useNavigate();

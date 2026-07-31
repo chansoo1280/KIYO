@@ -1,81 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Capacitor } from "@capacitor/core";
-import { useSessionStore } from "../store/sessionStore";
-import { useAccountStore } from "../store/accountStore";
-import { isEncryptedKiyoFile } from "../crypto/encryption";
-import { replaceDatabaseData } from "./db";
+import { useSessionStore } from "@/store/sessionStore";
+import { useAccountStore } from "@/store/accountStore";
+import { replaceDatabaseData } from "@/database/db";
 import {
   openImportedDataFile,
   isKiyoFile,
   type KiyoDataFile,
-} from "./fileStorage";
-import type { Account, Metadata } from "../models/account";
-import type { Template } from "../models/template";
-import { createMockAccountStoreWithGetState } from "../test/mocks/accountStoreMock";
-import { createMockSessionStore } from "../test/mocks/sessionStoreMock";
-import { createMockEncryption } from "../test/mocks/encryptionMock";
-import { createTestKiyoDataFile } from "../test/fixtures/databaseFixtures";
+} from "@/database/fileStorage";
+import { FileStorageError, FileStorageErrorCode,  } from "@/errors/FileStorageError";
+import type { Account, Metadata } from "@/models/account";
+import type { Template } from "@/models/template";
+import { createMockAccountStoreWithGetState } from "@/test/mocks/accountStoreMock";
+import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
 
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
-    saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
-    saveActiveFileInfo: vi.fn().mockResolvedValue(undefined),
-    getActiveFileInfo: vi.fn().mockResolvedValue({
-      activeFileName: null,
-      salt: null,
-      encrypted: false,
-      fileData: null,
-    }),
-    clearActiveFileInfo: vi.fn().mockResolvedValue(undefined),
-    getAllFileNames: vi.fn().mockResolvedValue([]),
+    saveFileDataToDB: vi.fn(),
   },
 }));
 const dbMock = vi.hoisted(() => ({
-  mockReplaceDatabaseData: vi.fn().mockResolvedValue(undefined),
-  mockGetDatabaseSnapshot: vi.fn(),
-  mockInitializeDatabase: vi.fn().mockResolvedValue(undefined),
-  mockSyncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
-  mockLoadAccountsFromDB: vi.fn().mockResolvedValue([]),
-  mockIsNativeFileStorageAvailable: vi.fn(() => false),
+  replaceDatabaseData: vi.fn(),
 }));
-// Mock Capacitor
-vi.mock("@capacitor/core", () => ({
-  registerPlugin: vi.fn(() => ({
-    isAutofillEnabled: vi.fn().mockResolvedValue({
-      enabled: false,
-      hasService: false,
-      servicePackageName: null,
-    }),
-    getAutofillServiceInfo: vi.fn().mockResolvedValue({
-      isEnabled: false,
-      isOurService: false,
-      servicePackageName: null,
-    }),
-    requestAutofillEnable: vi.fn().mockResolvedValue(undefined),
-    getAccountCount: vi.fn().mockResolvedValue({ count: 0 }),
-    syncAccountsFromReact: vi
-      .fn()
-      .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
-    syncAccounts: vi
-      .fn()
-      .mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
-    getAccounts: vi.fn().mockResolvedValue({ accounts: [], count: 0 }),
-    addAccount: vi.fn().mockResolvedValue({ id: 1, success: true }),
-    updateAccount: vi.fn().mockResolvedValue({ updated: true, id: 1 }),
-    deleteAccount: vi.fn().mockResolvedValue({ deleted: true, id: 1 }),
-    toggleFavorite: vi.fn().mockResolvedValue({ success: true, id: 1 }),
-    clearAllAccounts: vi
-      .fn()
-      .mockResolvedValue({ deletedCount: 0, success: true }),
-  })),
-  Capacitor: {
-    isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => "web"),
-  },
-}));
-
+// Mock fileTable using hoisted mock
+vi.mock("@/database/fileTable", () => fileTableMock);
+// Mock db functions
+vi.mock("@/database/db", () => dbMock);
 // Mock sessionStore
-vi.mock("../store/sessionStore", () => ({
+vi.mock("@/store/sessionStore", () => ({
   useSessionStore: {
     getState: vi.fn(() => ({
       setSession: vi.fn(),
@@ -84,51 +36,17 @@ vi.mock("../store/sessionStore", () => ({
     })),
   },
 }));
-
 // Mock accountStore
-vi.mock("../store/accountStore", () => ({
+vi.mock("@/store/accountStore", () => ({
   useAccountStore: {
     getState: vi.fn(() => ({
       setAccounts: vi.fn(),
     })),
   },
 }));
-
-// Mock KiyoAutofill plugin
-vi.mock("../plugins/kiyautofill", () => ({
-  KiyoAutofill: {
-    saveSession: vi.fn().mockResolvedValue(undefined),
-    clearSession: vi.fn().mockResolvedValue(undefined),
-    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
-  },
-}));
-
-// Mock isEncryptedKiyoFile to always return false (plain file tests only)
-vi.mock("../crypto/encryption", () => ({
-  isEncryptedKiyoFile: vi.fn(() => false) as unknown as ReturnType<
-    typeof vi.fn
-  >,
-  createCryptoKey: vi.fn(),
-  encryptData: vi.fn(),
-  decryptData: vi.fn(),
-  fromBase64: vi.fn(),
-}));
-
-// Mock fileTable using hoisted mock
-vi.mock("./fileTable", () => fileTableMock);
-// Mock db functions
-vi.mock("./db", () => ({
-  saveFileDataToDB: vi.fn(),
-  replaceDatabaseData: vi.fn(),
-  getDatabaseSnapshot: vi.fn(),
-  loadAccountsFromDB: vi.fn(),
-  isNativeFileStorageAvailable: vi.fn(() => false),
-}));
-
 describe("openImportedDataFile", () => {
   let mockSessionStore: ReturnType<typeof createMockSessionStore>;
   let mockAccountStore: ReturnType<typeof createMockAccountStoreWithGetState>;
-  let mockEncryption: ReturnType<typeof createMockEncryption>;
 
   const createValidKiyoFile = (
     overrides: Partial<KiyoDataFile> = {},
@@ -142,27 +60,15 @@ describe("openImportedDataFile", () => {
     ...overrides,
   });
 
-  const mockCryptoKey = {} as CryptoKey;
-  const mockSalt = new Uint8Array(16);
-  const mockDecryptedData = createTestKiyoDataFile({ fileName: "test.json" });
   const validJsonString = JSON.stringify(createValidKiyoFile());
 
   beforeEach(() => {
     mockSessionStore = createMockSessionStore();
     mockAccountStore = createMockAccountStoreWithGetState();
-    mockEncryption = createMockEncryption({
-      mockCreateCryptoKey: vi.fn().mockResolvedValue({ key: mockCryptoKey, salt: mockSalt }),
-      mockDecryptData: vi.fn().mockResolvedValue(mockDecryptedData),
-      mockIsEncryptedKiyoFile: vi.fn().mockReturnValue(true),
-    });
 
     // Configure mocks
     vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
     vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
-    vi.mocked(replaceDatabaseData).mockImplementation(dbMock.mockReplaceDatabaseData);
-    vi.mocked(isEncryptedKiyoFile).mockImplementation(mockEncryption.mockIsEncryptedKiyoFile);
-    mockEncryption.mockIsEncryptedKiyoFile.mockReturnValue(false);
-    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -189,8 +95,8 @@ describe("openImportedDataFile", () => {
       expect(isKiyoFile(result)).toBe(true);
 
       // replaceDatabaseData 호출 확인
-      expect(dbMock.mockReplaceDatabaseData).toHaveBeenCalledTimes(1);
-      expect(dbMock.mockReplaceDatabaseData).toHaveBeenCalledWith(
+      expect(dbMock.replaceDatabaseData).toHaveBeenCalledTimes(1);
+      expect(dbMock.replaceDatabaseData).toHaveBeenCalledWith(
         expect.objectContaining({
           version: 1,
           fileName: "test.json",
@@ -258,7 +164,7 @@ describe("openImportedDataFile", () => {
 
       const result = await openImportedDataFile(
         jsonString,
-        "1234",
+        "",
         "test.json",
       );
 
@@ -272,7 +178,7 @@ describe("openImportedDataFile", () => {
       expect(result!.accounts).toHaveLength(1);
       expect(result!.templates).toHaveLength(1);
       expect(result!.metadata).toHaveLength(1);
-      expect(dbMock.mockReplaceDatabaseData).toHaveBeenCalledWith(
+      expect(dbMock.replaceDatabaseData).toHaveBeenCalledWith(
         expect.objectContaining({
           accounts: fullData.accounts,
           templates: fullData.templates,
@@ -283,7 +189,7 @@ describe("openImportedDataFile", () => {
     });
 
     it("fileName은 데이터 내부의 fileName을 사용한다 (setSession과 saveFileDataToDB에 전달)", async () => {
-      await openImportedDataFile(validJsonString, "1234", "test.json");
+      await openImportedDataFile(validJsonString, "", "test.json");
 
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "test.json" }),
@@ -300,18 +206,23 @@ describe("openImportedDataFile", () => {
   });
 
   describe("실패 케이스", () => {
-    it("JSON 파싱 실패 시 에러를 던진다", async () => {
+    it("JSON 파싱 실패 시 INVALID_JSON 에러를 던진다", async () => {
       const invalidJson = "{ invalid json }";
       await expect(
         openImportedDataFile(invalidJson, "1234", "test.json"),
-      ).rejects.toThrow("JSON 파싱 실패");
-      expect(dbMock.mockReplaceDatabaseData).not.toHaveBeenCalled();
+      ).rejects.toThrow(FileStorageError);
+      await expect(
+        openImportedDataFile(invalidJson, "1234", "test.json"),
+      ).rejects.toMatchObject({
+        code: FileStorageErrorCode.INVALID_JSON,
+      });
+      expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
       expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
     });
 
-    it("잘못된 version일 때 에러를 던진다 (1이 아닌 숫자, 문자열, 0, 음수)", async () => {
+    it("잘못된 version일 때 INVALID_FILE_FORMAT 에러를 던진다 (1이 아닌 숫자, 문자열, 0, 음수)", async () => {
       const invalidVersions = [
         { version: 2 as unknown as 1 },
         { version: "1" as unknown as 1 },
@@ -324,15 +235,18 @@ describe("openImportedDataFile", () => {
         const invalidVersionFile = createValidKiyoFile({ version });
         const jsonString = JSON.stringify(invalidVersionFile);
 
-        await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toThrow("is not KiyoFile");
-        expect(dbMock.mockReplaceDatabaseData).not.toHaveBeenCalled();
+        await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toThrow(FileStorageError);
+        await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toMatchObject({
+          code: FileStorageErrorCode.INVALID_FILE_FORMAT,
+        });
+        expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
         expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
         expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
         expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
       }
     });
 
-    it("필수 필드(accounts, templates, metadata)가 누락되거나 배열이 아닐 때 에러를 던진다", async () => {
+    it("필수 필드(accounts, templates, metadata)가 누락되거나 배열이 아닐 때 INVALID_FILE_FORMAT 에러를 던진다", async () => {
       const invalidFields = [
         { field: "accounts", value: undefined },
         {
@@ -358,53 +272,68 @@ describe("openImportedDataFile", () => {
         } as Partial<KiyoDataFile>);
         const jsonString = JSON.stringify(invalidFile);
 
-        await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toThrow("is not KiyoFile");
+        await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toThrow(FileStorageError);
+        await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toMatchObject({
+          code: FileStorageErrorCode.INVALID_FILE_FORMAT,
+        });
       }
     });
 
     it("잘못된 타입의 입력(null, undefined, 숫자, 배열, 빈 문자열) 시 에러를 던진다", async () => {
-          const invalidInputs = [
-            { input: "", expectError: "JSON 파싱 실패" },
-            { input: null, expectError: "is not KiyoFile" },
-            { input: undefined, expectError: "JSON 파싱 실패" },
-            { input: 123, expectError: "is not KiyoFile" },
-            { input: [], expectError: "JSON 파싱 실패" }, // [].toString() = "" -> JSON.parse("") throws
-          ];
+      const invalidInputs = [
+        { input: "", expectErrorCode: FileStorageErrorCode.INVALID_JSON },
+        { input: null, expectErrorCode: FileStorageErrorCode.INVALID_FILE_FORMAT },
+        { input: undefined, expectErrorCode: FileStorageErrorCode.INVALID_JSON },
+        { input: 123, expectErrorCode: FileStorageErrorCode.INVALID_FILE_FORMAT },
+        { input: [], expectErrorCode: FileStorageErrorCode.INVALID_JSON }, // [].toString() = "" -> JSON.parse("") throws
+      ];
 
-          for (const { input, expectError } of invalidInputs) {
-            vi.clearAllMocks();
-            // Re-setup mocks after clearAllMocks
-            vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
-            vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
-            vi.mocked(replaceDatabaseData).mockImplementation(dbMock.mockReplaceDatabaseData);
-            vi.mocked(isEncryptedKiyoFile).mockImplementation(mockEncryption.mockIsEncryptedKiyoFile);
-            mockEncryption.mockIsEncryptedKiyoFile.mockReturnValue(false);
-            vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+      for (const { input, expectErrorCode } of invalidInputs) {
+        vi.clearAllMocks();
+        // Re-setup mocks after clearAllMocks
+        vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+        vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
+        vi.mocked(replaceDatabaseData).mockImplementation(dbMock.replaceDatabaseData);
+        vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
 
-            // @ts-expect-error - 의도적으로 잘못된 타입 전달
-            await expect(openImportedDataFile(input, "1234")).rejects.toThrow(expectError);
-          }
+        // @ts-expect-error - 의도적으로 잘못된 타입 전달
+        await expect(openImportedDataFile(input, "1234")).rejects.toThrow(FileStorageError);
+        // @ts-expect-error - 의도적으로 잘못된 타입 전달
+        await expect(openImportedDataFile(input, "1234")).rejects.toMatchObject({
+          code: expectErrorCode,
         });
-    it("replaceDatabaseData 실패 시 에러를 던진다", async () => {
-      dbMock.mockReplaceDatabaseData.mockRejectedValueOnce(new Error("DB error"));
+      }
+    });
+    it("replaceDatabaseData 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
+      dbMock.replaceDatabaseData.mockRejectedValueOnce(new Error("DB error"));
 
       await expect(
         openImportedDataFile(validJsonString, "1234", "test.json"),
-      ).rejects.toThrow("평문 파일 저장 실패");
+      ).rejects.toThrow(FileStorageError);
+      await expect(
+        openImportedDataFile(validJsonString, "1234", "test.json"),
+      ).rejects.toMatchObject({
+        code: FileStorageErrorCode.DATABASE_ERROR,
+      });
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
       expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
     });
 
-    it("saveFileDataToDB 실패 시 에러를 던진다", async () => {
+    it("saveFileDataToDB 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
       fileTableMock.fileTable.saveFileDataToDB.mockRejectedValueOnce(new Error("DB save failed"));
 
       await expect(
         openImportedDataFile(validJsonString, "1234", "test.json"),
-      ).rejects.toThrow("평문 파일 저장 실패");
+      ).rejects.toThrow(FileStorageError);
+      await expect(
+        openImportedDataFile(validJsonString, "1234", "test.json"),
+      ).rejects.toMatchObject({
+        code: FileStorageErrorCode.DATABASE_ERROR,
+      });
     });
 
-    it("setSession 실패 시 에러를 던진다", async () => {
+    it("setSession 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
       mockSessionStore.mockSetSession.mockRejectedValueOnce(new Error("Session error"));
 
       await expect(
@@ -413,30 +342,13 @@ describe("openImportedDataFile", () => {
           "1234",
           "test.json",
         ),
-      ).rejects.toThrow("평문 파일 저장 실패");
+      ).rejects.toThrow(FileStorageError);
+      await expect(
+        openImportedDataFile(validJsonString, "1234", "test.json"),
+      ).rejects.toMatchObject({
+        code: FileStorageErrorCode.DATABASE_ERROR,
+      });
     });
   });
 
-  describe("암호화 파일은 처리하지 않음 (isEncryptedKiyoFile이 true 반환 시)", () => {
-    it("isEncryptedKiyoFile이 true를 반환하면 암호화 로직으로 분기한다 (평문 테스트에서는 mock이 false 반환)", async () => {
-      // 이 테스트는 평문 파일만 테스트하므로 isEncryptedKiyoFile mock이 false를 반환함
-      // 암호화 파일 테스트는 별도 테스트 파일에서 수행
-      const result = await openImportedDataFile(
-        validJsonString,
-        "1234",
-        "test.json",
-      );
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          version: 1,
-          fileName: "test.json",
-          accounts: [],
-          templates: [],
-          metadata: [],
-        }),
-      );
-      expect(mockEncryption.mockIsEncryptedKiyoFile).toHaveBeenCalled();
-    });
-  });
 });

@@ -4,9 +4,9 @@ import {
   KiyoAutofill,
   type AutofillStatus,
   type SyncAccountsResult,
-} from "../plugins/kiyautofill";
-import { useAccountStore } from "../store/accountStore";
-import { useSessionStore } from "../store/sessionStore";
+} from "@/plugins/kiyautofill";
+import { useAccountStore } from "@/store/accountStore";
+import { useSessionStore } from "@/store/sessionStore";
 
 interface AutofillSettingsProps {
   onMessage?: (message: string) => void;

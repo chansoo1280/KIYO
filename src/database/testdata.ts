@@ -1,4 +1,4 @@
-import type { Account } from "../models/account";
+import type { Account } from "@/models/account";
 
 // Initial accounts for development
 export const devAccounts: Account[] = [

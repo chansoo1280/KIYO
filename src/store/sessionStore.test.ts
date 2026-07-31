@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { useSessionStore } from "./sessionStore";
+import { useSessionStore } from "@/store/sessionStore";
 
 // Simple test fixtures
 const createTestCryptoKey = (): CryptoKey => {

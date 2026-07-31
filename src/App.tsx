@@ -1,18 +1,18 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import AccountList from "./pages/AccountList";
-import AccountDetail from "./pages/AccountDetail";
-import AccountEdit from "./pages/AccountEdit";
-import Settings from "./pages/Settings.tsx";
-import Alerts from "./pages/Alerts.tsx";
-import Auth from "./pages/Auth";
-import AutofillTestLogin from "./pages/AutofillTestLogin";
-import TemplateList from "./pages/TemplateList";
-import TemplateEdit from "./pages/TemplateEdit";
-import { useAccountStore } from "./store/accountStore.ts";
-import { useSettingsStore } from "./store/settingsStore";
+import Home from "@/pages/Home";
+import AccountList from "@/pages/AccountList";
+import AccountDetail from "@/pages/AccountDetail";
+import AccountEdit from "@/pages/AccountEdit";
+import Settings from "@/pages/Settings";
+import Alerts from "@/pages/Alerts";
+import Auth from "@/pages/Auth";
+import AutofillTestLogin from "@/pages/AutofillTestLogin";
+import TemplateList from "@/pages/TemplateList";
+import TemplateEdit from "@/pages/TemplateEdit";
+import { useAccountStore } from "@/store/accountStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { useEffect } from "react";
-import useBiometricAuthStore from "./store/biometricAuthStore.ts";
+import useBiometricAuthStore from "@/store/biometricAuthStore";
 
 function App() {
   const initialize = useAccountStore((state) => state.initialize);

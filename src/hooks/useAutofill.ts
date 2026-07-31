@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { KiyoAutofill, type AutofillStatus } from '../plugins/kiyautofill';
+import { KiyoAutofill, type AutofillStatus } from '@/plugins/kiyautofill';
 
 export interface UseAutofillReturn {
   isEnabled: () => Promise<AutofillStatus>;

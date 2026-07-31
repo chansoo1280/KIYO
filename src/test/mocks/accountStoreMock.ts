@@ -14,6 +14,7 @@ export interface MockAccountStore {
   mockDeleteAccount: Mock;
   mockGetAccountById: Mock;
   mockClearAccounts: Mock;
+  mockSyncToAutofill: Mock;
   mockAccountStore: AccountState;
 }
 
@@ -113,7 +114,7 @@ export const createMockGetState = (overrides?: Partial<AccountState>) => {
 
 /**
  * Creates a mock for useAccountStore.getState() that returns a specific store
- * Usage: vi.mocked(useAccountStore.getState).mockReturnValue(createMockAccountStore())
+ * Usage: vi.mocked(useAccountStore.getState).mockReturnValue(createMockAccountStoreForGetState())
  */
 export const createMockAccountStoreForGetState = (
   overrides?: Partial<AccountState>,

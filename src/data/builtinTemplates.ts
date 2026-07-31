@@ -1,4 +1,4 @@
-import type { Template } from "../models/template";
+import type { Template } from "@/models/template";
 
 export const BUILTIN_TEMPLATES: Omit<Template, "id" | "createdAt" | "updatedAt">[] = [
   {

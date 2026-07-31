@@ -1,5 +1,5 @@
-import type { KiyoDataFile } from "../database/fileStorage";
-import { fromBase64, toBase64 } from "./crypto.utils";
+import type { KiyoDataFile } from "@/database/fileStorage";
+import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

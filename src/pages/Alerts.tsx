@@ -1,4 +1,4 @@
-import BottomTabs from "../components/BottomTabs";
+import BottomTabs from "@/components/BottomTabs";
 
 const Alerts = () => {
   const notifications = [

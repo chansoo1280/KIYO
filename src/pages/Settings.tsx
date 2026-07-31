@@ -1,4 +1,4 @@
-import BottomTabs from "../components/BottomTabs";
+import BottomTabs from "@/components/BottomTabs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
@@ -8,16 +8,16 @@ import {
   openImportedDataFile,
   changePin,
   closeDataFile,
-} from "../database/fileStorage";
-import { useSessionStore } from "../store/sessionStore";
-import FileCreateDialog from "../components/FileCreateDialog";
-import FileOpenDialog from "../components/FileOpenDialog";
-import PinChangeDialog from "../components/PinChangeDialog";
-import { useSettingsStore } from "../store/settingsStore";
-import { useBiometricAuthStore } from "../store/biometricAuthStore";
-import type { FontSize } from "../models/account";
-import { AutofillSettings } from "../components/AutofillSettings";
-import { fileTable } from "../database/fileTable";
+} from "@/database/fileStorage";
+import { useSessionStore } from "@/store/sessionStore";
+import FileCreateDialog from "@/components/FileCreateDialog";
+import FileOpenDialog from "@/components/FileOpenDialog";
+import PinChangeDialog from "@/components/PinChangeDialog";
+import { useSettingsStore } from "@/store/settingsStore";
+import { useBiometricAuthStore } from "@/store/biometricAuthStore";
+import type { FontSize } from "@/models/account";
+import { AutofillSettings } from "@/components/AutofillSettings";
+import { fileTable } from "@/database/fileTable";
 
 const Settings = () => {
   const navigate = useNavigate();

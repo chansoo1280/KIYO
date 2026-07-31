@@ -8,13 +8,13 @@ import {
   beforeAll,
   afterAll,
 } from "vitest";
-import { templateTable } from "./templateTable";
-import { getDatabase } from "./db";
-import { useSessionStore } from "../store/sessionStore";
-import { useAccountStore } from "../store/accountStore";
-import * as dbModule from "./db";
-import { fileTable } from "./fileTable";
-import type { Template } from "../models/template";
+import { templateTable } from "@/database/templateTable";
+import { getDatabase } from "@/database/db";
+import { useSessionStore } from "@/store/sessionStore";
+import { useAccountStore } from "@/store/accountStore";
+import * as dbModule from "@/database/db";
+import { fileTable } from "@/database/fileTable";
+import type { Template } from "@/models/template";
 
 // Mock Capacitor - web platform
 vi.mock("@capacitor/core", () => ({
@@ -71,7 +71,7 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 
 // Mock KiyoAutofill plugin
-vi.mock("../plugins/kiyautofill", () => ({
+vi.mock("@/plugins/kiyautofill", () => ({
   KiyoAutofill: {
     saveSession: vi.fn().mockResolvedValue(undefined),
     clearSession: vi.fn().mockResolvedValue(undefined),

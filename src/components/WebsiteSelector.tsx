@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
-import { BaseDialog } from "./BaseDialog";
-import type { WebsitePreset } from "../models/websitePreset";
-import { searchPresets, getPresetsByCategory } from "../data/websitePresets";
+import { BaseDialog } from "@/components/BaseDialog";
+import type { WebsitePreset } from "@/models/websitePreset";
+import { searchPresets, getPresetsByCategory } from "@/data/websitePresets";
 
 interface WebsiteSelectorProps {
   open: boolean;

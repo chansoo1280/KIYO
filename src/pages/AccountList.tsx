@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Account } from "../models/account";
-import { useAccountStore } from "../store/accountStore";
-import BottomTabs from "../components/BottomTabs";
-import { useSessionStore } from "../store/sessionStore";
-import { useSecureClipboard } from "../hooks/useSecureClipboard";
-import TemplatePicker from "../components/TemplatePicker";
+import type { Account } from "@/models/account";
+import { useAccountStore } from "@/store/accountStore";
+import BottomTabs from "@/components/BottomTabs";
+import { useSessionStore } from "@/store/sessionStore";
+import { useSecureClipboard } from "@/hooks/useSecureClipboard";
+import TemplatePicker from "@/components/TemplatePicker";
 
 const AccountList = () => {
   const navigate = useNavigate();

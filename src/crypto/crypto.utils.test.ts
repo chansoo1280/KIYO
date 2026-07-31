@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toBase64, fromBase64 } from "./crypto.utils";
+import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
 
 describe("crypto.utils", () => {
   describe("toBase64", () => {

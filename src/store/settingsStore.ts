@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, devtools } from "zustand/middleware";
-import type { FontSize } from "../models/account";
+import type { FontSize } from "@/models/account";
 
 export interface SettingsState {
   theme: "light" | "dark";

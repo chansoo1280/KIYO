@@ -4,15 +4,15 @@ import {
   createDataFile,
   isKiyoFile,
   openImportedDataFile,
-} from "../database/fileStorage";
-import { fileTable } from "../database/fileTable";
-import FileCreateDialog from "../components/FileCreateDialog";
-import FileOpenDialog from "../components/FileOpenDialog";
+} from "@/database/fileStorage";
+import { fileTable } from "@/database/fileTable";
+import FileCreateDialog from "@/components/FileCreateDialog";
+import FileOpenDialog from "@/components/FileOpenDialog";
 import {
   FileStorageErrorCode,
   isFileStorageError,
-} from "../errors/FileStorageError";
-import { useSessionStore } from "../store/sessionStore";
+} from "@/errors/FileStorageError";
+import { useSessionStore } from "@/store/sessionStore";
 
 const Home = () => {
   const navigate = useNavigate();

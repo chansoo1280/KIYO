@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { BaseDialog } from "./BaseDialog";
-import { fileTable } from "../database/fileTable";
-import { isVerifyPin } from "../crypto/encryption";
+import { BaseDialog } from "@/components/BaseDialog";
+import { fileTable } from "@/database/fileTable";
+import { isVerifyPin } from "@/crypto/encryption";
 
 interface PinChangeDialogProps {
   open: boolean;

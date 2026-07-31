@@ -1,5 +1,5 @@
-import type { FieldType } from "../models/fieldTypes";
-import { FIELD_TYPE_OPTIONS } from "../models/fieldTypes";
+import type { FieldType } from "@/models/fieldTypes";
+import { FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
 
 interface FieldTypeSelectorProps {
   value: FieldType;

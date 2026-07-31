@@ -5,7 +5,7 @@ import {
   type CheckBiometryResult,
   BiometricAuth,
 } from "@aparajita/capacitor-biometric-auth";
-import { exportCryptoKey, fromBase64 } from "../crypto/crypto.utils";
+import { exportCryptoKey, fromBase64 } from "@/crypto/crypto.utils";
 import { SecureStorage } from "@aparajita/capacitor-secure-storage";
 
 type BiometricAuthResult = { success: true; cryptoKey: CryptoKey } | null;

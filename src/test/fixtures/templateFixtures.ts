@@ -1,5 +1,5 @@
-import type { Template, TemplateField } from "../../models/template";
-import { BUILTIN_TEMPLATES } from "../../data/builtinTemplates";
+import type { Template, TemplateField } from "@/models/template";
+import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 
 /**
  * 기본 TemplateField 생성

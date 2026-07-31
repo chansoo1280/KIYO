@@ -3,13 +3,13 @@ import {
   normalizeDataFileName,
   isKiyoFile,
   isEncryptedKiyoFile,
-} from "./fileStorage";
-import type { KiyoDataFile } from "./fileStorage";
-import type { EncryptedKiyoFile } from "../crypto/encryption";
+} from "@/database/fileStorage";
+import type { KiyoDataFile } from "@/database/fileStorage";
+import type { EncryptedKiyoFile } from "@/crypto/encryption";
 import {
   createTestKiyoDataFile,
   createTestEncryptedFile,
-} from "../test/fixtures/databaseFixtures";
+} from "@/test/fixtures/databaseFixtures";
 
 describe("fileStorage - pure functions", () => {
   describe("normalizeDataFileName", () => {

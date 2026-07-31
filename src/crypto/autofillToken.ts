@@ -1,4 +1,4 @@
-import { toBase64Url } from "./crypto.utils";
+import { toBase64Url } from "@/crypto/crypto.utils";
 
 export interface AutofillToken {
   token: string;

@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSessionStore } from "../store/sessionStore";
+import { useSessionStore } from "@/store/sessionStore";
 import {
   unlockFile,
   closeDataFile,
   isEncryptedKiyoFile,
   isKiyoFile,
   normalizeDataFileName,
-} from "../database/fileStorage";
-import { decryptData } from "../crypto/encryption";
-import { useAccountStore } from "../store/accountStore";
-import { replaceDatabaseData } from "../database/db";
-import { fileTable } from "../database/fileTable";
-import useBiometricAuthStore from "../store/biometricAuthStore";
+} from "@/database/fileStorage";
+import { decryptData } from "@/crypto/encryption";
+import { useAccountStore } from "@/store/accountStore";
+import { replaceDatabaseData } from "@/database/db";
+import { fileTable } from "@/database/fileTable";
+import useBiometricAuthStore from "@/store/biometricAuthStore";
 
 const Auth = () => {
   const navigate = useNavigate();

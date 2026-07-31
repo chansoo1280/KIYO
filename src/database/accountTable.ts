@@ -1,6 +1,6 @@
-import { db } from "./db";
-import type { Account } from "../models/account";
-import { encryptAccountsSensitiveFields, decryptAccountsSensitiveFields, hasEncryptedFields } from "../crypto/fieldEncryption";
+import { db } from "@/database/db";
+import type { Account } from "@/models/account";
+import { encryptAccountsSensitiveFields, decryptAccountsSensitiveFields, hasEncryptedFields } from "@/crypto/fieldEncryption";
 
 export const accountTable = {
   /**

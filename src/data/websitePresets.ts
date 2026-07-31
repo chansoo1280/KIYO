@@ -1,4 +1,4 @@
-import type { WebsitePreset } from "../models/websitePreset";
+import type { WebsitePreset } from "@/models/websitePreset";
 
 /**
  * Website presets for popular sites

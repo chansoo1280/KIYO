@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { templateTable } from "../database/templateTable";
-import type { Template } from "../models/template";
+import { templateTable } from "@/database/templateTable";
+import type { Template } from "@/models/template";
 
 interface TemplateState {
   templates: Template[];

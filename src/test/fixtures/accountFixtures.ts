@@ -1,4 +1,4 @@
-import type { Account, AccountField } from "../../models/account";
+import type { Account, AccountField } from "@/models/account";
 
 export const createTestField = (
   overrides: Partial<AccountField> = {},

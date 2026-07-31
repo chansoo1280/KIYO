@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { BaseDialog } from "./BaseDialog";
+import { BaseDialog } from "@/components/BaseDialog";
 
 interface FileOpenDialogProps {
   open: boolean;
