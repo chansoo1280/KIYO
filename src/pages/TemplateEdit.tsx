@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
 import { FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
-import BottomTabs from "@/components/BottomTabs";
 import IconPicker from "@/components/IconPicker";
 import { TemplateFieldEditor } from "@/components/TemplateFieldEditor";
 
@@ -274,7 +273,6 @@ const TemplateEdit = () => {
           </div>
         </section>
       </div>
-      <BottomTabs />
     </main>
   );
 };
