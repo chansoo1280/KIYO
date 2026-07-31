@@ -72,8 +72,9 @@ export const useKiyoAutofill = (): UseKiyoAutofillReturn => {
     }
   }, [checkStatus]);
 
-  // Auto-check on mount
+  // Auto-check on mount - intentional side effect on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkStatus();
   }, [checkStatus]);
 

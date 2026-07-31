@@ -89,17 +89,17 @@ describe("autofillToken", () => {
     });
 
     it("should return false for null", () => {
-      expect(isAutofillTokenValid(null as any)).toBe(false);
+      expect(isAutofillTokenValid(null)).toBe(false);
     });
 
     it("should return false for undefined", () => {
-      expect(isAutofillTokenValid(undefined as any)).toBe(false);
+      expect(isAutofillTokenValid(undefined)).toBe(false);
     });
 
     it("should return false for non-object", () => {
-      expect(isAutofillTokenValid("string" as any)).toBe(false);
-      expect(isAutofillTokenValid(123 as any)).toBe(false);
-      expect(isAutofillTokenValid([] as any)).toBe(false);
+      expect(isAutofillTokenValid("string")).toBe(false);
+      expect(isAutofillTokenValid(123)).toBe(false);
+      expect(isAutofillTokenValid([])).toBe(false);
     });
 
     it("should return false for missing token field", () => {
@@ -107,7 +107,7 @@ describe("autofillToken", () => {
         isAutofillTokenValid({
           createdAt: Date.now(),
           expiresAt: Date.now() + 30 * 60 * 1000,
-        } as any),
+        }),
       ).toBe(false);
     });
 
@@ -116,7 +116,7 @@ describe("autofillToken", () => {
         isAutofillTokenValid({
           token: "valid-token",
           expiresAt: Date.now() + 30 * 60 * 1000,
-        } as any),
+        }),
       ).toBe(false);
     });
 
@@ -125,7 +125,7 @@ describe("autofillToken", () => {
         isAutofillTokenValid({
           token: "valid-token",
           createdAt: Date.now(),
-        } as any),
+        }),
       ).toBe(false);
     });
 
@@ -135,7 +135,7 @@ describe("autofillToken", () => {
           token: 123,
           createdAt: Date.now(),
           expiresAt: Date.now() + 30 * 60 * 1000,
-        } as any),
+        }),
       ).toBe(false);
 
       expect(
@@ -143,7 +143,7 @@ describe("autofillToken", () => {
           token: "valid-token",
           createdAt: "not-a-number",
           expiresAt: Date.now() + 30 * 60 * 1000,
-        } as any),
+        }),
       ).toBe(false);
 
       expect(
@@ -151,7 +151,7 @@ describe("autofillToken", () => {
           token: "valid-token",
           createdAt: Date.now(),
           expiresAt: "not-a-number",
-        } as any),
+        }),
       ).toBe(false);
     });
 

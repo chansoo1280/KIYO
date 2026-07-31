@@ -14,7 +14,6 @@ import FileCreateDialog from "@/components/FileCreateDialog";
 import FileOpenDialog from "@/components/FileOpenDialog";
 import PinChangeDialog from "@/components/PinChangeDialog";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useBiometricAuthStore } from "@/store/biometricAuthStore";
 import type { FontSize } from "@/models/account";
 import { AutofillSettings } from "@/components/AutofillSettings";
 import { fileTable } from "@/database/fileTable";
@@ -29,8 +28,6 @@ const Settings = () => {
     (state) => state,
   );
   const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
-  const { isAvailable, biometricEnabled, setBiometricEnabled, enableBiometric, disableBiometric } =
-    useBiometricAuthStore();
   const [isEncrypted] = useState(false);
   const defaultBackupFileName = (() => {
     const isBackup = /-backup$/i.test(
@@ -121,18 +118,6 @@ const Settings = () => {
       await changePin(newPin);
       setMessage("PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
     }
-
-    // PIN 변경 시 생체인증 초기화 (보안상 PIN 변경 시 생체인증 재설정 필요)
-    if (biometricEnabled) {
-      try {
-        await disableBiometric();
-        setBiometricEnabled(false);
-        setMessage((prev) => `${prev} 생체인증이 초기화되었습니다.`);
-      } catch (error) {
-        console.error("생체인증 초기화 실패:", error);
-        setMessage((prev) => `${prev} (생체인증 초기화 실패)`);
-      }
-    }
   };
   return (
     <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
@@ -162,65 +147,6 @@ const Settings = () => {
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
                 <span>자동잠금</span>
               </div>
-              {isAvailable && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-                  <span>생체인증 사용</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={biometricEnabled}
-                    onClick={async () => {
-                      if (!biometricEnabled) {
-                        // 생체인증 켜기 - cryptoKey 필요
-                        if (!cryptoKey) {
-                          setMessage(
-                            "암호화 키가 없습니다. PIN을 입력해주세요.",
-                          );
-                          return;
-                        }
-                        try {
-                          await enableBiometric({ cryptoKey });
-                          setBiometricEnabled(true);
-                          setMessage("생체인증이 활성화되었습니다.");
-                        } catch (error) {
-                          setMessage(
-                            error instanceof Error
-                              ? error.message
-                              : "생체인증 활성화에 실패했습니다.",
-                          );
-                        }
-                      } else {
-                        // 생체인증 끄기
-                        try {
-                          await disableBiometric();
-                          setBiometricEnabled(false);
-                          setMessage("생체인증이 비활성화되었습니다.");
-                        } catch (error) {
-                          setMessage(
-                            error instanceof Error
-                              ? error.message
-                              : "생체인증 비활성화에 실패했습니다.",
-                          );
-                        }
-                      }
-                    }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 ${
-                      biometricEnabled
-                        ? "bg-[var(--color-accent)]"
-                        : "bg-[var(--color-border)]"
-                    }`}
-                    aria-label={
-                      biometricEnabled ? "생체인증 켜짐" : "생체인증 꺼짐"
-                    }
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-[var(--color-bg)] transition-transform ${
-                        biometricEnabled ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 

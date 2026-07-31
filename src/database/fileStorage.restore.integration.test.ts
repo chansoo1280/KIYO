@@ -50,7 +50,7 @@ describe("fileStorage Restore Integration Tests", () => {
     // Clean up test database - use the actual database name "kiyo-db"
     try {
       await indexedDB.deleteDatabase("kiyo-db");
-    } catch (e) {
+    } catch {
       // Ignore cleanup errors
     }
   });

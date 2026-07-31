@@ -34,7 +34,7 @@ const Home = () => {
       }
     };
     checkFileAndNavigate();
-  }, [navigate]);
+  }, [navigate, activeFileName]);
 
   const handleCreateFile = async ({
     fileName,
@@ -73,13 +73,15 @@ const Home = () => {
       if (isFileStorageError(error)) {
         switch (error.code) {
           case FileStorageErrorCode.INVALID_JSON:
-            throw new Error("파일 형식이 올바르지 않습니다. (JSON 파싱 오류)");
+            throw new Error("파일 형식이 올바르지 않습니다. (JSON 파싱 오류)", {
+              cause: error,
+            });
           case FileStorageErrorCode.INVALID_FORMAT:
-            throw new Error("지원하지 않는 파일 형식입니다.");
+            throw new Error("지원하지 않는 파일 형식입니다.", { cause: error });
           case FileStorageErrorCode.INVALID_PIN:
-            throw new Error("PIN 번호가 올바르지 않습니다.");
+            throw new Error("PIN 번호가 올바르지 않습니다.", { cause: error });
           default:
-            throw new Error(`파일 열기 실패: ${error.message}`);
+            throw new Error(`파일 열기 실패: ${error.message}`, { cause: error });
         }
       }
       throw error;

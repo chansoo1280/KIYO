@@ -4,7 +4,6 @@ import type { Account } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import BottomTabs from "@/components/BottomTabs";
 import { useSessionStore } from "@/store/sessionStore";
-import { useSecureClipboard } from "@/hooks/useSecureClipboard";
 import TemplatePicker from "@/components/TemplatePicker";
 
 const AccountList = () => {
@@ -34,14 +33,6 @@ const AccountList = () => {
     // };
     // checkFileAndNavigate();
   }, []);
-
-  // 보안 클립보드 훅 사용 (자동 초기화 비활성화)
-  const { copyToClipboard } = useSecureClipboard({
-    timeoutMs: 0,
-    successMessage: "비밀번호가 클립보드에 복사되었습니다.",
-    errorMessage: "비밀번호 복사에 실패했습니다.",
-    disabled: false,
-  });
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -87,7 +78,7 @@ const AccountList = () => {
   };
 
   // Filter and sort accounts (AND logic for tags)
-  const filteredAccounts = (() => {
+  const filteredAccounts = useMemo(() => {
     // Filter by selected tags (AND logic) and search query
     const filtered = accounts.filter((account) => {
       // Tag filter (AND logic)
@@ -126,7 +117,17 @@ const AccountList = () => {
 
       return 0;
     });
-  })();
+  }, [accounts, selectedTags, searchQuery, sortOrder]);
+
+  // Simple clipboard copy without auto-clear
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   return (
     <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8 pb-28">

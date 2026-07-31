@@ -25,70 +25,6 @@ import { isEncryptedKiyoFile } from "@/database/fileStorage";
 import { decryptData, type EncryptedKiyoFile } from "@/crypto/encryption";
 import { accountTable } from "@/database/accountTable";
 import { fileTable } from "@/database/fileTable";
-
-// Mock Capacitor - web platform
-vi.mock("@capacitor/core", () => ({
-  registerPlugin: vi.fn(() => ({
-    isAutofillEnabled: vi
-      .fn()
-      .mockResolvedValue({
-        enabled: false,
-        hasService: false,
-        servicePackageName: null,
-      }),
-    getAutofillServiceInfo: vi
-      .fn()
-      .mockResolvedValue({
-        isEnabled: false,
-        isOurService: false,
-        servicePackageName: null,
-      }),
-    requestAutofillEnable: vi.fn().mockResolvedValue(undefined),
-    getAccountCount: vi.fn().mockResolvedValue({ count: 0 }),
-    syncAccountsFromReact: vi
-      .fn()
-      .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
-    syncAccounts: vi
-      .fn()
-      .mockResolvedValue({ syncedCount: 0, errorCount: 0, totalProcessed: 0 }),
-    getAccounts: vi.fn().mockResolvedValue({ accounts: [], count: 0 }),
-    addAccount: vi.fn().mockResolvedValue({ id: 1, success: true }),
-    updateAccount: vi.fn().mockResolvedValue({ updated: true, id: 1 }),
-    deleteAccount: vi.fn().mockResolvedValue({ deleted: true, id: 1 }),
-    toggleFavorite: vi.fn().mockResolvedValue({ success: true, id: 1 }),
-    clearAllAccounts: vi
-      .fn()
-      .mockResolvedValue({ deletedCount: 0, success: true }),
-  })),
-  Capacitor: {
-    isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => "web"),
-  },
-}));
-
-// Mock Filesystem for web platform
-vi.mock("@capacitor/filesystem", () => ({
-  Filesystem: {
-    writeFile: vi.fn().mockResolvedValue(undefined),
-    readFile: vi.fn().mockRejectedValue(new Error("File not found")),
-  },
-  Directory: {
-    Documents: "DOCUMENTS",
-  },
-  Encoding: {
-    UTF8: "utf8",
-  },
-}));
-
-// Mock KiyoAutofill plugin
-vi.mock("@/plugins/kiyautofill", () => ({
-  KiyoAutofill: {
-    saveSession: vi.fn().mockResolvedValue(undefined),
-    clearSession: vi.fn().mockResolvedValue(undefined),
-    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
-  },
-}));
-
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Encryption Integration Tests", () => {
@@ -106,7 +42,7 @@ describe("fileStorage Encryption Integration Tests", () => {
     // Clean up test database
     try {
       await indexedDB.deleteDatabase(testDbName);
-    } catch (e) {
+    } catch {
       // Ignore cleanup errors
     }
   });

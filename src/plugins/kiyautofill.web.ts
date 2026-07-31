@@ -46,7 +46,10 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
     };
   }
 
-  async syncAccountsFromReact({}): Promise<SyncAccountsResult> {
+  async syncAccountsFromReact(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    { accountsJson: _accountsJson }: { accountsJson: string },
+  ): Promise<SyncAccountsResult> {
     console.warn("KiyoAutofill: syncAccountsFromReact not available on web");
     return {
       syncedCount: 0,

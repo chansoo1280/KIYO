@@ -12,16 +12,12 @@ import TemplateEdit from "@/pages/TemplateEdit";
 import { useAccountStore } from "@/store/accountStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useEffect } from "react";
-import useBiometricAuthStore from "@/store/biometricAuthStore";
 
 function App() {
   const initialize = useAccountStore((state) => state.initialize);
   const initializeTheme = useSettingsStore((state) => state.initializeTheme);
   const initializeFontSize = useSettingsStore(
     (state) => state.initializeFontSize,
-  );
-  const initializeBiometricAuthStore = useBiometricAuthStore(
-    (state) => state.initializeBiometricAuthStore,
   );
 
   useEffect(() => {
@@ -35,10 +31,6 @@ function App() {
   useEffect(() => {
     initializeFontSize();
   }, [initializeFontSize]);
-
-  useEffect(() => {
-    initializeBiometricAuthStore();
-  }, [initializeBiometricAuthStore]);
 
   return (
     <BrowserRouter>

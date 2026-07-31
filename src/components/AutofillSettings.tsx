@@ -16,9 +16,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   onMessage,
 }) => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
-
   const [accountCount, setAccountCount] = useState<number>(0);
-  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -29,6 +27,9 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     setLastSyncTime: setSessionLastSyncTime,
   } = useSessionStore();
 
+  // Use session store value directly instead of syncing to local state
+  const lastSyncTime = sessionLastSyncTime;
+
   const showMessage = useCallback(
     (message: string) => {
       onMessage?.(message);
@@ -36,13 +37,6 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     },
     [onMessage],
   );
-
-  // Sync lastSyncTime from session store to local state on mount
-  useEffect(() => {
-    if (sessionLastSyncTime !== null) {
-      setLastSyncTime(sessionLastSyncTime);
-    }
-  }, [sessionLastSyncTime]);
 
   const checkStatus = useCallback(async () => {
     if (Capacitor.getPlatform() !== "android") return;
@@ -95,7 +89,6 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
 
       if (result.success) {
         const now = Date.now();
-        setLastSyncTime(now);
         setSessionLastSyncTime(now); // Also save to session store
         showMessage(`자동완성 계정 ${result.syncedCount}개 동기화 완료`);
       } else {
@@ -112,7 +105,6 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     accounts,
     checkStatus,
     showMessage,
-    setLastSyncTime,
     setSessionLastSyncTime,
   ]);
 
@@ -122,10 +114,11 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     await checkStatus();
   }, [checkStatus]);
 
-  // Initial load
+  // Initial load - intentional side effect on mount to check autofill status
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkStatus();
-  }, []);
+  }, [checkStatus]);
 
   if (Capacitor.getPlatform() !== "android") {
     return (

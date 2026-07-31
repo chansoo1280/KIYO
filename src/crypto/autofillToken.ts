@@ -21,23 +21,24 @@ export function createAutofillToken(): AutofillToken {
   };
 }
 
-export function isAutofillTokenValid(token: AutofillToken): boolean {
+export function isAutofillTokenValid(token: unknown): boolean {
   if (!token || typeof token !== "object") {
     return false;
   }
 
+  const t = token as Record<string, unknown>;
   if (
-    typeof token.token !== "string" ||
-    typeof token.createdAt !== "number" ||
-    typeof token.expiresAt !== "number"
+    typeof t.token !== "string" ||
+    typeof t.createdAt !== "number" ||
+    typeof t.expiresAt !== "number"
   ) {
     return false;
   }
 
-  if (token.token.length === 0) {
+  if (t.token.length === 0) {
     return false;
   }
 
   const now = Date.now();
-  return now < token.expiresAt;
+  return now < t.expiresAt;
 }

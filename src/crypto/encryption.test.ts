@@ -261,7 +261,7 @@ describe("encryption (KIYO encryption.ts)", () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
       const tampered: EncryptedKiyoFile = {
         ...encrypted,
-        version: 999 as any,
+        version: 999 as EncryptedKiyoFile["version"],
       };
 
       const decrypted = await decryptData(tampered, key);

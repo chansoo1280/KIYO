@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
 import { BaseDialog } from "@/components/BaseDialog";
-import { useSecureClipboard } from "@/hooks/useSecureClipboard";
 
 interface PasswordGeneratorProps {
   open: boolean;
@@ -75,17 +74,30 @@ export const PasswordGenerator = ({
   });
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasCopiedText, setHasCopiedText] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(0);
 
-  // 기본 클립보드 자동 초기화 시간 (30초)
-  const clipboardAutoClearTimeout = 30000;
-
-  // 보안 클립보드 훅 사용 (기본 30초 후 자동 초기화)
-  const { copyToClipboard, hasCopiedText, remainingTime } = useSecureClipboard({
-    timeoutMs: clipboardAutoClearTimeout,
-    successMessage: `비밀번호가 클립보드에 복사되었습니다. ${Math.round(clipboardAutoClearTimeout / 1000)}초 후 자동으로 지워집니다.`,
-    errorMessage: "비밀번호 복사에 실패했습니다.",
-    disabled: false,
-  });
+  // Simple clipboard copy without auto-clear
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setHasCopiedText(true);
+      setRemainingTime(30);
+      const timer = setInterval(() => {
+        setRemainingTime((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setHasCopiedText(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const generatePassword = useCallback(() => {
     setErrorMessage("");
@@ -117,9 +129,10 @@ export const PasswordGenerator = ({
     onClose();
   };
 
-  // Generate password when dialog opens
+  // Generate password when dialog opens - intentional side effect on open
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       generatePassword();
     }
   }, [open, generatePassword]);

@@ -96,7 +96,7 @@ describe("templateTable Integration Tests", () => {
     // Clean up test database
     try {
       await indexedDB.deleteDatabase(testDbName);
-    } catch (_e) {
+    } catch {
       // Ignore cleanup errors
     }
   });
