@@ -24,6 +24,7 @@ import {
   FileStorageErrorCode,
   isFileStorageError,
 } from "@/errors/FileStorageError";
+import { useSettingsStore } from "@/store/settingsStore";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import type { Template } from "@/models/template";
 import { useTemplateStore } from "@/store/templateStore";
@@ -498,4 +499,18 @@ export const closeDataFile = async (): Promise<void> => {
   await useAccountStore.getState().clearAccounts();
   await KiyoAutofill.clearSession();
   await fileTable.clearActiveFileInfo();
+  // Reset auto-lock timeout to default (none) when file is closed
+  await useSettingsStore.getState().setAutoLockTimeout("none");
+};
+
+/**
+ * Locks the active data file (for auto-lock) - clears crypto key but preserves file info.
+ * Unlike closeDataFile, this keeps activeFileName and salt in fileTable for recovery.
+ */
+export const lockDataFile = async (): Promise<void> => {
+  // Clear only crypto key from session, keep activeFileName and salt
+  await useSessionStore.getState().clearCryptoKey();
+  // Save lock state to autofill (marks as locked)
+  await KiyoAutofill.saveSession({ isLock: true });
+  // Do NOT call fileTable.clearActiveFileInfo() - preserve file info for unlock
 };

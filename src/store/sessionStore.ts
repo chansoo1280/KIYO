@@ -18,6 +18,7 @@ export interface SessionState {
     salt?: Uint8Array;
   }) => Promise<void>;
   setCryptoKey: (key: CryptoKey, salt: Uint8Array) => Promise<void>;
+  clearCryptoKey: () => Promise<void>;
   clearSession: () => Promise<void>;
   setSyncError: (error: string | null) => void;
   clearSyncError: () => void;
@@ -45,6 +46,10 @@ export const useSessionStore = create<SessionState>()(
 
         setCryptoKey: async (key, salt) => {
           set({ cryptoKey: key, salt });
+        },
+
+        clearCryptoKey: async () => {
+          set({ cryptoKey: null });
         },
 
         clearSession: async () => {

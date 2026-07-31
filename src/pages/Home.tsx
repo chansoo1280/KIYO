@@ -12,17 +12,15 @@ import {
   FileStorageErrorCode,
   isFileStorageError,
 } from "@/errors/FileStorageError";
-import { useSessionStore } from "@/store/sessionStore";
 
 const Home = () => {
   const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOpenDialog, setShowOpenDialog] = useState(false);
-  const { activeFileName } = useSessionStore((state) => state);
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
-      const { fileData, encrypted } = await fileTable.getActiveFileInfo();
+      const { activeFileName, fileData, encrypted } = await fileTable.getActiveFileInfo();
       if (!activeFileName) return;
       if (encrypted) {
         navigate("/auth", {
@@ -34,7 +32,7 @@ const Home = () => {
       }
     };
     checkFileAndNavigate();
-  }, [navigate, activeFileName]);
+  }, [navigate]);
 
   const handleCreateFile = async ({
     fileName,

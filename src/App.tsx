@@ -10,6 +10,7 @@ import TemplateList from "@/pages/TemplateList";
 import TemplateEdit from "@/pages/TemplateEdit";
 import { useAccountStore } from "@/store/accountStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { AutoLockProvider } from "@/components/AutoLockProvider";
 import { useEffect } from "react";
 
 function App() {
@@ -17,6 +18,9 @@ function App() {
   const initializeTheme = useSettingsStore((state) => state.initializeTheme);
   const initializeFontSize = useSettingsStore(
     (state) => state.initializeFontSize,
+  );
+  const initializeAutoLockTimeout = useSettingsStore(
+    (state) => state.initializeAutoLockTimeout,
   );
 
   useEffect(() => {
@@ -31,22 +35,28 @@ function App() {
     initializeFontSize();
   }, [initializeFontSize]);
 
+  useEffect(() => {
+    initializeAutoLockTimeout();
+  }, [initializeAutoLockTimeout]);
+
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/list" element={<AccountList />} />
-        <Route path="/account" element={<AccountDetail />} />
-        <Route path="/account/:id" element={<AccountDetail />} />
-        <Route path="/account/edit" element={<AccountEdit />} />
-        <Route path="/account/edit/:id" element={<AccountEdit />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/autofill-test" element={<AutofillTestLogin />} />
-        <Route path="/templates" element={<TemplateList />} />
-        <Route path="/templates/new" element={<TemplateEdit />} />
-        <Route path="/templates/:id/edit" element={<TemplateEdit />} />
-      </Routes>
+      <AutoLockProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/list" element={<AccountList />} />
+          <Route path="/account" element={<AccountDetail />} />
+          <Route path="/account/:id" element={<AccountDetail />} />
+          <Route path="/account/edit" element={<AccountEdit />} />
+          <Route path="/account/edit/:id" element={<AccountEdit />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/autofill-test" element={<AutofillTestLogin />} />
+          <Route path="/templates" element={<TemplateList />} />
+          <Route path="/templates/new" element={<TemplateEdit />} />
+          <Route path="/templates/:id/edit" element={<TemplateEdit />} />
+        </Routes>
+      </AutoLockProvider>
     </BrowserRouter>
   );
 }

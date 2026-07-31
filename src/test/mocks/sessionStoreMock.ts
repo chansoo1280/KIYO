@@ -9,6 +9,7 @@ export interface MockSessionStore {
   store: SessionState;
   mockSetSession: Mock;
   mockSetCryptoKey: Mock;
+  mockClearCryptoKey: Mock;
   mockClearSession: Mock;
   mockSetSyncError: Mock;
   mockClearSyncError: Mock;
@@ -41,6 +42,7 @@ type CryptoKey = globalThis.CryptoKey;
 export const createSessionStoreMocks = () => {
   const mockSetSession = vi.fn().mockResolvedValue(undefined);
   const mockSetCryptoKey = vi.fn().mockResolvedValue(undefined);
+  const mockClearCryptoKey = vi.fn().mockResolvedValue(undefined);
   const mockClearSession = vi.fn().mockResolvedValue(undefined);
   const mockSetSyncError = vi.fn();
   const mockClearSyncError = vi.fn();
@@ -49,6 +51,7 @@ export const createSessionStoreMocks = () => {
   return {
     mockSetSession,
     mockSetCryptoKey,
+    mockClearCryptoKey,
     mockClearSession,
     mockSetSyncError,
     mockClearSyncError,
@@ -74,6 +77,7 @@ export const createMockSessionStore = (
     lastSyncTime: mockSessionStoreDefaults.lastSyncTime,
     setSession: mocks.mockSetSession,
     setCryptoKey: mocks.mockSetCryptoKey,
+    clearCryptoKey: mocks.mockClearCryptoKey,
     clearSession: mocks.mockClearSession,
     setSyncError: mocks.mockSetSyncError,
     clearSyncError: mocks.mockClearSyncError,
@@ -85,6 +89,7 @@ export const createMockSessionStore = (
     store,
     mockSetSession: mocks.mockSetSession,
     mockSetCryptoKey: mocks.mockSetCryptoKey,
+    mockClearCryptoKey: mocks.mockClearCryptoKey,
     mockClearSession: mocks.mockClearSession,
     mockSetSyncError: mocks.mockSetSyncError,
     mockClearSyncError: mocks.mockClearSyncError,

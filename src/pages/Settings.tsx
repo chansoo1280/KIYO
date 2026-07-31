@@ -10,30 +10,42 @@ import {
   closeDataFile,
 } from "@/database/fileStorage";
 import { useSessionStore } from "@/store/sessionStore";
-import FileCreateDialog from "@/components/FileCreateDialog";
-import FileOpenDialog from "@/components/FileOpenDialog";
-import PinChangeDialog from "@/components/PinChangeDialog";
-import { useSettingsStore } from "@/store/settingsStore";
+import { useSettingsStore, type AutoLockTimeout } from "@/store/settingsStore";
 import type { FontSize } from "@/models/account";
 import { AutofillSettings } from "@/components/AutofillSettings";
 import { fileTable } from "@/database/fileTable";
+import FileCreateDialog from "@/components/FileCreateDialog";
+import FileOpenDialog from "@/components/FileOpenDialog";
+import PinChangeDialog from "@/components/PinChangeDialog";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const [message, setMessage] = useState("");
+  const [securityMessage, setSecurityMessage] = useState("");
+  const [uiMessage, setUiMessage] = useState("");
+  const [dataMessage, setDataMessage] = useState("");
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
   const [showAppInfoDialog, setShowAppInfoDialog] = useState(false);
   const { activeFileName: fileName, cryptoKey } = useSessionStore();
-  const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
-  const [isEncrypted] = useState(false);
+  const { theme, toggleTheme, fontSize, setFontSize, autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
+  const [isEncrypted, setIsEncrypted] = useState(false);
+
+  useEffect(() => {
+    const checkEncryption = async () => {
+      const { encrypted } = await fileTable.getActiveFileInfo();
+      setIsEncrypted(encrypted);
+    };
+    checkEncryption();
+  }, [fileName, cryptoKey]);
+
   const defaultBackupFileName = (() => {
     const isBackup = /-backup$/i.test(
       fileName?.replace(/\.json$/, "") ?? "kiyo",
     );
     return `${fileName}${isBackup ? "" : "-backup"}.json`;
   })();
+
   const checkFileAndNavigate = async () => {
     // const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
     // setIsEncrypted(encrypted);
@@ -52,6 +64,7 @@ const Settings = () => {
   useEffect(() => {
     checkFileAndNavigate();
   }, []);
+
   const handleBackup = async ({
     fileName,
     encrypted,
@@ -76,7 +89,7 @@ const Settings = () => {
       throw new Error("핀번호를 입력하세요");
     }
     await backupDataFile(fileName, pin);
-    setMessage("백업 파일을 저장했습니다.");
+    setDataMessage("백업 파일을 저장했습니다.");
     setShowBackupDialog(false);
   };
 
@@ -90,10 +103,10 @@ const Settings = () => {
       throw new Error("지원하지 않는 파일 형식입니다.");
     }
     try {
-      setMessage(`${file.name} 파일을 복원했습니다.`);
+      setDataMessage(`${file.name} 파일을 복원했습니다.`);
       navigate("/list", { replace: true });
     } catch (cause) {
-      setMessage(
+      setDataMessage(
         cause instanceof Error ? cause.message : "파일을 복원하지 못했습니다.",
       );
     }
@@ -111,13 +124,17 @@ const Settings = () => {
         throw new Error("암호화 키 정보가 없습니다.");
       }
       await changePin(newPin);
-      setMessage("PIN이 변경되었습니다.");
+      setSecurityMessage("PIN이 변경되었습니다.");
     } else {
       // 암호화되지 않은 파일: 새 PIN으로 암호화 설정
       await changePin(newPin);
-      setMessage("PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
+      setSecurityMessage("PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
     }
+    // PIN 변경 후 암호화 상태 다시 확인
+    const { encrypted: newEncrypted } = await fileTable.getActiveFileInfo();
+    setIsEncrypted(newEncrypted);
   };
+
   return (
     <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -145,8 +162,42 @@ const Settings = () => {
               </div>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
                 <span>자동잠금</span>
+                <select
+                  value={autoLockTimeout}
+                  onChange={(e) => {
+                    setAutoLockTimeout(e.target.value as AutoLockTimeout);
+                    setSecurityMessage(
+                      e.target.value === "none"
+                        ? "자동잠금이 비활성화되었습니다."
+                        : `자동잠금: ${e.target.value === "1m" ? "1분" : e.target.value === "10m" ? "10분" : "30분"}로 설정되었습니다.`,
+                    );
+                  }}
+                  onPointerDown={(e) => {
+                    if (!isEncrypted) {
+                      e.preventDefault();
+                      setSecurityMessage("암호화된 파일에서만 자동잠금을 설정할 수 있습니다. PIN을 설정해 파일을 암호화하세요.");
+                    }
+                  }}
+                  disabled={!isEncrypted}
+                  className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent ${
+                    !isEncrypted
+                      ? "opacity-50 cursor-not-allowed text-[var(--color-text-muted)]"
+                      : "text-[var(--color-text)]"
+                  }`}
+                  aria-label="자동잠금 시간 선택"
+                >
+                  <option value="none">미사용</option>
+                  <option value="1m">1분</option>
+                  <option value="10m">10분</option>
+                  <option value="30m">30분</option>
+                </select>
               </div>
             </div>
+            {securityMessage && (
+              <p className="text-sm font-medium text-[var(--color-accent)]">
+                {securityMessage}
+              </p>
+            )}
           </div>
 
           <div>
@@ -160,7 +211,14 @@ const Settings = () => {
                   type="button"
                   role="switch"
                   aria-checked={theme === "dark"}
-                  onClick={toggleTheme}
+                  onClick={() => {
+                    toggleTheme();
+                    setUiMessage(
+                      theme === "dark"
+                        ? "다크모드가 해제되었습니다."
+                        : "다크모드가 적용되었습니다.",
+                    );
+                  }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 ${
                     theme === "dark"
                       ? "bg-[var(--color-accent)]"
@@ -181,7 +239,12 @@ const Settings = () => {
                 <span>글자크기</span>
                 <select
                   value={fontSize}
-                  onChange={(e) => setFontSize(e.target.value as FontSize)}
+                  onChange={(e) => {
+                    setFontSize(e.target.value as FontSize);
+                    setUiMessage(
+                      `글자크기: ${e.target.value === "small" ? "작게" : e.target.value === "medium" ? "보통" : "크게"}로 변경되었습니다.`,
+                    );
+                  }}
                   className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
                   aria-label="글자 크기 선택"
                 >
@@ -191,6 +254,11 @@ const Settings = () => {
                 </select>
               </div>
             </div>
+            {uiMessage && (
+              <p className="text-sm font-medium text-[var(--color-accent)]">
+                {uiMessage}
+              </p>
+            )}
           </div>
 
           <div>
@@ -222,6 +290,11 @@ const Settings = () => {
                 <span>초기화</span>
               </div> */}
             </div>
+            {dataMessage && (
+              <p className="text-sm font-medium text-[var(--color-accent)]">
+                {dataMessage}
+              </p>
+            )}
           </div>
 
           {Capacitor.getPlatform() === "android" && (
@@ -229,14 +302,8 @@ const Settings = () => {
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
                 Autofill
               </h3>
-              <AutofillSettings onMessage={setMessage} />
+              <AutofillSettings onMessage={setSecurityMessage} />
             </div>
-          )}
-
-          {message && (
-            <p className="text-sm font-medium text-[var(--color-text)]">
-              {message}
-            </p>
           )}
         </section>
 
