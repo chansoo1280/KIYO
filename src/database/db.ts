@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import Dexie, { type EntityTable, type Table } from "dexie";
-import { encryptData } from "@/crypto/encryption";
+import { encryptData, type EncryptedKiyoFile } from "@/crypto/encryption";
 import { writeDataFile, type KiyoDataFile } from "@/database/fileStorage";
 import { accountTable } from "@/database/accountTable";
 import { templateTable } from "@/database/templateTable";
@@ -99,12 +99,10 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
       return;
     }
     const data = await getDatabaseSnapshot(activeFileName);
-
-    // Save to DB first
-    await fileTable.saveFileDataToDB(activeFileName, data, salt || undefined);
-
+    
     // Also write to filesystem
     if (!cryptoKey || !salt) {
+      await fileTable.create(activeFileName, data);
       await writeDataFile(data, activeFileName);
       return;
     }
@@ -113,6 +111,7 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
       console.error("syncDatabaseToFile: Encryption returned null");
       return;
     }
+    await fileTable.create(activeFileName, encrypted, salt);
     await writeDataFile(encrypted, activeFileName);
 
     // Clear any previous sync error on success
@@ -135,6 +134,8 @@ export interface ReplaceDatabaseDataParams {
   fileName: string;
   cryptoKey?: CryptoKey;
   salt?: Uint8Array;
+  // 이미 암호화된 파일 데이터가 있으면 그대로 사용 (파일 테이블에 암호화된 상태로 저장하기 위함)
+  encryptedFileData?: EncryptedKiyoFile;
 }
 
 export const replaceDatabaseData = async ({
@@ -142,7 +143,12 @@ export const replaceDatabaseData = async ({
   fileName,
   cryptoKey,
   salt = undefined,
+  encryptedFileData,
 }: ReplaceDatabaseDataParams): Promise<void> => {
+  const fileDataToSave = cryptoKey?encryptedFileData:data;
+  if(cryptoKey && !encryptedFileData || !fileDataToSave) {
+    throw new Error("저장할 파일 데이터가 없습니다.");
+  }
 
   await db.transaction(
     "rw",
@@ -156,6 +162,7 @@ export const replaceDatabaseData = async ({
       await db.templates.clear();
       await db.settings.clear();
       await db.metadata.clear();
+      await db.files.clear();
 
       // Insert accounts and templates with encryption using restore to preserve IDs
       if (cryptoKey) {
@@ -170,7 +177,7 @@ export const replaceDatabaseData = async ({
       await db.metadata.bulkPut(data.metadata);
 
       // Save file data to files table (encrypted or plain based on cryptoKey presence)
-      await fileTable.saveFileDataToDB(fileName, data, salt);
+      await fileTable.create(fileName, fileDataToSave, salt);
     },
   );
 };

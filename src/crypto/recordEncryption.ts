@@ -23,9 +23,9 @@ export const encryptRecord = async <T>(
   const plaintext = encoder.encode(JSON.stringify(data));
 
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
+    { name: "AES-GCM", iv: iv },
     key,
-    plaintext.buffer as ArrayBuffer,
+    plaintext,
   );
 
   return {
@@ -43,9 +43,9 @@ export const decryptRecord = async <T>(
   key: CryptoKey,
 ): Promise<T> => {
   const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
+    { name: "AES-GCM", iv: new Uint8Array(iv) },
     key,
-    encryptedData.buffer as ArrayBuffer,
+    new Uint8Array(encryptedData),
   );
 
   return JSON.parse(decoder.decode(decrypted)) as T;

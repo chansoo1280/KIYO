@@ -16,7 +16,7 @@ import { fileTable } from "@/database/fileTable";
 // Hoisted mocks for vi.mock
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
-    saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -120,12 +120,12 @@ describe("createDataFile", () => {
       expect(callArgs).not.toHaveProperty("salt");
     });
 
-    it("DB 저장 함수(saveFileDataToDB)를 평문 데이터와 함께 호출한다", async () => {
+    it("DB 저장 함수(create)를 평문 데이터와 함께 호출한다", async () => {
       await createDataFile("test-file");
 
-      expect(fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      expect(fileTable.create).toHaveBeenCalledTimes(1);
       const [fileName, data, salt] =
-        fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
+        fileTableMock.fileTable.create.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -155,7 +155,7 @@ describe("createDataFile", () => {
         expect.objectContaining({ fileName: "my data.json" }),
       );
       const [fileName, data, salt] =
-        fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
+        fileTableMock.fileTable.create.mock.calls[0];
       expect(fileName).toBe("my data.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -232,12 +232,12 @@ describe("createDataFile", () => {
       expect(mockSessionStore.mockSetCryptoKey).not.toHaveBeenCalled();
     });
 
-    it("DB 저장 함수(saveFileDataToDB)를 암호화 데이터와 salt와 함께 호출한다", async () => {
+    it("DB 저장 함수(create)를 암호화 데이터와 salt와 함께 호출한다", async () => {
       await createDataFile("test-file", "1234");
 
-      expect(fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
+      expect(fileTable.create).toHaveBeenCalledTimes(1);
       const [fileName, data, salt] =
-        fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
+        fileTableMock.fileTable.create.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(mockEncryptedData);
       expect(salt).toEqual(mockSalt);
@@ -279,7 +279,7 @@ describe("createDataFile", () => {
         salt: mockSalt,
       });
       expect(
-        fileTableMock.fileTable.saveFileDataToDB,
+        fileTableMock.fileTable.create,
       ).toHaveBeenCalledWith(
         "secure data.json",
         expect.any(Object),

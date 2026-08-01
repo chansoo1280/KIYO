@@ -18,7 +18,7 @@ const AccountList = () => {
 
   useEffect(() => {
     // const checkFileAndNavigate = async () => {
-    //   const { activeFileName, encrypted } = await getActiveFileInfo();
+    //   const { activeFileName, encrypted } = await get();
     //   if (!activeFileName) {
     //     navigate("/", {
     //       replace: true,

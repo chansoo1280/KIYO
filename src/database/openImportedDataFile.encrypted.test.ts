@@ -13,7 +13,7 @@ import { FileStorageError, FileStorageErrorCode, } from "@/errors/FileStorageErr
 // Hoisted mocks for vi.mock
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
-    saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -173,7 +173,7 @@ describe("openImportedDataFile - 암호화 파일 에러 분기 테스트", () =
       expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
       // setSession은 decryptData 이후에 호출되므로 decryptData 실패 시 호출되지 않음
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-      expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
+      expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 
@@ -195,7 +195,7 @@ describe("openImportedDataFile - 암호화 파일 에러 분기 테스트", () =
       expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
       // setSession은 isKiyoFile 검증 이후에 호출되므로 isKiyoFile 실패 시 호출되지 않음
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-      expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
+      expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 
@@ -215,8 +215,8 @@ describe("openImportedDataFile - 암호화 파일 에러 분기 테스트", () =
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 
-    it("saveFileDataToDB 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
-      fileTableMock.fileTable.saveFileDataToDB.mockRejectedValue(new Error("DB save failed"));
+    it("create 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
+      fileTableMock.fileTable.create.mockRejectedValue(new Error("DB save failed"));
 
       await expect(
         openImportedDataFile(encryptedJsonString, "1234", "test.json"),

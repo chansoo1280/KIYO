@@ -15,7 +15,7 @@ import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
 
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
-    saveFileDataToDB: vi.fn(),
+    create: vi.fn(),
   },
 }));
 const dbMock = vi.hoisted(() => ({
@@ -121,7 +121,7 @@ describe("openImportedDataFile", () => {
       expect(callArgs).not.toHaveProperty("cryptoKey");
       expect(callArgs).not.toHaveProperty("salt");
 
-      // saveFileDataToDB는 replaceDatabaseData 내부에서 호출되므로 별도 확인하지 않음
+      // create는 replaceDatabaseData 내부에서 호출되므로 별도 확인하지 않음
       // replaceDatabaseData가 올바른 파라미터(fileName, salt)로 호출되었음을 위 검증으로 대체
 
       // setAccounts 호출 확인
@@ -187,14 +187,14 @@ describe("openImportedDataFile", () => {
       expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith(fullData.accounts);
     });
 
-    it("fileName은 데이터 내부의 fileName을 사용한다 (setSession과 saveFileDataToDB에 전달)", async () => {
+    it("fileName은 데이터 내부의 fileName을 사용한다 (setSession과 create에 전달)", async () => {
       await openImportedDataFile(validJsonString, "", "test.json");
 
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "test.json" }),
       );
-      // saveFileDataToDB는 replaceDatabaseData 내부에서 호출되므로 별도 호출되지 않음
-      expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
+      // create는 replaceDatabaseData 내부에서 호출되므로 별도 호출되지 않음
+      expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
     });
   });
 
@@ -212,7 +212,7 @@ describe("openImportedDataFile", () => {
       expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
-      expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
+      expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
     });
 
     it("잘못된 version일 때 INVALID_FILE_FORMAT 에러를 던진다 (1이 아닌 숫자, 문자열, 0, 음수)", async () => {
@@ -235,7 +235,7 @@ describe("openImportedDataFile", () => {
         expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
         expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
         expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
-        expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
+        expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
       }
     });
 
@@ -308,7 +308,7 @@ describe("openImportedDataFile", () => {
       // setSession은 replaceDatabaseData 이전에 호출되므로 이미 호출됨
       expect(mockSessionStore.mockSetSession).toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
-      // saveFileDataToDB는 replaceDatabaseData 내부에서 호출되므로 별도 확인 안 함
+      // create는 replaceDatabaseData 내부에서 호출되므로 별도 확인 안 함
     });
 
     it("setSession 실패 시 DATABASE_ERROR 에러를 던진다", async () => {

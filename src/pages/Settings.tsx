@@ -33,7 +33,7 @@ const Settings = () => {
 
   useEffect(() => {
     const checkEncryption = async () => {
-      const { encrypted } = await fileTable.getActiveFileInfo();
+      const { encrypted } = await fileTable.get();
       setIsEncrypted(encrypted);
     };
     checkEncryption();
@@ -47,7 +47,7 @@ const Settings = () => {
   })();
 
   const checkFileAndNavigate = async () => {
-    // const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+    // const { activeFileName, encrypted } = await fileTable.get();
     // setIsEncrypted(encrypted);
     // if (!activeFileName) {
     //   navigate("/", {
@@ -74,7 +74,7 @@ const Settings = () => {
     encrypted: boolean;
     pin: string;
   }) => {
-    const { activeFileName } = await fileTable.getActiveFileInfo();
+    const { activeFileName } = await fileTable.get();
     const exists = activeFileName === fileName;
     if (exists) {
       const overwrite = window.confirm(
@@ -113,7 +113,7 @@ const Settings = () => {
   };
 
   const handlePinChange = async (newPin: string) => {
-    const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+    const { activeFileName, encrypted } = await fileTable.get();
     if (!activeFileName) {
       throw new Error("활성 데이터 파일이 없습니다.");
     }
@@ -131,7 +131,7 @@ const Settings = () => {
       setSecurityMessage("PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
     }
     // PIN 변경 후 암호화 상태 다시 확인
-    const { encrypted: newEncrypted } = await fileTable.getActiveFileInfo();
+    const { encrypted: newEncrypted } = await fileTable.get();
     setIsEncrypted(newEncrypted);
   };
 

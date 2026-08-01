@@ -53,6 +53,7 @@ class KiyoAutofillService : AutofillService() {
         super.onCreate()
         repository = AutofillRepository(this)
         Log.d(TAG, "AutofillService created")
+        System.loadLibrary("sqlcipher")
     }
 
     override fun onDestroy() {
@@ -160,8 +161,8 @@ class KiyoAutofillService : AutofillService() {
                 val key = SecuritySession.get()
                 val isEncrypted = SecuritySession.isEncrypted()
                 Log.d(TAG, "SecuritySession :: key=${key != null}, isEncrypted=$isEncrypted")
-
-                if (isEncrypted && key == null) {
+                // if (isEncrypted && key == null) {    isEncrypted, key를 저장할 스토리지 필요.
+                if (key == null) {
                     val response = FillResponseBuilder.createAuthResponse(
                         this@KiyoAutofillService,
                         usernameId,

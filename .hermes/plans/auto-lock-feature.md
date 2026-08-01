@@ -36,7 +36,7 @@ export const lockDataFile = async (): Promise<void> => {
   await useSessionStore.getState().clearCryptoKey();
   // Save lock state to autofill (marks as locked)
   await KiyoAutofill.saveSession({ isLock: true });
-  // Do NOT call fileTable.clearActiveFileInfo() - preserve file info for unlock
+  // Do NOT call fileTable.clear() - preserve file info for unlock
 };
 ```
 
@@ -46,7 +46,7 @@ export const lockDataFile = async (): Promise<void> => {
 | sessionStore.clearSession() | ✅ | ❌ `clearCryptoKey()` |
 | accountStore.clearAccounts() | ✅ | ❌ |
 | KiyoAutofill.clearSession() | ✅ | ❌ `saveSession({ isLock: true })` |
-| fileTable.clearActiveFileInfo() | ✅ | ❌ **보존** (activeFileName, salt 유지) |
+| fileTable.clear() | ✅ | ❌ **보존** (activeFileName, salt 유지) |
 
 **📝 변경사항**: `lockDataFile`은 `clearSession()` 대신 `clearCryptoKey()`만 호출하여 `activeFileName`과 `salt`를 보존. `accountStore.clearAccounts()` 호출 안 함.
 
@@ -122,7 +122,7 @@ clearCryptoKey: async () => {
 ```
 
 **📝 변경사항**:
-- `isEncrypted` 상태를 `fileTable.getActiveFileInfo()`로 실시간 체크 (`useEffect` 의존성에 `fileName, cryptoKey` 추가)
+- `isEncrypted` 상태를 `fileTable.get()`로 실시간 체크 (`useEffect` 의존성에 `fileName, cryptoKey` 추가)
 - 암호화되지 않은 파일일 때 `disabled` + 회색 스타일 + `onPointerDown`으로 안내 메시지 표시
 - 자동잠금 변경 시 즉시 `securityMessage` 표시
 - 다크모드/글자크기 변경 시 `uiMessage` 표시
@@ -148,10 +148,10 @@ export function AutoLockProvider({ children }) {
 
 ## 7. Home 페이지 수정 (`src/pages/Home.tsx`)
 
-**📝 변경사항**: `useSessionStore` 대신 `fileTable.getActiveFileInfo()`로 직접 체크하여 `encrypted: true` 시 `/auth` 리다이렉트.
+**📝 변경사항**: `useSessionStore` 대신 `fileTable.get()`로 직접 체크하여 `encrypted: true` 시 `/auth` 리다이렉트.
 
 ```typescript
-const { activeFileName, fileData, encrypted } = await fileTable.getActiveFileInfo();
+const { activeFileName, fileData, encrypted } = await fileTable.get();
 if (!activeFileName) return;
 if (encrypted) {
   navigate("/auth", { replace: true });
@@ -168,7 +168,7 @@ export const closeDataFile = async (): Promise<void> => {
   await useSessionStore.getState().clearSession();
   await useAccountStore.getState().clearAccounts();
   await KiyoAutofill.clearSession();
-  await fileTable.clearActiveFileInfo();
+  await fileTable.clear();
   // Reset auto-lock timeout to default (none) when file is closed
   await useSettingsStore.getState().setAutoLockTimeout("none");
 };
@@ -202,9 +202,9 @@ export const closeDataFile = async (): Promise<void> => {
 ## 10. 복구 시나리오 (자동잠금 후 사용자 복귀)
 
 1. 사용자가 `/` (Home) 도착
-2. `Home.tsx`에서 `fileTable.getActiveFileInfo()`로 활성 파일 감지
+2. `Home.tsx`에서 `fileTable.get()`로 활성 파일 감지
 3. `encrypted: true`면 `/auth`로 리다이렉트 (기존 로직 그대로 동작)
-4. PIN 입력 후 `unlockFile()` 호출 → 세션 복원 (`sessionStore.setSession` + `fileTable.saveFileDataToDB`)
+4. PIN 입력 후 `unlockFile()` 호출 → 세션 복원 (`sessionStore.setSession` + `fileTable.create`)
 
 ---
 

@@ -84,10 +84,10 @@ describe("fileStorage Restore Integration Tests", () => {
     const sessionCryptoKey = sessionAfterCreate.cryptoKey;
 
     for (const account of accounts) {
-      await accountTable.restore(account, sessionCryptoKey ?? undefined);
+      await accountTable.create(account, sessionCryptoKey ?? undefined);
     }
     for (const template of templates) {
-      await templateTable.restore(template, sessionCryptoKey ?? undefined);
+      await templateTable.create(template, sessionCryptoKey ?? undefined);
     }
     const db = getDatabase();
     await db.metadata.bulkPut(metadata);

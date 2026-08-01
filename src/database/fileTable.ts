@@ -16,7 +16,7 @@ export const fileTable = {
   /**
    * Save active file info to files table (update salt only, don't touch other fields)
    */
-  async saveActiveFileInfo(fileName: string, salt?: Uint8Array): Promise<void> {
+  async save(fileName: string, salt?: Uint8Array): Promise<void> {
     const saltBase64 = salt ? toBase64(salt) : undefined;
     const now = Date.now();
     // Update only salt and updatedAt fields, don't touch other fields
@@ -29,7 +29,7 @@ export const fileTable = {
       });
     if (updatedCount === 0) {
       console.warn(
-        `saveActiveFileInfo: No existing file record found for "${fileName}", skipping update (salt-only mode)`,
+        `save: No existing file record found for "${fileName}", skipping update (salt-only mode)`,
       );
     }
   },
@@ -37,7 +37,7 @@ export const fileTable = {
   /**
    * Get active file info from files table
    */
-  async getActiveFileInfo(): Promise<ActiveFileInfo> {
+  async get(): Promise<ActiveFileInfo> {
     // Get fileRecord from DB to check for salt as fallback
     const fileRecord = await db.files.orderBy("updatedAt").reverse().first();
     if (!fileRecord) {
@@ -60,7 +60,7 @@ export const fileTable = {
    * Save file data (encrypted or plain) to files table
    * Determines encryption status from the data itself (EncryptedKiyoFile has encrypted: true)
    */
-  async saveFileDataToDB(
+  async create(
     fileName: string,
     fileData: KiyoDataFile | EncryptedKiyoFile,
     salt?: Uint8Array,
@@ -70,7 +70,6 @@ export const fileTable = {
 
     // Check if the data itself is encrypted (EncryptedKiyoFile has encrypted: true property)
     const isEncrypted = isEncryptedKiyoFile(fileData);
-
     const fileDataRecord: FileData = {
       id: Date.now(), // Assign a unique ID
       fileName,
@@ -94,7 +93,7 @@ export const fileTable = {
   /**
    * Clear active file info from files table
    */
-  async clearActiveFileInfo(fileName?: string): Promise<void> {
+  async clear(fileName?: string): Promise<void> {
     if (fileName) {
       await db.files.where("fileName").equals(fileName).delete();
     } else {

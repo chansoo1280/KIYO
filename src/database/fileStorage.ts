@@ -105,8 +105,7 @@ const saveDataFile = async (
       templates: templates || [],
       metadata: metadata || [],
     };
-    
-    await fileTable.saveFileDataToDB(normalizedFileName, finalData);
+    await fileTable.create(normalizedFileName, finalData);
     await writeDataFile(finalData, normalizedFileName);
     
     // Autofill 세션 저장 (Autofill이 활성화된 경우만)
@@ -170,10 +169,9 @@ const saveDataFile = async (
   }
 
   // 파일 저장
+  await fileTable.create(normalizedFileName, encrypted, salt);
   await writeDataFile(encrypted, normalizedFileName);
-
-  // Save encrypted data to DB
-  await fileTable.saveFileDataToDB(normalizedFileName, encrypted, salt);
+  
 
   // Update stores
   useAccountStore.getState().setAccounts(accounts);
@@ -328,12 +326,13 @@ export const openImportedDataFile = async (
     await useSessionStore
       .getState()
       .setSession({ fileName: normalizedFileName, cryptoKey: key, salt });
-    // Save decrypted data to DB
+    // Save decrypted data to DB - 암호화된 파일 데이터(parsedData)를 그대로 전달
     await replaceDatabaseData({
       data: decrypted,
       fileName: normalizedFileName,
       cryptoKey: key,
       salt,
+      encryptedFileData: parsedData,
     });
     useAccountStore.getState().setAccounts(decrypted.accounts);
     return { ...decrypted, fileName: normalizedFileName };
@@ -370,7 +369,7 @@ export const openImportedDataFile = async (
 // PIN 변경: 활성 데이터 파일을 새 PIN으로 재암호화
 // currentPin이 빈 문자열인 경우: 암호화되지 않은 파일에 새 PIN으로 암호화 설정
 export const changePin = async (newPin: string): Promise<void> => {
-  const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+  const { activeFileName, encrypted } = await fileTable.get();
   const { cryptoKey } = await useSessionStore.getState();
 
   if (!activeFileName) {
@@ -396,6 +395,8 @@ export const changePin = async (newPin: string): Promise<void> => {
   // 데이터 암호화
   const encryptedData = await encryptData(fileData, newKey, newSalt);
 
+  // DB에도 암호화된 데이터 저장
+  await fileTable.create(normalizedFileName, encryptedData, newSalt);
   // 암호화된 데이터로 파일 덮어쓰기
   await writeDataFile(encryptedData, normalizedFileName);
 
@@ -417,8 +418,6 @@ export const changePin = async (newPin: string): Promise<void> => {
     console.warn("Failed to save session key to autofill:", autofillError);
   }
 
-  // DB에도 암호화된 데이터 저장
-  await fileTable.saveFileDataToDB(normalizedFileName, encryptedData, newSalt);
 };
 
 export const writeDataFile = async (
@@ -476,7 +475,7 @@ export const unlockFile = async (
   fileName: string,
   pin: string,
 ): Promise<KiyoDataFile> => {
-  const { salt, encrypted, fileData } = await fileTable.getActiveFileInfo();
+  const { salt, encrypted, fileData } = await fileTable.get();
 
   if (!encrypted || !salt) {
     throw FileStorageError.create(
@@ -513,6 +512,7 @@ export const unlockFile = async (
       fileName: normalizedFileName,
       cryptoKey: key,
       salt,
+      encryptedFileData: fileData,
     });
     useAccountStore.getState().setAccounts(decrypted.accounts);
 
@@ -554,7 +554,7 @@ export const closeDataFile = async (): Promise<void> => {
   await useAccountStore.getState().clearAccounts();
   await useTemplateStore.getState().clearTemplates();
   await KiyoAutofill.clearSession();
-  await fileTable.clearActiveFileInfo();
+  await fileTable.clear();
   // metadata 초기화
   const db = getDatabase();
   await db.metadata.clear();
@@ -571,5 +571,5 @@ export const lockDataFile = async (): Promise<void> => {
   await useSessionStore.getState().clearCryptoKey();
   // Save lock state to autofill (marks as encrypted)
   await KiyoAutofill.saveSession({ isEncrypted: true });
-  // Do NOT call fileTable.clearActiveFileInfo() - preserve file info for unlock
+  // Do NOT call fileTable.clear() - preserve file info for unlock
 };

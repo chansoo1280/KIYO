@@ -37,7 +37,7 @@ const DBMocks = vi.hoisted(() => ({
 
 const fileTableMocks = vi.hoisted(() => ({
   fileTable: {
-    saveFileDataToDB: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -124,9 +124,9 @@ describe("backupDataFile", () => {
     it("JSON 변환 후 파일 저장을 호출한다 (writeDataFile을 통해)", async () => {
       await backupDataFile("test.json", "");
 
-      // saveFileDataToDB가 평문 데이터와 함께 호출되는지 확인
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      // create가 평문 데이터와 함께 호출되는지 확인
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.create.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -219,9 +219,9 @@ describe("backupDataFile", () => {
       );
       expect(typeof result.updatedAt).toBe("number");
       expect(result.updatedAt).toBeGreaterThanOrEqual(baseTime);
-      // Check that saveFileDataToDB was called with the right filename and data containing expected properties
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      // Check that create was called with the right filename and data containing expected properties
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.create.mock.calls[0];
       expect(fileName).toBe("full-data.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -241,8 +241,8 @@ describe("backupDataFile", () => {
       expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith(
         "my-backup.json",
       );
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.create.mock.calls[0];
       expect(fileName).toBe("my-backup.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -261,8 +261,8 @@ describe("backupDataFile", () => {
       expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith(
         "backup.json",
       );
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.create.mock.calls[0];
       expect(fileName).toBe("backup.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -339,8 +339,8 @@ describe("backupDataFile", () => {
     it("fileName 정규화가 적용된다", async () => {
       await backupDataFile("  test  ", "");
 
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, , salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledTimes(1);
+      const [fileName, , salt] = fileTableMocks.fileTable.create.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(salt).toBeUndefined();
     });
@@ -367,18 +367,18 @@ describe("backupDataFile", () => {
       await backupDataFile("  secure data  ", "1234");
 
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledWith(
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledWith(
         "secure data.json",
         expect.any(Object),
         expect.any(Uint8Array),
       );
     });
 
-    it("DB 저장 함수(saveFileDataToDB)를 암호화 데이터와 salt와 함께 호출한다", async () => {
+    it("DB 저장 함수(create)를 암호화 데이터와 salt와 함께 호출한다", async () => {
       await backupDataFile("test.json", "1234");
 
-      expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];
+      expect(fileTableMocks.fileTable.create).toHaveBeenCalledTimes(1);
+      const [fileName, data, salt] = fileTableMocks.fileTable.create.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(mockEncryptedFile);
       expect(salt).toEqual(mockSalt);
@@ -416,8 +416,8 @@ describe("backupDataFile", () => {
       );
     });
 
-    it("saveFileDataToDB 실패 시 에러를 전파한다", async () => {
-      fileTableMocks.fileTable.saveFileDataToDB.mockRejectedValueOnce(
+    it("create 실패 시 에러를 전파한다", async () => {
+      fileTableMocks.fileTable.create.mockRejectedValueOnce(
         new Error("DB save failed"),
       );
 
