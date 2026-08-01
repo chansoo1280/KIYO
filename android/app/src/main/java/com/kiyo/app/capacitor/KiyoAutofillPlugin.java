@@ -18,8 +18,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import com.kiyo.app.autofill.AutofillRepository;
-import com.kiyo.app.security.SecuritySession;
-
+import com.kiyo.app.autofill.AutofillDataStoreJavaBridge;
 import java.util.List;
 
 @CapacitorPlugin(name = "KiyoAutofill")
@@ -44,20 +43,13 @@ public class KiyoAutofillPlugin extends Plugin {
         }
     }
 
-    /**
-     * 현재 활성화된 Autofill Service의 ComponentName을 반환합니다.
-     * API 28+: AutofillManager.getAutofillServiceComponentName()
-     * API 26-27: Settings.Secure.AUTOFILL_SERVICE 파싱
-     */
     private ComponentName getActiveAutofillService(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            // API 28+ (Android 9+)
             AutofillManager autofillManager = getAutofillManager(context);
             if (autofillManager != null) {
                 return autofillManager.getAutofillServiceComponentName();
             }
         } else {
-            // API 26-27 (Android 8.x)
             String serviceString = Settings.Secure.getString(
                 context.getContentResolver(),
                 "autofill_service"
@@ -69,34 +61,24 @@ public class KiyoAutofillPlugin extends Plugin {
         return null;
     }
 
-    /**
-     * 현재 활성 Autofill Service의 패키지명을 반환합니다.
-     */
     private String getActiveAutofillServicePackageName(Context context) {
         ComponentName service = getActiveAutofillService(context);
         return service != null ? service.getPackageName() : null;
     }
 
-    /**
-     * 현재 활성 Autofill Service가 KIYO 서비스인지 확인합니다.
-     */
     private boolean isKiyoAutofillServiceActive(Context context) {
         String activePackageName = getActiveAutofillServicePackageName(context);
         return KIYO_PACKAGE_NAME.equals(activePackageName);
     }
 
-    /**
-     * Autofill 상태 정보를 담은 JSObject를 생성합니다.
-     */
     private JSObject buildAutofillStatus(Context context) {
         AutofillManager autofillManager = getAutofillManager(context);
         boolean isEnabled = autofillManager != null && autofillManager.isEnabled();
         boolean hasEnabledServices = autofillManager != null && autofillManager.hasEnabledAutofillServices();
-        
+
         String servicePackageName = getActiveAutofillServicePackageName(context);
         boolean isOurService = KIYO_PACKAGE_NAME.equals(servicePackageName);
-        
-        // KIYO 서비스가 활성화된 경우에만 enabled = true
+
         boolean enabled = isOurService && isEnabled;
 
         ComponentName service = getActiveAutofillService(context);
@@ -155,9 +137,6 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            // 1st priority: Request setting specific autofill service (API 26+)
-            // This shows a system dialog to enable our autofill service directly
-            // Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE = "android.settings.REQUEST_SET_AUTOFILL_SERVICE" (API 26+)
             Intent intent = new Intent("android.settings.REQUEST_SET_AUTOFILL_SERVICE");
             intent.setData(Uri.parse("package:" + context.getPackageName()));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -166,8 +145,6 @@ public class KiyoAutofillPlugin extends Plugin {
         } catch (android.content.ActivityNotFoundException e) {
             Log.w(TAG, "REQUEST_SET_AUTOFILL_SERVICE not found, trying fallback", e);
             try {
-                // 2nd priority: Open general autofill settings screen
-                // Settings.ACTION_AUTOFILL_SETTINGS = "android.settings.AUTOFILL_SETTINGS" (API 26+)
                 Intent intent = new Intent("android.settings.AUTOFILL_SETTINGS");
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
@@ -187,7 +164,6 @@ public class KiyoAutofillPlugin extends Plugin {
 
     @PluginMethod
     public void ping(PluginCall call) {
-        // Simple test method to verify plugin communication
         Log.d(TAG, "Ping received from React");
         JSObject result = new JSObject();
         result.put("pong", true);
@@ -219,8 +195,6 @@ public class KiyoAutofillPlugin extends Plugin {
         }
     }
 
-    // ==================== Autofill Account Management ====================
-
     @PluginMethod
     public void syncAccounts(PluginCall call) {
         if (autofillRepository == null) {
@@ -228,7 +202,6 @@ public class KiyoAutofillPlugin extends Plugin {
             return;
         }
 
-        // Get accounts from the call (passed from React)
         JSArray accountsArray = call.getArray("accounts");
         if (accountsArray == null || accountsArray.length() == 0) {
             call.reject("No accounts provided");
@@ -256,14 +229,13 @@ public class KiyoAutofillPlugin extends Plugin {
                     continue;
                 }
 
-                // Convert single packageName to packageNames list
                 java.util.List<String> packageNames = new java.util.ArrayList<>();
                 if (packageName != null && !packageName.isEmpty()) {
                     packageNames.add(packageName);
                 }
 
                 AutofillRepository.AutofillAccount account = new AutofillRepository.AutofillAccount(
-                    -1L,  // id (auto-generated)
+                    -1L,
                     username,
                     password,
                     title,
@@ -360,7 +332,6 @@ public class KiyoAutofillPlugin extends Plugin {
         String domain = call.getString("domain", existing.domain);
         boolean favorite = call.getBoolean("favorite", existing.favorite);
 
-        // Handle packageNames list - if packageName is provided, add it to the list
         java.util.List<String> packageNames = new java.util.ArrayList<>(existing.packageNames);
         if (packageName != null && !packageName.isEmpty() && !packageNames.contains(packageName)) {
             packageNames.add(packageName);
@@ -484,7 +455,6 @@ public class KiyoAutofillPlugin extends Plugin {
         }
     }
 
-    // SharedPreferences key for biometric setting
     private static final String PREFS_NAME = "kiyo_autofill_prefs";
     private static final String KEY_BIOMETRIC_ENABLED = "biometric_enabled";
 
@@ -523,7 +493,7 @@ public class KiyoAutofillPlugin extends Plugin {
 
         try {
             android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            boolean enabled = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, true); // Default true
+            boolean enabled = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, true);
             JSObject result = new JSObject();
             result.put("enabled", enabled);
             call.resolve(result);
@@ -534,35 +504,107 @@ public class KiyoAutofillPlugin extends Plugin {
     }
 
     @PluginMethod
-        public void saveSession(PluginCall call) {
-            String key = call.getString("key");
-            boolean isEncrypted = call.getBoolean("isEncrypted", false);
-
-            if (key == null && isEncrypted) {
-                call.reject("key parameter is required when encrypted");
-                return;
-            }
-
-            SecuritySession.INSTANCE.save(key, isEncrypted);
-
-            Log.d(TAG, "Session saved. isEncrypted=" + isEncrypted);
-            call.resolve();
+    public void setAutofillToken(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
         }
 
-    @PluginMethod
-    public void clearSession(PluginCall call) {
-        SecuritySession.INSTANCE.clear();
+        String token = call.getString("token");
+        Long expireAt = call.getLong("expireAt");
+        Boolean isEncrypted = call.getBoolean("isEncrypted");
 
-        Log.d(TAG, "Session cleared");
-        call.resolve();
+        if (token == null || token.isEmpty()) {
+            call.reject("token parameter is required");
+            return;
+        }
+        if (expireAt == null) {
+            call.reject("expireAt parameter is required");
+            return;
+        }
+        if (isEncrypted == null) {
+            call.reject("isEncrypted parameter is required");
+            return;
+        }
+
+        try {
+            AutofillDataStoreJavaBridge.saveAutofillToken(context, token, expireAt, isEncrypted);
+            android.util.Log.d(TAG, "Autofill token saved. isEncrypted=" + isEncrypted + ", expireAt=" + expireAt);
+            call.resolve();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save autofill token", e);
+            call.reject("Failed to save autofill token: " + e.getMessage());
+        }
     }
 
     @PluginMethod
-    public void hasSession(PluginCall call) {
-        boolean hasSession = SecuritySession.INSTANCE.hasSession();
+    public void clearAutofillToken(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
 
-        JSObject result = new JSObject();
-        result.put("hasSession", hasSession);
-        call.resolve(result);
+        try {
+            AutofillDataStoreJavaBridge.clearToken(context);
+            android.util.Log.d(TAG, "Autofill token cleared");
+            call.resolve();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to clear autofill token", e);
+            call.reject("Failed to clear autofill token: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void getAutofillTokenStatus(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
+
+        try {
+            String token = AutofillDataStoreJavaBridge.getAutofillToken(context);
+            Long expireAt = AutofillDataStoreJavaBridge.getTokenExpireAt(context);
+            boolean isEncrypted = AutofillDataStoreJavaBridge.isEncrypted(context);
+            boolean hasValidToken = AutofillDataStoreJavaBridge.hasValidToken(context);
+
+            JSObject result = new JSObject();
+            result.put("hasToken", token != null);
+            result.put("hasValidToken", hasValidToken);
+            result.put("isEncrypted", isEncrypted);
+            if (expireAt != null) {
+                result.put("expireAt", expireAt);
+            }
+            call.resolve(result);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to get autofill token status", e);
+            call.reject("Failed to get autofill token status: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void setVaultEncryptionStatus(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
+
+        Boolean isEncrypted = call.getBoolean("isEncrypted");
+        if (isEncrypted == null) {
+            call.reject("isEncrypted parameter is required");
+            return;
+        }
+
+        try {
+            AutofillDataStoreJavaBridge.setVaultEncryptionStatus(context, isEncrypted);
+            android.util.Log.d(TAG, "Vault encryption status set: " + isEncrypted);
+            call.resolve();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to set vault encryption status", e);
+            call.reject("Failed to set vault encryption status: " + e.getMessage());
+        }
     }
 }

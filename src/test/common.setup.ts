@@ -63,9 +63,10 @@ vi.mock("@/plugins/kiyautofill", () => ({
       hasEnabledServices: false,
       serviceClassName: null,
     }),
-    saveSession: vi.fn().mockResolvedValue(undefined),
-    clearSession: vi.fn().mockResolvedValue(undefined),
-    hasSession: vi.fn().mockResolvedValue({ hasSession: false }),
+    setAutofillToken: vi.fn().mockResolvedValue(undefined),
+    clearAutofillToken: vi.fn().mockResolvedValue(undefined),
+    getAutofillTokenStatus: vi.fn().mockResolvedValue({ hasToken: false, hasValidToken: false, isEncrypted: true }),
+    setVaultEncryptionStatus: vi.fn().mockResolvedValue(undefined),
   },
 }));
 // Export mock for use in tests

@@ -9,7 +9,7 @@ import type {
 } from "@/plugins/kiyautofill";
 
 export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
-  private sessionValue: { key?: string; isEncrypted: boolean } | null = null;
+  private tokenValue: { token?: string; expireAt?: number; isEncrypted?: boolean } | null = null;
   async isAutofillEnabled(): Promise<AutofillStatus> {
     console.warn("KiyoAutofill: isAutofillEnabled not available on web");
     return {
@@ -75,15 +75,28 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
     return { enabled: true };
   }
 
-  async saveSession(options: { key?: string; isEncrypted: boolean }): Promise<void> {
-    this.sessionValue = options;
+  async setAutofillToken(options: { token: string; expireAt: number; isEncrypted: boolean }): Promise<void> {
+    this.tokenValue = options;
   }
 
-  async clearSession(): Promise<void> {
-    this.sessionValue = null;
+  async clearAutofillToken(): Promise<void> {
+    this.tokenValue = null;
   }
 
-  async hasSession(): Promise<{ hasSession: boolean }> {
-    return { hasSession: this.sessionValue !== null };
+  async getAutofillTokenStatus(): Promise<{ hasToken: boolean; hasValidToken: boolean; isEncrypted: boolean; expireAt?: number }> {
+    const now = Date.now();
+    const hasToken = this.tokenValue !== null && this.tokenValue.token !== undefined;
+    const expireAt = this.tokenValue?.expireAt;
+    const isEncrypted = this.tokenValue?.isEncrypted ?? true;
+    const hasValidToken = hasToken && expireAt !== undefined && now < expireAt;
+    return { hasToken, hasValidToken, isEncrypted, expireAt };
+  }
+
+  async setVaultEncryptionStatus(options: { isEncrypted: boolean }): Promise<void> {
+    if (this.tokenValue) {
+      this.tokenValue.isEncrypted = options.isEncrypted;
+    } else {
+      this.tokenValue = { isEncrypted: options.isEncrypted };
+    }
   }
 }

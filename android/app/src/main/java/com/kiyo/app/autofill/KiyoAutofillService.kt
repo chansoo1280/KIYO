@@ -27,9 +27,12 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.collections.any
-import com.kiyo.app.security.SecuritySession
+import com.kiyo.app.autofill.AutofillDataStore
 import android.content.Intent
 import com.kiyo.app.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 /**
  * Android Autofill Service for KIYO Password Manager
  * Provides autofill functionality for Android apps (API 26+)
@@ -150,38 +153,55 @@ class KiyoAutofillService : AutofillService() {
 
                 // Find matching accounts from repository
                 val accounts = repository.findMatchingAccounts(domain)
-                Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
+                                Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
 
-                if (accounts.isEmpty()) {
-                    Log.d(TAG, "No matching accounts found")
-                    handler.post { callback.onSuccess(null) }
-                    return@execute
-                }
-                
-                val key = SecuritySession.get()
-                val isEncrypted = SecuritySession.isEncrypted()
-                Log.d(TAG, "SecuritySession :: key=${key != null}, isEncrypted=$isEncrypted")
-                // if (isEncrypted && key == null) {    isEncrypted, key를 저장할 스토리지 필요.
-                if (key == null) {
-                    val response = FillResponseBuilder.createAuthResponse(
-                        this@KiyoAutofillService,
-                        usernameId,
-                        passwordId
-                    )
+                                if (accounts.isEmpty()) {
+                                    Log.d(TAG, "No matching accounts found")
+                                    handler.post { callback.onSuccess(null) }
+                                    return@execute
+                                }
 
-                    handler.post { callback.onSuccess(response) }
-                    return@execute
-                }
+                                // Check vault encryption status and token validity via DataStore
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    val isEncrypted = AutofillDataStore.isEncrypted(this@KiyoAutofillService)
+                                    Log.d(TAG, "AutofillDataStore :: isEncrypted=$isEncrypted")
 
-                // Build FillResponse with matching accounts
-                val response = FillResponseBuilder.createFillResponse(
-                    this@KiyoAutofillService,
-                    accounts,
-                    usernameId,
-                    passwordId
-                )
+                                    // 1. Non-encrypted vault -> return fill response directly
+                                    if (!isEncrypted) {
+                                        val response = FillResponseBuilder.createFillResponse(
+                                            this@KiyoAutofillService,
+                                            accounts,
+                                            usernameId,
+                                            passwordId
+                                        )
+                                        handler.post { callback.onSuccess(response) }
+                                        return@launch
+                                    }
 
-                handler.post { callback.onSuccess(response) }
+                                    // 2. Encrypted vault -> check for valid token
+                                    val hasValidToken = AutofillDataStore.hasValidToken(this@KiyoAutofillService)
+                                    Log.d(TAG, "AutofillDataStore :: hasValidToken=$hasValidToken")
+
+                                    if (!hasValidToken) {
+                                        // No valid token -> request auth
+                                        val response = FillResponseBuilder.createAuthResponse(
+                                            this@KiyoAutofillService,
+                                            usernameId,
+                                            passwordId
+                                        )
+                                        handler.post { callback.onSuccess(response) }
+                                        return@launch
+                                    }
+
+                                    // 3. Valid token exists -> return fill response
+                                    val response = FillResponseBuilder.createFillResponse(
+                                        this@KiyoAutofillService,
+                                        accounts,
+                                        usernameId,
+                                        passwordId
+                                    )
+                                    handler.post { callback.onSuccess(response) }
+                                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in onFillRequest", e)

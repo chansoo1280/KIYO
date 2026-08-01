@@ -41,9 +41,10 @@ export interface KiyoAutofillPlugin {
   getAccountCount(): Promise<CountResult>;
   setBiometricEnabled(options: { enabled: boolean }): Promise<void>;
   getBiometricEnabled(): Promise<{ enabled: boolean }>;
-  saveSession(options: { key?: string; isEncrypted: boolean }): Promise<void>;
-  clearSession(): Promise<void>;
-  hasSession(): Promise<{ hasSession: boolean }>;
+  setAutofillToken(options: { token: string; expireAt: number; isEncrypted: boolean }): Promise<void>;
+  clearAutofillToken(): Promise<void>;
+  getAutofillTokenStatus(): Promise<{ hasToken: boolean; hasValidToken: boolean; isEncrypted: boolean; expireAt?: number }>;
+  setVaultEncryptionStatus(options: { isEncrypted: boolean }): Promise<void>;
 }
 
 export interface CountResult {
