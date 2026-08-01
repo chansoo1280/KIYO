@@ -142,22 +142,4 @@ describe("templateStore", () => {
       expect(state.templates[0].id).toBe("t2");
     });
   });
-
-  describe("reorderTemplates", () => {
-    it("ID 배열 순서대로 sortOrder를 재설정한다", async () => {
-      const templates: Template[] = [
-        { id: "t1", name: "A", description: "", icon: "📋", sortOrder: 0, fields: [], createdAt: 1, updatedAt: 1 },
-        { id: "t2", name: "B", description: "", icon: "📋", sortOrder: 1, fields: [], createdAt: 1, updatedAt: 1 },
-        { id: "t3", name: "C", description: "", icon: "📋", sortOrder: 2, fields: [], createdAt: 1, updatedAt: 1 },
-      ];
-      useTemplateStore.setState({ templates });
-
-      await useTemplateStore.getState().reorderTemplates(["t3", "t1", "t2"]);
-
-      const state = useTemplateStore.getState();
-      expect(state.templates.find((t) => t.id === "t3")?.sortOrder).toBe(0);
-      expect(state.templates.find((t) => t.id === "t1")?.sortOrder).toBe(1);
-      expect(state.templates.find((t) => t.id === "t2")?.sortOrder).toBe(2);
-    });
-  });
 });

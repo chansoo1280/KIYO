@@ -1,51 +1,50 @@
 import { db } from "@/database/db";
 import type { Template } from "@/models/template";
-import { createEncryptedRecord, decryptRecord, type EncryptedRecord } from "@/crypto/recordEncryption";
+import {
+  createEncryptedRecord,
+  createPlaintextRecord,
+  decryptRecord,
+  type EncryptedRecord,
+} from "@/crypto/recordEncryption";
 
-interface TemplateRecord extends EncryptedRecord {
+export interface TemplateRecord extends EncryptedRecord {
   id: string;
 }
 
 export const templateTable = {
   /**
-   * Get all templates, decrypting if cryptoKey is provided
+   * Get all templates, decrypting encrypted records if cryptoKey provided
    */
   async getAll(cryptoKey?: CryptoKey): Promise<Template[]> {
     const records = await db.templates.toArray();
 
-    if (cryptoKey && records.length > 0) {
-      try {
-        const templates = await Promise.all(
-          records.map((record) => decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey)),
-        );
-        return templates.sort((a, b) => a.sortOrder - b.sortOrder);
-      } catch (error) {
-        console.error("Failed to decrypt template records:", error);
-        return [];
-      }
-    }
+    if (records.length === 0) return [];
 
-    // Fallback: return plaintext templates when no cryptoKey (for plaintext files)
-    if (records.length > 0) {
-      try {
-        return records
-          .map((record) => {
-            try {
-              const decoded = new TextDecoder().decode(record.encryptedData);
-              return JSON.parse(decoded) as Template;
-            } catch {
-              // If parsing fails, return a minimal template
-              return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt };
-            }
-          })
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-      } catch (error) {
-        console.error("Failed to parse plaintext template records:", error);
-        return [];
-      }
-    }
+    const templates = await Promise.all(
+      records.map(async (record) => {
+        if (record.encrypted) {
+          if (!cryptoKey) {
+            // Encrypted record but no key - return minimal
+            return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt } as Template;
+          }
+          try {
+            return await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
+          } catch (error) {
+            console.error("Failed to decrypt template record:", error);
+            return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt } as Template;
+          }
+        }
+        // Plaintext record
+        try {
+          const decoded = new TextDecoder().decode(record.encryptedData);
+          return JSON.parse(decoded) as Template;
+        } catch {
+          return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt } as Template;
+        }
+      })
+    );
 
-    return [];
+    return templates.sort((a, b) => a.sortOrder - b.sortOrder);
   },
 
   /**
@@ -56,7 +55,8 @@ export const templateTable = {
 
     if (!record) return undefined;
 
-    if (cryptoKey) {
+    if (record.encrypted) {
+      if (!cryptoKey) return undefined;
       try {
         return await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
       } catch (error) {
@@ -65,7 +65,7 @@ export const templateTable = {
       }
     }
 
-    // Fallback: return plaintext template when no cryptoKey
+    // Plaintext record
     try {
       const decoded = new TextDecoder().decode(record.encryptedData);
       return JSON.parse(decoded) as Template;
@@ -95,16 +95,11 @@ export const templateTable = {
       };
       await db.templates.add(record);
     } else {
-      // Fallback for non-encrypted (should not happen in production)
-      const plaintextData = new TextEncoder().encode(JSON.stringify(newTemplate));
+      // Plaintext record
+      const plaintextRecord = await createPlaintextRecord(newTemplate);
       await db.templates.add({
         id: newTemplate.id,
-        version: 1,
-        algorithm: "AES-GCM",
-        encryptedData: plaintextData,
-        iv: new Uint8Array(12),
-        createdAt: now,
-        updatedAt: now,
+        ...plaintextRecord,
       });
     }
 
@@ -130,19 +125,19 @@ export const templateTable = {
           iv,
           createdAt: existingRecord.createdAt,
           updatedAt,
+          encrypted: true,
         };
         await db.templates.put(record);
       }
     } else {
-      await db.templates.put({
+      const plaintextRecord = await createPlaintextRecord(updatedTemplate);
+      const record: TemplateRecord = {
         id: updatedTemplate.id,
-        version: 1,
-        algorithm: "AES-GCM",
-        encryptedData: new TextEncoder().encode(JSON.stringify(updatedTemplate)),
-        iv: new Uint8Array(12),
+        ...plaintextRecord,
         createdAt: updatedTemplate.createdAt,
         updatedAt: updatedTemplate.updatedAt,
-      });
+      };
+      await db.templates.put(record);
     }
   },
 
@@ -158,89 +153,6 @@ export const templateTable = {
    */
   async clear(): Promise<void> {
     await db.templates.clear();
-  },
-
-  /**
-   * Reorder templates by updating sortOrder
-   * Falls back to plaintext parsing when no cryptoKey (for unencrypted files)
-   */
-  async reorder(ids: string[], cryptoKey?: CryptoKey): Promise<void> {
-    await db.transaction("rw", db.templates, async () => {
-      for (let i = 0; i < ids.length; i++) {
-        const record = await db.templates.get(ids[i]);
-        if (record && cryptoKey) {
-          const template = await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
-          template.sortOrder = i;
-          template.updatedAt = Date.now();
-          const encryptedRecord = await createEncryptedRecord(template, cryptoKey);
-          await db.templates.put({
-            id: template.id,
-            ...encryptedRecord,
-            createdAt: record.createdAt,
-          });
-        } else if (record && !cryptoKey) {
-          // Fallback: plaintext reorder
-          try {
-            const decoded = new TextDecoder().decode(record.encryptedData);
-            const template = JSON.parse(decoded) as Template;
-            template.sortOrder = i;
-            template.updatedAt = Date.now();
-            const plaintextData = new TextEncoder().encode(JSON.stringify(template));
-            await db.templates.put({
-              id: template.id,
-              version: 1,
-              algorithm: "AES-GCM",
-              encryptedData: plaintextData,
-              iv: new Uint8Array(12),
-              createdAt: record.createdAt,
-              updatedAt: template.updatedAt,
-            });
-          } catch (error) {
-            console.error("Failed to reorder plaintext template record:", error);
-          }
-        }
-      }
-
-      // Handle remaining templates not in ids array
-      const allRecords = await db.templates.toArray();
-      const remainingRecords = allRecords.filter((r) => !ids.includes(r.id));
-      // We can't easily sort without decrypting, so just put them at the end in current order
-
-      for (let i = 0; i < remainingRecords.length; i++) {
-        const record = remainingRecords[i];
-        if (cryptoKey) {
-          const template = await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
-          template.sortOrder = ids.length + i;
-          template.updatedAt = Date.now();
-          const encryptedRecord = await createEncryptedRecord(template, cryptoKey);
-          await db.templates.put({
-            id: template.id,
-            ...encryptedRecord,
-            createdAt: record.createdAt,
-          });
-        } else {
-          // Fallback: plaintext reorder for remaining
-          try {
-            const decoded = new TextDecoder().decode(record.encryptedData);
-            const template = JSON.parse(decoded) as Template;
-            template.sortOrder = ids.length + i;
-            template.updatedAt = Date.now();
-            const plaintextData = new TextEncoder().encode(JSON.stringify(template));
-            await db.templates.put({
-              id: template.id,
-              version: 1,
-              algorithm: "AES-GCM",
-              encryptedData: plaintextData,
-              iv: new Uint8Array(12),
-              createdAt: record.createdAt,
-              updatedAt: template.updatedAt,
-            });
-          } catch (error) {
-            console.error("Failed to reorder plaintext template record:", error);
-          }
-        }
-      }
-    });
   },
 
   /**
@@ -266,12 +178,11 @@ export const templateTable = {
       };
       await db.templates.put(record);
     } else {
+      // Plaintext record
+      const plaintextRecord = await createPlaintextRecord(templateToStore);
       await db.templates.put({
         id: template.id,
-        version: 1,
-        algorithm: "AES-GCM" as const,
-        encryptedData: new TextEncoder().encode(JSON.stringify(templateToStore)),
-        iv: new Uint8Array(12),
+        ...plaintextRecord,
         createdAt: template.createdAt,
         updatedAt: templateToStore.updatedAt,
       });
@@ -289,7 +200,7 @@ export const templateTable = {
     cryptoKey?: CryptoKey,
   ): Promise<void> {
     const now = Date.now();
-    
+
     if (cryptoKey) {
       // Encrypt all templates first, then bulkPut
       const records = await Promise.all(
@@ -306,44 +217,20 @@ export const templateTable = {
       );
       await db.templates.bulkPut(records as TemplateRecord[]);
     } else {
-      // Fallback for non-encrypted
-      const records = templates.map((template) => {
-        const templateToStore = { ...template, updatedAt: now };
-        return {
-          id: template.id,
-          version: 1 as const,
-          algorithm: "AES-GCM" as const,
-          encryptedData: new TextEncoder().encode(JSON.stringify(templateToStore)),
-          iv: new Uint8Array(12),
-          createdAt: template.createdAt,
-          updatedAt: now,
-        };
-      });
+      // Plaintext records
+      const records = await Promise.all(
+        templates.map(async (template) => {
+          const templateToStore = { ...template, updatedAt: now };
+          const plaintextRecord = await createPlaintextRecord(templateToStore);
+          return {
+            id: template.id,
+            ...plaintextRecord,
+            createdAt: template.createdAt,
+            updatedAt: now,
+          };
+        })
+      );
       await db.templates.bulkPut(records as TemplateRecord[]);
     }
-  },
-
-  /**
-   * Initialize dev seed data
-   */
-  async initializeDevData(devTemplates: Template[]): Promise<void> {
-    const count = await db.templates.count();
-    if (count > 0) return;
-
-    await db.transaction("rw", db.templates, async () => {
-      await db.templates.bulkPut(
-        devTemplates.map((t) => ({
-          id: t.id,
-          version: 1,
-          algorithm: "AES-GCM" as const,
-          encryptedData: new TextEncoder().encode(JSON.stringify(t)),
-          iv: new Uint8Array(12),
-          createdAt: t.createdAt,
-          updatedAt: t.updatedAt,
-        })),
-      );
-    });
-
-    console.log("개발용 template seed 데이터가 추가되었습니다.");
   },
 };

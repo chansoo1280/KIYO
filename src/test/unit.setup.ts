@@ -28,9 +28,8 @@ const templateTableMock = vi.hoisted(() => ({
     create: vi.fn(),
     update: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
-    reorder: vi.fn().mockResolvedValue(undefined),
   },
-}));
+}))
 
 // Mock accountTable using hoisted mock
 vi.mock("@/database/accountTable", () => accountTableMock);

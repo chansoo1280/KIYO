@@ -4,15 +4,15 @@ import { templateTable } from "@/database/templateTable";
 import type { Template } from "@/models/template";
 import { useSessionStore } from "@/store/sessionStore";
 
-interface TemplateState {
+export interface TemplateState {
   templates: Template[];
   isLoading: boolean;
   loadTemplates: () => Promise<void>;
   createTemplate: (t: Omit<Template, "id" | "createdAt" | "updatedAt">) => Promise<Template>;
   updateTemplate: (id: string, patch: Partial<Template>) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
-  reorderTemplates: (ids: string[]) => Promise<void>;
   getTemplate: (id: string) => Template | undefined;
+  clearTemplates: () => Promise<void>;
 }
 
 export const useTemplateStore = create<TemplateState>()(
@@ -62,18 +62,9 @@ export const useTemplateStore = create<TemplateState>()(
         }));
       },
 
-      reorderTemplates: async (ids) => {
-        const sessionState = useSessionStore.getState();
-        await templateTable.reorder(ids, sessionState.cryptoKey ?? undefined);
-        set((state) => ({
-          templates: ids
-            .map((id, index) => {
-              const template = state.templates.find((t) => t.id === id);
-              if (template) return { ...template, sortOrder: index, updatedAt: Date.now() };
-              return null;
-            })
-            .filter((t): t is Template => t !== null),
-        }));
+      clearTemplates: async () => {
+        await templateTable.clear();
+        set({ templates: [] });
       },
 
       getTemplate: (id) => get().templates.find((t) => t.id === id),
