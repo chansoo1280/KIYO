@@ -33,6 +33,7 @@ import com.kiyo.app.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
 /**
  * Android Autofill Service for KIYO Password Manager
  * Provides autofill functionality for Android apps (API 26+)
@@ -56,7 +57,6 @@ class KiyoAutofillService : AutofillService() {
         super.onCreate()
         repository = AutofillRepository(this)
         Log.d(TAG, "AutofillService created")
-        System.loadLibrary("sqlcipher")
     }
 
     override fun onDestroy() {
@@ -83,7 +83,7 @@ class KiyoAutofillService : AutofillService() {
         callback: FillCallback
     ) {
         Log.d(TAG, "onFillRequest called")
-        
+
         executor.execute {
             try {
                 // Use fillContexts API (API 26+)
@@ -93,7 +93,7 @@ class KiyoAutofillService : AutofillService() {
                     handler.post { callback.onSuccess(null) }
                     return@execute
                 }
-                
+
                 val structure = fillContexts.last().structure
                 if (structure == null) {
                     Log.w(TAG, "No assist structure available")
@@ -102,7 +102,15 @@ class KiyoAutofillService : AutofillService() {
                 }
 
                 val rootViewNode = structure.getWindowNodeAt(0).rootViewNode
-                
+
+                // Skip autofill for KIYO app itself (package name: com.kiyo.app)
+                val packageNames = extractPackageNamesFromStructure(rootViewNode)
+                if (packageNames.contains("com.kiyo.app")) {
+                    Log.d(TAG, "Skipping autofill for KIYO app (com.kiyo.app)")
+                    handler.post { callback.onSuccess(null) }
+                    return@execute
+                }
+
                 // Debug: dump full ViewNode tree for debugging
                 if (BuildConfig.DEBUG) {
                     ViewNodeUtils.dumpViewNodeTree(rootViewNode, 0)
@@ -112,7 +120,6 @@ class KiyoAutofillService : AutofillService() {
                     callback.onSuccess(null)
                     return@execute
                 }
-
 
 
                 // Find best username and password field candidates using unified detection logic
@@ -153,55 +160,55 @@ class KiyoAutofillService : AutofillService() {
 
                 // Find matching accounts from repository
                 val accounts = repository.findMatchingAccounts(domain)
-                                Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
+                Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
 
-                                if (accounts.isEmpty()) {
-                                    Log.d(TAG, "No matching accounts found")
-                                    handler.post { callback.onSuccess(null) }
-                                    return@execute
-                                }
+                if (accounts.isEmpty()) {
+                    Log.d(TAG, "No matching accounts found")
+                    handler.post { callback.onSuccess(null) }
+                    return@execute
+                }
 
-                                // Check vault encryption status and token validity via DataStore
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    val isEncrypted = AutofillDataStore.isEncrypted(this@KiyoAutofillService)
-                                    Log.d(TAG, "AutofillDataStore :: isEncrypted=$isEncrypted")
+                // Check vault encryption status and token validity via DataStore
+                CoroutineScope(Dispatchers.IO).launch {
+                    val isEncrypted = AutofillDataStore.isEncrypted(this@KiyoAutofillService)
+                    Log.d(TAG, "AutofillDataStore :: isEncrypted=$isEncrypted")
 
-                                    // 1. Non-encrypted vault -> return fill response directly
-                                    if (!isEncrypted) {
-                                        val response = FillResponseBuilder.createFillResponse(
-                                            this@KiyoAutofillService,
-                                            accounts,
-                                            usernameId,
-                                            passwordId
-                                        )
-                                        handler.post { callback.onSuccess(response) }
-                                        return@launch
-                                    }
+                    // 1. Non-encrypted vault -> return fill response directly
+                    if (!isEncrypted) {
+                        val response = FillResponseBuilder.createFillResponse(
+                            this@KiyoAutofillService,
+                            accounts,
+                            usernameId,
+                            passwordId
+                        )
+                        handler.post { callback.onSuccess(response) }
+                        return@launch
+                    }
 
-                                    // 2. Encrypted vault -> check for valid token
-                                    val hasValidToken = AutofillDataStore.hasValidToken(this@KiyoAutofillService)
-                                    Log.d(TAG, "AutofillDataStore :: hasValidToken=$hasValidToken")
+                    // 2. Encrypted vault -> check for valid token
+                    val hasValidToken = AutofillDataStore.hasValidToken(this@KiyoAutofillService)
+                    Log.d(TAG, "AutofillDataStore :: hasValidToken=$hasValidToken")
 
-                                    if (!hasValidToken) {
-                                        // No valid token -> request auth
-                                        val response = FillResponseBuilder.createAuthResponse(
-                                            this@KiyoAutofillService,
-                                            usernameId,
-                                            passwordId
-                                        )
-                                        handler.post { callback.onSuccess(response) }
-                                        return@launch
-                                    }
+                    if (!hasValidToken) {
+                        // No valid token -> request auth
+                        val response = FillResponseBuilder.createAuthResponse(
+                            this@KiyoAutofillService,
+                            usernameId,
+                            passwordId
+                        )
+                        handler.post { callback.onSuccess(response) }
+                        return@launch
+                    }
 
-                                    // 3. Valid token exists -> return fill response
-                                    val response = FillResponseBuilder.createFillResponse(
-                                        this@KiyoAutofillService,
-                                        accounts,
-                                        usernameId,
-                                        passwordId
-                                    )
-                                    handler.post { callback.onSuccess(response) }
-                                }
+                    // 3. Valid token exists -> return fill response
+                    val response = FillResponseBuilder.createFillResponse(
+                        this@KiyoAutofillService,
+                        accounts,
+                        usernameId,
+                        passwordId
+                    )
+                    handler.post { callback.onSuccess(response) }
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in onFillRequest", e)
@@ -220,7 +227,7 @@ class KiyoAutofillService : AutofillService() {
         callback: SaveCallback
     ) {
         Log.d(TAG, "onSaveRequest called")
-        
+
         executor.execute {
             try {
                 // Use fillContexts API (API 26+)
@@ -229,7 +236,7 @@ class KiyoAutofillService : AutofillService() {
                     Log.w(TAG, "No fill contexts available in save request")
                     return@execute
                 }
-                
+
                 val structure = fillContexts.last().structure
                 if (structure == null) {
                     Log.w(TAG, "No assist structure in save request")
@@ -237,7 +244,14 @@ class KiyoAutofillService : AutofillService() {
                 }
                 // Get root ViewNode from AssistStructure
                 val rootViewNode = structure.getWindowNodeAt(0).rootViewNode
-                
+
+                // Skip autofill for KIYO app itself (package name: com.kiyo.app)
+                val packageNames = extractPackageNamesFromStructure(rootViewNode)
+                if (packageNames.contains("com.kiyo.app")) {
+                    Log.d(TAG, "Skipping save for KIYO app (com.kiyo.app)")
+                    return@execute
+                }
+
                 // Use unified field detection logic for save request
                 val usernameCandidate = FieldDetector.findBestFieldCandidate(
                     rootViewNode,
@@ -260,7 +274,6 @@ class KiyoAutofillService : AutofillService() {
                 val username = extractedData.username
                 val password = extractedData.password
                 val domain = extractDomainFromStructure(rootViewNode)
-                val packageNames = ViewNodeUtils.extractPackageNamesFromStructure(rootViewNode)
 
                 Log.d(TAG, "Extracted credentials: username=${username != null}, password=${password != null}, domain=$domain, packages=$packageNames")
 
@@ -272,7 +285,7 @@ class KiyoAutofillService : AutofillService() {
                 // Check if this is a login form using unified detection logic
                 // Uses HTML attributes for Samsung Internet compatibility (works without webDomain)
                 val hasLoginForm = FieldDetector.hasLoginForm(rootViewNode)
-                
+
                 if (!hasLoginForm) {
                     Log.d(TAG, "Not a login form (usernameField=${usernameCandidate != null}, passwordField=${passwordCandidate != null}), skipping save")
                     return@execute
@@ -293,7 +306,7 @@ class KiyoAutofillService : AutofillService() {
 
                 val savedAccountId = repository.upsertAccount(account)
                 Log.d(TAG, "Account saved/updated: $savedAccountId")
-                
+
                 // Per Android Autofill API: just call onSuccess() to confirm save
                 // SaveInfo is provided during fill response (onFillRequest), not here
                 handler.post { callback.onSuccess() }
@@ -323,7 +336,7 @@ class KiyoAutofillService : AutofillService() {
         fun traverse(node: AssistStructure.ViewNode) {
             val autofillId = node.autofillId
             val text = node.text?.toString() ?: ""
-            
+
             if (text.isNotEmpty()) {
                 if (autofillId != null && autofillId == usernameId && username == null) {
                     username = text
@@ -346,7 +359,7 @@ class KiyoAutofillService : AutofillService() {
      */
     private fun extractDomainFromStructure(structure: AssistStructure.ViewNode): String {
         var domain = ""
-        
+
         fun traverse(node: AssistStructure.ViewNode) {
             if (domain.isNotEmpty()) return
             node.webDomain?.let { domain = it.toString() }
@@ -355,7 +368,7 @@ class KiyoAutofillService : AutofillService() {
                 if (domain.isNotEmpty()) break
             }
         }
-        
+
         traverse(structure)
         return domain
     }
@@ -365,14 +378,14 @@ class KiyoAutofillService : AutofillService() {
      */
     private fun extractPackageNamesFromStructure(structure: AssistStructure.ViewNode): List<String> {
         val packages = mutableSetOf<String>()
-        
+
         fun traverse(node: AssistStructure.ViewNode) {
             node.idPackage?.let { packages.add(it.toString()) }
             for (i in 0 until node.childCount) {
                 traverse(node.getChildAt(i))
             }
         }
-        
+
         traverse(structure)
         return packages.toList()
     }
@@ -382,7 +395,7 @@ class KiyoAutofillService : AutofillService() {
      */
     private fun extractAppNameFromStructure(structure: AssistStructure.ViewNode): String? {
         var appName: String? = null
-        
+
         fun traverse(node: AssistStructure.ViewNode) {
             if (appName != null) return
             node.idPackage?.let { appName = it.toString() }
@@ -391,7 +404,7 @@ class KiyoAutofillService : AutofillService() {
                 if (appName != null) break
             }
         }
-        
+
         traverse(structure)
         return appName
     }
@@ -401,7 +414,7 @@ class KiyoAutofillService : AutofillService() {
      */
     private fun extractTitleFromStructure(structure: AssistStructure.ViewNode): String? {
         var title: String? = null
-        
+
         fun traverse(node: AssistStructure.ViewNode) {
             if (title != null) return
             node.htmlInfo?.let { htmlInfo ->
@@ -421,7 +434,7 @@ class KiyoAutofillService : AutofillService() {
                 if (title != null) break
             }
         }
-        
+
         traverse(structure)
         return title
     }

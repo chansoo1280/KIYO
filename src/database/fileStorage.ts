@@ -342,6 +342,24 @@ export const openImportedDataFile = async (
       salt,
       encryptedFileData: parsedData,
     });
+
+    // Export CryptoKey and save to Native Autofill Session
+    try {
+      const autofillStatus = await KiyoAutofill.isAutofillEnabled();
+      if (autofillStatus && autofillStatus.enabled) {
+        const exportedKey = await exportCryptoKey(key);
+        const expireAt = Date.now() + 30 * 60 * 1000; // 30 minutes
+        await KiyoAutofill.setAutofillToken({
+          token: exportedKey,
+          expireAt,
+          isEncrypted: true,
+        });
+      }
+    } catch (autofillError) {
+      // Autofill session key save failure should not block unlock
+      console.warn("Failed to save session key to autofill:", autofillError);
+    }
+
     useAccountStore.getState().setAccounts(decrypted.accounts);
     return { ...decrypted, fileName: normalizedFileName };
   } catch (error) {

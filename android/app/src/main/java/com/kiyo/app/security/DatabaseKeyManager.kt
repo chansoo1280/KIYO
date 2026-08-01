@@ -2,6 +2,7 @@ package com.kiyo.app.security
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -11,54 +12,44 @@ import kotlinx.coroutines.flow.first
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-
 private val Context.securityDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "kiyo_security_prefs"
 )
 
-
 object DatabaseKeyManager {
 
-    private val DB_KEY = stringPreferencesKey("db_encryption_key")
+    private val TAG = "DatabaseKeyManager"
+    private val DB_ENCRYPTED_KEY = stringPreferencesKey("db_encrypted_key")
 
-
+    /**
+     * Get the SQLCipher database encryption key.
+     * - First call: generates new key, encrypts with Keystore master key, stores in DataStore
+     * - Subsequent calls: reads encrypted key from DataStore, decrypts with Keystore master key
+     */
     suspend fun getKey(context: Context): SecretKey {
-
         val prefs = context.securityDataStore.data.first()
+        val json = prefs[DB_ENCRYPTED_KEY]
 
-        val savedKey = prefs[DB_KEY]
+        val masterKey = KeystoreManager.getOrCreateKey()
 
-        if (savedKey != null) {
-            return decodeKey(savedKey)
+        return if (json != null) {
+            Log.d(TAG, "Reading existing encrypted DB_KEY from DataStore")
+            val encrypted = EncryptedKey.fromJson(json)
+            val plainBytes = KeystoreManager.decrypt(masterKey, encrypted)
+            Log.d(TAG, "DB_KEY decrypted successfully")
+            SecretKeySpec(plainBytes, "AES")
+        } else {
+            Log.d(TAG, "Generating new DB_KEY and storing encrypted")
+            val newKey = DatabaseKeyGenerator.generate()
+            val encrypted = KeystoreManager.encrypt(masterKey, newKey.encoded)
+            val jsonOut = EncryptedKey.toJson(encrypted)
+
+            context.securityDataStore.edit { preferences ->
+                preferences[DB_ENCRYPTED_KEY] = jsonOut
+            }
+
+            Log.d(TAG, "New DB_KEY generated and stored encrypted")
+            newKey
         }
-
-
-        val newKey = DatabaseKeyGenerator.generate()
-
-        val encoded = Base64.encodeToString(
-            newKey.encoded,
-            Base64.NO_WRAP
-        )
-
-
-        context.securityDataStore.edit { preferences ->
-            preferences[DB_KEY] = encoded
-        }
-
-
-        return newKey
-    }
-
-
-    private fun decodeKey(base64: String): SecretKey {
-        val bytes = Base64.decode(
-            base64,
-            Base64.NO_WRAP
-        )
-
-        return SecretKeySpec(
-            bytes,
-            "AES"
-        )
     }
 }

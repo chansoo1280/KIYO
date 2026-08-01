@@ -2,6 +2,7 @@ import { useTemplateStore } from "@/store/templateStore";
 import type { Template } from "@/models/template";
 import type { Account, AccountField } from "@/models/account";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 interface TemplatePickerProps {
   open: boolean;
@@ -26,8 +27,12 @@ const DEFAULT_TEMPLATE: Template = {
 };
 
 const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
-  const { templates } = useTemplateStore();
+  const { templates, loadTemplates } = useTemplateStore();
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   if (!open) return null;
 
