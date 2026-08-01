@@ -29,6 +29,7 @@ import { KiyoAutofill } from "@/plugins/kiyautofill";
 import type { Template } from "@/models/template";
 import { useTemplateStore } from "@/store/templateStore";
 import { devAccounts } from "@/database/testdata";
+import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 export interface KiyoDataFile {
   version: 1;
   fileName: string;
@@ -65,30 +66,95 @@ const saveDataFile = async (
   normalizedFileName: string,
   pin?: string,
   shouldSetActiveFile: boolean = true,
+  isInit: boolean = false,
 ): Promise<KiyoDataFile> => {
   if(!isKiyoFile(data)) throw new Error("키요 파일이 아닙니다.");
+  
+  // Check if data already has accounts/templates (e.g., from getDatabaseSnapshot in backup)
+  const hasAccounts = data.accounts.length > 0;
+  const hasTemplates = data.templates.length > 0;
+  let accounts = data.accounts;
+  let templates = data.templates;
+  let metadata = data.metadata;
+  
+  // Initialize database only for init (createDataFile)
+  if (isInit) {
+    metadata = [await initializeDatabase()];
+    await accountTable.initializeDevData(devAccounts);
+  }
+  
+  
   if (!pin) {
+    // No PIN: use plaintext (no cryptoKey)
     if (shouldSetActiveFile) {
       await useSessionStore
         .getState()
         .setSession({ fileName: normalizedFileName });
     }
-    await fileTable.saveFileDataToDB(normalizedFileName, data);
-    await writeDataFile(data, normalizedFileName);
+    if (isInit) {
+      accounts = await accountTable.getAll(undefined);
+      for (const builtin of BUILTIN_TEMPLATES) {
+        await templateTable.create(builtin, undefined);
+      }
+      templates = await templateTable.getAll(undefined);
+    }
+    
+    const finalData: KiyoDataFile = {
+      version: 1,
+      fileName: normalizedFileName,
+      updatedAt: Date.now(),
+      accounts: accounts || [],
+      templates: templates || [],
+      metadata: metadata || [],
+    };
+    
+    await fileTable.saveFileDataToDB(normalizedFileName, finalData);
+    await writeDataFile(finalData, normalizedFileName);
+    
     // Autofill 세션 저장 (Autofill이 활성화된 경우만)
     const autofillStatus = await KiyoAutofill.isAutofillEnabled();
-    if (autofillStatus&&autofillStatus.enabled) {
+    if (autofillStatus && autofillStatus.enabled) {
       await KiyoAutofill.saveSession({
         isLock: false,
       });
     }
-    return data;
+    
+    // Update stores
+    useAccountStore.getState().setAccounts(finalData.accounts);
+    useTemplateStore.getState().loadTemplates();
+    
+    return finalData;
   }
 
-  // PIN -> CryptoKey 생성
+  // PIN provided: create cryptoKey
   const { key, salt } = await createCryptoKey(pin);
+  
+  // Get accounts with encryption (only if not already provided and is init)
+  if (isInit) {
+    if (!hasAccounts) {
+      accounts = await accountTable.getAll(key);
+    }
+    if (!hasTemplates) {
+      for (const builtin of BUILTIN_TEMPLATES) {
+        await templateTable.create(builtin, key);
+      }
+      templates = await templateTable.getAll(key);
+    }
+  }
+  
   // 데이터 암호화
-  const encrypted = await encryptData(data, key, salt);
+  const encrypted = await encryptData(
+    {
+      version: 1,
+      fileName: normalizedFileName,
+      updatedAt: Date.now(),
+      accounts: accounts || [],
+      templates: templates || [],
+      metadata: metadata || [],
+    },
+    key,
+    salt
+  );
 
   // 이후 자동 저장을 위해 메모리에 보관
   if (shouldSetActiveFile) {
@@ -115,7 +181,18 @@ const saveDataFile = async (
   // Save encrypted data to DB
   await fileTable.saveFileDataToDB(normalizedFileName, encrypted, salt);
 
-  return data;
+  // Update stores
+  useAccountStore.getState().setAccounts(accounts);
+  useTemplateStore.getState().loadTemplates();
+
+  return {
+    version: 1,
+    fileName: normalizedFileName,
+    updatedAt: Date.now(),
+    accounts: accounts || [],
+    templates: templates || [],
+    metadata: data.metadata || [],
+  };
 };
 
 export const createDataFile = async (
@@ -123,24 +200,15 @@ export const createDataFile = async (
   pin?: string,
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
-
-  await initializeDatabase();
-  await accountTable.initializeDevData(devAccounts)
-  const accounts = await accountTable.getAll();
-  useAccountStore.getState().setAccounts(accounts);
-
-  await templateTable.init();
-  const templates = await templateTable.getAll();
-  useTemplateStore.getState().loadTemplates();
-  const data: KiyoDataFile = {
-    version: 1,
-    fileName: normalizedFileName,
-    updatedAt: Date.now(),
-    accounts: accounts || [],
-    templates: templates || [],
-    metadata: [],
-  };
-  return saveDataFile(data, normalizedFileName, pin, true);
+  
+  // saveDataFile handles all initialization, encryption, and storage
+  return saveDataFile(
+    { version: 1, fileName: normalizedFileName, updatedAt: Date.now(), accounts: [], templates: [], metadata: [] },
+    normalizedFileName,
+    pin,
+    true,
+    true // isInit = true for createDataFile
+  );
 };
 
 export const backupDataFile = async (
@@ -148,9 +216,7 @@ export const backupDataFile = async (
   pin: string,
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
-
   const data: KiyoDataFile = await getDatabaseSnapshot(normalizedFileName);
-
   return saveDataFile(data, normalizedFileName, pin, false);
 };
 

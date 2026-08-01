@@ -33,6 +33,11 @@ vi.mock("@/crypto/encryption", () => ({
   encryptData: vi.fn(),
 }));
 
+// Mock crypto.utils
+vi.mock("@/crypto/crypto.utils", () => ({
+  exportCryptoKey: vi.fn(),
+}));
+
 // Mock fileTable
 vi.mock("@/database/fileTable", () => fileTableMock);
 
@@ -44,7 +49,7 @@ describe("createDataFile", () => {
   const mockSalt = new Uint8Array(16);
   const mockEncryptedData: EncryptedKiyoFile = mockEncryptionDefaults.encryptData;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create fresh mocks for each test
     mockSessionStore = createMockSessionStore();
     mockEncryption = createMockEncryption();
@@ -56,6 +61,11 @@ describe("createDataFile", () => {
       mockEncryption.mockCreateCryptoKey,
     );
     vi.mocked(encryptData).mockImplementation(mockEncryption.mockEncryptData);
+    // Mock exportCryptoKey
+    const { exportCryptoKey } = await import("@/crypto/crypto.utils");
+    vi.mocked(exportCryptoKey).mockImplementation(
+      mockEncryption.mockExportCryptoKey,
+    );
     mockEncryption.mockCreateCryptoKey.mockResolvedValue({
       key: mockCryptoKey,
       salt: mockSalt,
@@ -75,7 +85,8 @@ describe("createDataFile", () => {
       expect(result.fileName).toBe("test-file.json");
       expect(result.accounts).toEqual([]);
       expect(result.templates).toHaveLength(6); // 내장 템플릿 6개 시드됨
-      expect(result.metadata).toEqual([]);
+      expect(result.metadata).toHaveLength(1); // initializeDatabase가 메타데이터 생성
+      expect(result.metadata[0]).toEqual(expect.objectContaining({ id: 1, version: "1.0.0" }));
       expect(typeof result.updatedAt).toBe("number");
     });
 
@@ -129,7 +140,9 @@ describe("createDataFile", () => {
             expect.objectContaining({ name: "Wi-Fi" }),
             expect.objectContaining({ name: "보안 메모" }),
           ]),
-          metadata: [],
+          metadata: expect.arrayContaining([
+            expect.objectContaining({ id: 1, version: "1.0.0" }),
+          ]),
         }),
       );
       expect(salt).toBeUndefined();
@@ -157,7 +170,9 @@ describe("createDataFile", () => {
             expect.objectContaining({ name: "Wi-Fi" }),
             expect.objectContaining({ name: "보안 메모" }),
           ]),
-          metadata: [],
+          metadata: expect.arrayContaining([
+            expect.objectContaining({ id: 1, version: "1.0.0" }),
+          ]),
         }),
       );
       expect(typeof data.updatedAt).toBe("number");
@@ -248,7 +263,9 @@ describe("createDataFile", () => {
             expect.objectContaining({ name: "Wi-Fi" }),
             expect.objectContaining({ name: "보안 메모" }),
           ]),
-          metadata: [],
+          metadata: expect.arrayContaining([
+            expect.objectContaining({ id: 1, version: "1.0.0" }),
+          ]),
         }),
       );
     });

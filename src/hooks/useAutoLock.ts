@@ -21,6 +21,7 @@ export function useAutoLock() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<number>(0);
   const isActiveRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const resetTimer = useCallback(() => {
     const timeout = TIMEOUT_MAP[autoLockTimeout];
@@ -63,6 +64,11 @@ export function useAutoLock() {
 
   // Reset timer when settings change or session becomes active/inactive
   useEffect(() => {
+    // Skip on initial mount to avoid synchronous setState in effect
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      return;
+    }
     resetTimer();
   }, [resetTimer]);
 

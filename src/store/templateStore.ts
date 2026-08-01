@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { templateTable } from "@/database/templateTable";
 import type { Template } from "@/models/template";
+import { useSessionStore } from "@/store/sessionStore";
 
 interface TemplateState {
   templates: Template[];
@@ -22,7 +23,8 @@ export const useTemplateStore = create<TemplateState>()(
       loadTemplates: async () => {
         set({ isLoading: true });
         try {
-          const dbTemplates = await templateTable.getAll();
+          const sessionState = useSessionStore.getState();
+          const dbTemplates = await templateTable.getAll(sessionState.cryptoKey ?? undefined);
           set({ templates: dbTemplates, isLoading: false });
         } catch (error) {
           console.error("Failed to load templates:", error);
@@ -31,7 +33,8 @@ export const useTemplateStore = create<TemplateState>()(
       },
 
       createTemplate: async (template) => {
-        const newTemplate = await templateTable.create(template);
+        const sessionState = useSessionStore.getState();
+        const newTemplate = await templateTable.create(template, sessionState.cryptoKey ?? undefined);
         set((state) => ({
           templates: [...state.templates, newTemplate].sort((a, b) => a.sortOrder - b.sortOrder),
         }));
@@ -39,12 +42,17 @@ export const useTemplateStore = create<TemplateState>()(
       },
 
       updateTemplate: async (id, patch) => {
-        await templateTable.update(id, patch);
-        set((state) => ({
-          templates: state.templates
-            .map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t))
-            .sort((a, b) => a.sortOrder - b.sortOrder),
-        }));
+        const sessionState = useSessionStore.getState();
+        const template = get().templates.find((t) => t.id === id);
+        if (template) {
+          const updatedTemplate = { ...template, ...patch, updatedAt: Date.now() };
+          await templateTable.update(updatedTemplate, sessionState.cryptoKey ?? undefined);
+          set((state) => ({
+            templates: state.templates
+              .map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t))
+              .sort((a, b) => a.sortOrder - b.sortOrder),
+          }));
+        }
       },
 
       deleteTemplate: async (id) => {
@@ -55,7 +63,8 @@ export const useTemplateStore = create<TemplateState>()(
       },
 
       reorderTemplates: async (ids) => {
-        await templateTable.reorder(ids);
+        const sessionState = useSessionStore.getState();
+        await templateTable.reorder(ids, sessionState.cryptoKey ?? undefined);
         set((state) => ({
           templates: ids
             .map((id, index) => {

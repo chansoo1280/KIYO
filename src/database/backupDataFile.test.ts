@@ -32,6 +32,7 @@ import { createMockEncryption } from "@/test/mocks/encryptionMock";
 const DBMocks = vi.hoisted(() => ({
   getDatabaseSnapshot: vi.fn(),
   getDatabase: vi.fn(() => ({})),
+  syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 const fileTableMocks = vi.hoisted(() => ({
@@ -59,6 +60,11 @@ vi.mock("@/crypto/encryption", () => ({
   isEncryptedKiyoFile: vi.fn(),
 }));
 
+// Mock crypto.utils
+vi.mock("@/crypto/crypto.utils", () => ({
+  exportCryptoKey: vi.fn().mockResolvedValue("bW9ja0V4cG9ydGVkS2V5"),
+}));
+
 describe("backupDataFile", () => {
   let mockSessionStore: ReturnType<typeof createMockSessionStore>;
   let mockEncryption: ReturnType<typeof createMockEncryption>;
@@ -67,7 +73,7 @@ describe("backupDataFile", () => {
   const mockSalt = new Uint8Array(16);
   const mockEncryptedFile = createTestEncryptedFile();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create fresh mocks for each test
     mockSessionStore = createMockSessionStore();
     mockEncryption = createMockEncryption();
@@ -171,6 +177,7 @@ describe("backupDataFile", () => {
     });
 
     it("데이터가 있는 accounts, templates, metadata도 정상 백업한다", async () => {
+      const baseTime = Date.now();
       const fullData = createTestKiyoDataFile({
         fileName: "full-data.json",
         accounts: [
@@ -193,14 +200,25 @@ describe("backupDataFile", () => {
         templates: [
           createTestTemplate({ id: "1", name: "Template 1", fields: [] }),
         ],
-        metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
+        metadata: [{ id: 1, version: "1.0.0", createdAt: baseTime }],
       });
       // Override the mock for this specific test
       DBMocks.getDatabaseSnapshot.mockResolvedValueOnce(fullData);
 
       const result = await backupDataFile("full-data.json", "");
 
-      expect(result).toEqual(fullData);
+      // updatedAt은 saveDataFile에서 Date.now()로 새로 생성되므로 objectContaining으로 비교
+      expect(result).toEqual(
+        expect.objectContaining({
+          version: 1,
+          fileName: "full-data.json",
+          accounts: fullData.accounts,
+          templates: fullData.templates,
+          metadata: fullData.metadata,
+        }),
+      );
+      expect(typeof result.updatedAt).toBe("number");
+      expect(result.updatedAt).toBeGreaterThanOrEqual(baseTime);
       // Check that saveFileDataToDB was called with the right filename and data containing expected properties
       expect(fileTableMocks.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
       const [fileName, data, salt] = fileTableMocks.fileTable.saveFileDataToDB.mock.calls[0];

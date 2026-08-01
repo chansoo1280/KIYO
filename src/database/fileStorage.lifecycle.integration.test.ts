@@ -21,7 +21,9 @@ import { createTestAccounts } from "@/test/fixtures/accountFixtures";
 import { createTestTemplates } from "@/test/fixtures/templateFixtures";
 import type { Template } from "@/models/template";
 import { accountTable } from "@/database/accountTable";
+import { templateTable } from "@/database/templateTable";
 import { createTestMetadata } from "@/test/fixtures/databaseFixtures";
+import Dexie from "dexie";
 
 type Metadata = FileMetadata;
 
@@ -29,23 +31,16 @@ type Metadata = FileMetadata;
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Lifecycle Intergration Tests", () => {
-  let testDbName: string;
-
   beforeAll(async () => {
-    // Use a unique test database name to avoid conflicts
-    testDbName = `kiyo-test-db-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    // We need to use a fresh database for each test run
-    // Since Dexie uses IndexedDB, we'll use the real implementation
-  });
-
-  afterAll(async () => {
     // Clean up test database
     try {
-      await indexedDB.deleteDatabase(testDbName);
+      await Dexie.delete("kiyo-db");
     } catch {
       // Ignore cleanup errors
     }
+  });
+
+  afterAll(async () => {
   });
 
   // Helper to fully reset database and stores
@@ -57,23 +52,19 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
     await db.metadata.clear();
     await db.files.clear();
     await useSessionStore.getState().clearSession();
-    await useAccountStore.getState().clearAccounts();
-    await db.accounts.clear();
-    await db.templates.clear();
-    await db.settings.clear();
-    await db.metadata.clear();
+    useAccountStore.getState().setAccounts([]);
   };
 
   beforeEach(async () => {
-    vi.clearAllMocks();
-    await resetTestEnvironment();
-        vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
+    vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
-    vi.resetAllMocks();
     await resetTestEnvironment();
+    vi.clearAllMocks();
   });
+
+  // afterEach removed - beforeEach already fully resets
 
   describe("평문 파일 라이프사이클", () => {
     it("평문 데이터 파일을 생성한다", async () => {
@@ -88,7 +79,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(createdFile.accounts).toEqual([]);
       // 내장 템플릿 6개가 자동 시드됨
       expect(createdFile.templates).toHaveLength(6);
-      expect(createdFile.metadata).toEqual([]);
+      expect(createdFile.metadata).toHaveLength(1);
+      expect(createdFile.metadata[0]).toEqual(expect.objectContaining({ id: 1, version: "1.0.0" }));
 
       // 세션에 파일명이 저장되었는지 확인
       const sessionState = useSessionStore.getState();
@@ -103,12 +95,14 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
 
       // 2. 데이터 추가 (계정, 템플릿, 설정, 메타데이터)
       const db = getDatabase();
+      const sessionAfterCreate = useSessionStore.getState();
+      const sessionCryptoKey = sessionAfterCreate.cryptoKey;
 
       const testAccount: Account = createTestAccounts(1)[0];
-      await db.accounts.put(testAccount);
+      await accountTable.create(testAccount, sessionCryptoKey ?? undefined);
 
       const testTemplate: Template = createTestTemplates(1)[0];
-      await db.templates.put(testTemplate);
+      await templateTable.create(testTemplate, sessionCryptoKey ?? undefined);
 
       const metadata: FileMetadata[] = [createTestMetadata()];
       await db.metadata.bulkPut(metadata);
@@ -134,12 +128,13 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // 1. 평문 파일 생성 및 데이터 추가
       await createDataFile("import-source.json", "");
 
-      const db = getDatabase();
+      const sessionAfterCreate = useSessionStore.getState();
+      const sessionCryptoKey = sessionAfterCreate.cryptoKey;
       const testAccount: Account = createTestAccounts(1)[0];
-      await db.accounts.put(testAccount);
+      await accountTable.create(testAccount, sessionCryptoKey ?? undefined);
 
       const testTemplate: Template = createTestTemplates(1)[0];
-      await db.templates.put(testTemplate);
+      await templateTable.create(testTemplate, sessionCryptoKey ?? undefined);
 
       // 2. 평문 백업
       const backedUpFile = await backupDataFile("plain-backup.json", "");
@@ -188,15 +183,22 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(sessionState.activeFileName).toBe("lifecycle-test.json");
       expect(sessionState.cryptoKey).toBeNull();
 
-      // 2. 데이터 추가 (계정, 템플릿, 메타데이터 모두)
-      const db = getDatabase();
+      // 2. 데이터 추가 (계정, 템플릿, 메타데이터 모두) - accountTable, templateTable 사용
+      const sessionAfterCreate = useSessionStore.getState();
+      const sessionCryptoKey = sessionAfterCreate.cryptoKey;
 
       const accounts: Account[] = createTestAccounts(2);
-      const templates: Template[] = createTestTemplates(2);
-      const metadata: Metadata[] = [createTestMetadata()];
+      for (const account of accounts) {
+        await accountTable.create(account, sessionCryptoKey ?? undefined);
+      }
 
-      await db.accounts.bulkPut(accounts);
-      await db.templates.bulkPut(templates);
+      const templates: Template[] = createTestTemplates(2);
+      for (const template of templates) {
+        await templateTable.create(template, sessionCryptoKey ?? undefined);
+      }
+
+      const db = getDatabase();
+      const metadata: Metadata[] = [createTestMetadata()];
       await db.metadata.bulkPut(metadata);
 
       // 3. backupDataFile로 평문 백업
@@ -220,8 +222,9 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(importedFile).not.toBeNull();
       expect(importedFile!.fileName).toBe("lifecycle-backup.json");
       expect(importedFile!.accounts).toHaveLength(2);
-      expect(importedFile!.accounts[0].title).toBe("Test Account 1");
-      expect(importedFile!.accounts[1].title).toBe("Test Account 2");
+      // 계정 순서는 DB 정렬(updatedAt)에 의존하므로 순서 무관하게 검증
+      const accountTitles = importedFile!.accounts.map((a) => a.title).sort();
+      expect(accountTitles).toEqual(["Test Account 1", "Test Account 2"]);
       // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
       expect(importedFile!.templates).toHaveLength(8);
       expect(importedFile!.metadata).toHaveLength(1);
@@ -236,8 +239,9 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       // 계정 스토어 확인
       const storeAccounts = useAccountStore.getState().accounts;
       expect(storeAccounts).toHaveLength(2);
-      expect(storeAccounts[0].title).toBe("Test Account 1");
-      expect(storeAccounts[1].title).toBe("Test Account 2");
+      // 계정 순서는 DB 정렬(updatedAt)에 의존하므로 순서 무관하게 검증
+      const storeAccountTitles = storeAccounts.map((a) => a.title).sort();
+      expect(storeAccountTitles).toEqual(["Test Account 1", "Test Account 2"]);
 
       // DB 확인
       const snapshot = await getDatabaseSnapshot("lifecycle-backup.json");

@@ -11,6 +11,7 @@ export interface MockEncryption {
   mockEncryptData: Mock;
   mockDecryptData: Mock;
   mockIsEncryptedKiyoFile: Mock;
+  mockExportCryptoKey: Mock;
 }
 
 export interface MockEncryptionOverrides {
@@ -18,6 +19,7 @@ export interface MockEncryptionOverrides {
   mockEncryptData?: Mock;
   mockDecryptData?: Mock;
   mockIsEncryptedKiyoFile?: Mock;
+  mockExportCryptoKey?: Mock;
 }
 
 // ============================================
@@ -48,6 +50,7 @@ export const mockEncryptionDefaults = {
     metadata: [],
   } as KiyoDataFile,
   isEncryptedKiyoFile: false,
+  exportCryptoKey: new Uint8Array(32), // mock exported key
 };
 
 // ============================================
@@ -70,12 +73,16 @@ export const createEncryptionMocks = () => {
   const mockIsEncryptedKiyoFile = vi
     .fn()
     .mockReturnValue(mockEncryptionDefaults.isEncryptedKiyoFile);
+  const mockExportCryptoKey = vi.fn().mockImplementation(async () => {
+    return mockEncryptionDefaults.exportCryptoKey;
+  });
 
   return {
     mockCreateCryptoKey,
     mockEncryptData,
     mockDecryptData,
     mockIsEncryptedKiyoFile,
+    mockExportCryptoKey,
   };
 };
 
@@ -92,6 +99,7 @@ export const createMockEncryption = (
     mockEncryptData: overrides?.mockEncryptData ?? mocks.mockEncryptData,
     mockDecryptData: overrides?.mockDecryptData ?? mocks.mockDecryptData,
     mockIsEncryptedKiyoFile: overrides?.mockIsEncryptedKiyoFile ?? mocks.mockIsEncryptedKiyoFile,
+    mockExportCryptoKey: overrides?.mockExportCryptoKey ?? mocks.mockExportCryptoKey,
   };
 };
 

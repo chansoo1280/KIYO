@@ -1,15 +1,36 @@
 import { Capacitor } from "@capacitor/core";
-import Dexie, { type Table } from "dexie";
+import Dexie, { type EntityTable, type Table } from "dexie";
 import { encryptData } from "@/crypto/encryption";
 import { writeDataFile, type KiyoDataFile } from "@/database/fileStorage";
+import { accountTable } from "@/database/accountTable";
+import { templateTable } from "@/database/templateTable";
 import type {
-  Account,
   AppSettings,
   FileMetadata,
 } from "@/models/account";
-import type { Template } from "@/models/template";
 import { isFileStorageError } from "@/errors/FileStorageError";
 import { fileTable } from "@/database/fileTable";
+import { useSessionStore } from "@/store/sessionStore";
+
+export interface AccountRecord {
+  id: number;
+  version: 1;
+  algorithm: "AES-GCM";
+  encryptedData: Uint8Array;
+  iv: Uint8Array;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TemplateRecord {
+  id: string;
+  version: 1;
+  algorithm: "AES-GCM";
+  encryptedData: Uint8Array;
+  iv: Uint8Array;
+  createdAt: number;
+  updatedAt: number;
+}
 
 export interface FileData {
   id: number;
@@ -22,46 +43,31 @@ export interface FileData {
 }
 
 export class KiyoDatabase extends Dexie {
-  accounts!: Table<Account, number>;
-  templates!: Table<Template, string>; // 사용자 템플릿 (기존 accountTemplates -> templates로 이름 변경)
+  accounts!: EntityTable<AccountRecord, "id">;
+  templates!: EntityTable<TemplateRecord, "id">;
   settings!: Table<AppSettings, number>;
   metadata!: Table<FileMetadata, number>;
   files!: Table<FileData, number>;
 
   constructor() {
     super("kiyo-db");
-    this.version(10)
+    this.version(12)
       .stores({
         accounts:
-          "id, templateId, title, *tags, favorite, createdAt, updatedAt, websiteUrl, domain, packageName",
-        templates: "++id, name, sortOrder, updatedAt", // 템플릿 테이블 (기존 accountTemplates -> templates로 이름 변경)
+          "++id, createdAt, updatedAt",
+        templates:
+          "++id, createdAt, updatedAt",
         settings:
           "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
         metadata: "id, version, createdAt",
         files: "++id, fileName, createdAt, updatedAt",
       })
-      .upgrade((transaction) =>
-        transaction
-          .table("settings")
-          .toCollection()
-          .modify({ fontSize: "medium" }),
-      )
-      .upgrade((transaction) =>
-        transaction.table("accounts").toCollection().modify({ templateId: 1 }),
-      )
-      .upgrade((transaction) =>
-        transaction
-          .table("accounts")
-          .toCollection()
-          .modify({ websiteUrl: "", domain: "", packageName: "" }),
-      )
-      .upgrade((transaction) =>
-        transaction
-          .table("settings")
-          .toCollection()
-          .modify({ biometricEnabled: true }),
-      );
-    // v10: templates 테이블 이름 변경 (accountTemplates -> templates), 마이그레이션 없음
+      .upgrade((transaction) => {
+        // v11: Replace accounts/templates with encrypted record tables
+        // Clear old tables - no migration, fresh start
+        transaction.table("accounts").clear();
+        transaction.table("templates").clear();
+      });
   }
 }
 
@@ -69,16 +75,26 @@ export const db = new KiyoDatabase();
 
 export const getDatabaseSnapshot = async (
   filename: string,
-): Promise<KiyoDataFile> => ({
-  version: 1,
-  fileName: filename || "kiyo-data.json",
-  updatedAt: Date.now(),
-  accounts: await db.accounts.toArray(),
-  templates: await db.templates.toArray(),
-  metadata: await db.metadata.toArray(),
-  // Note: files table is intentionally excluded from JSON export
-  // Note: settings table is intentionally excluded from JSON export
-});
+): Promise<KiyoDataFile> => {
+  const sessionState = useSessionStore.getState();
+  const cryptoKey = sessionState.cryptoKey ?? undefined;
+  
+  const [accounts, templates] = await Promise.all([
+    accountTable.getAll(cryptoKey),
+    templateTable.getAll(cryptoKey),
+  ]);
+
+  return {
+    version: 1,
+    fileName: filename || "kiyo-data.json",
+    updatedAt: Date.now(),
+    accounts,
+    templates,
+    metadata: await db.metadata.toArray(),
+    // Note: files table is intentionally excluded from JSON export
+    // Note: settings table is intentionally excluded from JSON export
+  };
+};
 
 export interface SyncDatabaseParams {
   activeFileName: string | null;
@@ -135,6 +151,9 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
 export const replaceDatabaseData = async (
   data: KiyoDataFile,
 ): Promise<void> => {
+  const sessionState = useSessionStore.getState();
+  const cryptoKey = sessionState.cryptoKey;
+
   await db.transaction(
     "rw",
     db.accounts,
@@ -147,9 +166,38 @@ export const replaceDatabaseData = async (
       await db.templates.clear();
       await db.settings.clear();
       await db.metadata.clear();
-      await db.accounts.bulkPut(data.accounts);
-      await db.templates.bulkPut(data.templates);
-      // settings is no longer in KiyoDataFile - keep existing settings in DB
+
+      // Insert accounts and templates with encryption using restore to preserve IDs
+      if (cryptoKey) {
+        await accountTable.bulkRestore(data.accounts, cryptoKey);
+        await templateTable.bulkRestore(data.templates, cryptoKey);
+      } else {
+        // Fallback - should not happen in production
+        await db.accounts.bulkPut(
+          data.accounts.map((a) => ({
+            ...a,
+            id: a.id as number,
+            version: 1,
+            algorithm: "AES-GCM" as const,
+            encryptedData: new TextEncoder().encode(JSON.stringify(a)),
+            iv: new Uint8Array(12),
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt,
+          })),
+        );
+        await db.templates.bulkPut(
+          data.templates.map((t) => ({
+            ...t,
+            version: 1,
+            algorithm: "AES-GCM" as const,
+            encryptedData: new TextEncoder().encode(JSON.stringify(t)),
+            iv: new Uint8Array(12),
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+          })),
+        );
+      }
+
       await db.metadata.bulkPut(data.metadata);
     },
   );
@@ -157,17 +205,19 @@ export const replaceDatabaseData = async (
 
 export const initializeDatabase = async () => {
   console.log("Initializing database...");
+  const metadata = {
+        id: 1,
+        version: "1.0.0",
+        createdAt: Date.now(),
+      }
   await db.transaction(
     "rw",
     db.metadata,
     async () => {
-      await db.metadata.put({
-        id: 1,
-        version: "1.0.0",
-        createdAt: Date.now(),
-      });
+      await db.metadata.put(metadata);
     },
   );
+  return metadata;
 };
 
 // Get database instance

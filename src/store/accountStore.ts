@@ -29,7 +29,8 @@ export const useAccountStore = create<AccountState>()(
       accounts: [],
       initialized: false,
       initialize: async () => {
-        const accounts = await accountTable.getAll();
+        const sessionState = useSessionStore.getState();
+        const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
 
         set({
           accounts,
@@ -41,7 +42,6 @@ export const useAccountStore = create<AccountState>()(
       },
       setAccounts: async (accounts) => {
         set({ accounts });
-        await accountTable.saveAll(accounts);
         const sessionState = useSessionStore.getState();
         await syncDatabaseToFile({
           activeFileName: sessionState.activeFileName,
@@ -54,14 +54,9 @@ export const useAccountStore = create<AccountState>()(
       },
 
       addAccount: async (account) => {
-        const newAccount = await accountTable.create({
-          ...account,
-        });
-        set((state) => ({ accounts: [newAccount, ...state.accounts] }));
-
         const sessionState = useSessionStore.getState();
-        const allAccounts = get().accounts;
-        await accountTable.saveAll(allAccounts, sessionState.cryptoKey ?? undefined);
+        const newAccount = await accountTable.create(account, sessionState.cryptoKey ?? undefined);
+        set((state) => ({ accounts: [newAccount, ...state.accounts] }));
         await syncDatabaseToFile({
           activeFileName: sessionState.activeFileName,
           cryptoKey: sessionState.cryptoKey,
@@ -74,17 +69,14 @@ export const useAccountStore = create<AccountState>()(
       },
 
       updateAccount: async (account) => {
+        const sessionState = useSessionStore.getState();
         const updatedAccount = { ...account, updatedAt: Date.now() };
-        await accountTable.update(updatedAccount);
+        await accountTable.update(updatedAccount, sessionState.cryptoKey ?? undefined);
         set((state) => ({
           accounts: state.accounts.map((a) =>
             a.id === updatedAccount.id ? updatedAccount : a,
           ),
         }));
-
-        const sessionState = useSessionStore.getState();
-        const allAccounts = get().accounts;
-        await accountTable.saveAll(allAccounts, sessionState.cryptoKey ?? undefined);
         await syncDatabaseToFile({
           activeFileName: sessionState.activeFileName,
           cryptoKey: sessionState.cryptoKey,
@@ -102,8 +94,6 @@ export const useAccountStore = create<AccountState>()(
         }));
 
         const sessionState = useSessionStore.getState();
-        const allAccounts = get().accounts;
-        await accountTable.saveAll(allAccounts, sessionState.cryptoKey ?? undefined);
         await syncDatabaseToFile({
           activeFileName: sessionState.activeFileName,
           cryptoKey: sessionState.cryptoKey,

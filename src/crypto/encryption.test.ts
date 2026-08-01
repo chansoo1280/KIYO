@@ -7,6 +7,7 @@ import {
   type EncryptedKiyoFile,
 } from "@/crypto/encryption";
 import type { KiyoDataFile } from "@/database/fileStorage";
+import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
 import {
   createTestEncryptedFile,
   createTestKiyoDataFile,
@@ -237,10 +238,13 @@ describe("encryption (KIYO encryption.ts)", () => {
 
     it("should throw on tampered IV", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
-      const tamperedIv = encrypted.iv.slice(0, -1) + "X";
+      // Tamper with the raw IV bytes, not the base64 string
+      const originalIv = fromBase64(encrypted.iv);
+      const tamperedIvBytes = new Uint8Array(originalIv);
+      tamperedIvBytes[tamperedIvBytes.length - 1] ^= 0xff; // Flip last byte
       const tampered: EncryptedKiyoFile = {
         ...encrypted,
-        iv: tamperedIv,
+        iv: toBase64(tamperedIvBytes),
       };
 
       await expect(decryptData(tampered, key)).rejects.toThrow();

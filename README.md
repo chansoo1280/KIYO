@@ -60,6 +60,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 
 - **키 파생**: PBKDF2-HMAC-SHA256, 100,000회 반복, 16바이트 랜덤 솔트
 - **데이터 암호화**: AES-GCM 256비트, 12바이트 IV, 인증 태그 내장
+- **레코드 단위 암호화**: 각 Account/Template 객체를 통째로 직렬화하여 단일 AES-GCM 블롭으로 암호화 (필드별 암호화 미사용)
 - **파일 포맷**: 버전, 솔트, IV, 암호문을 Base64로 인코딩하여 JSON 저장
 
 ### 키 관리
@@ -73,6 +74,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 | ---------------- | ------------------------ | ------------------ | ------------------------------- |
 | 메인 계정 데이터 | 파일 시스템 (Documents)  | AES-GCM (PIN 기반) | 사용자 파일로 백업/이동 가능    |
 | 자동완성용 계정  | SQLite Database (Native) | 앱 내부 저장소     | AutofillService 전용 캐시       |
+| IndexedDB 계정   | IndexedDB (Dexie)        | AES-GCM 레코드 단위 | 전체 Account/Template 객체 암호화 |
 | 앱 설정          | IndexedDB (Dexie)        | 평문               | 테마, 폰트 등 비민감 설정       |
 | 세션 키          | 메모리 (SecuritySession) | N/A                | 인메모리, 프로세스 종료 시 소멸 |
 
