@@ -11,26 +11,8 @@ import type {
 import { isFileStorageError } from "@/errors/FileStorageError";
 import { fileTable } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
-
-export interface AccountRecord {
-  id: number;
-  version: 1;
-  algorithm: "AES-GCM";
-  encryptedData: Uint8Array;
-  iv: Uint8Array;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface TemplateRecord {
-  id: string;
-  version: 1;
-  algorithm: "AES-GCM";
-  encryptedData: Uint8Array;
-  iv: Uint8Array;
-  createdAt: number;
-  updatedAt: number;
-}
+import type { AccountRecord } from "@/database/accountTable";
+import type { TemplateRecord } from "@/database/templateTable";
 
 export interface FileData {
   id: number;
@@ -78,7 +60,7 @@ export const getDatabaseSnapshot = async (
 ): Promise<KiyoDataFile> => {
   const sessionState = useSessionStore.getState();
   const cryptoKey = sessionState.cryptoKey ?? undefined;
-  
+
   const [accounts, templates] = await Promise.all([
     accountTable.getAll(cryptoKey),
     templateTable.getAll(cryptoKey),
@@ -148,11 +130,19 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
   }
 };
 
-export const replaceDatabaseData = async (
-  data: KiyoDataFile,
-): Promise<void> => {
-  const sessionState = useSessionStore.getState();
-  const cryptoKey = sessionState.cryptoKey;
+export interface ReplaceDatabaseDataParams {
+  data: KiyoDataFile;
+  fileName: string;
+  cryptoKey?: CryptoKey;
+  salt?: Uint8Array;
+}
+
+export const replaceDatabaseData = async ({
+  data,
+  fileName,
+  cryptoKey,
+  salt = undefined,
+}: ReplaceDatabaseDataParams): Promise<void> => {
 
   await db.transaction(
     "rw",
@@ -173,32 +163,14 @@ export const replaceDatabaseData = async (
         await templateTable.bulkRestore(data.templates, cryptoKey);
       } else {
         // Fallback - should not happen in production
-        await db.accounts.bulkPut(
-          data.accounts.map((a) => ({
-            ...a,
-            id: a.id as number,
-            version: 1,
-            algorithm: "AES-GCM" as const,
-            encryptedData: new TextEncoder().encode(JSON.stringify(a)),
-            iv: new Uint8Array(12),
-            createdAt: a.createdAt,
-            updatedAt: a.updatedAt,
-          })),
-        );
-        await db.templates.bulkPut(
-          data.templates.map((t) => ({
-            ...t,
-            version: 1,
-            algorithm: "AES-GCM" as const,
-            encryptedData: new TextEncoder().encode(JSON.stringify(t)),
-            iv: new Uint8Array(12),
-            createdAt: t.createdAt,
-            updatedAt: t.updatedAt,
-          })),
-        );
+        await accountTable.bulkRestore(data.accounts);
+        await templateTable.bulkRestore(data.templates);
       }
 
       await db.metadata.bulkPut(data.metadata);
+
+      // Save file data to files table (encrypted or plain based on cryptoKey presence)
+      await fileTable.saveFileDataToDB(fileName, data, salt);
     },
   );
 };

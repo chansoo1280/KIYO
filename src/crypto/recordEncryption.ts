@@ -8,6 +8,7 @@ export interface EncryptedRecord {
   iv: Uint8Array;
   createdAt: number;
   updatedAt: number;
+  encrypted: boolean;
 }
 
 /**
@@ -67,6 +68,27 @@ export const createEncryptedRecord = async <T>(
     iv,
     createdAt: now,
     updatedAt: now,
+    encrypted: true,
+  };
+};
+
+/**
+ * Create a plaintext record (for unencrypted storage)
+ */
+export const createPlaintextRecord = async <T>(
+  data: T,
+): Promise<EncryptedRecord> => {
+  const now = Date.now();
+  const plaintextData = new TextEncoder().encode(JSON.stringify(data));
+
+  return {
+    version: 1,
+    algorithm: "AES-GCM",
+    encryptedData: plaintextData,
+    iv: new Uint8Array(12),
+    createdAt: now,
+    updatedAt: now,
+    encrypted: false,
   };
 };
 
@@ -100,6 +122,7 @@ export const isEncryptedRecord = (value: unknown): value is EncryptedRecord => {
     record.encryptedData instanceof Uint8Array &&
     record.iv instanceof Uint8Array &&
     typeof record.createdAt === "number" &&
-    typeof record.updatedAt === "number"
+    typeof record.updatedAt === "number" &&
+    typeof record.encrypted === "boolean"
   );
 };

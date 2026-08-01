@@ -212,8 +212,6 @@ describe("openImportedDataFile - 암호화 파일 에러 분기 테스트", () =
       });
       // setSession은 replaceDatabaseData 이전에 호출되므로 호출됨
       expect(mockSessionStore.mockSetSession).toHaveBeenCalled();
-      // saveFileDataToDB도 replaceDatabaseData 이전에 호출되므로 호출됨
-      expect(fileTableMock.fileTable.saveFileDataToDB).toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
     });
 

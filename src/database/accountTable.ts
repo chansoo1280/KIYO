@@ -1,63 +1,87 @@
 import { db } from "@/database/db";
 import type { Account } from "@/models/account";
-import { createEncryptedRecord, decryptRecord, type EncryptedRecord } from "@/crypto/recordEncryption";
+import {
+  createEncryptedRecord,
+  createPlaintextRecord,
+  decryptRecord,
+  type EncryptedRecord,
+} from "@/crypto/recordEncryption";
 
-interface AccountRecord extends EncryptedRecord {
+export interface AccountRecord extends EncryptedRecord {
   id: number;
 }
 
 export const accountTable = {
   /**
-   * Get all accounts, decrypting if cryptoKey is provided
-   * Falls back to plaintext parsing when no cryptoKey (for unencrypted files)
+   * Get all accounts, decrypting encrypted records if cryptoKey provided
    */
   async getAll(cryptoKey?: CryptoKey): Promise<Account[]> {
     const records = await db.accounts.orderBy("updatedAt").reverse().toArray();
 
-    if (cryptoKey && records.length > 0) {
-      try {
-        return await Promise.all(
-          records.map((record) => decryptRecord<Account>(record.encryptedData, record.iv, cryptoKey)),
-        );
-      } catch (error) {
-        console.error("Failed to decrypt account records:", error);
-        return [];
-      }
-    }
+    if (records.length === 0) return [];
 
-    // Fallback: return plaintext accounts when no cryptoKey (for plaintext files)
-    if (records.length > 0) {
-      try {
-        return records
-          .map((record) => {
-            try {
-              const decoded = new TextDecoder().decode(record.encryptedData);
-              return JSON.parse(decoded) as Account;
-            } catch {
-              // If parsing fails, return a minimal account
-              return { id: record.id, name: "", fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt };
-            }
-          })
-          .filter((account): account is Account => account !== null);
-      } catch (error) {
-        console.error("Failed to parse plaintext account records:", error);
-        return [];
-      }
-    }
-
-    return [];
+    return Promise.all(
+      records.map(async (record) => {
+        if (record.encrypted) {
+          if (!cryptoKey) {
+            // Encrypted record but no key - return minimal
+            return { 
+              id: record.id, 
+              templateId: 0,
+              title: "",
+              tags: [],
+              favorite: false,
+              fields: [], 
+              createdAt: record.createdAt, 
+              updatedAt: record.updatedAt 
+            } as Account;
+          }
+          try {
+            return await decryptRecord<Account>(record.encryptedData, record.iv, cryptoKey);
+          } catch (error) {
+            console.error("Failed to decrypt account record:", error);
+            return { 
+              id: record.id, 
+              templateId: 0,
+              title: "",
+              tags: [],
+              favorite: false,
+              fields: [], 
+              createdAt: record.createdAt, 
+              updatedAt: record.updatedAt 
+            } as Account;
+          }
+        }
+        // Plaintext record
+        try {
+          const decoded = new TextDecoder().decode(record.encryptedData);
+          return JSON.parse(decoded) as Account;
+        } catch {
+          return { 
+            id: record.id, 
+            templateId: 0,
+            title: "",
+            tags: [],
+            favorite: false,
+            fields: [], 
+            createdAt: record.createdAt, 
+            updatedAt: record.updatedAt 
+          } as Account;
+        }
+      })
+    );
   },
 
   /**
    * Get account by ID
-   * Falls back to plaintext parsing when no cryptoKey (for unencrypted files)
    */
   async getById(id: number, cryptoKey?: CryptoKey): Promise<Account | undefined> {
     const record = await db.accounts.get(id);
 
     if (!record) return undefined;
 
-    if (cryptoKey) {
+    if (record.encrypted) {
+      if (!cryptoKey) return undefined;
       try {
         return await decryptRecord<Account>(record.encryptedData, record.iv, cryptoKey);
       } catch (error) {
@@ -66,7 +90,7 @@ export const accountTable = {
       }
     }
 
-    // Fallback: return plaintext account when no cryptoKey
+    // Plaintext record
     try {
       const decoded = new TextDecoder().decode(record.encryptedData);
       return JSON.parse(decoded) as Account;
@@ -80,47 +104,36 @@ export const accountTable = {
    * Create a new account (encrypts if cryptoKey provided)
    */
   async create(
-  account: Omit<Account, "id" | "createdAt" | "updatedAt">,
-  cryptoKey?: CryptoKey,
-): Promise<Account> {
-  console.log("create cryptoKey:", cryptoKey);
-  console.log("truthy:", Boolean(cryptoKey));
-  const now = Date.now();
+    account: Omit<Account, "id" | "createdAt" | "updatedAt">,
+    cryptoKey?: CryptoKey,
+  ): Promise<Account> {
+    const now = Date.now();
 
-  const newAccount = {
-    ...account,
-    createdAt: now,
-    updatedAt: now,
-  };
- if (cryptoKey) {
-    const encryptedRecord = await createEncryptedRecord(
-      newAccount,
-      cryptoKey,
-    );
-
-    const id = await db.accounts.add(encryptedRecord);
-
-    return {
-      ...newAccount,
-      id,
-    };
-  } else {
-    // Fallback for non-encrypted (should not happen in production)
-    const plaintextData = new TextEncoder().encode(JSON.stringify(newAccount));
-    const id = await db.accounts.add({
-      version: 1,
-      algorithm: "AES-GCM",
-      encryptedData: plaintextData,
-      iv: new Uint8Array(12),
+    const newAccount = {
+      ...account,
       createdAt: now,
       updatedAt: now,
-    });
-    return {
-      ...newAccount,
-      id,
     };
-  }
-},
+
+    if (cryptoKey) {
+      const encryptedRecord = await createEncryptedRecord(newAccount, cryptoKey);
+
+      const id = await db.accounts.add(encryptedRecord);
+
+      return {
+        ...newAccount,
+        id,
+      };
+    } else {
+      // Plaintext record
+      const plaintextRecord = await createPlaintextRecord(newAccount);
+      const id = await db.accounts.add(plaintextRecord);
+      return {
+        ...newAccount,
+        id,
+      };
+    }
+  },
 
   /**
    * Update an account (encrypts if cryptoKey provided)
@@ -140,15 +153,13 @@ export const accountTable = {
         await db.accounts.put(record);
       }
     } else {
-      await db.accounts.put({
+      const plaintextRecord = await createPlaintextRecord(updatedAccount);
+      const record: AccountRecord = {
         id: updatedAccount.id,
-        version: 1,
-        algorithm: "AES-GCM",
-        encryptedData: new TextEncoder().encode(JSON.stringify(updatedAccount)),
-        iv: new Uint8Array(12),
+        ...plaintextRecord,
         createdAt: updatedAccount.createdAt,
-        updatedAt: updatedAccount.updatedAt,
-      });
+      };
+      await db.accounts.put(record);
     }
   },
 
@@ -191,16 +202,15 @@ export const accountTable = {
       };
       await db.accounts.put(record);
     } else {
-      // Fallback for non-encrypted
-      await db.accounts.put({
+      // Plaintext record
+      const plaintextRecord = await createPlaintextRecord(accountToStore);
+      const record: AccountRecord = {
         id: account.id,
-        version: 1,
-        algorithm: "AES-GCM" as const,
-        encryptedData: new TextEncoder().encode(JSON.stringify(accountToStore)),
-        iv: new Uint8Array(12),
+        ...plaintextRecord,
         createdAt: account.createdAt,
         updatedAt: now,
-      });
+      };
+      await db.accounts.put(record);
     }
 
     return accountToStore;
@@ -215,7 +225,7 @@ export const accountTable = {
     cryptoKey?: CryptoKey,
   ): Promise<void> {
     const now = Date.now();
-    
+
     if (cryptoKey) {
       // Encrypt all accounts first, then bulkPut
       const records = await Promise.all(
@@ -232,42 +242,56 @@ export const accountTable = {
       );
       await db.accounts.bulkPut(records as AccountRecord[]);
     } else {
-      // Fallback for non-encrypted
-      const records = accounts.map((account) => {
-        const accountToStore = { ...account, updatedAt: now };
-        return {
-          id: account.id,
-          version: 1 as const,
-          algorithm: "AES-GCM" as const,
-          encryptedData: new TextEncoder().encode(JSON.stringify(accountToStore)),
-          iv: new Uint8Array(12),
-          createdAt: account.createdAt,
-          updatedAt: now,
-        };
-      });
+      // Plaintext records
+      const records = await Promise.all(
+        accounts.map(async (account) => {
+          const accountToStore = { ...account, updatedAt: now };
+          const plaintextRecord = await createPlaintextRecord(accountToStore);
+          return {
+            id: account.id,
+            ...plaintextRecord,
+            createdAt: account.createdAt,
+            updatedAt: now,
+          };
+        })
+      );
       await db.accounts.bulkPut(records as AccountRecord[]);
     }
   },
 
   /**
    * Initialize dev seed data
+   * @param cryptoKey - Optional encryption key. If not provided, stores as plaintext.
    */
-  async initializeDevData(devAccounts: Account[]): Promise<void> {
+  async initializeDevData(devAccounts: Account[], cryptoKey?: CryptoKey): Promise<void> {
     const count = await db.accounts.count();
     if (count > 0) return;
 
     await db.transaction("rw", db.accounts, db.metadata, async () => {
-      await db.accounts.bulkPut(
-        devAccounts.map((a) => ({
-          id: a.id,
-          version: 1,
-          algorithm: "AES-GCM" as const,
-          encryptedData: new TextEncoder().encode(JSON.stringify(a)),
-          iv: new Uint8Array(12),
-          createdAt: a.createdAt,
-          updatedAt: a.updatedAt,
-        })),
+      const records = await Promise.all(
+        devAccounts.map(async (a) => {
+          if (cryptoKey) {
+            const encryptedRecord = await createEncryptedRecord(a, cryptoKey);
+            return {
+              id: a.id,
+              ...encryptedRecord,
+              createdAt: a.createdAt,
+              updatedAt: a.updatedAt,
+            };
+          } else {
+            // Plaintext record
+            const plaintextRecord = await createPlaintextRecord(a);
+            return {
+              id: a.id,
+              ...plaintextRecord,
+              createdAt: a.createdAt,
+              updatedAt: a.updatedAt,
+            };
+          }
+        })
       );
+
+      await db.accounts.bulkPut(records as AccountRecord[]);
     });
 
     console.log("개발용 seed 데이터가 추가되었습니다.");

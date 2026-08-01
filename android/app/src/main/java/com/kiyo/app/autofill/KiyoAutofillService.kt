@@ -158,9 +158,10 @@ class KiyoAutofillService : AutofillService() {
                 }
                 
                 val key = SecuritySession.get()
-                Log.d(TAG, "SecuritySession :: ${key}")
+                val isLocked = SecuritySession.isLocked()
+                Log.d(TAG, "SecuritySession :: key=${key != null}, isLocked=$isLocked")
 
-                if (key == null) {
+                if (isLocked && key == null) {
                     val response = FillResponseBuilder.createAuthResponse(
                         this@KiyoAutofillService,
                         usernameId,

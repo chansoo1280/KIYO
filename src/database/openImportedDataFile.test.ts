@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Capacitor } from "@capacitor/core";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAccountStore } from "@/store/accountStore";
-import { replaceDatabaseData } from "@/database/db";
 import {
   openImportedDataFile,
   isKiyoFile,
@@ -69,6 +68,8 @@ describe("openImportedDataFile", () => {
     // Configure mocks
     vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
     vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
+    // Default: replaceDatabaseData resolves successfully
+    dbMock.replaceDatabaseData.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -94,15 +95,20 @@ describe("openImportedDataFile", () => {
       );
       expect(isKiyoFile(result)).toBe(true);
 
-      // replaceDatabaseData 호출 확인
+      // replaceDatabaseData 호출 확인 (새 시그니처: 객체 파라미터)
       expect(dbMock.replaceDatabaseData).toHaveBeenCalledTimes(1);
       expect(dbMock.replaceDatabaseData).toHaveBeenCalledWith(
         expect.objectContaining({
-          version: 1,
+          data: expect.objectContaining({
+            version: 1,
+            fileName: "test.json",
+            accounts: [],
+            templates: [],
+            metadata: [],
+          }),
           fileName: "test.json",
-          accounts: [],
-          templates: [],
-          metadata: [],
+          cryptoKey: undefined,
+          salt: undefined,
         }),
       );
 
@@ -115,20 +121,8 @@ describe("openImportedDataFile", () => {
       expect(callArgs).not.toHaveProperty("cryptoKey");
       expect(callArgs).not.toHaveProperty("salt");
 
-      // saveFileDataToDB 호출 확인 (평문 데이터, salt 없음)
-      expect(fileTableMock.fileTable.saveFileDataToDB).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] = fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
-      expect(fileName).toBe("test.json");
-      expect(data).toEqual(
-        expect.objectContaining({
-          version: 1,
-          fileName: "test.json",
-          accounts: [],
-          templates: [],
-          metadata: [],
-        }),
-      );
-      expect(salt).toBeUndefined();
+      // saveFileDataToDB는 replaceDatabaseData 내부에서 호출되므로 별도 확인하지 않음
+      // replaceDatabaseData가 올바른 파라미터(fileName, salt)로 호출되었음을 위 검증으로 대체
 
       // setAccounts 호출 확인
       expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledTimes(1);
@@ -180,9 +174,14 @@ describe("openImportedDataFile", () => {
       expect(result!.metadata).toHaveLength(1);
       expect(dbMock.replaceDatabaseData).toHaveBeenCalledWith(
         expect.objectContaining({
-          accounts: fullData.accounts,
-          templates: fullData.templates,
-          metadata: fullData.metadata,
+          data: expect.objectContaining({
+            accounts: fullData.accounts,
+            templates: fullData.templates,
+            metadata: fullData.metadata,
+          }),
+          fileName: "test.json",
+          cryptoKey: undefined,
+          salt: undefined,
         }),
       );
       expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith(fullData.accounts);
@@ -194,14 +193,8 @@ describe("openImportedDataFile", () => {
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "test.json" }),
       );
-      const saveCall = fileTableMock.fileTable.saveFileDataToDB.mock.calls[0];
-      expect(saveCall[0]).toBe("test.json");
-      expect(saveCall[1]).toEqual(
-        expect.objectContaining({
-          fileName: "test.json",
-        }),
-      );
-      expect(saveCall[2]).toBeUndefined();
+      // saveFileDataToDB는 replaceDatabaseData 내부에서 호출되므로 별도 호출되지 않음
+      expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
     });
   });
 
@@ -293,7 +286,7 @@ describe("openImportedDataFile", () => {
         // Re-setup mocks after clearAllMocks
         vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
         vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
-        vi.mocked(replaceDatabaseData).mockImplementation(dbMock.replaceDatabaseData);
+        dbMock.replaceDatabaseData.mockResolvedValue(undefined);
         vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
 
         // @ts-expect-error - 의도적으로 잘못된 타입 전달
@@ -308,43 +301,22 @@ describe("openImportedDataFile", () => {
       dbMock.replaceDatabaseData.mockRejectedValueOnce(new Error("DB error"));
 
       await expect(
-        openImportedDataFile(validJsonString, "1234", "test.json"),
-      ).rejects.toThrow(FileStorageError);
-      await expect(
-        openImportedDataFile(validJsonString, "1234", "test.json"),
+        openImportedDataFile(validJsonString, "", "test.json"),
       ).rejects.toMatchObject({
         code: FileStorageErrorCode.DATABASE_ERROR,
       });
-      expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
+      // setSession은 replaceDatabaseData 이전에 호출되므로 이미 호출됨
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
-      expect(fileTableMock.fileTable.saveFileDataToDB).not.toHaveBeenCalled();
-    });
-
-    it("saveFileDataToDB 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
-      fileTableMock.fileTable.saveFileDataToDB.mockRejectedValueOnce(new Error("DB save failed"));
-
-      await expect(
-        openImportedDataFile(validJsonString, "1234", "test.json"),
-      ).rejects.toThrow(FileStorageError);
-      await expect(
-        openImportedDataFile(validJsonString, "1234", "test.json"),
-      ).rejects.toMatchObject({
-        code: FileStorageErrorCode.DATABASE_ERROR,
-      });
+      // saveFileDataToDB는 replaceDatabaseData 내부에서 호출되므로 별도 확인 안 함
     });
 
     it("setSession 실패 시 DATABASE_ERROR 에러를 던진다", async () => {
+      dbMock.replaceDatabaseData.mockResolvedValueOnce(undefined);
       mockSessionStore.mockSetSession.mockRejectedValueOnce(new Error("Session error"));
 
       await expect(
-        openImportedDataFile(
-          validJsonString,
-          "1234",
-          "test.json",
-        ),
-      ).rejects.toThrow(FileStorageError);
-      await expect(
-        openImportedDataFile(validJsonString, "1234", "test.json"),
+        openImportedDataFile(validJsonString, "", "test.json"),
       ).rejects.toMatchObject({
         code: FileStorageErrorCode.DATABASE_ERROR,
       });

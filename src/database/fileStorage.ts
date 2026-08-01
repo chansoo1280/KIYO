@@ -14,6 +14,7 @@ import {
   replaceDatabaseData,
   getDatabaseSnapshot,
   initializeDatabase,
+  getDatabase,
 } from "@/database/db";
 import { fileTable } from "@/database/fileTable";
 import { accountTable } from "@/database/accountTable";
@@ -70,9 +71,6 @@ const saveDataFile = async (
 ): Promise<KiyoDataFile> => {
   if(!isKiyoFile(data)) throw new Error("키요 파일이 아닙니다.");
   
-  // Check if data already has accounts/templates (e.g., from getDatabaseSnapshot in backup)
-  const hasAccounts = data.accounts.length > 0;
-  const hasTemplates = data.templates.length > 0;
   let accounts = data.accounts;
   let templates = data.templates;
   let metadata = data.metadata;
@@ -131,15 +129,11 @@ const saveDataFile = async (
   
   // Get accounts with encryption (only if not already provided and is init)
   if (isInit) {
-    if (!hasAccounts) {
-      accounts = await accountTable.getAll(key);
+    accounts = await accountTable.getAll(key);
+    for (const builtin of BUILTIN_TEMPLATES) {
+      await templateTable.create(builtin, key);
     }
-    if (!hasTemplates) {
-      for (const builtin of BUILTIN_TEMPLATES) {
-        await templateTable.create(builtin, key);
-      }
-      templates = await templateTable.getAll(key);
-    }
+    templates = await templateTable.getAll(key);
   }
   
   // 데이터 암호화
@@ -177,7 +171,6 @@ const saveDataFile = async (
 
   // 파일 저장
   await writeDataFile(encrypted, normalizedFileName);
-
   // Save encrypted data to DB
   await fileTable.saveFileDataToDB(normalizedFileName, encrypted, salt);
 
@@ -200,7 +193,6 @@ export const createDataFile = async (
   pin?: string,
 ): Promise<KiyoDataFile> => {
   const normalizedFileName = normalizeDataFileName(fileName);
-  
   // saveDataFile handles all initialization, encryption, and storage
   return saveDataFile(
     { version: 1, fileName: normalizedFileName, updatedAt: Date.now(), accounts: [], templates: [], metadata: [] },
@@ -256,12 +248,17 @@ export const openImportedDataFile = async (
         { operation: "openImportedDataFile" },
       );
     }
+    const normalizedFileName = normalizeDataFileName(fileName);
     try {
-      await replaceDatabaseData(parsedData);
-      const normalizedFileName = normalizeDataFileName(fileName);
       await useSessionStore
-        .getState()
+      .getState()
         .setSession({ fileName: normalizedFileName });
+      await replaceDatabaseData({
+        data: parsedData,
+        fileName: normalizedFileName,
+        cryptoKey: undefined,
+        salt: undefined,
+      });
       // Autofill 세션 저장 (Autofill이 활성화된 경우만)
       const autofillStatus = await KiyoAutofill.isAutofillEnabled();
       if (autofillStatus&&autofillStatus.enabled) {
@@ -269,8 +266,6 @@ export const openImportedDataFile = async (
           isLock: false,
         });
       }
-      // Save plain data to DB
-      await fileTable.saveFileDataToDB(normalizedFileName, parsedData);
       useAccountStore.getState().setAccounts(parsedData.accounts);
       return { ...parsedData, fileName: normalizedFileName };
     } catch (error) {
@@ -333,23 +328,12 @@ export const openImportedDataFile = async (
       .getState()
       .setSession({ fileName: normalizedFileName, cryptoKey: key, salt });
     // Save decrypted data to DB
-    await fileTable.saveFileDataToDB(normalizedFileName, parsedData, salt);
-
-    // Export CryptoKey and save to Native Autofill Session (Autofill이 활성화된 경우만)
-    try {
-      const autofillStatus = await KiyoAutofill.isAutofillEnabled();
-      if (autofillStatus&&autofillStatus.enabled) {
-        const exportedKey = await exportCryptoKey(key);
-        await KiyoAutofill.saveSession({
-          key: exportedKey,
-          isLock: true,
-        });
-      }
-    } catch (autofillError) {
-      // Autofill session key save failure should not block unlock
-      console.warn("Failed to save session key to autofill:", autofillError);
-    }
-    await replaceDatabaseData(decrypted);
+    await replaceDatabaseData({
+      data: decrypted,
+      fileName: normalizedFileName,
+      cryptoKey: key,
+      salt,
+    });
     useAccountStore.getState().setAccounts(decrypted.accounts);
     return { ...decrypted, fileName: normalizedFileName };
   } catch (error) {
@@ -523,8 +507,12 @@ export const unlockFile = async (
     await useSessionStore
       .getState()
       .setSession({ fileName: normalizedFileName, cryptoKey: key, salt });
-    await fileTable.saveFileDataToDB(normalizedFileName, fileData, salt);
-    await replaceDatabaseData(decrypted);
+    await replaceDatabaseData({
+      data: decrypted,
+      fileName: normalizedFileName,
+      cryptoKey: key,
+      salt,
+    });
     useAccountStore.getState().setAccounts(decrypted.accounts);
 
     // Export CryptoKey and save to Native Autofill Session (Autofill이 활성화된 경우만)
@@ -563,8 +551,12 @@ export const unlockFile = async (
 export const closeDataFile = async (): Promise<void> => {
   await useSessionStore.getState().clearSession();
   await useAccountStore.getState().clearAccounts();
+  await useTemplateStore.getState().clearTemplates();
   await KiyoAutofill.clearSession();
   await fileTable.clearActiveFileInfo();
+  // metadata 초기화
+  const db = getDatabase();
+  await db.metadata.clear();
   // Reset auto-lock timeout to default (none) when file is closed
   await useSettingsStore.getState().setAutoLockTimeout("none");
 };

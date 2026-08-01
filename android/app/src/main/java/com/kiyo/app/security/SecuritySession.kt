@@ -33,6 +33,11 @@ object SecuritySession {
     }
 
     @Synchronized
+    fun isLocked(): Boolean {
+        return sessionIsLock == true
+    }
+
+    @Synchronized
     fun clear() {
         sessionKey = null
         sessionIsLock = null

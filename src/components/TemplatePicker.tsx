@@ -8,11 +8,32 @@ interface TemplatePickerProps {
   onClose: () => void;
 }
 
+// 빈 상태일 때 표시할 디폴트 템플릿 (데이터로 저장하지 않음)
+const DEFAULT_TEMPLATE: Template = {
+  id: "default-template",
+  name: "기본 템플릿",
+  description: "간단한 입력 항목만 있는 기본 템플릿",
+  icon: "📝",
+  sortOrder: -1,
+  fields: [
+    { label: "제목", type: "text", placeholder: "계정 제목", defaultValue: "" },
+    { label: "아이디/이메일", type: "email", placeholder: "아이디 또는 이메일", defaultValue: "" },
+    { label: "비밀번호", type: "password", placeholder: "비밀번호", defaultValue: "" },
+    { label: "메모", type: "textarea", placeholder: "메모", defaultValue: "" },
+  ],
+  createdAt: 0,
+  updatedAt: 0,
+};
+
 const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
   const { templates } = useTemplateStore();
   const navigate = useNavigate();
 
   if (!open) return null;
+
+  // 빈 템플릿(name이 없는 것) 제외, 디폴트 템플릿을 항상 첫 번째에 표시
+  const validTemplates = templates.filter((t) => t.name?.trim());
+  const displayTemplates = [DEFAULT_TEMPLATE, ...validTemplates];
 
   const handleSelect = (template: Template) => {
       // TemplateField[]를 AccountField[]로 변환
@@ -83,8 +104,8 @@ const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
           </button>
         </div>
 
-        <div className="mt-5 grid gap-3">
-          {templates.map((template) => (
+        <div className="mt-5 grid gap-3 max-h-[50vh] overflow-y-auto">
+          {displayTemplates.map((template) => (
             <button
               key={template.id}
               type="button"
