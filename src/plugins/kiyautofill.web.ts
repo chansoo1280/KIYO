@@ -9,7 +9,7 @@ import type {
 } from "@/plugins/kiyautofill";
 
 export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
-  private sessionValue: { key?: string; isLock: boolean } | null = null;
+  private sessionValue: { key?: string; isEncrypted: boolean } | null = null;
   async isAutofillEnabled(): Promise<AutofillStatus> {
     console.warn("KiyoAutofill: isAutofillEnabled not available on web");
     return {
@@ -75,7 +75,7 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
     return { enabled: true };
   }
 
-  async saveSession(options: { key?: string; isLock: boolean }): Promise<void> {
+  async saveSession(options: { key?: string; isEncrypted: boolean }): Promise<void> {
     this.sessionValue = options;
   }
 

@@ -13,13 +13,13 @@ object SecuritySession {
 
     @Volatile
     private var sessionKey: String? = null
-    private var sessionIsLock: Boolean? = null
+    private var sessionIsEncrypted: Boolean? = null
 
     @Synchronized
-    fun save(key: String, isLock: Boolean) {
+    fun save(key: String?, isEncrypted: Boolean) {
         sessionKey = key
-        sessionIsLock = isLock
-        Log.d(TAG, "sessionKey, sessionIsLock :: ${sessionKey}, ${isLock}")
+        sessionIsEncrypted = isEncrypted
+        Log.d(TAG, "sessionKey, sessionIsEncrypted :: ${sessionKey}, ${isEncrypted}")
     }
 
     @Synchronized
@@ -33,14 +33,14 @@ object SecuritySession {
     }
 
     @Synchronized
-    fun isLocked(): Boolean {
-        return sessionIsLock == true
+    fun isEncrypted(): Boolean {
+        return sessionIsEncrypted == true
     }
 
     @Synchronized
     fun clear() {
         sessionKey = null
-        sessionIsLock = null
+        sessionIsEncrypted = null
         Log.d(TAG, "clear session")
     }
 }

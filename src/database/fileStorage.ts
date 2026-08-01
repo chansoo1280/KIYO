@@ -113,7 +113,7 @@ const saveDataFile = async (
     const autofillStatus = await KiyoAutofill.isAutofillEnabled();
     if (autofillStatus && autofillStatus.enabled) {
       await KiyoAutofill.saveSession({
-        isLock: false,
+        isEncrypted: false,
       });
     }
     
@@ -162,7 +162,7 @@ const saveDataFile = async (
     const exportedKey = await exportCryptoKey(key);
     await KiyoAutofill.saveSession({
       key: exportedKey,
-      isLock: true,
+      isEncrypted: true,
     });
   } catch (autofillError) {
     // Autofill session key save failure should not block unlock
@@ -171,6 +171,7 @@ const saveDataFile = async (
 
   // 파일 저장
   await writeDataFile(encrypted, normalizedFileName);
+
   // Save encrypted data to DB
   await fileTable.saveFileDataToDB(normalizedFileName, encrypted, salt);
 
@@ -263,7 +264,7 @@ export const openImportedDataFile = async (
       const autofillStatus = await KiyoAutofill.isAutofillEnabled();
       if (autofillStatus&&autofillStatus.enabled) {
         await KiyoAutofill.saveSession({
-          isLock: false,
+          isEncrypted: false,
         });
       }
       useAccountStore.getState().setAccounts(parsedData.accounts);
@@ -408,7 +409,7 @@ export const changePin = async (newPin: string): Promise<void> => {
       const exportedKey = await exportCryptoKey(newKey);
       await KiyoAutofill.saveSession({
         key: exportedKey,
-        isLock: true,
+        isEncrypted: true,
       });
     }
   } catch (autofillError) {
@@ -522,7 +523,7 @@ export const unlockFile = async (
         const exportedKey = await exportCryptoKey(key);
         await KiyoAutofill.saveSession({
           key: exportedKey,
-          isLock: true,
+          isEncrypted: true,
         });
       }
     } catch (autofillError) {
@@ -568,7 +569,7 @@ export const closeDataFile = async (): Promise<void> => {
 export const lockDataFile = async (): Promise<void> => {
   // Clear only crypto key from session, keep activeFileName and salt
   await useSessionStore.getState().clearCryptoKey();
-  // Save lock state to autofill (marks as locked)
-  await KiyoAutofill.saveSession({ isLock: true });
+  // Save lock state to autofill (marks as encrypted)
+  await KiyoAutofill.saveSession({ isEncrypted: true });
   // Do NOT call fileTable.clearActiveFileInfo() - preserve file info for unlock
 };

@@ -41,7 +41,7 @@ export interface KiyoAutofillPlugin {
   getAccountCount(): Promise<CountResult>;
   setBiometricEnabled(options: { enabled: boolean }): Promise<void>;
   getBiometricEnabled(): Promise<{ enabled: boolean }>;
-  saveSession(options: { key?: string; isLock: boolean }): Promise<void>;
+  saveSession(options: { key?: string; isEncrypted: boolean }): Promise<void>;
   clearSession(): Promise<void>;
   hasSession(): Promise<{ hasSession: boolean }>;
 }

@@ -534,20 +534,20 @@ public class KiyoAutofillPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void saveSession(PluginCall call) {
-        String key = call.getString("key");
-        boolean isLock = call.getBoolean("isLock", false);
+        public void saveSession(PluginCall call) {
+            String key = call.getString("key");
+            boolean isEncrypted = call.getBoolean("isEncrypted", false);
 
-        if (key == null && isLock) {
-            call.reject("key parameter is required when locked");
-            return;
+            if (key == null && isEncrypted) {
+                call.reject("key parameter is required when encrypted");
+                return;
+            }
+
+            SecuritySession.INSTANCE.save(key, isEncrypted);
+
+            Log.d(TAG, "Session saved. isEncrypted=" + isEncrypted);
+            call.resolve();
         }
-
-        SecuritySession.INSTANCE.save(key, isLock);
-
-        Log.d(TAG, "Session saved. isLock=" + isLock);
-        call.resolve();
-    }
 
     @PluginMethod
     public void clearSession(PluginCall call) {

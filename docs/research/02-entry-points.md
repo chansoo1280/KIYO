@@ -393,7 +393,7 @@ Target App (Autofill)
 - **Master Secret**: Hardcoded in `AutofillCrypto.MASTER_SECRET` (should use Android Keystore in production)
 - **Key Derivation**: PBKDF2 (100,000 iterations) + AES-GCM
 - **Session Key**: Stored in `SecuritySession` (process memory only)
-- **Biometric**: Gates access to session key via `SecuritySession.save(key, isLock)`
+- **Biometric**: Gates access to session key via `SecuritySession.save(key, isEncrypted)`
 
 ---
 

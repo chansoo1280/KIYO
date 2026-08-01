@@ -237,7 +237,7 @@ CREATE INDEX idx_autofill_app_name ON autofill_accounts(app_name);
 | `getAccountCount()` | 저장된 계정 수 조회 | - | `CountResult` |
 | `setBiometricEnabled()` | 생체인증 활성화 설정 | `enabled: boolean` | `void` |
 | `getBiometricEnabled()` | 생체인증 설정 조회 | - | `{enabled: boolean}` |
-| `saveSession()` | 보안 세션 키 저장 | `key?, isLock: boolean` | `void` |
+|| `saveSession()` | 보안 세션 키 저장 | `key?, isEncrypted: boolean` | `void` ||
 | `clearSession()` | 세션 클리어 | - | `void` |
 | `hasSession()` | 세션 존재 여부 | - | `{hasSession: boolean}` |
 
@@ -252,11 +252,12 @@ CREATE INDEX idx_autofill_app_name ON autofill_accounts(app_name);
 ```kotlin
 object SecuritySession {
     @Volatile private var sessionKey: String? = null
-    private var sessionIsLock: Boolean? = null
+    private var sessionIsEncrypted: Boolean? = null
     
-    @Synchronized fun save(key: String, isLock: Boolean)
+    @Synchronized fun save(key: String, isEncrypted: Boolean)
     @Synchronized fun get(): String?
     @Synchronized fun hasSession(): Boolean
+    @Synchronized fun isEncrypted(): Boolean
     @Synchronized fun clear()
 }
 ```
