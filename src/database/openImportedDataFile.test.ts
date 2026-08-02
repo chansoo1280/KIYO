@@ -5,9 +5,8 @@ import { useAccountStore } from "@/store/accountStore";
 import {
   openImportedDataFile,
   isKiyoFile,
-  type KiyoDataFile,
 } from "@/database/fileStorage";
-import { FileStorageError, FileStorageErrorCode,  } from "@/errors/FileStorageError";
+import { FileStorageError, FileStorageErrorCode } from "@/errors/FileStorageError";
 import type { Account, Metadata } from "@/models/account";
 import type { Template } from "@/models/template";
 import { createMockAccountStoreWithGetState } from "@/test/mocks/accountStoreMock";
@@ -15,7 +14,7 @@ import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
 
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
-    create: vi.fn(),
+    upsertFileRecord: vi.fn(),
   },
 }));
 const dbMock = vi.hoisted(() => ({
@@ -48,8 +47,15 @@ describe("openImportedDataFile", () => {
   let mockAccountStore: ReturnType<typeof createMockAccountStoreWithGetState>;
 
   const createValidKiyoFile = (
-    overrides: Partial<KiyoDataFile> = {},
-  ): KiyoDataFile => ({
+    overrides: {
+      version?: number;
+      fileName?: string;
+      updatedAt?: number;
+      accounts?: Account[];
+      templates?: Template[];
+      metadata?: Metadata[];
+    } = {},
+  ) => ({
     version: 1,
     fileName: "test.json",
     updatedAt: Date.now(),
@@ -108,7 +114,6 @@ describe("openImportedDataFile", () => {
           }),
           fileName: "test.json",
           cryptoKey: undefined,
-          salt: undefined,
         }),
       );
 
@@ -181,7 +186,6 @@ describe("openImportedDataFile", () => {
           }),
           fileName: "test.json",
           cryptoKey: undefined,
-          salt: undefined,
         }),
       );
       expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith(fullData.accounts);
@@ -194,7 +198,7 @@ describe("openImportedDataFile", () => {
         expect.objectContaining({ fileName: "test.json" }),
       );
       // create는 replaceDatabaseData 내부에서 호출되므로 별도 호출되지 않음
-      expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
+      expect(fileTableMock.fileTable.upsertFileRecord).not.toHaveBeenCalled();
     });
   });
 
@@ -212,7 +216,7 @@ describe("openImportedDataFile", () => {
       expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
       expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
-      expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
+      expect(fileTableMock.fileTable.upsertFileRecord).not.toHaveBeenCalled();
     });
 
     it("잘못된 version일 때 INVALID_FILE_FORMAT 에러를 던진다 (1이 아닌 숫자, 문자열, 0, 음수)", async () => {
@@ -235,7 +239,7 @@ describe("openImportedDataFile", () => {
         expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
         expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
         expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
-        expect(fileTableMock.fileTable.create).not.toHaveBeenCalled();
+        expect(fileTableMock.fileTable.upsertFileRecord).not.toHaveBeenCalled();
       }
     });
 
@@ -262,7 +266,7 @@ describe("openImportedDataFile", () => {
         vi.clearAllMocks();
         const invalidFile = createValidKiyoFile({
           [field]: value,
-        } as Partial<KiyoDataFile>);
+        });
         const jsonString = JSON.stringify(invalidFile);
 
         await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toThrow(FileStorageError);

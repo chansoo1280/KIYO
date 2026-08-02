@@ -3,10 +3,10 @@ import {
   createCryptoKey,
   encryptData,
   decryptData,
-  isEncryptedKiyoFile,
-  type EncryptedKiyoFile,
+  isEncryptedKiyoVaultData,
+  type EncryptedKiyoVaultData,
 } from "@/crypto/encryption";
-import type { KiyoDataFile } from "@/database/fileStorage";
+import type { KiyoVaultData } from "@/models/vault";
 import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
 import {
   createTestEncryptedFile,
@@ -15,7 +15,7 @@ import {
 
 describe("encryption (KIYO encryption.ts)", () => {
   const mockPassword = "test-password-123";
-  const mockKiyoFile: KiyoDataFile = createTestKiyoDataFile({
+  const mockKiyoFile: KiyoVaultData = createTestKiyoDataFile({
     accounts: [],
     templates: [],
     metadata: [],
@@ -30,10 +30,10 @@ describe("encryption (KIYO encryption.ts)", () => {
     salt = result.salt;
   });
 
-  describe("isEncryptedKiyoFile", () => {
+  describe("isEncryptedKiyoVaultData", () => {
     it("should return true for valid encrypted file", () => {
-      const encryptedFile: EncryptedKiyoFile = createTestEncryptedFile();
-      expect(isEncryptedKiyoFile(encryptedFile)).toBe(true);
+      const encryptedFile: EncryptedKiyoVaultData = createTestEncryptedFile();
+      expect(isEncryptedKiyoVaultData(encryptedFile)).toBe(true);
     });
 
     it("should return false for non-encrypted file", () => {
@@ -44,28 +44,28 @@ describe("encryption (KIYO encryption.ts)", () => {
         createdAt: "",
         updatedAt: "",
       };
-      expect(isEncryptedKiyoFile(plainFile)).toBe(false);
+      expect(isEncryptedKiyoVaultData(plainFile)).toBe(false);
     });
 
     it("should return false for null", () => {
-      expect(isEncryptedKiyoFile(null)).toBe(false);
+      expect(isEncryptedKiyoVaultData(null)).toBe(false);
     });
 
     it("should return false for undefined", () => {
-      expect(isEncryptedKiyoFile(undefined)).toBe(false);
+      expect(isEncryptedKiyoVaultData(undefined)).toBe(false);
     });
 
     it("should return false for missing fields", () => {
-      expect(isEncryptedKiyoFile({ version: 1 })).toBe(false);
-      expect(isEncryptedKiyoFile({ version: 1, encrypted: true })).toBe(false);
+      expect(isEncryptedKiyoVaultData({ version: 1 })).toBe(false);
+      expect(isEncryptedKiyoVaultData({ version: 1, encrypted: true })).toBe(false);
       expect(
-        isEncryptedKiyoFile({ version: 1, encrypted: true, salt: "test" }),
+        isEncryptedKiyoVaultData({ version: 1, encrypted: true, salt: "test" }),
       ).toBe(false);
     });
 
     it("should return false for wrong version", () => {
       expect(
-        isEncryptedKiyoFile({
+        isEncryptedKiyoVaultData({
           version: 2,
           encrypted: true,
           salt: "test",
@@ -77,7 +77,7 @@ describe("encryption (KIYO encryption.ts)", () => {
 
     it("should return false for encrypted: false", () => {
       expect(
-        isEncryptedKiyoFile({
+        isEncryptedKiyoVaultData({
           version: 1,
           encrypted: false,
           salt: "test",
@@ -228,7 +228,7 @@ describe("encryption (KIYO encryption.ts)", () => {
     it("should throw on tampered ciphertext", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
       const tamperedCiphertext = encrypted.ciphertext.slice(0, -1) + "X";
-      const tampered: EncryptedKiyoFile = {
+      const tampered: EncryptedKiyoVaultData = {
         ...encrypted,
         ciphertext: tamperedCiphertext,
       };
@@ -242,7 +242,7 @@ describe("encryption (KIYO encryption.ts)", () => {
       const originalIv = fromBase64(encrypted.iv);
       const tamperedIvBytes = new Uint8Array(originalIv);
       tamperedIvBytes[tamperedIvBytes.length - 1] ^= 0xff; // Flip last byte
-      const tampered: EncryptedKiyoFile = {
+      const tampered: EncryptedKiyoVaultData = {
         ...encrypted,
         iv: toBase64(tamperedIvBytes),
       };
@@ -252,7 +252,7 @@ describe("encryption (KIYO encryption.ts)", () => {
 
     it("should decrypt successfully even with tampered salt (salt not used in decryptData)", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
-      const tampered: EncryptedKiyoFile = {
+      const tampered: EncryptedKiyoVaultData = {
         ...encrypted,
         salt: "dGFtcGVyZWQ=", // tampered salt
       };
@@ -263,9 +263,9 @@ describe("encryption (KIYO encryption.ts)", () => {
 
     it("should decrypt successfully even with wrong version (version not validated in decryptData)", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);
-      const tampered: EncryptedKiyoFile = {
+      const tampered: EncryptedKiyoVaultData = {
         ...encrypted,
-        version: 999 as EncryptedKiyoFile["version"],
+        version: 999 as EncryptedKiyoVaultData["version"],
       };
 
       const decrypted = await decryptData(tampered, key);

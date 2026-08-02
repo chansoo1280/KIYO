@@ -1,10 +1,10 @@
-import type { KiyoDataFile } from "@/database/fileStorage";
+import type { KiyoVaultData } from "@/models/vault";
 import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export interface EncryptedKiyoFile {
+export interface EncryptedKiyoVaultData {
   version: 1;
   encrypted: true;
   salt: string;
@@ -12,12 +12,12 @@ export interface EncryptedKiyoFile {
   ciphertext: string;
 }
 
-export const isEncryptedKiyoFile = (
+export const isEncryptedKiyoVaultData = (
   value: unknown,
-): value is EncryptedKiyoFile => {
+): value is EncryptedKiyoVaultData => {
   if (!value || typeof value !== "object") return false;
 
-  const file = value as Partial<EncryptedKiyoFile>;
+  const file = value as Partial<EncryptedKiyoVaultData>;
   console.log(JSON.stringify(file));
 
   return (
@@ -65,10 +65,10 @@ export async function createCryptoKey(pin: string, salt?: Uint8Array) {
 
 // 데이터 암호화
 export const encryptData = async (
-  data: unknown,
+  data: KiyoVaultData,
   key: CryptoKey,
   salt: Uint8Array,
-): Promise<EncryptedKiyoFile> => {
+): Promise<EncryptedKiyoVaultData> => {
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
   const encrypted = await crypto.subtle.encrypt(
@@ -91,9 +91,9 @@ export const encryptData = async (
 
 // 데이터 복호화
 export const decryptData = async (
-  encrypted: EncryptedKiyoFile,
+  encrypted: EncryptedKiyoVaultData,
   key: CryptoKey,
-): Promise<KiyoDataFile> => {
+): Promise<KiyoVaultData> => {
   const decrypted = await crypto.subtle.decrypt(
     {
       name: "AES-GCM",
@@ -103,15 +103,15 @@ export const decryptData = async (
     fromBase64(encrypted.ciphertext),
   );
 
-  return JSON.parse(decoder.decode(decrypted));
+  return JSON.parse(decoder.decode(decrypted)) as KiyoVaultData;
 };
 
 export const isVerifyPin = async (
-  data: KiyoDataFile | EncryptedKiyoFile,
+  data: KiyoVaultData | EncryptedKiyoVaultData,
   pin: string,
 ): Promise<boolean> => {
   // 데이터가 암호화되어 있지 않다면 에러 발생
-  if (!isEncryptedKiyoFile(data)) {
+  if (!isEncryptedKiyoVaultData(data)) {
     throw new Error("데이터가 암호화되어 있지 않습니다.");
   }
 

@@ -167,7 +167,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(accounts[0].title).toBe("Test Account 1");
 
       // DB에도 데이터가 저장되었는지 확인
-      const snapshot = await getDatabaseSnapshot("plain-backup.json");
+      const session = useSessionStore.getState();
+      const snapshot = await getDatabaseSnapshot("plain-backup.json", session.cryptoKey ?? undefined);
       expect(snapshot.accounts).toHaveLength(1);
       expect(snapshot.accounts[0].title).toBe("Test Account 1");
     });
@@ -244,7 +245,8 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(storeAccountTitles).toEqual(["Test Account 1", "Test Account 2"]);
 
       // DB 확인
-      const snapshot = await getDatabaseSnapshot("lifecycle-backup.json");
+      const session = useSessionStore.getState();
+      const snapshot = await getDatabaseSnapshot("lifecycle-backup.json", session.cryptoKey ?? undefined);
       expect(snapshot.accounts).toHaveLength(2);
       // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
       expect(snapshot.templates).toHaveLength(8);

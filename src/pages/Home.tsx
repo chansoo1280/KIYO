@@ -20,7 +20,7 @@ const Home = () => {
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
-      const { activeFileName, fileData, encrypted } = await fileTable.get();
+      const { activeFileName, fileData, encrypted } = await fileTable.getActiveFileInfo();
       if (!activeFileName) return;
       if (encrypted) {
         navigate("/auth", {

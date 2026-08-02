@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Filesystem } from "@capacitor/filesystem";
-import { openImportedDataFile, writeDataFile } from "@/database/fileStorage";
+import { openImportedDataFile, exportDataFile } from "@/database/fileStorage";
 import { FileStorageError, FileStorageErrorCode, isFileStorageError } from "@/errors/FileStorageError";
 import { createTestEncryptedFile } from "@/test/fixtures/databaseFixtures";
-import type { KiyoDataFile } from "@/database/fileStorage";
+import type { KiyoVaultData } from "@/models/vault";
 import type { Account, Metadata } from "@/models/account";
 import type { Template } from "@/models/template";
 
 describe("fileStorage - error handling", () => {
 
-  const createValidKiyoFile = (overrides: Partial<KiyoDataFile> = {}): KiyoDataFile => ({
+  const createValidKiyoFile = (overrides: Partial<KiyoVaultData> = {}): KiyoVaultData => ({
     version: 1, fileName: "test.json", updatedAt: Date.now(),
     accounts: [] as Account[], templates: [] as Template[],
     metadata: [] as Metadata[],
@@ -38,10 +38,10 @@ describe("fileStorage - error handling", () => {
     });
   });
 
-  describe("writeDataFile", () => {
+  describe("exportDataFile", () => {
     it("파일 저장 실패 → WRITE_FAILED 에러를 던진다", async () => {
       vi.mocked(Filesystem.writeFile).mockRejectedValueOnce(new Error("Write failed"));
-      try { await writeDataFile(createValidKiyoFile(), "test.json"); }
+      try { await exportDataFile(createValidKiyoFile(), "test.json"); }
       catch (error: unknown) { expect(isFileStorageError(error)).toBe(true); expect((error as FileStorageError).code).toBe(FileStorageErrorCode.WRITE_FAILED); }
     });
   });

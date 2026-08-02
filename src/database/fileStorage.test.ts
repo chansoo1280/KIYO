@@ -2,10 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeDataFileName,
   isKiyoFile,
-  isEncryptedKiyoFile,
 } from "@/database/fileStorage";
-import type { KiyoDataFile } from "@/database/fileStorage";
-import type { EncryptedKiyoFile } from "@/crypto/encryption";
+import { isEncryptedKiyoVaultData as isEncryptedKiyoFile } from "@/crypto/encryption";
 import {
   createTestKiyoDataFile,
   createTestEncryptedFile,
@@ -76,8 +74,8 @@ describe("fileStorage - pure functions", () => {
 
   describe("isKiyoFile", () => {
     const createValidKiyoFile = (
-      overrides: Partial<KiyoDataFile> = {},
-    ): KiyoDataFile => createTestKiyoDataFile(overrides);
+      overrides: Parameters<typeof createTestKiyoDataFile>[0] = {},
+    ) => createTestKiyoDataFile(overrides);
 
     describe("정상 입력", () => {
       it("올바른 KiyoDataFile 객체는 true를 반환한다", () => {
@@ -206,8 +204,8 @@ describe("fileStorage - pure functions", () => {
 
   describe("isEncryptedKiyoFile", () => {
     const createValidEncryptedFile = (
-      overrides: Partial<EncryptedKiyoFile> = {},
-    ): EncryptedKiyoFile => createTestEncryptedFile(overrides);
+      overrides: Parameters<typeof createTestEncryptedFile>[0] = {},
+    ) => createTestEncryptedFile(overrides);
 
     describe("정상 입력", () => {
       it("올바른 EncryptedKiyoFile 객체는 true를 반환한다", () => {

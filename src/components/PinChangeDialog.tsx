@@ -57,7 +57,8 @@ export const PinChangeDialog = ({
       setErrorMessage("현재 PIN과 다른 PIN을 입력하세요.");
       return;
     }
-    const { fileData } = await fileTable.get();
+
+    const { fileData } = await fileTable.getActiveFileInfo();
     if (!fileData) {
       setErrorMessage("활성 데이터 파일이 없습니다.");
       return;

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAccountStore } from "@/store/accountStore";
-import {  createCryptoKey, decryptData, isEncryptedKiyoFile } from "@/crypto/encryption";
+import { createCryptoKey, decryptData, isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import { openImportedDataFile } from "@/database/fileStorage";
+import { isEncryptedKiyoVaultData as isEncryptedKiyoFile } from "@/crypto/encryption";
 import { createTestKiyoDataFile, createTestEncryptedFile } from "@/test/fixtures/databaseFixtures";
 import { replaceDatabaseData } from "@/database/db";
 import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
@@ -49,10 +50,19 @@ vi.mock("@/store/accountStore", () => ({
 
 // Mock encryption functions
 vi.mock("@/crypto/encryption", () => ({
-  isEncryptedKiyoFile: vi.fn(),
+  isEncryptedKiyoVaultData: vi.fn(),
   createCryptoKey: vi.fn(),
   decryptData: vi.fn(),
 }));
+
+// Mock fileStorage for isEncryptedKiyoFile re-export (use importOriginal to get real openImportedDataFile)
+vi.mock("@/database/fileStorage", async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    isEncryptedKiyoFile: vi.fn(),
+  };
+});
 
 
 
@@ -77,7 +87,7 @@ describe("openImportedDataFile - 암호화 파일 에러 분기 테스트", () =
     mockEncryption = createMockEncryption({
       mockCreateCryptoKey: vi.fn().mockResolvedValue({ key: mockCryptoKey, salt: mockSalt }),
       mockDecryptData: vi.fn().mockResolvedValue(mockDecryptedData),
-      mockIsEncryptedKiyoFile: vi.fn().mockResolvedValue(true),
+      mockIsEncryptedKiyoVaultData: vi.fn().mockResolvedValue(true),
     });
 
     // Configure mock implementations
@@ -88,7 +98,8 @@ describe("openImportedDataFile - 암호화 파일 에러 분기 테스트", () =
     vi.mocked(decryptData).mockImplementation(mockEncryption.mockDecryptData);
     vi.mocked(replaceDatabaseData).mockImplementation(dbMock.replaceDatabaseData);
     vi.mocked(replaceDatabaseData).mockImplementation(dbMock.replaceDatabaseData);
-    vi.mocked(isEncryptedKiyoFile).mockImplementation(mockEncryption.mockIsEncryptedKiyoFile);
+    vi.mocked(isEncryptedKiyoVaultData).mockImplementation(mockEncryption.mockIsEncryptedKiyoVaultData);
+    vi.mocked(isEncryptedKiyoFile).mockImplementation(mockEncryption.mockIsEncryptedKiyoVaultData);
   });
 
   afterEach(() => {

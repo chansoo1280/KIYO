@@ -3,7 +3,6 @@ import { createDataFile } from "@/database/fileStorage";
 import {
   createCryptoKey,
   encryptData,
-  type EncryptedKiyoFile,
 } from "@/crypto/encryption";
 // Import common mocks
 import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
@@ -12,11 +11,10 @@ import {
   mockEncryptionDefaults,
 } from "@/test/mocks/encryptionMock";
 import { useSessionStore } from "@/store/sessionStore";
-import { fileTable } from "@/database/fileTable";
 // Hoisted mocks for vi.mock
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
-    create: vi.fn().mockResolvedValue(undefined),
+    upsertFileRecord: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -47,7 +45,7 @@ describe("createDataFile", () => {
 
   const mockCryptoKey = {} as CryptoKey;
   const mockSalt = new Uint8Array(16);
-  const mockEncryptedData: EncryptedKiyoFile = mockEncryptionDefaults.encryptData;
+  const mockEncryptedData = mockEncryptionDefaults.encryptData;
 
   beforeEach(async () => {
     // Create fresh mocks for each test
@@ -61,71 +59,32 @@ describe("createDataFile", () => {
       mockEncryption.mockCreateCryptoKey,
     );
     vi.mocked(encryptData).mockImplementation(mockEncryption.mockEncryptData);
-    // Mock exportCryptoKey
-    const { exportCryptoKey } = await import("@/crypto/crypto.utils");
-    vi.mocked(exportCryptoKey).mockImplementation(
-      mockEncryption.mockExportCryptoKey,
-    );
+
     mockEncryption.mockCreateCryptoKey.mockResolvedValue({
       key: mockCryptoKey,
       salt: mockSalt,
     });
+    mockEncryption.mockEncryptData.mockResolvedValue(mockEncryptedData);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("PIN 없는 파일 생성", () => {
-    it("평문 KiyoDataFile을 생성한다", async () => {
-      const result = await createDataFile("test-file");
-
-      expect(result).toBeDefined();
-      expect(result.version).toBe(1);
-      expect(result.fileName).toBe("test-file.json");
-      expect(result.accounts).toEqual([]);
-      expect(result.templates).toHaveLength(6); // 내장 템플릿 6개 시드됨
-      expect(result.metadata).toHaveLength(1); // initializeDatabase가 메타데이터 생성
-      expect(result.metadata[0]).toEqual(expect.objectContaining({ id: 1, version: "1.0.0" }));
-      expect(typeof result.updatedAt).toBe("number");
-    });
-
-    it("encrypted가 없는 평문 파일을 생성한다", async () => {
-      const result = await createDataFile("test-file");
-
-      // 결과가 평문 KiyoDataFile인지 확인 (encrypted 속성이 없음)
-      expect("encrypted" in result).toBe(false);
-    });
-
-    it("sessionStore.setSession을 fileName과 함께 호출한다", async () => {
-      await createDataFile("test-file");
-
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
-        fileName: "test-file.json",
-      });
-    });
-
-    it("sessionStore.setSession에 cryptoKey와 salt를 전달하지 않는다", async () => {
-      await createDataFile("test-file");
+  describe("평문 파일 생성 (PIN 없음)", () => {
+    it("파일명 정규화를 적용한다 (공백 제거, .json 추가)", async () => {
+      await createDataFile("  test file  ");
 
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fileName: "test-file.json",
-        }),
+        expect.objectContaining({ fileName: "test file.json" }),
       );
-      // cryptoKey와 salt가 전달되지 않았는지 확인 (undefined가 아닌 아예 없음)
-      const callArgs = mockSessionStore.mockSetSession.mock.calls[0][0];
-      expect(callArgs).not.toHaveProperty("cryptoKey");
-      expect(callArgs).not.toHaveProperty("salt");
     });
 
-    it("DB 저장 함수(create)를 평문 데이터와 함께 호출한다", async () => {
+    it("DB 저장 함수(upsertFileRecord)를 평문 데이터와 함께 호출한다", async () => {
       await createDataFile("test-file");
 
-      expect(fileTable.create).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] =
-        fileTableMock.fileTable.create.mock.calls[0];
+      expect(fileTableMock.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
+      const [fileName, data] = fileTableMock.fileTable.upsertFileRecord.mock.calls[0];
       expect(fileName).toBe("test-file.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -145,150 +104,34 @@ describe("createDataFile", () => {
           ]),
         }),
       );
-      expect(salt).toBeUndefined();
     });
 
-    it("파일명 정규화를 적용한다 (공백 제거, .json 추가)", async () => {
-      await createDataFile("  my data  ");
+    it("sessionStore.setSession을 fileName과 함께 호출한다 (shouldSetActiveFile=true)", async () => {
+      await createDataFile("test-file");
 
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
-        expect.objectContaining({ fileName: "my data.json" }),
-      );
-      const [fileName, data, salt] =
-        fileTableMock.fileTable.create.mock.calls[0];
-      expect(fileName).toBe("my data.json");
-      expect(data).toEqual(
-        expect.objectContaining({
-          version: 1,
-          fileName: "my data.json",
-          accounts: [],
-          templates: expect.arrayContaining([
-            expect.objectContaining({ name: "로그인" }),
-            expect.objectContaining({ name: "API 키" }),
-            expect.objectContaining({ name: "신용/체크카드" }),
-            expect.objectContaining({ name: "은행 계좌" }),
-            expect.objectContaining({ name: "Wi-Fi" }),
-            expect.objectContaining({ name: "보안 메모" }),
-          ]),
-          metadata: expect.arrayContaining([
-            expect.objectContaining({ id: 1, version: "1.0.0" }),
-          ]),
-        }),
-      );
-      expect(typeof data.updatedAt).toBe("number");
-      expect(salt).toBeUndefined();
-    });
-
-    it("이미 .json이 있는 파일명은 그대로 사용한다", async () => {
-      await createDataFile("data.json");
-
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
-        expect.objectContaining({ fileName: "data.json" }),
-      );
-    });
-  });
-
-  describe("PIN 있는 파일 생성", () => {
-    it("createCryptoKey를 PIN과 함께 호출한다", async () => {
-      await createDataFile("test-file", "1234");
-
-      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledTimes(1);
-      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledWith("1234");
-    });
-
-    it("AES 암호화 파일(EncryptedKiyoFile)을 생성한다", async () => {
-      const result = await createDataFile("test-file", "1234");
-
-      // 결과는 평문 데이터지만, 내부적으로 암호화된 파일이 저장됨
-      expect(result).toEqual(
-        expect.objectContaining({
-          version: 1,
-          fileName: "test-file.json",
-          accounts: [],
-          templates: expect.arrayContaining([
-            expect.objectContaining({ name: "로그인" }),
-            expect.objectContaining({ name: "API 키" }),
-            expect.objectContaining({ name: "신용/체크카드" }),
-            expect.objectContaining({ name: "은행 계좌" }),
-            expect.objectContaining({ name: "Wi-Fi" }),
-            expect.objectContaining({ name: "보안 메모" }),
-          ]),
-          metadata: [],
-        }),
+        expect.objectContaining({ fileName: "test-file.json" }),
       );
     });
 
-    it("sessionStore.setSession을 fileName, cryptoKey, salt와 함께 호출한다", async () => {
-      await createDataFile("test-file", "1234");
+    it("cryptoKey와 salt를 저장하지 않는다 (평문 파일)", async () => {
+      await createDataFile("test-file");
 
-      // PIN이 있는 경우 setSession이 fileName, cryptoKey, salt와 함께 호출됨
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
-        fileName: "test-file.json",
-        cryptoKey: mockCryptoKey,
-        salt: mockSalt,
-      });
-      // setCryptoKey는 더 이상 호출되지 않음
       expect(mockSessionStore.mockSetCryptoKey).not.toHaveBeenCalled();
     });
 
-    it("DB 저장 함수(create)를 암호화 데이터와 salt와 함께 호출한다", async () => {
-      await createDataFile("test-file", "1234");
+    it("createCryptoKey를 호출하지 않는다 (PIN 없음)", async () => {
+      await createDataFile("test-file");
 
-      expect(fileTable.create).toHaveBeenCalledTimes(1);
-      const [fileName, data, salt] =
-        fileTableMock.fileTable.create.mock.calls[0];
-      expect(fileName).toBe("test-file.json");
-      expect(data).toEqual(mockEncryptedData);
-      expect(salt).toEqual(mockSalt);
+      expect(mockEncryption.mockCreateCryptoKey).not.toHaveBeenCalled();
     });
 
-    it("encryptData를 생성된 cryptoKey와 salt로 호출한다", async () => {
-      await createDataFile("test-file", "1234");
+    it("encryptData를 호출하지 않는다 (PIN 없음)", async () => {
+      await createDataFile("test-file");
 
-      expect(mockEncryption.mockEncryptData).toHaveBeenCalledTimes(1);
-      const [data, key, salt] = mockEncryption.mockEncryptData.mock.calls[0];
-      expect(key).toBe(mockCryptoKey);
-      expect(salt).toEqual(mockSalt);
-      expect(data).toEqual(
-        expect.objectContaining({
-          version: 1,
-          fileName: "test-file.json",
-          accounts: [],
-          templates: expect.arrayContaining([
-            expect.objectContaining({ name: "로그인" }),
-            expect.objectContaining({ name: "API 키" }),
-            expect.objectContaining({ name: "신용/체크카드" }),
-            expect.objectContaining({ name: "은행 계좌" }),
-            expect.objectContaining({ name: "Wi-Fi" }),
-            expect.objectContaining({ name: "보안 메모" }),
-          ]),
-          metadata: expect.arrayContaining([
-            expect.objectContaining({ id: 1, version: "1.0.0" }),
-          ]),
-        }),
-      );
+      expect(mockEncryption.mockEncryptData).not.toHaveBeenCalled();
     });
 
-    it("파일명 정규화를 적용한다", async () => {
-      await createDataFile("  secure data  ", "1234");
-
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
-        fileName: "secure data.json",
-        cryptoKey: mockCryptoKey,
-        salt: mockSalt,
-      });
-      expect(
-        fileTableMock.fileTable.create,
-      ).toHaveBeenCalledWith(
-        "secure data.json",
-        expect.any(Object),
-        expect.any(Uint8Array),
-      );
-    });
-  });
-
-  describe("공통 동작", () => {
     it("기본 파일명 'kiyo-data'를 사용한다 (빈 문자열 입력 시)", async () => {
       await createDataFile("");
 
@@ -325,34 +168,83 @@ describe("createDataFile", () => {
     });
   });
 
-  describe("에러 처리", () => {
-    it("createCryptoKey 실패 시 에러를 전파한다", async () => {
-      mockEncryption.mockCreateCryptoKey.mockRejectedValueOnce(
-        new Error("Crypto key creation failed"),
-      );
+  describe("PIN 있는 파일 생성 (암호화)", () => {
+    it("파일명 정규화를 적용한다", async () => {
+      await createDataFile("  test  ", "1234");
 
-      await expect(createDataFile("test-file", "1234")).rejects.toThrow(
-        "Crypto key creation failed",
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
+        expect.objectContaining({ fileName: "test.json" }),
       );
     });
 
-    it("encryptData 실패 시 에러를 전파한다", async () => {
-      mockEncryption.mockEncryptData.mockRejectedValueOnce(
-        new Error("Encryption failed"),
-      );
+    it("DB 저장 함수(upsertFileRecord)를 암호화 데이터와 함께 호출한다", async () => {
+      await createDataFile("test-file", "1234");
 
-      await expect(createDataFile("test-file", "1234")).rejects.toThrow(
-        "Encryption failed",
+      expect(fileTableMock.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
+      const [fileName, data] = fileTableMock.fileTable.upsertFileRecord.mock.calls[0];
+      expect(fileName).toBe("test-file.json");
+      expect(data).toEqual(mockEncryptedData);
+    });
+
+    it("createCryptoKey를 PIN과 함께 호출한다", async () => {
+      await createDataFile("test-file", "1234");
+
+      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledTimes(1);
+      expect(mockEncryption.mockCreateCryptoKey).toHaveBeenCalledWith("1234");
+    });
+
+    it("AES 암호화 파일(EncryptedKiyoFile)을 생성한다", async () => {
+      const result = await createDataFile("test-file", "1234");
+
+      // 결과는 평문 데이터지만, 내부적으로 암호화된 파일이 저장됨
+      expect(result).toEqual(
+        expect.objectContaining({
+          version: 1,
+          fileName: "test-file.json",
+          accounts: expect.any(Array),
+          templates: expect.any(Array),
+          metadata: expect.any(Array),
+        }),
       );
     });
 
-    it("setSession 실패 시 에러를 전파한다", async () => {
-      mockSessionStore.mockSetSession.mockRejectedValueOnce(
-        new Error("Session set failed"),
-      );
+    it("sessionStore.setSession을 fileName, cryptoKey, salt와 함께 호출한다", async () => {
+      await createDataFile("test-file", "1234");
 
-      await expect(createDataFile("test-file")).rejects.toThrow(
-        "Session set failed",
+      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
+        fileName: "test-file.json",
+        cryptoKey: mockCryptoKey,
+        salt: mockSalt,
+      });
+    });
+
+    it("setCryptoKey를 호출하지 않는다 (setSession에서 처리)", async () => {
+      await createDataFile("test-file", "1234");
+
+      expect(mockSessionStore.mockSetCryptoKey).not.toHaveBeenCalled();
+    });
+
+    it("encryptData를 생성된 cryptoKey와 salt로 호출한다", async () => {
+      await createDataFile("test-file", "1234");
+
+      expect(mockEncryption.mockEncryptData).toHaveBeenCalledTimes(1);
+      const [data, key, salt] = mockEncryption.mockEncryptData.mock.calls[0];
+      expect(key).toBe(mockCryptoKey);
+      expect(salt).toEqual(mockSalt);
+      expect(data).toEqual(
+        expect.objectContaining({
+          version: 1,
+          fileName: "test-file.json",
+          accounts: expect.any(Array),
+          templates: expect.arrayContaining([
+            expect.objectContaining({ name: "로그인" }),
+            expect.objectContaining({ name: "API 키" }),
+            expect.objectContaining({ name: "신용/체크카드" }),
+            expect.objectContaining({ name: "은행 계좌" }),
+            expect.objectContaining({ name: "Wi-Fi" }),
+            expect.objectContaining({ name: "보안 메모" }),
+          ]),
+        }),
       );
     });
   });

@@ -18,7 +18,7 @@ import {
 } from "@/database/fileStorage";
 import type { Account, FileMetadata } from "@/models/account";
 import type { Template } from "@/models/template";
-import type { KiyoDataFile } from "@/database/fileStorage";
+import type { KiyoVaultData } from "@/models/vault";
 import {
   createTestAccounts,
   createComplexAccount,
@@ -121,7 +121,7 @@ describe("fileStorage Restore Integration Tests", () => {
 
   // Comprehensive data integrity verification
   const verifyDataIntegrity = (
-    importedFile: KiyoDataFile | null,
+    importedFile: KiyoVaultData | null,
     expectedAccounts: Account[],
     expectedTemplates: Template[],
     expectedMetadata: Metadata[],

@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAccountStore } from "@/store/accountStore";
-import { getDatabaseSnapshot, getDatabase,  } from "@/database/db";
+import { getDatabaseSnapshot, getDatabase } from "@/database/db";
 import {
   createDataFile,
   backupDataFile,
@@ -21,8 +21,8 @@ import type { Template } from "@/models/template";
 import { createTestAccounts } from "@/test/fixtures/accountFixtures";
 import { createTestTemplates } from "@/test/fixtures/templateFixtures";
 import { fromBase64 } from "@/crypto/crypto.utils";
-import { isEncryptedKiyoFile } from "@/database/fileStorage";
-import { decryptData, type EncryptedKiyoFile } from "@/crypto/encryption";
+import { isEncryptedKiyoVaultData as isEncryptedKiyoFile } from "@/crypto/encryption";
+import { decryptData, type EncryptedKiyoVaultData } from "@/crypto/encryption";
 import { accountTable } from "@/database/accountTable";
 import { templateTable } from "@/database/templateTable";
 import Dexie from "dexie";
@@ -73,7 +73,7 @@ describe("fileStorage Encryption Integration Tests", () => {
     // Helper to get encrypted file from DB by fileName
     const getEncryptedFileFromDB = async (
       fileName: string,
-    ): Promise<EncryptedKiyoFile | null> => {
+    ): Promise<EncryptedKiyoVaultData | null> => {
       const db = getDatabase();
       const fileRecord = await db.files
         .where("fileName")
@@ -81,7 +81,7 @@ describe("fileStorage Encryption Integration Tests", () => {
         .first();
       if (!fileRecord) return null;
       const fileData = JSON.parse(fileRecord.fileData);
-      return fileData as EncryptedKiyoFile;
+      return fileData as EncryptedKiyoVaultData;
     };
 
     it("PIN으로 암호화 파일을 생성한다", async () => {
@@ -246,7 +246,10 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(storeAccounts[0].title).toBe("Test Account 1");
 
       // 검증: DB 복원됨 (평문 데이터로 저장)
-      const snapshot = await getDatabaseSnapshot("encrypted-backup.json");
+      const snapshot = await getDatabaseSnapshot(
+        "encrypted-backup.json",
+        sessionState.cryptoKey ?? undefined,
+      );
       expect(snapshot.accounts).toHaveLength(1);
       expect(snapshot.accounts[0].title).toBe("Test Account 1");
       // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
@@ -287,7 +290,8 @@ describe("fileStorage Encryption Integration Tests", () => {
 
 
       // 검증: DB 변경 없음 (원본 데이터 유지)
-      const snapshot = await getDatabaseSnapshot("encrypted-wrong-pin.json");
+      const sessionState = useSessionStore.getState();
+      const snapshot = await getDatabaseSnapshot("encrypted-wrong-pin.json", sessionState.cryptoKey ?? undefined);
       expect(snapshot.accounts).toHaveLength(1);
       expect(snapshot.accounts[0].title).toBe("Test Account 1");
 
@@ -297,9 +301,9 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(storeAccounts[0].title).toBe("Test Account 1");
 
       // 검증: 세션은 변경되지 않음 (기존 세션 유지)
-      const sessionState = useSessionStore.getState();
-      expect(sessionState.activeFileName).toBe("encrypted-wrong-pin.json");
-      expect(sessionState.cryptoKey).not.toBeNull();
+      const sessionStateAfter = useSessionStore.getState();
+      expect(sessionStateAfter.activeFileName).toBe("encrypted-wrong-pin.json");
+      expect(sessionStateAfter.cryptoKey).not.toBeNull();
     });
 
     it("암호화 데이터 변조를 감지한다", async () => {
@@ -339,7 +343,8 @@ describe("fileStorage Encryption Integration Tests", () => {
       )).rejects.toThrow("PIN 불일치");
 
       // 검증: DB 변경 없음
-      const snapshot = await getDatabaseSnapshot("encrypted-tamper.json");
+      const sessionState = useSessionStore.getState();
+      const snapshot = await getDatabaseSnapshot("encrypted-tamper.json", sessionState.cryptoKey ?? undefined);
       expect(snapshot.accounts).toHaveLength(1);
       expect(snapshot.accounts[0].title).toBe("Test Account 1");
 

@@ -1,6 +1,6 @@
 import { vi, type Mock } from "vitest";
-import type { EncryptedKiyoFile } from "../../crypto/encryption";
-import type { KiyoDataFile } from "../../database/fileStorage";
+import type { EncryptedKiyoVaultData } from "../../crypto/encryption";
+import type { KiyoVaultData } from "../../models/vault";
 
 // ============================================
 // Encryption Mock Types
@@ -10,7 +10,7 @@ export interface MockEncryption {
   mockCreateCryptoKey: Mock;
   mockEncryptData: Mock;
   mockDecryptData: Mock;
-  mockIsEncryptedKiyoFile: Mock;
+  mockIsEncryptedKiyoVaultData: Mock;
   mockExportCryptoKey: Mock;
 }
 
@@ -18,7 +18,7 @@ export interface MockEncryptionOverrides {
   mockCreateCryptoKey?: Mock;
   mockEncryptData?: Mock;
   mockDecryptData?: Mock;
-  mockIsEncryptedKiyoFile?: Mock;
+  mockIsEncryptedKiyoVaultData?: Mock;
   mockExportCryptoKey?: Mock;
 }
 
@@ -40,7 +40,7 @@ export const mockEncryptionDefaults = {
     salt: "bW9ja1NhbHQ=",
     iv: "bW9ja1ZlY3Rvcg==",
     ciphertext: "bW9ja0NpcGhlcnRleHQ=",
-  } as EncryptedKiyoFile,
+  } as EncryptedKiyoVaultData,
   decryptData: {
     version: 1,
     fileName: "test.json",
@@ -48,8 +48,8 @@ export const mockEncryptionDefaults = {
     accounts: [],
     templates: [],
     metadata: [],
-  } as KiyoDataFile,
-  isEncryptedKiyoFile: false,
+  } as KiyoVaultData,
+  isEncryptedKiyoVaultData: false,
   exportCryptoKey: new Uint8Array(32), // mock exported key
 };
 
@@ -70,9 +70,9 @@ export const createEncryptionMocks = () => {
   const mockDecryptData = vi.fn().mockImplementation(async () => {
     return mockEncryptionDefaults.decryptData;
   });
-  const mockIsEncryptedKiyoFile = vi
+  const mockIsEncryptedKiyoVaultData = vi
     .fn()
-    .mockReturnValue(mockEncryptionDefaults.isEncryptedKiyoFile);
+    .mockReturnValue(mockEncryptionDefaults.isEncryptedKiyoVaultData);
   const mockExportCryptoKey = vi.fn().mockImplementation(async () => {
     return mockEncryptionDefaults.exportCryptoKey;
   });
@@ -81,7 +81,7 @@ export const createEncryptionMocks = () => {
     mockCreateCryptoKey,
     mockEncryptData,
     mockDecryptData,
-    mockIsEncryptedKiyoFile,
+    mockIsEncryptedKiyoVaultData,
     mockExportCryptoKey,
   };
 };
@@ -98,7 +98,7 @@ export const createMockEncryption = (
     mockCreateCryptoKey: overrides?.mockCreateCryptoKey ?? mocks.mockCreateCryptoKey,
     mockEncryptData: overrides?.mockEncryptData ?? mocks.mockEncryptData,
     mockDecryptData: overrides?.mockDecryptData ?? mocks.mockDecryptData,
-    mockIsEncryptedKiyoFile: overrides?.mockIsEncryptedKiyoFile ?? mocks.mockIsEncryptedKiyoFile,
+    mockIsEncryptedKiyoVaultData: overrides?.mockIsEncryptedKiyoVaultData ?? mocks.mockIsEncryptedKiyoVaultData,
     mockExportCryptoKey: overrides?.mockExportCryptoKey ?? mocks.mockExportCryptoKey,
   };
 };

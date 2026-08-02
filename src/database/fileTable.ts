@@ -1,45 +1,62 @@
 import { db } from "@/database/db";
 import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
-import { isEncryptedKiyoFile } from "@/crypto/encryption";
-import type { KiyoDataFile } from "@/database/fileStorage";
-import type { EncryptedKiyoFile } from "@/crypto/encryption";
-import type { FileData } from "@/database/db";
+import { isEncryptedKiyoVaultData as isEncryptedKiyoFile } from "@/crypto/encryption";
+import type { KiyoVaultData } from "@/models/vault";
+import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
+import type { FileRecord } from "@/database/db";
 
-interface ActiveFileInfo {
-  activeFileName: string | null;
-  salt: Uint8Array | null;
-  encrypted: boolean;
-  fileData: KiyoDataFile | EncryptedKiyoFile | null;
+export const ACTIVE_FILE_ID = "active" as const;
+
+export function parseFileData(rawData: string): KiyoVaultData | EncryptedKiyoVaultData {
+  const parsed = JSON.parse(rawData);
+
+  if (isEncryptedKiyoFile(parsed)) {
+    return parsed;
+  }
+
+  return parsed as KiyoVaultData;
 }
 
 export const fileTable = {
   /**
-   * Save active file info to files table (update salt only, don't touch other fields)
+   * Update salt and updatedAt fields only (partial update)
    */
-  async save(fileName: string, salt?: Uint8Array): Promise<void> {
+  async updateFileRecord(fileName: string, salt?: Uint8Array): Promise<void> {
     const saltBase64 = salt ? toBase64(salt) : undefined;
     const now = Date.now();
-    // Update only salt and updatedAt fields, don't touch other fields
     const updatedCount = await db.files
-      .where("fileName")
-      .equals(fileName)
+      .where("id")
+      .equals(ACTIVE_FILE_ID)
       .modify({
+        fileName,
         salt: saltBase64,
         updatedAt: now,
       });
     if (updatedCount === 0) {
       console.warn(
-        `save: No existing file record found for "${fileName}", skipping update (salt-only mode)`,
+        `updateFileRecord: No existing file record found for "${ACTIVE_FILE_ID}", skipping update (salt-only mode)`,
       );
     }
   },
 
   /**
-   * Get active file info from files table
+   * Get active file record from files table (returns raw FileRecord)
    */
-  async get(): Promise<ActiveFileInfo> {
-    // Get fileRecord from DB to check for salt as fallback
-    const fileRecord = await db.files.orderBy("updatedAt").reverse().first();
+  async getActiveFileRecord(): Promise<FileRecord | null> {
+    const record = await db.files.get(ACTIVE_FILE_ID);
+    return record ?? null;
+  },
+
+  /**
+   * Get active file info with parsed data
+   */
+  async getActiveFileInfo(): Promise<{
+    activeFileName: string | null;
+    salt: Uint8Array | null;
+    encrypted: boolean;
+    fileData: KiyoVaultData | EncryptedKiyoVaultData | null;
+  }> {
+    const fileRecord = await db.files.get(ACTIVE_FILE_ID);
     if (!fileRecord) {
       return {
         activeFileName: null,
@@ -51,31 +68,28 @@ export const fileTable = {
     return {
       activeFileName: fileRecord.fileName,
       salt: fileRecord.salt ? fromBase64(fileRecord.salt) : null,
-      fileData: JSON.parse(fileRecord.fileData),
+      fileData: parseFileData(fileRecord.fileData),
       encrypted: fileRecord.encrypted,
     };
   },
 
   /**
-   * Save file data (encrypted or plain) to files table
+   * Upsert file data (encrypted or plain) to files table
    * Determines encryption status from the data itself (EncryptedKiyoFile has encrypted: true)
    */
-  async create(
+  async upsertFileRecord(
     fileName: string,
-    fileData: KiyoDataFile | EncryptedKiyoFile,
-    salt?: Uint8Array,
+    fileData: KiyoVaultData | EncryptedKiyoVaultData,
   ): Promise<void> {
-    await db.files.clear();
     const now = Date.now();
 
-    // Check if the data itself is encrypted (EncryptedKiyoFile has encrypted: true property)
     const isEncrypted = isEncryptedKiyoFile(fileData);
-    const fileDataRecord: FileData = {
-      id: Date.now(), // Assign a unique ID
+    const fileDataRecord: FileRecord = {
+      id: ACTIVE_FILE_ID,
       fileName,
       fileData: JSON.stringify(fileData),
       encrypted: isEncrypted,
-      salt: isEncrypted && salt ? toBase64(salt) : undefined,
+      salt: isEncrypted && "salt" in fileData ? fileData.salt : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -91,13 +105,9 @@ export const fileTable = {
   },
 
   /**
-   * Clear active file info from files table
+   * Delete active file record from files table
    */
-  async clear(fileName?: string): Promise<void> {
-    if (fileName) {
-      await db.files.where("fileName").equals(fileName).delete();
-    } else {
-      await db.files.clear();
-    }
+  async deleteFileRecord(): Promise<void> {
+    await db.files.where("id").equals(ACTIVE_FILE_ID).delete();
   },
 };
