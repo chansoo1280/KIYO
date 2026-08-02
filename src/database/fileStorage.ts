@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import {
   createCryptoKey,
@@ -30,21 +29,15 @@ import { devAccounts } from "@/database/testdata";
 import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 import type { KiyoVaultData } from "@/models/vault";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
-import { exportVaultFile } from "@/database/fileExport";
-
-export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();
-
-export const normalizeDataFileName = (fileName: string) => {
-  const trimmedName = fileName.trim() || "kiyo-data";
-  return trimmedName.endsWith(".json") ? trimmedName : `${trimmedName}.json`;
-};
+import { exportVaultFile, isNativeFileStorageAvailable, normalizeDataFileName } from "./fileExport";
 
 export const isKiyoFile = (value: unknown): value is KiyoVaultData => {
   if (!value || typeof value !== "object") return false;
-  const data = value as Partial<KiyoVaultData>;
+  const data = value as Record<string, unknown>;
   return (
     data.version === 1 &&
-    (data.fileName === undefined || typeof data.fileName === "string") &&
+    typeof data.fileName === "string" &&
+    typeof data.updatedAt === "number" &&
     Array.isArray(data.accounts) &&
     Array.isArray(data.templates) &&
     Array.isArray(data.metadata)
@@ -234,24 +227,6 @@ export const backupDataFile = async (
     // Plaintext backup: export as-is
     await exportVaultFile(normalizedFileName, data);
   }
-  return data;
-};
-
-export const changePinDataFile = async (
-  fileName: string,
-  pin: string
-): Promise<KiyoVaultData> => {
-  const normalizedFileName = normalizeDataFileName(fileName);
-  const cryptoKey = useSessionStore.getState().cryptoKey ?? undefined;
-  const data: KiyoVaultData = await getDatabaseSnapshot(normalizedFileName, cryptoKey);
-
-  const { encryptedVaultData, cryptoKey: newCryptoKey, salt } = await createEncryptedVault(data, pin);
-  await persistVaultRecord(normalizedFileName, encryptedVaultData);
-  await exportVaultFile(normalizedFileName, encryptedVaultData);
-  // Update session with new cryptoKey
-  await useSessionStore.getState().setCryptoKey(newCryptoKey, salt);
-  // Update autofill token
-  await syncAutofillToken(true, newCryptoKey);
   return data;
 };
 

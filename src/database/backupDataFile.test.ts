@@ -38,6 +38,10 @@ const DBMocks = vi.hoisted(() => ({
 }));
 const exportVaultFileMock = vi.hoisted(() => ({
   exportVaultFile: vi.fn().mockResolvedValue(undefined),
+  normalizeDataFileName: vi.fn((name: string) => {
+    const trimmedName = name.trim() || "kiyo-data";
+    return trimmedName.endsWith(".json") ? trimmedName : `${trimmedName}.json`;
+  }),
 }));
 
 // Mock exportDataFile

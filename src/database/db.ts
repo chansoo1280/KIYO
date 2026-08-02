@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import Dexie, { type EntityTable, type Table } from "dexie";
 import { encryptData, type EncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { KiyoVaultData } from "@/models/vault";
@@ -12,7 +11,7 @@ import { isFileStorageError } from "@/errors/FileStorageError";
 import { fileTable, ACTIVE_FILE_ID } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
-import { exportVaultFile } from "@/database/fileExport";
+import { exportVaultFile, isNativeFileStorageAvailable } from "@/database/fileExport";
 
 export interface FileRecord {
   id: typeof ACTIVE_FILE_ID;
@@ -98,12 +97,12 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
     const data = await getDatabaseSnapshot(activeFileName, cryptoKey ?? undefined);
     
     // Also write to filesystem
-    if (!cryptoKey || !salt) {
+    if (!cryptoKey) {
       await fileTable.upsertFileRecord(activeFileName, data);
       await exportVaultFile(activeFileName, data);
       return;
     }
-    const encrypted = await encryptData(data, cryptoKey, salt);
+    const encrypted = await encryptData(data, cryptoKey, salt!);
     if (encrypted === null) {
       console.error("syncDatabaseToFile: Encryption returned null");
       return;
@@ -197,6 +196,3 @@ export const initializeDatabase = async () => {
 
 // Get database instance
 export const getDatabase = () => db;
-
-// Helper functions
-export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();

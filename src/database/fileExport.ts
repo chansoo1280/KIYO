@@ -1,8 +1,15 @@
+import { Capacitor } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { FileStorageError, FileStorageErrorCode } from "@/errors/FileStorageError";
 import type { KiyoVaultData } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
-import { isNativeFileStorageAvailable, normalizeDataFileName } from "./fileStorage";
+
+export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();
+
+export const normalizeDataFileName = (fileName: string) => {
+  const trimmedName = fileName.trim() || "kiyo-data";
+  return trimmedName.endsWith(".json") ? trimmedName : `${trimmedName}.json`;
+};
 
 /**
  * Export vault data to filesystem

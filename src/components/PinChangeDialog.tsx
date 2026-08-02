@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BaseDialog } from "@/components/BaseDialog";
 import { fileTable } from "@/database/fileTable";
-import { isVerifyPin } from "@/crypto/encryption";
+import { verifyPin } from "@/crypto/encryption";
 
 interface PinChangeDialogProps {
   open: boolean;
@@ -63,7 +63,7 @@ export const PinChangeDialog = ({
       setErrorMessage("활성 데이터 파일이 없습니다.");
       return;
     }
-    if (isEncrypted && !(await isVerifyPin(fileData, currentPin))) {
+    if (isEncrypted && !(await verifyPin(fileData, currentPin))) {
       setErrorMessage("현재 PIN이 올바르지 않습니다.");
       return;
     }

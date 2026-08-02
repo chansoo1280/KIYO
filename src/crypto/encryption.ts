@@ -106,7 +106,7 @@ export const decryptData = async (
   return JSON.parse(decoder.decode(decrypted)) as KiyoVaultData;
 };
 
-export const isVerifyPin = async (
+export const verifyPin = async (
   data: KiyoVaultData | EncryptedKiyoVaultData,
   pin: string,
 ): Promise<boolean> => {

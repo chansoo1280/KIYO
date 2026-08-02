@@ -17,6 +17,11 @@ export function parseFileData(rawData: string): KiyoVaultData | EncryptedKiyoVau
   return parsed as KiyoVaultData;
 }
 
+export type ActiveFileInfo =
+  | { encrypted: true; fileData: EncryptedKiyoVaultData; salt: Uint8Array; activeFileName: string }
+  | { encrypted: false; fileData: KiyoVaultData; salt: null; activeFileName: string }
+  | { encrypted: false; fileData: null; salt: null; activeFileName: null };
+
 export const fileTable = {
   /**
    * Update salt and updatedAt fields only (partial update)
@@ -50,12 +55,7 @@ export const fileTable = {
   /**
    * Get active file info with parsed data
    */
-  async getActiveFileInfo(): Promise<{
-    activeFileName: string | null;
-    salt: Uint8Array | null;
-    encrypted: boolean;
-    fileData: KiyoVaultData | EncryptedKiyoVaultData | null;
-  }> {
+  async getActiveFileInfo(): Promise<ActiveFileInfo> {
     const fileRecord = await db.files.get(ACTIVE_FILE_ID);
     if (!fileRecord) {
       return {
@@ -65,11 +65,21 @@ export const fileTable = {
         fileData: null,
       };
     }
+    const parsedData = parseFileData(fileRecord.fileData);
+    const isEncrypted = isEncryptedKiyoVaultData(parsedData);
+    if (isEncrypted) {
+      return {
+        activeFileName: fileRecord.fileName,
+        salt: fromBase64(fileRecord.salt!),
+        fileData: parsedData,
+        encrypted: true,
+      };
+    }
     return {
       activeFileName: fileRecord.fileName,
-      salt: fileRecord.salt ? fromBase64(fileRecord.salt) : null,
-      fileData: parseFileData(fileRecord.fileData),
-      encrypted: fileRecord.encrypted,
+      salt: null,
+      fileData: parsedData,
+      encrypted: false,
     };
   },
 

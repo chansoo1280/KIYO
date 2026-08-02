@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useAccountStore } from "@/store/accountStore";
 import { createTestAccount, createTestAccounts } from "@/test/fixtures/accountFixtures";
+import { useSessionStore } from "./sessionStore";
 
 describe("accountStore - State Management Tests", () => {
   let initialState: ReturnType<typeof useAccountStore.getState>;
 
   beforeEach(() => {
     // Reset store to initial state
+    useSessionStore.setState({activeFileName: "testFile"});
     useAccountStore.setState({
       accounts: [],
       initialized: false,

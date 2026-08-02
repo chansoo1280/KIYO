@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  normalizeDataFileName,
-  isKiyoFile,
-} from "@/database/fileStorage";
+import { normalizeDataFileName } from "@/database/fileExport";
+import { isKiyoFile } from "@/database/fileStorage";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import {
   createTestKiyoDataFile,
@@ -83,9 +81,9 @@ describe("fileStorage - pure functions", () => {
         expect(isKiyoFile(validFile)).toBe(true);
       });
 
-      it("fileName이 undefined여도 true를 반환한다 (선택적 필드)", () => {
-        const validFile = createValidKiyoFile({ fileName: undefined });
-        expect(isKiyoFile(validFile)).toBe(true);
+      it("fileName이 필수 문자열이어야 한다", () => {
+        const invalidFile = createValidKiyoFile({ fileName: undefined });
+        expect(isKiyoFile(invalidFile)).toBe(false);
       });
 
       it("빈 배열들을 가진 객체도 true를 반환한다", () => {
@@ -182,12 +180,12 @@ describe("fileStorage - pure functions", () => {
       });
     });
 
-    describe("타입 검증하지 않는 필드", () => {
-      it("updatedAt이 숫자가 아니어도 true를 반환한다 (타입 검증 안 함)", () => {
+    describe("updatedAt 타입 검증", () => {
+      it("updatedAt이 숫자가 아니면 false를 반환한다", () => {
         const invalidFile = createValidKiyoFile({
           updatedAt: "not a number" as unknown as number,
         });
-        expect(isKiyoFile(invalidFile)).toBe(true);
+        expect(isKiyoFile(invalidFile)).toBe(false);
       });
 
       it("updatedAt이 0이면 true를 반환한다 (유효한 timestamp)", () => {

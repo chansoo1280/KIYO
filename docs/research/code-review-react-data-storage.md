@@ -10,10 +10,10 @@
 
 | 심각도 | 개수 |
 |--------|------|
-| 🔴 높음 | 2 |
-| 🟡 중간 | 4 |
-| 🟢 낮음 | 6 |
-| **총계** | **12** |
+| 🔴 높음 | 1 |
+| 🟡 중간 | 1 |
+| 🟢 낮음 | 5 |
+| **총계** | **7** |
 
 ---
 
@@ -102,114 +102,9 @@ export const createDataFile = async (fileName: string, pin?: string) => {
 
 ---
 
-### 2. `isVerifyPin` 네이밍 컨벤션 위반
-**위치**: `src/crypto/encryption.ts:109`
-
-```typescript
-export const isVerifyPin = async (
-  data: KiyoVaultData | EncryptedKiyoVaultData,
-  pin: string
-): Promise<boolean>
-```
-
-**문제점**
-- `is*` 접두사는 **동기 boolean 반환** 함수 관례 (예: `isEncryptedKiyoVaultData`, `isKiyoFile`)
-- 실제로는 `async` 함수로 `Promise<boolean>` 반환
-- 호출부에서 `await isVerifyPin(...)` 써야 하는데 네이밍상 동기로 착각하기 쉬움
-
-**제안**
-- `verifyPin` 또는 `verifyPinMatches`로 rename
-- 타입: `(data, pin) => Promise<boolean>`
-
----
-
 ## 🟡 중간
 
-### 3. `createPlaintextRecord` 반환 타입 모순
-**위치**: `src/crypto/recordEncryption.ts:78-93`
-
-```typescript
-export const createPlaintextRecord = async <T>(
-  data: T
-): Promise<EncryptedRecord>  // ← 타입명이 EncryptedRecord인데 평문 생성
-
-// 실제 반환값:
-{
-  version: 1,
-  algorithm: "AES-GCM",
-  encryptedData: plaintextData,  // 실제론 평문
-  iv: new Uint8Array(12),        // 더미 IV
-  createdAt: now,
-  updatedAt: now,
-  encrypted: false,              // ← 여기가 핵심: false
-}
-```
-
-**문제점**
-- 함수명은 `createPlaintextRecord`인데 반환 타입이 `EncryptedRecord`
-- `EncryptedRecord` 타입명에 "Encrypted"가 들어가 평문 레코드에도 쓰기 혼란
-- `encrypted: false`인 레코드도 `EncryptedRecord` 타입을 쓰므로 타입 안전성 저하
-
-**제안**
-- 별도 `PlaintextRecord` 타입 도입하거나
-- 함수명을 `createUnencryptedRecord`로 변경, 반환 타입을 유니온 `EncryptedRecord | PlaintextRecord`로
-- 또는 `EncryptedRecord` → `StoredRecord` 등으로 일반화
-
----
-
-### 4. 중복 타입 정의: `EncryptedKiyoVaultData`
-**파일 비교**
-
-| 파일 | 내용 |
-|------|------|
-| `src/crypto/encryption.ts:7-13` | `interface EncryptedKiyoVaultData` + `isEncryptedKiyoVaultData` type guard |
-| `src/models/vault.ts:14-20` | `interface EncryptedKiyoVaultData` **중복 정의** (type guard 없음) |
-
-**문제점**
-- 동일 인터페이스가 두 파일에 정의됨 → 동기화 안 되면 버그 위험
-- `vault.ts`는 `encryption.ts`에서 import해서 쓰면 됨
-
-**제안**
-- `vault.ts`에서 `import { type EncryptedKiyoVaultData } from "@/crypto/encryption"` 사용
-- `vault.ts`의 중복 정의 제거
-
----
-
-### 5. 프로덕션 코드에 `console.log` 남음
-**위치**: `src/crypto/encryption.ts:21`
-
-```typescript
-export const isEncryptedKiyoVaultData = (value: unknown): value is EncryptedKiyoVaultData => {
-  const file = value as Partial<EncryptedKiyoVaultData>;
-  console.log(JSON.stringify(file));  // ← 삭제 필요
-  return file.version === 1 && ...
-}
-```
-
-**제안**: 즉시 제거
-
----
-
-### 6. `fileTable.upsertFileRecord` 불필요한 salt 체크
-**위치**: `src/database/fileTable.ts:92`
-
-```typescript
-salt: isEncrypted && "salt" in fileData ? fileData.salt : undefined,
-```
-
-**문제점**
-- `EncryptedKiyoVaultData` 인터페이스에서 `salt: string`이 **필수 필드**
-- `"salt" in fileData`는 암호화된 데이터면 항상 `true`
-- `isEncrypted`만 체크하면 됨
-
-**제안**
-```typescript
-salt: isEncrypted ? fileData.salt : undefined,
-```
-
----
-
-### 7. `syncDatabaseToFile` 평문 분기에서 `salt` 파라미터 불필요
+### 2. `syncDatabaseToFile` 평문 분기에서 `salt` 파라미터 불필요
 **위치**: `src/database/db.ts:101-105`
 
 ```typescript
@@ -232,17 +127,7 @@ if (!cryptoKey || !salt) {
 
 ## 🟢 낮음
 
-### 8. `isNativeFileStorageAvailable` 중복 정의
-| 파일 | 위치 |
-|------|------|
-| `src/database/db.ts:202` | `export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();` |
-| `src/database/fileStorage.ts:34` | `export const isNativeFileStorageAvailable = () => Capacitor.isNativePlatform();` |
-
-**제안**: 한 파일(예: `db.ts` 또는 별도 `platform.ts`)에서 정의하고 export 공유
-
----
-
-### 9. `accountTable` / `templateTable` 암호화 분기 로직 중복
+### 8. `accountTable` / `templateTable` 암호화 분기 로직 중복
 **공통 패턴** (두 파일 모두 동일하게 존재):
 - `getAll(cryptoKey?)`: 암호화 레코드면 복호화, 평문이면 파싱, 키 없으면 최소 객체 반환
 - `getById(id, cryptoKey?)`: 동일
@@ -257,7 +142,7 @@ if (!cryptoKey || !salt) {
 
 ---
 
-### 10. `backupDataFile` / `changePinDataFile` 구현 중복
+### 9. `backupDataFile` / `changePinDataFile` 구현 중복
 **위치**: `src/database/fileStorage.ts:198-217`
 
 ```typescript
@@ -285,7 +170,7 @@ export const changePinDataFile = async (fileName: string, pin: string) => {
 
 ---
 
-### 11. `isKiyoFile` 검증 느슨함
+### 10. `isKiyoFile` 검증 느슨함
 **위치**: `src/database/fileStorage.ts:41-51`
 
 ```typescript
@@ -324,7 +209,7 @@ export const isKiyoFile = (value: unknown): value is KiyoVaultData => {
 
 ---
 
-### 12. `fileTable.getActiveFileInfo` 반환 타입 union 불편
+### 11. `fileTable.getActiveFileInfo` 반환 타입 union 불편
 **위치**: `src/database/fileTable.ts:53-58`
 
 ```typescript
@@ -352,7 +237,7 @@ type ActiveFileInfo =
 
 ---
 
-### 13. `replaceDatabaseData`에서 `fileDataToSave` 로직 타입 안전성 개선 여지
+### 12. `replaceDatabaseData`에서 `fileDataToSave` 로직 타입 안전성 개선 여지
 **위치**: `src/database/db.ts:146-149`
 
 ```typescript
@@ -367,7 +252,7 @@ if (cryptoKey && !encryptedFileData || !fileDataToSave) {
 
 ---
 
-### 14. `sessionStore` persist 설정에서 `cryptoKey` 제외 확인됨 (정상)
+### 13. `sessionStore` persist 설정에서 `cryptoKey` 제외 확인됨 (정상)
 **위치**: `src/store/sessionStore.ts:77-81`
 
 ```typescript
@@ -392,16 +277,15 @@ partialize: (state) => ({
 4. ✅ 중복 `EncryptedKiyoVaultData` 타입 정리 (vault.ts에서 import)
 
 ### Phase 2: 구조 개선 (중간)
-5. `saveDataFile` 분해 및 기능별 분리
-6. `createPlaintextRecord` 네이밍/타입 정리
-7. `isNativeFileStorageAvailable` 중복 제거
-8. `isKiyoFile` 검증 강화
+5. ✅ `saveDataFile` 분해 및 기능별 분리 (11.1~11.9 완료)
+6. ✅ `isNativeFileStorageAvailable` 중복 제거 (fileExport.ts로 이동)
+7. ✅ `isKiyoFile` 검증 강화
+8. ✅ `syncDatabaseToFile` 파라미터 타입 개선 (단순화: cryptoKey만으로 분기)
 
 ### Phase 3: 리팩토링 (낮음, 시간 날 때)
 9. `accountTable` / `templateTable` 공통 CRUD 추출
-10. `backupDataFile` / `changePinDataFile` 중복 정리
-11. `syncDatabaseToFile` 파라미터 타입 개선
-12. `fileTable.getActiveFileInfo` 반환 타입 판별된 유니언으로
+10. ✅ `backupDataFile` / `changePinDataFile` 중복 정리 (`changePinDataFile` 제거, `changePin` 사용)
+11. ✅ `fileTable.getActiveFileInfo` 반환 타입 판별된 유니언으로
 
 ---
 
