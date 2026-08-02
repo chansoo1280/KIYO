@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Capacitor } from "@capacitor/core";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAccountStore } from "@/store/accountStore";
 import {
@@ -11,6 +10,7 @@ import type { Account, Metadata } from "@/models/account";
 import type { Template } from "@/models/template";
 import { createMockAccountStoreWithGetState } from "@/test/mocks/accountStoreMock";
 import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
+import { createTestKiyoDataFile } from "@/test/fixtures/databaseFixtures";
 
 const fileTableMock = vi.hoisted(() => ({
   fileTable: {
@@ -18,64 +18,26 @@ const fileTableMock = vi.hoisted(() => ({
   },
 }));
 const dbMock = vi.hoisted(() => ({
-  replaceDatabaseData: vi.fn(),
+  replaceDatabaseData: vi.fn(()=> (undefined)),
 }));
 // Mock fileTable using hoisted mock
 vi.mock("@/database/fileTable", () => fileTableMock);
 // Mock db functions
 vi.mock("@/database/db", () => dbMock);
 // Mock sessionStore
-vi.mock("@/store/sessionStore", () => ({
-  useSessionStore: {
-    getState: vi.fn(() => ({
-      setSession: vi.fn(),
-      setCryptoKey: vi.fn(),
-      clearSession: vi.fn(),
-    })),
-  },
-}));
+vi.mock("@/store/sessionStore");
 // Mock accountStore
-vi.mock("@/store/accountStore", () => ({
-  useAccountStore: {
-    getState: vi.fn(() => ({
-      setAccounts: vi.fn(),
-    })),
-  },
-}));
+vi.mock("@/store/accountStore");
 describe("openImportedDataFile", () => {
-  let mockSessionStore: ReturnType<typeof createMockSessionStore>;
-  let mockAccountStore: ReturnType<typeof createMockAccountStoreWithGetState>;
-
-  const createValidKiyoFile = (
-    overrides: {
-      version?: number;
-      fileName?: string;
-      updatedAt?: number;
-      accounts?: Account[];
-      templates?: Template[];
-      metadata?: Metadata[];
-    } = {},
-  ) => ({
-    version: 1,
-    fileName: "test.json",
-    updatedAt: Date.now(),
-    accounts: [] as Account[],
-    templates: [] as Template[],
-    metadata: [] as Metadata[],
-    ...overrides,
-  });
-
-  const validJsonString = JSON.stringify(createValidKiyoFile());
+  const mockSessionStore = createMockSessionStore();
+  const mockAccountStore = createMockAccountStoreWithGetState();
+  const testKiyoVaultData = createTestKiyoDataFile();
+  const validJsonString = JSON.stringify(testKiyoVaultData);
 
   beforeEach(() => {
-    mockSessionStore = createMockSessionStore();
-    mockAccountStore = createMockAccountStoreWithGetState();
-
     // Configure mocks
     vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
     vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
-    // Default: replaceDatabaseData resolves successfully
-    dbMock.replaceDatabaseData.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -84,58 +46,40 @@ describe("openImportedDataFile", () => {
 
   describe("정상 케이스", () => {
     it("유효한 JSON 문자열을 파싱하고 KiyoDataFile을 반환하며 모든 후속 처리를 수행한다", async () => {
-      const result = await openImportedDataFile(
-        validJsonString,
-        "1234",
-        "test.json",
-      );
+          const result = await openImportedDataFile(
+            validJsonString,
+            "1234",
+            "test.json",
+          );
 
-      expect(result).toEqual(
-        expect.objectContaining({
-          version: 1,
-          fileName: "test.json",
-          accounts: [],
-          templates: [],
-          metadata: [],
-        }),
-      );
-      expect(isKiyoFile(result)).toBe(true);
+          expect(result).toEqual(
+            expect.objectContaining(testKiyoVaultData),
+          );
+          expect(isKiyoFile(result)).toBe(true);
 
-      // replaceDatabaseData 호출 확인 (새 시그니처: 객체 파라미터)
-      expect(dbMock.replaceDatabaseData).toHaveBeenCalledTimes(1);
-      expect(dbMock.replaceDatabaseData).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            version: 1,
+          // replaceDatabaseData 호출 확인 (새 시그니처: 객체 파라미터)
+          expect(dbMock.replaceDatabaseData).toHaveBeenCalledTimes(1);
+          expect(dbMock.replaceDatabaseData).toHaveBeenCalledWith(
+            expect.objectContaining({
+              data: expect.objectContaining(testKiyoVaultData),
+            }),
+          );
+
+          // setSession 호출 확인 (fileName만 전달, cryptoKey/salt 없음)
+          expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
+          expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
             fileName: "test.json",
-            accounts: [],
-            templates: [],
-            metadata: [],
-          }),
-          fileName: "test.json",
-          cryptoKey: undefined,
-        }),
-      );
+          });
+          const callArgs = mockSessionStore.mockSetSession.mock.calls[0][0];
+          expect(callArgs).not.toHaveProperty("cryptoKey");
+          expect(callArgs).not.toHaveProperty("salt");
 
-      // setSession 호출 확인 (fileName만 전달, cryptoKey/salt 없음)
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledTimes(1);
-      expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith({
-        fileName: "test.json",
-      });
-      const callArgs = mockSessionStore.mockSetSession.mock.calls[0][0];
-      expect(callArgs).not.toHaveProperty("cryptoKey");
-      expect(callArgs).not.toHaveProperty("salt");
-
-      // create는 replaceDatabaseData 내부에서 호출되므로 별도 확인하지 않음
-      // replaceDatabaseData가 올바른 파라미터(fileName, salt)로 호출되었음을 위 검증으로 대체
-
-      // setAccounts 호출 확인
-      expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledTimes(1);
-      expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith([]);
-    });
+          // initialize 호출 확인
+          expect(mockAccountStore.mockInitialize).toHaveBeenCalledTimes(1);
+        });
 
     it("데이터가 있는 accounts, templates, metadata도 정상 처리한다", async () => {
-      const fullData = createValidKiyoFile({
+      const fullData = createTestKiyoDataFile({
         accounts: [
           {
             id: 1,
@@ -188,7 +132,7 @@ describe("openImportedDataFile", () => {
           cryptoKey: undefined,
         }),
       );
-      expect(mockAccountStore.mockSetAccounts).toHaveBeenCalledWith(fullData.accounts);
+      expect(mockAccountStore.mockInitialize).toHaveBeenCalledTimes(1);
     });
 
     it("fileName은 데이터 내부의 fileName을 사용한다 (setSession과 create에 전달)", async () => {
@@ -197,8 +141,8 @@ describe("openImportedDataFile", () => {
       expect(mockSessionStore.mockSetSession).toHaveBeenCalledWith(
         expect.objectContaining({ fileName: "test.json" }),
       );
-      // create는 replaceDatabaseData 내부에서 호출되므로 별도 호출되지 않음
-      expect(fileTableMock.fileTable.upsertFileRecord).not.toHaveBeenCalled();
+      // persistVaultRecord calls upsertFileRecord
+      expect(fileTableMock.fileTable.upsertFileRecord).toHaveBeenCalled();
     });
   });
 
@@ -215,7 +159,7 @@ describe("openImportedDataFile", () => {
       });
       expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-      expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
+      expect(mockAccountStore.mockInitialize).not.toHaveBeenCalled();
       expect(fileTableMock.fileTable.upsertFileRecord).not.toHaveBeenCalled();
     });
 
@@ -229,7 +173,7 @@ describe("openImportedDataFile", () => {
 
       for (const { version } of invalidVersions) {
         vi.clearAllMocks();
-        const invalidVersionFile = createValidKiyoFile({ version });
+        const invalidVersionFile = createTestKiyoDataFile({ version });
         const jsonString = JSON.stringify(invalidVersionFile);
 
         await expect(openImportedDataFile(jsonString, "1234", "test.json")).rejects.toThrow(FileStorageError);
@@ -238,7 +182,7 @@ describe("openImportedDataFile", () => {
         });
         expect(dbMock.replaceDatabaseData).not.toHaveBeenCalled();
         expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-        expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
+        expect(mockAccountStore.mockInitialize).not.toHaveBeenCalled();
         expect(fileTableMock.fileTable.upsertFileRecord).not.toHaveBeenCalled();
       }
     });
@@ -263,8 +207,7 @@ describe("openImportedDataFile", () => {
       ];
 
       for (const { field, value } of invalidFields) {
-        vi.clearAllMocks();
-        const invalidFile = createValidKiyoFile({
+        const invalidFile = createTestKiyoDataFile({
           [field]: value,
         });
         const jsonString = JSON.stringify(invalidFile);
@@ -286,12 +229,6 @@ describe("openImportedDataFile", () => {
       ];
 
       for (const { input, expectErrorCode } of invalidInputs) {
-        vi.clearAllMocks();
-        // Re-setup mocks after clearAllMocks
-        vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
-        vi.mocked(useAccountStore.getState).mockReturnValue(mockAccountStore.mockStore);
-        dbMock.replaceDatabaseData.mockResolvedValue(undefined);
-        vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
 
         // @ts-expect-error - 의도적으로 잘못된 타입 전달
         await expect(openImportedDataFile(input, "1234")).rejects.toThrow(FileStorageError);
@@ -311,7 +248,7 @@ describe("openImportedDataFile", () => {
       });
       // setSession은 replaceDatabaseData 이전에 호출되므로 이미 호출됨
       expect(mockSessionStore.mockSetSession).toHaveBeenCalled();
-      expect(mockAccountStore.mockSetAccounts).not.toHaveBeenCalled();
+      expect(mockAccountStore.mockInitialize).not.toHaveBeenCalled();
       // create는 replaceDatabaseData 내부에서 호출되므로 별도 확인 안 함
     });
 

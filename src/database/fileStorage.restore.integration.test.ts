@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAccountStore } from "@/store/accountStore";
-import { getDatabase } from "@/database/db";
+import { getDatabase, getDatabaseSnapshot } from "@/database/db";
 import {
   createDataFile,
   backupDataFile,
@@ -28,12 +28,14 @@ import {
   createComplexTestTemplate,
   getBuiltinTemplates,
 } from "@/test/fixtures/templateFixtures";
+import { createCryptoKey, encryptData } from "@/crypto/encryption";
 import {
   getDefaultMetadata,
 } from "@/test/helpers/databaseTestHelpers";
 import { accountTable } from "@/database/accountTable";
 import { templateTable } from "@/database/templateTable";
 import Dexie from "dexie";
+import { useTemplateStore } from "@/store/templateStore";
 
 type Metadata = FileMetadata;
 
@@ -92,7 +94,8 @@ describe("fileStorage Restore Integration Tests", () => {
     const db = getDatabase();
     await db.metadata.bulkPut(metadata);
     // Sync to account store
-    useAccountStore.getState().setAccounts(accounts);
+    await useAccountStore.getState().initialize();
+    await useTemplateStore.getState().loadTemplates();
   };
 
   // Helper to backup and restore plain data
@@ -108,14 +111,16 @@ describe("fileStorage Restore Integration Tests", () => {
     backupPin: string,
     restorePin: string,
   ) => {
-    await backupDataFile(fileName, backupPin);
-    const db = getDatabase();
-    const fileRecord = await db.files
-      .where("fileName")
-      .equals(fileName)
-      .first();
-    const encryptedFileData = JSON.parse(fileRecord!.fileData);
-    const encryptedJsonString = JSON.stringify(encryptedFileData);
+    // Get current session's snapshot and salt, create encrypted vault data with existing salt
+    // (backupDataFile doesn't save to DB anymore)
+    const sessionState = useSessionStore.getState();
+    const snapshot = await getDatabaseSnapshot(fileName, sessionState.cryptoKey ?? undefined);
+    console.log("backupWithPinAndRestoreWithPin" + snapshot.templates.map(t => t.name));
+    // Reuse existing salt from session so openImportedDataFile can decrypt with same salt
+    const existingSalt = sessionState.salt;
+    const { key } = await createCryptoKey(backupPin, existingSalt ?? undefined);
+    const encryptedVaultData = await encryptData(snapshot, key, existingSalt!);
+    const encryptedJsonString = JSON.stringify(encryptedVaultData);
     return openImportedDataFile(encryptedJsonString, restorePin, fileName);
   };
 
@@ -142,6 +147,8 @@ describe("fileStorage Restore Integration Tests", () => {
 
     // Verify templates - match by name since order is not guaranteed (DB sorts by sortOrder)
     for (const expectedTemplate of expectedTemplates) {
+      console.log("Verifying template:", expectedTemplate.name);
+      console.log("Imported templates:", importedFile!.templates.map(t => t.name));
       const importedTemplate = importedFile!.templates.find(
         (t) => t.name === expectedTemplate.name
       );
@@ -252,8 +259,9 @@ describe("fileStorage Restore Integration Tests", () => {
 
     it("PIN으로 암호화된 데이터를 백업하고 올바른 PIN으로 복원한다", async () => {
       await createDataFile("encrypted-restore.json", TEST_PIN);
+      const {cryptoKey}  = await useSessionStore.getState()
+      console.log(cryptoKey + "templateTable.getAll"+ (await templateTable.getAll(cryptoKey||undefined)).map(t => t.name));
       await populateTestData();
-
       const imported = await backupWithPinAndRestoreWithPin("encrypted-restore.json", TEST_PIN, TEST_PIN);
 
       const accounts = createTestAccounts(2);

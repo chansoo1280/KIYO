@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { backupDataFile } from "@/database/fileStorage";
-import { createCryptoKey, encryptData, isEncryptedKiyoVaultData } from "@/crypto/encryption";
+import { createCryptoKey, encryptData } from "@/crypto/encryption";
 import { useSessionStore } from "@/store/sessionStore";
 
 import {
-  createTestEncryptedFile,
   createTestKiyoDataFile,
 } from "@/test/fixtures/databaseFixtures";
 import {
@@ -19,90 +18,53 @@ import {
 
 // Import common mocks
 import { createMockSessionStore } from "@/test/mocks/sessionStoreMock";
-import { createMockEncryption } from "@/test/mocks/encryptionMock";
+import { createMockEncryption, mockEncryptionDefaults } from "@/test/mocks/encryptionMock";
 
 // ============================================
 // Hoisted Mocks - MUST be at module top level for vi.mock
 // ============================================
 
 const DBMocks = vi.hoisted(() => ({
-  getDatabaseSnapshot: vi.fn(),
-  getDatabase: vi.fn(() => ({})),
-  syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
-}));
-
-const fileTableMocks = vi.hoisted(() => ({
-  fileTable: {
-    upsertFileRecord: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// Mock db functions
-vi.mock("@/database/db", () => DBMocks);
-
-// Mock fileTable - use hoisted mock directly like createDataFile.test.ts
-vi.mock("@/database/fileTable", () => fileTableMocks);
-// Mock sessionStore
-vi.mock("@/store/sessionStore", () => ({
-  useSessionStore: {
-    getState: vi.fn(),
-  },
-}));
-
-// Mock crypto functions
-vi.mock("@/crypto/encryption", () => ({
-  createCryptoKey: vi.fn(),
-  encryptData: vi.fn(),
-  isEncryptedKiyoVaultData: vi.fn(),
-}));
-
-// Mock crypto.utils
-vi.mock("@/crypto/crypto.utils", () => ({
-  exportCryptoKey: vi.fn().mockResolvedValue("bW9ja0V4cG9ydGVkS2V5"),
-}));
-
-describe("backupDataFile", () => {
-  let mockSessionStore: ReturnType<typeof createMockSessionStore>;
-  let mockEncryption: ReturnType<typeof createMockEncryption>;
-
-  const mockCryptoKey = {} as CryptoKey;
-  const mockSalt = new Uint8Array(16);
-  const mockEncryptedFile = createTestEncryptedFile();
-
-  beforeEach(async () => {
-    // Create fresh mocks for each test
-    mockSessionStore = createMockSessionStore();
-    mockEncryption = createMockEncryption();
-
-    // Configure mock implementations
-    vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
-    vi.mocked(createCryptoKey).mockImplementation(
-      mockEncryption.mockCreateCryptoKey,
-    );
-    vi.mocked(encryptData).mockImplementation(mockEncryption.mockEncryptData);
-    vi.mocked(isEncryptedKiyoVaultData).mockImplementation(
-      mockEncryption.mockIsEncryptedKiyoVaultData,
-    );
-
-    // Override specific mock implementations for backupDataFile tests
-    mockEncryption.mockCreateCryptoKey.mockResolvedValue({
-      key: mockCryptoKey,
-      salt: mockSalt,
-    });
-    mockEncryption.mockEncryptData.mockResolvedValue(mockEncryptedFile);
-    mockEncryption.mockIsEncryptedKiyoVaultData.mockReturnValue(false);
-
-    // getDatabaseSnapshot mock - returns simple data without triggering real DB
-    DBMocks.getDatabaseSnapshot.mockImplementation(
-      async (fileName: string) => ({
+  getDatabaseSnapshot: vi.fn((fileName: string) => ({
         version: 1,
         fileName,
         updatedAt: Date.now(),
         accounts: createTestAccounts(3),
         templates: getBuiltinTemplates(),
         metadata: [{ id: 1, version: "1.0.0", createdAt: Date.now() }],
-      }),
+      }),),
+  getDatabase: vi.fn(() => ({})),
+  syncDatabaseToFile: vi.fn().mockResolvedValue(undefined),
+}));
+const exportVaultFileMock = vi.hoisted(() => ({
+  exportVaultFile: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock exportDataFile
+vi.mock("@/database/fileExport", () => exportVaultFileMock);
+// Mock db functions
+vi.mock("@/database/db", () => DBMocks);
+
+
+// Mock sessionStore
+vi.mock("@/store/sessionStore");
+
+// Mock crypto functions
+vi.mock("@/crypto/encryption");
+
+describe("backupDataFile", () => {
+  const mockSessionStore = createMockSessionStore();
+  const mockEncryption =  createMockEncryption();
+  const mockCryptoKey = mockEncryptionDefaults.createCryptoKey.key;
+  const mockSalt = mockEncryptionDefaults.createCryptoKey.salt;
+  const mockEncryptedFile = mockEncryptionDefaults.encryptData;
+
+  beforeEach(async () => {
+    vi.mocked(useSessionStore.getState).mockReturnValue(mockSessionStore.store);
+    vi.mocked(createCryptoKey).mockImplementation(
+      mockEncryption.mockCreateCryptoKey,
     );
+    vi.mocked(encryptData).mockImplementation(mockEncryption.mockEncryptData);
   });
 
   afterEach(() => {
@@ -117,12 +79,12 @@ describe("backupDataFile", () => {
       expect(DBMocks.getDatabaseSnapshot).toHaveBeenCalledWith("test.json", undefined);
     });
 
-    it("JSON 변환 후 파일 저장을 호출한다 (writeDataFile을 통해)", async () => {
+    it("JSON 변환 후 파일 저장을 호출한다 (exportVaultFile을 통해)", async () => {
       await backupDataFile("test.json", "");
 
-      // create가 평문 데이터와 함께 호출되는지 확인
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
-      const [fileName, data] = fileTableMocks.fileTable.upsertFileRecord.mock.calls[0];
+      // exportVaultFile이 평문 데이터와 함께 호출되는지 확인
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledTimes(1);
+      const [fileName, data] = exportVaultFileMock.exportVaultFile.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -214,9 +176,9 @@ describe("backupDataFile", () => {
       );
       expect(typeof result.updatedAt).toBe("number");
       expect(result.updatedAt).toBeGreaterThanOrEqual(baseTime);
-      // Check that create was called with the right filename and data containing expected properties
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
-      const [fileName, data] = fileTableMocks.fileTable.upsertFileRecord.mock.calls[0];
+      // Check that exportDataFile was called with the right filename and data containing expected properties
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledTimes(1);
+      const [fileName, data] = exportVaultFileMock.exportVaultFile.mock.calls[0];
       expect(fileName).toBe("full-data.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -236,8 +198,8 @@ describe("backupDataFile", () => {
         "my-backup.json",
         undefined,
       );
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
-      const [fileName, data] = fileTableMocks.fileTable.upsertFileRecord.mock.calls[0];
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledTimes(1);
+      const [fileName, data] = exportVaultFileMock.exportVaultFile.mock.calls[0];
       expect(fileName).toBe("my-backup.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -256,8 +218,8 @@ describe("backupDataFile", () => {
         "backup.json",
         undefined,
       );
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
-      const [fileName, data] = fileTableMocks.fileTable.upsertFileRecord.mock.calls[0];
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledTimes(1);
+      const [fileName, data] = exportVaultFileMock.exportVaultFile.mock.calls[0];
       expect(fileName).toBe("backup.json");
       expect(data).toEqual(
         expect.objectContaining({
@@ -331,11 +293,13 @@ describe("backupDataFile", () => {
     });
 
     it("fileName 정규화가 적용된다", async () => {
-      await backupDataFile("  test  ", "");
+      await backupDataFile("  secure data  ", "1234");
 
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
-      const [fileName] = fileTableMocks.fileTable.upsertFileRecord.mock.calls[0];
-      expect(fileName).toBe("test.json");
+      expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledWith(
+        "secure data.json",
+        expect.any(Object),
+      );
     });
 
     it("encryptData를 생성된 cryptoKey와 salt로 호출한다", async () => {
@@ -360,17 +324,17 @@ describe("backupDataFile", () => {
       await backupDataFile("  secure data  ", "1234");
 
       expect(mockSessionStore.mockSetSession).not.toHaveBeenCalled();
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledWith(
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledWith(
         "secure data.json",
         expect.any(Object),
       );
     });
 
-    it("DB 저장 함수(create)를 암호화 데이터와 함께 호출한다", async () => {
+    it("exportVaultFile을 암호화 데이터와 함께 호출한다", async () => {
       await backupDataFile("test.json", "1234");
 
-      expect(fileTableMocks.fileTable.upsertFileRecord).toHaveBeenCalledTimes(1);
-      const [fileName, data] = fileTableMocks.fileTable.upsertFileRecord.mock.calls[0];
+      expect(exportVaultFileMock.exportVaultFile).toHaveBeenCalledTimes(1);
+      const [fileName, data] = exportVaultFileMock.exportVaultFile.mock.calls[0];
       expect(fileName).toBe("test.json");
       expect(data).toEqual(mockEncryptedFile);
     });
@@ -408,12 +372,13 @@ describe("backupDataFile", () => {
     });
 
     it("create 실패 시 에러를 전파한다", async () => {
-      fileTableMocks.fileTable.upsertFileRecord.mockRejectedValueOnce(
-        new Error("DB save failed"),
+      exportVaultFileMock.exportVaultFile.mockRejectedValueOnce(
+        new Error("File export failed"),
       );
 
-      await expect(backupDataFile("test.json", "")).rejects.toThrow(
-        "DB save failed",
+      // Test with PIN (encrypted backup) which calls exportVaultFile
+      await expect(backupDataFile("test.json", "1234")).rejects.toThrow(
+        "File export failed",
       );
     });
 

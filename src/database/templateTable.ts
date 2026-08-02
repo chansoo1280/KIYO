@@ -25,13 +25,13 @@ export const templateTable = {
         if (record.encrypted) {
           if (!cryptoKey) {
             // Encrypted record but no key - return minimal
-            return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt } as Template;
+            throw new Error("CryptoKey is required to decrypt template records");
           }
           try {
             return await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
           } catch (error) {
             console.error("Failed to decrypt template record:", error);
-            return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt } as Template;
+            throw new Error("Failed to decrypt template record", { cause: error });
           }
         }
         // Plaintext record
@@ -39,7 +39,7 @@ export const templateTable = {
           const decoded = new TextDecoder().decode(record.encryptedData);
           return JSON.parse(decoded) as Template;
         } catch {
-          return { id: record.id, name: "", description: "", icon: "", sortOrder: 0, fields: [], createdAt: record.createdAt, updatedAt: record.updatedAt } as Template;
+          throw new Error("Failed to parse plaintext template record");
         }
       })
     );

@@ -3,7 +3,7 @@ import {
   normalizeDataFileName,
   isKiyoFile,
 } from "@/database/fileStorage";
-import { isEncryptedKiyoVaultData as isEncryptedKiyoFile } from "@/crypto/encryption";
+import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import {
   createTestKiyoDataFile,
   createTestEncryptedFile,
@@ -202,7 +202,7 @@ describe("fileStorage - pure functions", () => {
     });
   });
 
-  describe("isEncryptedKiyoFile", () => {
+  describe("isEncryptedKiyoVaultData", () => {
     const createValidEncryptedFile = (
       overrides: Parameters<typeof createTestEncryptedFile>[0] = {},
     ) => createTestEncryptedFile(overrides);
@@ -210,7 +210,7 @@ describe("fileStorage - pure functions", () => {
     describe("정상 입력", () => {
       it("올바른 EncryptedKiyoFile 객체는 true를 반환한다", () => {
         const validFile = createValidEncryptedFile();
-        expect(isEncryptedKiyoFile(validFile)).toBe(true);
+        expect(isEncryptedKiyoVaultData(validFile)).toBe(true);
       });
 
       it("모든 필수 필드가 문자열이면 true를 반환한다", () => {
@@ -219,7 +219,7 @@ describe("fileStorage - pure functions", () => {
           iv: "iv",
           ciphertext: "ciphertext",
         });
-        expect(isEncryptedKiyoFile(validFile)).toBe(true);
+        expect(isEncryptedKiyoVaultData(validFile)).toBe(true);
       });
 
       it("빈 문자열도 문자열이므로 true를 반환한다", () => {
@@ -228,7 +228,7 @@ describe("fileStorage - pure functions", () => {
           iv: "",
           ciphertext: "",
         });
-        expect(isEncryptedKiyoFile(validFile)).toBe(true);
+        expect(isEncryptedKiyoVaultData(validFile)).toBe(true);
       });
     });
 
@@ -252,7 +252,7 @@ describe("fileStorage - pure functions", () => {
           description: "KiyoDataFile 객체 (encrypted가 없음)",
         },
       ])("$description은 false를 반환한다", ({ input }) => {
-        expect(isEncryptedKiyoFile(input)).toBe(false);
+        expect(isEncryptedKiyoVaultData(input)).toBe(false);
       });
     });
 
@@ -298,7 +298,7 @@ describe("fileStorage - pure functions", () => {
         const invalidFile = createValidEncryptedFile({
           [field]: value as never,
         });
-        expect(isEncryptedKiyoFile(invalidFile)).toBe(false);
+        expect(isEncryptedKiyoVaultData(invalidFile)).toBe(false);
       });
     });
 
@@ -309,7 +309,7 @@ describe("fileStorage - pure functions", () => {
           iv: "",
           ciphertext: "",
         });
-        expect(isEncryptedKiyoFile(validFile)).toBe(true);
+        expect(isEncryptedKiyoVaultData(validFile)).toBe(true);
       });
     });
   });

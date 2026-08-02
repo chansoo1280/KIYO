@@ -1,6 +1,6 @@
 import { db } from "@/database/db";
 import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
-import { isEncryptedKiyoVaultData as isEncryptedKiyoFile } from "@/crypto/encryption";
+import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { KiyoVaultData } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { FileRecord } from "@/database/db";
@@ -10,7 +10,7 @@ export const ACTIVE_FILE_ID = "active" as const;
 export function parseFileData(rawData: string): KiyoVaultData | EncryptedKiyoVaultData {
   const parsed = JSON.parse(rawData);
 
-  if (isEncryptedKiyoFile(parsed)) {
+  if (isEncryptedKiyoVaultData(parsed)) {
     return parsed;
   }
 
@@ -83,7 +83,7 @@ export const fileTable = {
   ): Promise<void> {
     const now = Date.now();
 
-    const isEncrypted = isEncryptedKiyoFile(fileData);
+    const isEncrypted = isEncryptedKiyoVaultData(fileData);
     const fileDataRecord: FileRecord = {
       id: ACTIVE_FILE_ID,
       fileName,

@@ -1,7 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import Dexie, { type EntityTable, type Table } from "dexie";
 import { encryptData, type EncryptedKiyoVaultData } from "@/crypto/encryption";
-import { exportDataFile } from "@/database/fileStorage";
 import type { KiyoVaultData } from "@/models/vault";
 import { accountTable } from "@/database/accountTable";
 import { templateTable } from "@/database/templateTable";
@@ -13,6 +12,7 @@ import { isFileStorageError } from "@/errors/FileStorageError";
 import { fileTable, ACTIVE_FILE_ID } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
+import { exportVaultFile } from "@/database/fileExport";
 
 export interface FileRecord {
   id: typeof ACTIVE_FILE_ID;
@@ -100,7 +100,7 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
     // Also write to filesystem
     if (!cryptoKey || !salt) {
       await fileTable.upsertFileRecord(activeFileName, data);
-      await exportDataFile(data, activeFileName);
+      await exportVaultFile(activeFileName, data);
       return;
     }
     const encrypted = await encryptData(data, cryptoKey, salt);
@@ -109,7 +109,7 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
       return;
     }
     await fileTable.upsertFileRecord(activeFileName, encrypted);
-    await exportDataFile(encrypted, activeFileName);
+    await exportVaultFile(activeFileName, encrypted);
 
     // Clear any previous sync error on success
     clearSyncError?.();
