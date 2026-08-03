@@ -21,58 +21,73 @@ export function useAutoLock() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<number>(0);
   const isActiveRef = useRef(false);
-  const initializedRef = useRef(false);
+  const startedRef = useRef(false);
+  const lockedRef = useRef(false);
 
-  const resetTimer = useCallback(() => {
-    const timeout = TIMEOUT_MAP[autoLockTimeout];
-    timeoutRef.current = timeout;
-
-    if (timeout === 0 || !cryptoKey) {
-      setRemainingSeconds(0);
+  // interval callback
+  const tick = useCallback(() => {
+    timeoutRef.current -= 1;
+    
+    if (timeoutRef.current <= 0) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       isActiveRef.current = false;
+      startedRef.current = false;
+      lockedRef.current = true;
+      setRemainingSeconds(0);
+      lockDataFile().then(() => {
+        navigate("/", { replace: true });
+      });
+      return;
+    }
+    
+    setRemainingSeconds(timeoutRef.current);
+  }, [navigate]);
+
+  // 타이머 시작/재시작
+  const startTimer = useCallback(() => {
+    if (lockedRef.current) return;
+    
+    // 이미 실행 중인 타이머가 있으면 중복 방지
+    if (startedRef.current && timerRef.current) return;
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    const timeout = TIMEOUT_MAP[autoLockTimeout];
+    timeoutRef.current = timeout;
+
+    if (timeout === 0 || !cryptoKey) {
+      setRemainingSeconds(0);
+      isActiveRef.current = false;
+      startedRef.current = false;
       return;
     }
 
     setRemainingSeconds(timeout);
     isActiveRef.current = true;
+    startedRef.current = true;
 
+    timerRef.current = setInterval(tick, 1000);
+  }, [autoLockTimeout, cryptoKey, tick]);
+
+  // 설정/세션 변경 시 타이머 재시작 (직접 값 감지)
+  useEffect(() => {
+    // 잠금 상태면 무시
+    if (lockedRef.current) return;
+    
+    // 설정 변경 시 이전 타이머 정리하고 새로 시작
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    startedRef.current = false; // 재시작 허용
+    startTimer();
+  }, [autoLockTimeout, cryptoKey]);
 
-    timerRef.current = setInterval(() => {
-      timeoutRef.current -= 1;
-      setRemainingSeconds(timeoutRef.current);
-
-      if (timeoutRef.current <= 0) {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        isActiveRef.current = false;
-        // Trigger auto-lock
-        lockDataFile().then(() => {
-          navigate("/", { replace: true });
-        });
-      }
-    }, 1000);
-  }, [autoLockTimeout, cryptoKey, navigate]);
-
-  // Reset timer when settings change or session becomes active/inactive
-  useEffect(() => {
-    // Skip on initial mount to avoid synchronous setState in effect
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      return;
-    }
-    resetTimer();
-  }, [resetTimer]);
-
-  // Activity listeners
+  // 활동 감지 리셋
   useEffect(() => {
     if (!isActiveRef.current || autoLockTimeout === "none" || !cryptoKey) return;
 
@@ -95,14 +110,23 @@ export function useAutoLock() {
     };
   }, [autoLockTimeout, cryptoKey]);
 
-  // Cleanup on unmount
+  // 정리
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
   }, []);
 
-  return { remainingSeconds, resetTimer };
+  return { remainingSeconds, startTimer, stopTimer: () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    isActiveRef.current = false;
+    startedRef.current = false;
+    setRemainingSeconds(0);
+  }};
 }

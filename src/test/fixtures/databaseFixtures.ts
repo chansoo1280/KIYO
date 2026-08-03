@@ -8,7 +8,16 @@ import { createTestAccounts } from "@/test/fixtures/accountFixtures";
 import { createTestTemplates } from "@/test/fixtures/templateFixtures";
 
 /**
- * 기본 FileMetadata 테스트 데이터
+ * 기본 FileMetadata 테스트 데이터 (배열로 반환)
+ */
+export const getDefaultMetadata = (): FileMetadata[] => [{
+  id: 1,
+  version: "1.0.0",
+  createdAt: Date.now(),
+}];
+
+/**
+ * 단일 FileMetadata 객체 생성 (테스트용)
  */
 export const createTestMetadata = (): FileMetadata => ({
   id: 1,
@@ -27,7 +36,7 @@ export const createTestKiyoDataFile = (
   updatedAt: Date.now(),
   accounts: createTestAccounts(),
   templates: createTestTemplates(),
-  metadata: [createTestMetadata()],
+  metadata: [getDefaultMetadata()[0]], // 단일 객체로 사용
   ...overrides,
 });
 

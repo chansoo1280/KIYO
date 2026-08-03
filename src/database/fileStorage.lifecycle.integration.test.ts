@@ -10,27 +10,28 @@ import {
 } from "vitest";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAccountStore } from "@/store/accountStore";
-import { getDatabaseSnapshot, getDatabase} from "@/database/db";
+import { getDatabaseSnapshot, getDatabase } from "@/database/db";
 import {
   createDataFile,
   backupDataFile,
   openImportedDataFile,
 } from "@/database/fileStorage";
 import type { Account, FileMetadata } from "@/models/account";
-import { createTestAccounts } from "@/test/fixtures/accountFixtures";
-import { createTestTemplates } from "@/test/fixtures/templateFixtures";
 import type { Template } from "@/models/template";
+import { createTestAccounts } from "@/test/fixtures/accountFixtures";
+import { createTestTemplates, getBuiltinTemplates } from "@/test/fixtures/templateFixtures";
+import type { KiyoVaultData } from "@/models/vault";
 import { accountTable } from "@/database/accountTable";
 import { templateTable } from "@/database/templateTable";
-import { createTestMetadata } from "@/test/fixtures/databaseFixtures";
+import { createTestMetadata, getDefaultMetadata } from "@/test/fixtures/databaseFixtures";
 import Dexie from "dexie";
+import { useTemplateStore } from "@/store/templateStore";
 
 type Metadata = FileMetadata;
 
-
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
-describe("fileStorage Lifecycle Intergration Tests", () => {
+describe("fileStorage Lifecycle Integration Tests - Plaintext", () => {
   beforeAll(async () => {
     // Clean up test database
     try {
@@ -57,6 +58,10 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
 
   beforeEach(async () => {
     vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
+    // Ensure clean state at start of each test
+    await resetTestEnvironment();
+    // Explicitly verify store is empty
+    expect(useAccountStore.getState().accounts).toHaveLength(0);
   });
 
   afterEach(async () => {
@@ -64,7 +69,70 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
     vi.clearAllMocks();
   });
 
-  // afterEach removed - beforeEach already fully resets
+  // Helper to populate test data in database AND sync to account store
+  const populateTestData = async (
+    accounts = createTestAccounts(2),
+    templates = createTestTemplates(2),
+    metadata = getDefaultMetadata(),
+  ) => {
+    const sessionAfterCreate = useSessionStore.getState();
+    const sessionCryptoKey = sessionAfterCreate.cryptoKey;
+
+    for (const account of accounts) {
+      await accountTable.create(account, sessionCryptoKey ?? undefined);
+    }
+    for (const template of templates) {
+      await templateTable.create(template, sessionCryptoKey ?? undefined);
+    }
+    const db = getDatabase();
+    await db.metadata.bulkPut(metadata);
+    // Sync to account store
+    await useAccountStore.getState().initialize();
+    await useTemplateStore.getState().loadTemplates();
+  };
+
+  // Helper to backup and restore plain data
+  const backupAndRestore = async (fileName: string, pin: string) => {
+    const backedUp = await backupDataFile(fileName, pin);
+    const backupJson = JSON.stringify(backedUp);
+    return openImportedDataFile(backupJson, pin, fileName);
+  };
+
+  // Comprehensive data integrity verification
+  const verifyDataIntegrity = (
+    importedFile: KiyoVaultData | null,
+    expectedAccounts: Account[],
+    expectedTemplates: Template[],
+    expectedMetadata: Metadata[],
+  ) => {
+    expect(importedFile).not.toBeNull();
+    expect(importedFile!.accounts).toHaveLength(expectedAccounts.length);
+    expect(importedFile!.templates).toHaveLength(expectedTemplates.length);
+    expect(importedFile!.metadata).toHaveLength(expectedMetadata.length);
+
+    // Verify accounts - match by title since order is not guaranteed (DB sorts by updatedAt)
+    for (const expectedAccount of expectedAccounts) {
+      const importedAccount = importedFile!.accounts.find(
+        (a) => a.title === expectedAccount.title
+      );
+      expect(importedAccount).toBeDefined();
+      expect(importedAccount!.fields).toEqual(expectedAccount.fields);
+    }
+
+    // Verify templates - match by name since order is not guaranteed (DB sorts by sortOrder)
+    for (const expectedTemplate of expectedTemplates) {
+      const importedTemplate = importedFile!.templates.find(
+        (t) => t.name === expectedTemplate.name
+      );
+      expect(importedTemplate).toBeDefined();
+      expect(importedTemplate!.fields).toEqual(expectedTemplate.fields);
+    }
+
+    // Verify metadata - order should be preserved by id
+    for (let i = 0; i < expectedMetadata.length; i++) {
+      expect(importedFile!.metadata[i].version).toBe(expectedMetadata[i].version);
+    }
+  };
 
   describe("평문 파일 라이프사이클", () => {
     it("평문 데이터 파일을 생성한다", async () => {
@@ -119,7 +187,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(backedUpFile.templates).toHaveLength(7);
       expect(backedUpFile.metadata).toHaveLength(1);
 
-      // 백업 파일은 세션을 변경하지 않음 (shouldSetActiveFile=false)
+      // 백업 파일은 세션을 변경하지 않음
       const sessionState = useSessionStore.getState();
       expect(sessionState.activeFileName).toBe("backup-source.json");
     });
@@ -253,6 +321,7 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
       expect(snapshot.metadata).toHaveLength(1);
     });
   });
+
   describe("파일명 정규화 검증", () => {
     it("createDataFile, backupDataFile, openImportedDataFile 모두 파일명 정규화 적용", async () => {
       // createDataFile
@@ -287,6 +356,160 @@ describe("fileStorage Lifecycle Intergration Tests", () => {
 
       const backedUp = await backupDataFile("already-backup.json", "");
       expect(backedUp.fileName).toBe("already-backup.json");
+    });
+  });
+
+  describe("복잡한 계정 데이터 복원", () => {
+    it("필드 10개가 있는 복잡한 계정 복원", async () => {
+      await createDataFile("complex-restore.json", "");
+      // Create a complex account with many fields manually for this test
+      const complexAcct: Account = {
+        id: 1,
+        templateId: 1,
+        title: "Complex Account",
+        tags: ["complex"],
+        favorite: true,
+        fields: [
+          { id: "1-1", label: "Field 1", type: "text", value: "hello world", order: 0 },
+          { id: "1-2", label: "Field 2", type: "password", value: "p@ssw0rd!#$%^&*()_+-=[]{}|;':\",./<>?`~", order: 1 },
+          { id: "1-3", label: "Field 3", type: "email", value: "test@example.com", order: 2 },
+          { id: "1-4", label: "Field 4", type: "text", value: "value4", order: 3 },
+          { id: "1-5", label: "Field 5", type: "text", value: "value5", order: 4 },
+          { id: "1-6", label: "Field 6", type: "text", value: "value6", order: 5 },
+          { id: "1-7", label: "Field 7", type: "text", value: "value7", order: 6 },
+          { id: "1-8", label: "Field 8", type: "text", value: "value8", order: 7 },
+          { id: "1-9", label: "Field 9", type: "text", value: "value8", order: 8 },
+          { id: "1-10", label: "Field 10", type: "text", value: "value10", order: 9 },
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        websiteUrl: "https://example.com",
+        domain: "example.com",
+        packageName: "com.example.app",
+      };
+      const templates = [createTestTemplates(1)[0]];
+      const metadata: Metadata[] = [
+        { id: 1, version: "1.0.0", createdAt: Date.now() - 20000 },
+        { id: 2, version: "1.1.0", createdAt: Date.now() - 10000 },
+        { id: 3, version: "2.0.0", createdAt: Date.now() },
+      ];
+
+      const sessionAfterCreate = useSessionStore.getState();
+      const sessionCryptoKey = sessionAfterCreate.cryptoKey;
+      await accountTable.create(complexAcct, sessionCryptoKey ?? undefined);
+      for (const template of templates) {
+        await templateTable.create(template, sessionCryptoKey ?? undefined);
+      }
+      const db = getDatabase();
+      await db.metadata.bulkPut(metadata);
+      // Sync to account store
+      useAccountStore.getState().setAccounts([complexAcct]);
+
+      const backedUp = await backupDataFile("complex-backup.json", "");
+      const backupJson = JSON.stringify(backedUp);
+      const imported = await openImportedDataFile(
+        backupJson,
+        "",
+        "complex-backup.json",
+      );
+
+      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
+      const expectedTemplates = [
+        ...templates,
+        ...getBuiltinTemplates(),
+      ];
+
+      verifyDataIntegrity(
+        imported,
+        [complexAcct],
+        expectedTemplates,
+        metadata,
+      );
+
+      // 필드 순서(order) 정확히 유지되는지 검증
+      const fields = imported!.accounts[0].fields;
+      expect(fields).toHaveLength(10);
+      const sortedFields = [...fields].sort((a, b) => a.order - b.order);
+      expect(sortedFields[0].order).toBe(0);
+      expect(sortedFields[0].value).toBe("hello world");
+      expect(sortedFields[1].order).toBe(1);
+      expect(sortedFields[1].value).toBe("p@ssw0rd!#$%^&*()_+-=[]{}|;':\",./<>?`~");
+      expect(sortedFields[2].order).toBe(2);
+      expect(sortedFields[2].value).toBe("test@example.com");
+      expect(sortedFields[9].order).toBe(9);
+    });
+  });
+
+  describe("데이터 무결성 검증", () => {
+    it("메타데이터 버전이 정확히 복원된다", async () => {
+      await createDataFile("metadata-restore.json", "");
+      const metadata: Metadata[] = [
+        { id: 1, version: "1.0.0", createdAt: Date.now() - 30000 },
+        { id: 2, version: "1.5.0", createdAt: Date.now() - 20000 },
+        { id: 3, version: "2.0.0", createdAt: Date.now() - 10000 },
+      ];
+      await populateTestData([], [], metadata);
+
+      const imported = await backupAndRestore("metadata-restore.json", "");
+
+      expect(imported).not.toBeNull();
+      expect(imported!.metadata).toHaveLength(3);
+      expect(imported!.metadata[0].version).toBe("1.0.0");
+      expect(imported!.metadata[1].version).toBe("1.5.0");
+      expect(imported!.metadata[2].version).toBe("2.0.0");
+    });
+
+    it("내장 템플릿 6개가 항상 복원에 포함된다", async () => {
+      await createDataFile("builtin-templates.json", "");
+      await populateTestData([], [], []);
+
+      const imported = await backupAndRestore("builtin-templates.json", "");
+
+      expect(imported).not.toBeNull();
+      expect(imported!.templates).toHaveLength(6);
+      const builtinNames = imported!.templates.map((t) => t.name);
+      expect(builtinNames).toEqual([
+        "로그인",
+        "API 키",
+        "신용/체크카드",
+        "은행 계좌",
+        "Wi-Fi",
+        "보안 메모",
+      ]);
+    });
+
+    it("사용자 템플릿과 내장 템플릿이 모두 복원된다", async () => {
+      await createDataFile("mixed-templates.json", "");
+      const userTemplates = createTestTemplates(3);
+      await populateTestData([], userTemplates, []);
+
+      const imported = await backupAndRestore("mixed-templates.json", "");
+
+      expect(imported).not.toBeNull();
+      // 내장 템플릿 6개 + 사용자 템플릿 3개 = 9개
+      expect(imported!.templates).toHaveLength(9);
+      const userTemplateNames = userTemplates.map((t) => t.name);
+      for (const name of userTemplateNames) {
+        expect(imported!.templates.find((t) => t.name === name)).toBeDefined();
+      }
+    });
+  });
+
+  describe("에러 처리", () => {
+    it("잘못된 JSON 형식 복원 시 에러", async () => {
+      await expect(
+        openImportedDataFile("invalid json{", "", "invalid.json"),
+      ).rejects.toThrow("JSON 파싱 실패");
+    });
+
+    it("키요 파일이 아닌 JSON 복원 시 에러", async () => {
+      await expect(
+        openImportedDataFile(
+          JSON.stringify({ random: "data" }),
+          "",
+          "invalid.json",
+        ),
+      ).rejects.toThrow("is not KiyoFile");
     });
   });
 });

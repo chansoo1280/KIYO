@@ -25,7 +25,7 @@ import {
 import { useSettingsStore } from "@/store/settingsStore";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import { useTemplateStore } from "@/store/templateStore";
-import { devAccounts } from "@/database/testdata";
+import { devAccounts } from "@/data/devAccounts";
 import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 import type { KiyoVaultData } from "@/models/vault";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";

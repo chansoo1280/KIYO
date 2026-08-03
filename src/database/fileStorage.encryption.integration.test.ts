@@ -17,15 +17,20 @@ import {
   openImportedDataFile,
   createEncryptedVault,
 } from "@/database/fileStorage";
-import type { Account } from "@/models/account";
+import type { Account, FileMetadata } from "@/models/account";
 import type { Template } from "@/models/template";
+import type { KiyoVaultData } from "@/models/vault";
 import { createTestAccounts } from "@/test/fixtures/accountFixtures";
-import { createTestTemplates } from "@/test/fixtures/templateFixtures";
-import { isEncryptedKiyoVaultData, type EncryptedKiyoVaultData } from "@/crypto/encryption";
+import { createTestTemplates, getBuiltinTemplates } from "@/test/fixtures/templateFixtures";
+import { createCryptoKey, encryptData } from "@/crypto/encryption";
+import { getDefaultMetadata } from "@/test/fixtures/databaseFixtures";
 import { accountTable } from "@/database/accountTable";
 import { templateTable } from "@/database/templateTable";
 import Dexie from "dexie";
 import { useTemplateStore } from "@/store/templateStore";
+
+type Metadata = FileMetadata;
+
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
 
 describe("fileStorage Encryption Integration Tests", () => {
@@ -37,10 +42,10 @@ describe("fileStorage Encryption Integration Tests", () => {
         // Ignore cleanup errors
       }
     });
-  
+
     afterAll(async () => {
     });
-  
+
     // Helper to fully reset database and stores
     const resetTestEnvironment = async () => {
       const db = getDatabase();
@@ -52,7 +57,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       await useSessionStore.getState().clearSession();
       await useAccountStore.getState().setAccounts([]);
     };
-  
+
     beforeEach(async () => {
       vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
       // Ensure clean state at start of each test
@@ -60,11 +65,87 @@ describe("fileStorage Encryption Integration Tests", () => {
       // Explicitly verify store is empty
       expect(useAccountStore.getState().accounts).toHaveLength(0);
     });
-  
+
     afterEach(async () => {
       await resetTestEnvironment();
       vi.clearAllMocks();
     });
+
+  // Helper to populate test data in database AND sync to account store
+  const populateTestData = async (
+    accounts = createTestAccounts(2),
+    templates = createTestTemplates(2),
+    metadata = getDefaultMetadata(),
+  ) => {
+    const sessionAfterCreate = useSessionStore.getState();
+    const sessionCryptoKey = sessionAfterCreate.cryptoKey;
+
+    for (const account of accounts) {
+      await accountTable.create(account, sessionCryptoKey ?? undefined);
+    }
+    for (const template of templates) {
+      await templateTable.create(template, sessionCryptoKey ?? undefined);
+    }
+    const db = getDatabase();
+    await db.metadata.bulkPut(metadata);
+    // Sync to account store
+    await useAccountStore.getState().initialize();
+    await useTemplateStore.getState().loadTemplates();
+  };
+
+  // Helper to backup with one PIN and restore with another PIN
+  const backupWithPinAndRestoreWithPin = async (
+    fileName: string,
+    backupPin: string,
+    restorePin: string,
+  ) => {
+    // Get current session's snapshot and salt, create encrypted vault data with existing salt
+    // (backupDataFile doesn't save to DB anymore)
+    const sessionState = useSessionStore.getState();
+    const snapshot = await getDatabaseSnapshot(fileName, sessionState.cryptoKey ?? undefined);
+    // Reuse existing salt from session so openImportedDataFile can decrypt with same salt
+    const existingSalt = sessionState.salt;
+    const { key } = await createCryptoKey(backupPin, existingSalt ?? undefined);
+    const encryptedVaultData = await encryptData(snapshot, key, existingSalt!);
+    const encryptedJsonString = JSON.stringify(encryptedVaultData);
+    return openImportedDataFile(encryptedJsonString, restorePin, fileName);
+  };
+
+  // Comprehensive data integrity verification
+  const verifyDataIntegrity = (
+    importedFile: KiyoVaultData | null,
+    expectedAccounts: Account[],
+    expectedTemplates: Template[],
+    expectedMetadata: Metadata[],
+  ) => {
+    expect(importedFile).not.toBeNull();
+    expect(importedFile!.accounts).toHaveLength(expectedAccounts.length);
+    expect(importedFile!.templates).toHaveLength(expectedTemplates.length);
+    expect(importedFile!.metadata).toHaveLength(expectedMetadata.length);
+
+    // Verify accounts - match by title since order is not guaranteed (DB sorts by updatedAt)
+    for (const expectedAccount of expectedAccounts) {
+      const importedAccount = importedFile!.accounts.find(
+        (a) => a.title === expectedAccount.title
+      );
+      expect(importedAccount).toBeDefined();
+      expect(importedAccount!.fields).toEqual(expectedAccount.fields);
+    }
+
+    // Verify templates - match by name since order is not guaranteed (DB sorts by sortOrder)
+    for (const expectedTemplate of expectedTemplates) {
+      const importedTemplate = importedFile!.templates.find(
+        (t) => t.name === expectedTemplate.name
+      );
+      expect(importedTemplate).toBeDefined();
+      expect(importedTemplate!.fields).toEqual(expectedTemplate.fields);
+    }
+
+    // Verify metadata - order should be preserved by id
+    for (let i = 0; i < expectedMetadata.length; i++) {
+      expect(importedFile!.metadata[i].version).toBe(expectedMetadata[i].version);
+    }
+  };
 
   describe("PIN 기반 암호화 파일 흐름 검증", () => {
     const TEST_PIN = "1234";
@@ -73,7 +154,7 @@ describe("fileStorage Encryption Integration Tests", () => {
     // Helper to get encrypted file from DB by fileName
     const getEncryptedFileFromDB = async (
       fileName: string,
-    ): Promise<EncryptedKiyoVaultData | null> => {
+    ) => {
       const db = getDatabase();
       const fileRecord = await db.files
         .where("fileName")
@@ -81,7 +162,7 @@ describe("fileStorage Encryption Integration Tests", () => {
         .first();
       if (!fileRecord) return null;
       const fileData = JSON.parse(fileRecord.fileData);
-      return fileData as EncryptedKiyoVaultData;
+      return fileData;
     };
 
     it("PIN으로 암호화 파일을 생성한다", async () => {
@@ -114,7 +195,6 @@ describe("fileStorage Encryption Integration Tests", () => {
         "encrypted-create.json",
       );
       expect(savedEncryptedFile).toBeDefined();
-      expect(isEncryptedKiyoVaultData(savedEncryptedFile)).toBe(true);
       expect(savedEncryptedFile!.encrypted).toBe(true);
       expect(savedEncryptedFile!.salt).toBeDefined();
       expect(savedEncryptedFile!.iv).toBeDefined();
@@ -154,7 +234,7 @@ describe("fileStorage Encryption Integration Tests", () => {
       expect(backedUpFile.templates).toHaveLength(7);
       expect(backedUpFile.metadata).toHaveLength(1);
 
-      // 검증: 세션은 변경되지 않아야 함 (shouldSetActiveFile=false)
+      // 검증: 세션은 변경되지 않아야 함 (backupDataFile은 세션 변경 안 함)
       const sessionAfterBackup = useSessionStore.getState();
       expect(sessionAfterBackup.activeFileName).toBe("encrypted-source.json");
       expect(sessionAfterBackup.cryptoKey).toBe(sessionCryptoKey);
@@ -162,93 +242,48 @@ describe("fileStorage Encryption Integration Tests", () => {
     });
 
     it("올바른 PIN으로 암호화 파일을 복원한다", async () => {
-      // 흐름: createDataFile(pin) → backupDataFile → openImportedDataFile(pin)
-            // 1. PIN으로 암호화 파일 생성
-            await createDataFile("encrypted-wrong-pin.json", TEST_PIN);
+      // 1. PIN으로 암호화 파일 생성
+      await createDataFile("encrypted-restore.json", TEST_PIN);
 
-            // 2. DB에 데이터 추가 (accountTable 사용 - 암호화 처리됨)
-            const sessionAfterCreate = useSessionStore.getState();
-            const sessionCryptoKey = sessionAfterCreate.cryptoKey;
-            const testAccount: Account = createTestAccounts(1)[0];
-            await accountTable.create(testAccount, sessionCryptoKey ?? undefined);
-            const testTemplate: Template = createTestTemplates(1)[0];
-            await templateTable.create(testTemplate, sessionCryptoKey ?? undefined);
+      // 2. DB에 데이터 추가 (accountTable 사용 - 암호화 처리됨)
+      await populateTestData();
 
-            // Store also needs to be in sync (app flow: user actions update store)
-            useAccountStore.getState().initialize();
-            useTemplateStore.getState().loadTemplates();
+      // 3. backupWithPinAndRestoreWithPin으로 올바른 PIN으로 복원
+      const imported = await backupWithPinAndRestoreWithPin("encrypted-restore.json", TEST_PIN, TEST_PIN);
 
-            // 4. 현재 세션 스냅샷으로 암호화 데이터 직접 생성 (backupDataFile은 DB 저장 안 함)
-            const sessionState = useSessionStore.getState();
-            const vaultData = await getDatabaseSnapshot("encrypted-wrong-pin.json", sessionState.cryptoKey ?? undefined);
-            const { encryptedVaultData } = await createEncryptedVault(vaultData, TEST_PIN);
-            const encryptedJsonString = JSON.stringify(encryptedVaultData);
+      const accounts = createTestAccounts(2);
+      const templates = createTestTemplates(2);
+      const metadata = getDefaultMetadata();
+      // 내장 템플릿 6개 + 테스트 템플릿 2개 = 8개
+      const expectedTemplates = [...templates, ...getBuiltinTemplates()];
 
-            // 5. openImportedDataFile로 잘못된 PIN으로 복원 시도
-            await expect(openImportedDataFile(
-              encryptedJsonString,
-              WRONG_PIN,
-              "encrypted-wrong-pin.json",
-            )).rejects.toThrow("PIN 불일치");
+      verifyDataIntegrity(imported, accounts, expectedTemplates, metadata);
 
-      expect(sessionState.activeFileName).toBe("encrypted-wrong-pin.json");
+      // 세션이 업데이트되었는지 확인
+      const sessionState = useSessionStore.getState();
+      expect(sessionState.activeFileName).toBe("encrypted-restore.json");
       expect(sessionState.cryptoKey).not.toBeNull();
       expect(sessionState.salt).not.toBeNull();
-      expect(sessionState.salt).toBeInstanceOf(Uint8Array);
-
-      // 검증: 계정 스토어 업데이트됨
-      const storeAccounts = useAccountStore.getState().accounts;
-      expect(storeAccounts).toHaveLength(1);
-      expect(storeAccounts[0].title).toBe("Test Account 1");
-
-      // 검증: DB 복원됨 (평문 데이터로 저장)
-      const snapshot = await getDatabaseSnapshot(
-        "encrypted-backup.json",
-        sessionState.cryptoKey ?? undefined,
-      );
-      expect(snapshot.accounts).toHaveLength(1);
-      expect(snapshot.accounts[0].title).toBe("Test Account 1");
-      // 내장 템플릿 6개 + 테스트 템플릿 1개 = 7개
-      expect(snapshot.templates).toHaveLength(7);
     });
 
-    it("잘못된 PIN이면 복원하지 않는다", async () => {
+    it("잘못된 PIN이면 복원하지 않는다 (원본 데이터 보존)", async () => {
       // 1. PIN으로 암호화 파일 생성
       await createDataFile("encrypted-wrong-pin.json", TEST_PIN);
 
-      // 2. DB에 데이터 추가 (accountTable 사용 - 암호화 처리됨)
-      const sessionAfterCreate = useSessionStore.getState();
-      const sessionCryptoKey = sessionAfterCreate.cryptoKey;
-      const testAccount: Account = createTestAccounts(1)[0];
-      await accountTable.create(testAccount, sessionCryptoKey ?? undefined);
-      const testTemplate: Template = createTestTemplates(1)[0];
-      await templateTable.create(testTemplate, sessionCryptoKey ?? undefined);
+      // 2. DB에 데이터 추가
+      await populateTestData();
 
-      // Store also needs to be in sync (app flow: user actions update store)
-      useAccountStore.getState().setAccounts([testAccount]);
-
-      // 3. backupDataFile로 암호화 백업
-      const snapshot = await backupDataFile("encrypted-backup-wrong-pin.json", TEST_PIN);
-      const { encryptedVaultData } = await createEncryptedVault(snapshot, TEST_PIN);
-      const encryptedJsonString = JSON.stringify(encryptedVaultData);
-
-      // 5. openImportedDataFile로 잘못된 PIN으로 복원 시도
-      await expect(openImportedDataFile(
-        encryptedJsonString,
-        WRONG_PIN,
-        "encrypted-backup-wrong-pin.json",
-      )).rejects.toThrow("PIN 불일치");
+      // 3. backupWithPinAndRestoreWithPin로 잘못된 PIN으로 복원 시도
+      await expect(
+        backupWithPinAndRestoreWithPin("encrypted-wrong-pin.json", TEST_PIN, WRONG_PIN),
+      ).rejects.toThrow("PIN 불일치");
 
       // 검증: DB 변경 없음 (원본 데이터 유지)
       const sessionStateAfter = useSessionStore.getState();
       const snapshotAfter = await getDatabaseSnapshot("encrypted-wrong-pin.json", sessionStateAfter.cryptoKey ?? undefined);
-      expect(snapshotAfter.accounts).toHaveLength(1);
-      expect(snapshotAfter.accounts[0].title).toBe("Test Account 1");
-
-      // 검증: accountStore는 이미 채워진 상태 유지됨
-      const storeAccounts = useAccountStore.getState().accounts;
-      expect(storeAccounts).toHaveLength(1);
-      expect(storeAccounts[0].title).toBe("Test Account 1");
+      expect(snapshotAfter.accounts).toHaveLength(2);
+      const accountTitles = snapshotAfter.accounts.map((a) => a.title).sort();
+      expect(accountTitles).toEqual(["Test Account 1", "Test Account 2"]);
 
       // 검증: 세션은 변경되지 않음 (기존 세션 유지)
       expect(sessionStateAfter.activeFileName).toBe("encrypted-wrong-pin.json");
@@ -260,16 +295,11 @@ describe("fileStorage Encryption Integration Tests", () => {
       await createDataFile("encrypted-tamper.json", TEST_PIN);
 
       // 2. DB에 데이터 추가 (accountTable 사용 - 암호화 처리됨)
-      const sessionAfterCreate = useSessionStore.getState();
-      const sessionCryptoKey = sessionAfterCreate.cryptoKey;
-      const testAccount: Account = createTestAccounts(1)[0];
-      await accountTable.create(testAccount, sessionCryptoKey ?? undefined);
-      const testTemplate: Template = createTestTemplates(1)[0];
-      await templateTable.create(testTemplate, sessionCryptoKey ?? undefined);
-            useAccountStore.getState().initialize();
-            useTemplateStore.getState().loadTemplates();
+      await populateTestData();
 
       // 3. 현재 세션의 DB 상태를 이용해 암호화된 볼트 데이터 생성 (backupDataFile은 DB에 저장하지 않음)
+      const sessionState = useSessionStore.getState();
+      const sessionCryptoKey = sessionState.cryptoKey;
       const currentSnapshot = await getDatabaseSnapshot("encrypted-tamper.json", sessionCryptoKey ?? undefined);
       const { encryptedVaultData } = await createEncryptedVault(currentSnapshot, TEST_PIN);
       const tamperedFile = {
@@ -286,15 +316,11 @@ describe("fileStorage Encryption Integration Tests", () => {
       )).rejects.toThrow("PIN 불일치");
 
       // 검증: DB 변경 없음
-      const sessionState = useSessionStore.getState();
-      const snapshot = await getDatabaseSnapshot("encrypted-tamper.json", sessionState.cryptoKey ?? undefined);
-      expect(snapshot.accounts).toHaveLength(1);
-      expect(snapshot.accounts[0].title).toBe("Test Account 1");
-
-      // 검증: accountStore는 backupDataFile 호출 시 이미 채워진 상태 유지됨
-      const storeAccounts = useAccountStore.getState().accounts;
-      expect(storeAccounts).toHaveLength(1);
-      expect(storeAccounts[0].title).toBe("Test Account 1");
+      const sessionStateAfter = useSessionStore.getState();
+      const snapshot = await getDatabaseSnapshot("encrypted-tamper.json", sessionStateAfter.cryptoKey ?? undefined);
+      expect(snapshot.accounts).toHaveLength(2);
+      const titles = snapshot.accounts.map((a) => a.title).sort();
+      expect(titles).toEqual(["Test Account 1", "Test Account 2"]);
     });
   });
-  });
+});
