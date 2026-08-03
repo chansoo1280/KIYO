@@ -22,7 +22,7 @@ const TemplateEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
-  const { templates, loadTemplates, createTemplate, updateTemplate, getTemplate } =
+  const { templates, loadTemplates, createTemplate, updateTemplate, deleteTemplate, getTemplate } =
     useTemplateStore();
 
   const [form, setForm] = useState<
@@ -30,6 +30,7 @@ const TemplateEdit = () => {
   >(initialTemplate);
   const [errors, setErrors] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -163,117 +164,173 @@ const TemplateEdit = () => {
     navigate("/templates");
   };
 
+  const handleDelete = async () => {
+    if (!isEdit || !id) return;
+    await deleteTemplate(id);
+    navigate("/templates");
+    setShowDeleteConfirm(false);
+  };
+
   return (
-    <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <header className="flex items-center justify-between gap-3">
-          <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
-            {isEdit ? "템플릿 수정" : "새 템플릿"}
-          </h1>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)]"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-            >
-              저장
-            </button>
-          </div>
-        </header>
+    <>
+      <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+          <header className="flex items-center justify-between gap-3">
+            <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
+              {isEdit ? "템플릿 수정" : "새 템플릿"}
+            </h1>
+            <div className="flex items-center gap-2">
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="rounded-full border border-red-200 bg-[var(--color-bg)] px-4 py-2 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+                >
+                  삭제
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
+              >
+                저장
+              </button>
+            </div>
+          </header>
 
-        {errors.length > 0 && (
-          <div className="rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20">
-            <ul className="space-y-1 text-sm text-red-600 dark:text-red-400">
-              {errors.map((err, i) => (
-                <li key={i}>• {err}</li>
+          {errors.length > 0 && (
+            <div className="rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20">
+              <ul className="space-y-1 text-sm text-red-600 dark:text-red-400">
+                {errors.map((err, i) => (
+                  <li key={i}>• {err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 기본 정보 섹션 */}
+          <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+            <h2 className="text-lg font-semibold text-[var(--color-text-h)]">기본 정보</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  템플릿 이름
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="예: 로그인, API 키, 신용카드"
+                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  설명 (선택)
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="이 템플릿에 대한 설명을 입력하세요."
+                  rows={2}
+                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  아이콘
+                </label>
+                <IconPicker
+                  value={form.icon}
+                  onChange={handleIconSelect}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* 필드 정의 섹션 */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-[var(--color-text-h)]">필드 정의</h2>
+              <button
+                type="button"
+                onClick={addField}
+                className="rounded-xl bg-[var(--color-accent-bg)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
+              >
+                + 필드 추가
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {form.fields.map((field, index) => (
+                <TemplateFieldEditor
+                  key={`${index}-${field.label}`}
+                  field={field}
+                  index={index}
+                  onChange={updateField}
+                  onMoveUp={moveFieldUp}
+                  onMoveDown={moveFieldDown}
+                  onDelete={deleteField}
+                  isEncrypted={
+                    FIELD_TYPE_OPTIONS.find((t) => t.value === field.type)?.encrypted ?? false
+                  }
+                  allLabels={form.fields.map((f) => f.label)}
+                />
               ))}
-            </ul>
-          </div>
-        )}
-
-        {/* 기본 정보 섹션 */}
-        <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
-          <h2 className="text-lg font-semibold text-[var(--color-text-h)]">기본 정보</h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                템플릿 이름
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="예: 로그인, API 키, 신용카드"
-                className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-              />
             </div>
+          </section>
+        </div>
+      </main>
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                설명 (선택)
-              </label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="이 템플릿에 대한 설명을 입력하세요."
-                rows={2}
-                className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                아이콘
-              </label>
-              <IconPicker
-                value={form.icon}
-                onChange={handleIconSelect}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* 필드 정의 섹션 */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[var(--color-text-h)]">필드 정의</h2>
-            <button
-              type="button"
-              onClick={addField}
-              className="rounded-xl bg-[var(--color-accent-bg)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-confirm-title"
+        >
+          <div className="bg-[var(--color-bg)] rounded-3xl p-6 w-full max-w-sm mx-4 shadow-xl">
+            <h3
+              id="delete-confirm-title"
+              className="text-lg font-semibold text-[var(--color-text-h)] mb-2"
             >
-              + 필드 추가
-            </button>
+              템플릿 삭제
+            </h3>
+            <p className="text-[var(--color-text)] mb-6">
+              "{form.name}" 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수
+              없습니다.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+              >
+                삭제
+              </button>
+            </div>
           </div>
-
-          <div className="space-y-3">
-            {form.fields.map((field, index) => (
-              <TemplateFieldEditor
-                key={`${index}-${field.label}`}
-                field={field}
-                index={index}
-                onChange={updateField}
-                onMoveUp={moveFieldUp}
-                onMoveDown={moveFieldDown}
-                onDelete={deleteField}
-                isEncrypted={
-                  FIELD_TYPE_OPTIONS.find((t) => t.value === field.type)?.encrypted ?? false
-                }
-                allLabels={form.fields.map((f) => f.label)}
-              />
-            ))}
-          </div>
-        </section>
-      </div>
-    </main>
+        </div>
+      )}
+    </>
   );
 };
 
