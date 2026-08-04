@@ -53,15 +53,11 @@ describe("fileStorage Lifecycle Integration Tests - Plaintext", () => {
     await db.metadata.clear();
     await db.files.clear();
     await useSessionStore.getState().clearSession();
-    useAccountStore.getState().setAccounts([]);
+    await useAccountStore.getState().clearAccounts();
   };
 
   beforeEach(async () => {
     vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
-    // Ensure clean state at start of each test
-    await resetTestEnvironment();
-    // Explicitly verify store is empty
-    expect(useAccountStore.getState().accounts).toHaveLength(0);
   });
 
   afterEach(async () => {

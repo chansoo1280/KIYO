@@ -13,9 +13,10 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 - **도메인/패키지 매칭** - 웹사이트 도메인과 앱 패키지명으로 계정 자동 매칭
 - **비밀번호 생성기** - 길이, 문자 종류 커스터마이징 가능한 안전한 비밀번호 생성
 - **즐겨찾기·태그·템플릿** - 계정 분류와 자주 쓰는 필드 템플릿 관리
-- **안전한 세션 관리** - 암호화 키를 디스크에 저장하지 않고 DataStore로 저장 (30분 만료)
+- **안전한 세션 관리** - 암호화 키를 디스크에 저장하지 않고 메모리에만 보관
 - **Android Keystore 연동** - 자동완성용 SQLite DB 마스터 키를 Keystore로 래핑하여 평문 저장 방지
 - **Autofill 세션 저장** - DataStore로 프로세스 재시작 후에도 자동완성 세션 유지 (30분 만료)
+- **자동 잠금 (Auto-lock)** - `none` / `1m` / `10m` / `30m` 4단계 설정 (활동 감지 시 타이머 리셋, 암호화 키 상실 시 즉시 잠금)
 
 ## Tech Stack
 
@@ -25,7 +26,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 | **Native Bridge**  | Capacitor 8 (Android)                                           |
 | **Local DB**       | Dexie.js (IndexedDB)                                            |
 | **Crypto**         | Web Crypto API (PBKDF2 + AES-GCM)                               |
-| **Android Native** | Kotlin, AutofillService (API 26+), SQLiteOpenHelper             |
+| **Android Native** | Kotlin, AutofillService (API 26+), SQLiteOpenHelper, Android Keystore, DataStore (Preferences) |
 | **Testing**        | Vitest (unit/integration)                                       |
 
 ## Architecture
@@ -38,33 +39,70 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
        │                                           │
        ▼                                           ▼
 ┌─────────────┐                           ┌──────────────────┐
-│  IndexedDB  │                           │ SQLite Database  │
+│  IndexedDB  │                           │ SQLCipher DB     │
 │  (Dexie)    │                           │ (Autofill Repo)  │
 │  - 계정/설정 │                           │  - 자동완성용 계정 │
 └─────────────┘                           └────────┬─────────┘
        │                                           │
-       │ 파일 시스템 (Documents)                   │ Android Keystore
-       ▼                                           ▼
-┌─────────────┐                           ┌──────────────────┐
-│  암호화 JSON │                           │  kiyo_master_key │
-│  (PBKDF2+AES)│                           │  (AES-256-GCM)   │
-└─────────────┘                           └──────────────────┘
+       │ 파일 시스템 (Documents)                   │
+       ▼                                           │
+┌─────────────┐                           ┌────────▼────────┐
+│  암호화 JSON │                           │  DB_KEY (AES-256)│
+│  (PBKDF2+AES)│                           │  SQLCipher 암호화 │
+└─────────────┘                           └────────┬────────┘
                                                    │
-                  DataStore (autofill_prefs)       │
-                          ┌────────────────────────┘
-                          ▼
-                 ┌──────────────────┐
-                 │  Autofill Token  │
-                 │  (30분 만료)      │
-                 └──────────────────┘
+                                                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Android Keystore                            │
+│  ┌────────────────────┐                                         │
+│  │ kiyo_master_key    │                                         │
+│  │ (AES-256-GCM, TEE) │                                         │
+│  └─────────┬──────────┘                                         │
+│            │                                                     │
+│            ▼                                                     │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                  DatabaseKeyManager                       │    │
+│  │  - DB_KEY: random 32-byte ByteArray                      │    │
+│  │  - Encrypt with kiyo_master_key (AES-256-GCM)            │    │
+│  │  - Store encrypted in kiyo_security_prefs DataStore      │    │
+│  │  - getKey(): SecretKey (for SQLCipher)                   │    │
+│  └─────────────────────┬────────────────────────────────────┘    │
+└────────────────────────┼─────────────────────────────────────────┘
+                         │
+                         ▼
+              ┌─────────────────────────┐
+              │ kiyo_security_prefs     │
+              │ DataStore               │
+              │                         │
+              │ - db_encrypted_key      │
+              │   { "iv": "...",         │
+              │     "ciphertext": "..." }│
+              └─────────────────────────┘
+
+    ┌─────────────────────────────────────────────┐
+    │              autofill_prefs                  │
+    │              DataStore (별도)                 │
+    │                                             │
+    │  - autofill_token (String)                  │
+    │  - token_expire_at (Long, 30분)             │
+    │  - is_encrypted (String "true"/"false")     │
+    └─────────────────────────────────────────────┘
+           ▲
+           │ (AutofillService.onFillRequest 시에만 사용)
+           │
+    ┌──────┴──────┐
+    │ Autofill    │
+    │ Service     │
+    └─────────────┘
 ```
 
 - **React App**: UI, 계정 관리, 설정, 암호화/복호화 수행
 - **Capacitor Plugin**: React ↔ Native 통신 브리지 (세션 키 전달, 계정 동기화, 자동완성 상태 확인, 토큰 관리)
-- **AutofillService**: Android 시스템 자동완성 제공 (필드 탐지, 계정 매칭, FillResponse 구성, DataStore 토큰 검증)
+- **AutofillService**: Android 시스템 자동완성 제공 (필드 탐지, 계정 매칭, FillResponse 구성, `autofill_prefs` 토큰 검증)
 - **KeystoreManager**: Android Keystore 마스터 키(`kiyo_master_key`) 생성/관리, DB_KEY 암호화/복호화
-- **DatabaseKeyManager**: DataStore에서 암호화된 DB_KEY 읽기/쓰기, Keystore로 래핑/언래핑
-- **AutofillDataStore**: Preferences DataStore 래퍼, 자동완성 토큰/만료/암호화 상태 저장 (30분 만료)
+- **DatabaseKeyManager**: `kiyo_security_prefs` DataStore에서 암호화된 DB_KEY 읽기/쓰기, Keystore로 래핑/언래핑
+- **AutofillDataStore**: `autofill_prefs` Preferences DataStore 래퍼, 자동완성 토큰/만료/암호화 상태 저장 (30분 만료, **Keystore와 무관**)
+- **SQLCipher DB**: `AutofillRepository`가 사용하는 암호화된 SQLite DB (DB_KEY로 암호화)
 
 ## Security
 
@@ -77,7 +115,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 
 ### 키 관리
 
-- **PIN 검증**: 저장된 솔트로 키 파생 → 복호화 시도 → 성공 시 세션에 키 보관
+- **PIN 검증**: 저장된 솔트로 키 파생 → 복호화 시도 → 성공 시 세션에 키 보관 (메모리만)
 - **Autofill 세션**: DataStore(`autofill_prefs`)에 토큰/만료/암호화 상태 저장, 30분 만료, 프로세스 재시작 후 유지
 
 ### Android Keystore 연동 (Autofill DB 보호)
@@ -90,7 +128,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
   1. DataStore(`kiyo_security_prefs`)에서 암호화된 DB_KEY 읽기 (`db_encrypted_key`)
   2. Keystore 마스터 키로 복호화 → 평문 DB_KEY 획득
   3. 최초 호출 시: 새 DB_KEY 생성 → 마스터 키로 암호화 → DataStore 저장
-- **EncryptedKey 포맷**: JSON (version, iv[12bytes], ciphertext[AES-GCM 태그 포함])
+- **EncryptedKey 포맷**: JSON `{ "iv": "...", "ciphertext": "..." }` (12바이트 IV + AES-GCM 태그 포함 ciphertext)
 - **이점**: DB_KEY가 평문으로 DataStore에 저장되지 않음, 프로세스 종료 후에도 안전하게 복구 가능
 
 ### 데이터 저장소별 보안
@@ -125,7 +163,6 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 - `setAutofillToken(token, expireAt, isEncrypted)` - PIN 인증 성공 시 호출
 - `clearAutofillToken()` - 로그아웃, 볼트 전환 시 호출
 - `setVaultEncryptionStatus(isEncrypted)` - 볼트 생성/열기 시 호출
-
 
 ## Installation
 
