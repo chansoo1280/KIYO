@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField, FieldType } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
@@ -6,6 +6,8 @@ import { PasswordGenerator } from "@/components/PasswordGenerator";
 import { WebsiteSelector } from "@/components/WebsiteSelector";
 import { processWebsiteUrl } from "@/utils/urlUtils";
 import { PasswordField } from "@/components/PasswordField";
+import { useSessionStore } from "@/store/sessionStore";
+import { fileTable } from "@/database/fileTable";
 
 const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();
@@ -13,6 +15,21 @@ const AccountEditor = ({ account }: { account: Account }) => {
 
   const updateAccount = useAccountStore((state) => state.updateAccount);
   const addAccount = useAccountStore((state) => state.addAccount);
+
+  useEffect(() => {
+    const checkFileAndNavigate = async () => {
+      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+      const { cryptoKey } = useSessionStore.getState();
+      if (!activeFileName) {
+        navigate("/", { replace: true });
+        return;
+      } else if (encrypted && !cryptoKey) {
+        navigate("/auth", { replace: true });
+        return;
+      }
+    };
+    checkFileAndNavigate();
+  }, [navigate]);
 
   const [title, setTitle] = useState(account.title);
   const [tags, setTags] = useState<string[]>(account.tags);
@@ -284,9 +301,63 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   }
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
+              ) : field.type === "url" ? (
+                <input
+                  type="url"
+                  value={field.value}
+                  onChange={(event) =>
+                    updateField(field.id, { value: event.target.value })
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                  placeholder="https://example.com"
+                />
+              ) : field.type === "number" ? (
+                <input
+                  type="number"
+                  value={field.value}
+                  onChange={(event) =>
+                    updateField(field.id, { value: event.target.value })
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                />
+              ) : field.type === "date" ? (
+                <input
+                  type="date"
+                  value={field.value}
+                  onChange={(event) =>
+                    updateField(field.id, { value: event.target.value })
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                />
+              ) : field.type === "select" ? (
+                <select
+                  value={field.value}
+                  onChange={(event) =>
+                    updateField(field.id, { value: event.target.value })
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                >
+                  {(field.options || []).map((opt, idx) => (
+                    <option key={idx} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : field.type === "totp" ? (
+                <input
+                  type="text"
+                  value={field.value}
+                  onChange={(event) =>
+                    updateField(field.id, { value: event.target.value })
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+                  placeholder="TOTP 코드 (6자리)"
+                  maxLength={6}
+                  inputMode="numeric"
+                />
               ) : (
                 <input
-                  type={field.type === "number" ? "number" : "text"}
+                  type="text"
                   value={field.value}
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })

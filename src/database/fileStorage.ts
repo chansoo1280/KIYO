@@ -145,7 +145,7 @@ export const createDataFile = async (
 
   // Initialize DB with builtin templates FIRST
   const metadata = [await initializeDatabase()];
-  if(import.meta.env.DEV) await accountTable.initializeDevData(devAccounts);
+  if (import.meta.env.DEV && !import.meta.env.VITE_E2E) await accountTable.initializeDevData(devAccounts);
   if (pin) {
     // For PIN case, we need cryptoKey to create templates
     // Use the SAME key/salt for both template encryption and vault encryption

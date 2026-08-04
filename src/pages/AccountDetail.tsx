@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import { PasswordField } from "@/components/PasswordField";
+import { useSessionStore } from "@/store/sessionStore";
+import { fileTable } from "@/database/fileTable";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -17,6 +19,21 @@ const AccountDetail = () => {
   const account = storedAccount ?? (location.state?.account as Account | undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteAccount, updateAccount } = useAccountStore();
+
+  useEffect(() => {
+    const checkFileAndNavigate = async () => {
+      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+      const { cryptoKey } = useSessionStore.getState();
+      if (!activeFileName) {
+        navigate("/", { replace: true });
+        return;
+      } else if (encrypted && !cryptoKey) {
+        navigate("/auth", { replace: true });
+        return;
+      }
+    };
+    checkFileAndNavigate();
+  }, [navigate]);
 
   // Simple clipboard copy without auto-clear
   const copyToClipboard = async (text: string) => {

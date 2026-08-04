@@ -5,6 +5,7 @@ import { useAccountStore } from "@/store/accountStore";
 import BottomTabs from "@/components/BottomTabs";
 import { useSessionStore } from "@/store/sessionStore";
 import TemplatePicker from "@/components/TemplatePicker";
+import { fileTable } from "@/database/fileTable";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -17,22 +18,23 @@ const AccountList = () => {
   const { activeFileName: fileName } = useSessionStore((state) => state);
 
   useEffect(() => {
-    // const checkFileAndNavigate = async () => {
-    //   const { activeFileName, encrypted } = await get();
-    //   if (!activeFileName) {
-    //     navigate("/", {
-    //       replace: true,
-    //     });
-    //     return;
-    //   } else if (encrypted) {
-    //     navigate("/auth", {
-    //       replace: true,
-    //     });
-    //     return;
-    //   }
-    // };
-    // checkFileAndNavigate();
-  }, []);
+    const checkFileAndNavigate = async () => {
+      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+      const { cryptoKey } = useSessionStore.getState();
+      if (!activeFileName) {
+        navigate("/", {
+          replace: true,
+        });
+        return;
+      } else if (encrypted && !cryptoKey) {
+        navigate("/auth", {
+          replace: true,
+        });
+        return;
+      }
+    };
+    checkFileAndNavigate();
+  }, [navigate]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });

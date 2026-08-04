@@ -18,7 +18,6 @@ export const isEncryptedKiyoVaultData = (
   if (!value || typeof value !== "object") return false;
 
   const file = value as Partial<EncryptedKiyoVaultData>;
-  console.log(JSON.stringify(file));
 
   return (
     file.version === 1 &&

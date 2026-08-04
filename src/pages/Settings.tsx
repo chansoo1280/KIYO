@@ -31,13 +31,22 @@ const Settings = () => {
   const { theme, toggleTheme, fontSize, setFontSize, autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
   const [isEncrypted, setIsEncrypted] = useState(false);
 
+  // Combined check for encryption status and navigation
   useEffect(() => {
-    const checkEncryption = async () => {
-      const { encrypted } = await fileTable.getActiveFileInfo();
+    const checkFileAndNavigate = async () => {
+      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+      const { cryptoKey: currentCryptoKey } = useSessionStore.getState();
       setIsEncrypted(encrypted);
+      if (!activeFileName) {
+        navigate("/", { replace: true });
+        return;
+      } else if (encrypted && !currentCryptoKey) {
+        navigate("/auth", { replace: true });
+        return;
+      }
     };
-    checkEncryption();
-  }, [fileName, cryptoKey]);
+    checkFileAndNavigate();
+  }, [navigate, fileName, cryptoKey]);
 
   const defaultBackupFileName = (() => {
     const isBackup = /-backup$/i.test(
@@ -45,25 +54,6 @@ const Settings = () => {
     );
     return `${fileName}${isBackup ? "" : "-backup"}.json`;
   })();
-
-  const checkFileAndNavigate = async () => {
-    // const { activeFileName, encrypted } = await fileTable.get();
-    // setIsEncrypted(encrypted);
-    // if (!activeFileName) {
-    //   navigate("/", {
-    //     replace: true,
-    //   });
-    //   return;
-    // } else if (encrypted) {
-    //   navigate("/auth", {
-    //     replace: true,
-    //   });
-    //   return;
-    // }
-  };
-  useEffect(() => {
-    checkFileAndNavigate();
-  }, []);
 
   const handleBackup = async ({
     fileName,

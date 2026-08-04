@@ -11,16 +11,6 @@ export type FieldType =
   | "secureText"
   | "secureTextarea";
 
-export const ENCRYPTED_FIELD_TYPES: FieldType[] = [
-  "password",
-  "totp",
-  "secureText",
-  "secureTextarea",
-];
-
-export function isEncryptedType(type: FieldType): boolean {
-  return ENCRYPTED_FIELD_TYPES.includes(type);
-}
 
 export function getFieldTypeLabel(type: FieldType): string {
   const labels: Record<FieldType, string> = {
