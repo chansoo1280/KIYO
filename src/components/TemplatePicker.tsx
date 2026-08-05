@@ -1,6 +1,5 @@
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template } from "@/models/template";
-import type { Account, AccountField } from "@/models/account";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -17,10 +16,10 @@ const DEFAULT_TEMPLATE: Template = {
   icon: "📝",
   sortOrder: -1,
   fields: [
-    { label: "제목", type: "text", placeholder: "계정 제목", defaultValue: "" },
-    { label: "아이디/이메일", type: "email", placeholder: "아이디 또는 이메일", defaultValue: "" },
-    { label: "비밀번호", type: "password", placeholder: "비밀번호", defaultValue: "" },
-    { label: "메모", type: "textarea", placeholder: "메모", defaultValue: "" },
+    { label: "제목", type: "text", defaultValue: "" },
+    { label: "아이디/이메일", type: "email", defaultValue: "" },
+    { label: "비밀번호", type: "password", defaultValue: "" },
+    { label: "메모", type: "textarea", defaultValue: "" },
   ],
   createdAt: 0,
   updatedAt: 0,
@@ -41,35 +40,9 @@ const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
   const displayTemplates = [DEFAULT_TEMPLATE, ...validTemplates];
 
   const handleSelect = (template: Template) => {
-      // TemplateField[]를 AccountField[]로 변환
-      const accountFields: AccountField[] = template.fields.map((field, index) => ({
-        id: `${template.id}-${index + 1}`,
-        accountId: 0,
-        label: field.label,
-        type: field.type,
-        value: field.defaultValue || "",
-        order: index + 1,
-        options: field.options,
-      }));
-
-      const newAccount: Account = {
-        id: 0,
-        templateId: template.id as unknown as number,
-        title: "",
-        description: "",
-        tags: [],
-        favorite: false,
-        createdAt: 0,
-        updatedAt: 0,
-        fields: accountFields,
-        websiteUrl: "",
-        domain: "",
-        packageName: "",
-      };
-
       onClose();
-      // AccountEdit로 이동하면서 템플릿 데이터 전달
-      navigate("/account/edit", { state: { account: newAccount, templateId: template.id } });
+      // templateId만 전달하고 AccountEdit에서 템플릿 로드 및 필드 생성 처리
+      navigate("/account/edit", { state: { templateId: template.id } });
     };
 
   return (

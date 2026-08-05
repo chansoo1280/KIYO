@@ -14,7 +14,6 @@ export interface Template {
 export interface TemplateField {
   label: string;
   type: FieldType;
-  placeholder?: string;
   defaultValue?: string;
   options?: string[];
 }

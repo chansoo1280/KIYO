@@ -20,7 +20,7 @@ const FieldTypeSelector = ({
     >
       {FIELD_TYPE_OPTIONS.map((t) => (
         <option key={t.value} value={t.value}>
-          {t.label} {t.encrypted ? "🔒" : ""}
+          {t.label}
         </option>
       ))}
     </select>

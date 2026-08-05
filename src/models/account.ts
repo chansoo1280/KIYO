@@ -14,7 +14,7 @@ export interface AccountField {
 
 export interface Account {
   id: number;
-  templateId: number;
+  templateId: string;
   title: string;
   description?: string;
   tags: string[];

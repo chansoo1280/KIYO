@@ -7,7 +7,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, "id" | "createdAt" | "updatedAt">
     icon: "🔐",
     sortOrder: 0,
     fields: [
-      { label: "웹사이트/앱", type: "url", placeholder: "https://example.com", defaultValue: "" },
+      { label: "웹사이트/앱", type: "url", defaultValue: "" },
       { label: "아이디/이메일", type: "email", defaultValue: "" },
       { label: "비밀번호", type: "password", defaultValue: "" },
       { label: "2FA 비밀키 (TOTP)", type: "totp", defaultValue: "" },
@@ -34,8 +34,8 @@ export const BUILTIN_TEMPLATES: Omit<Template, "id" | "createdAt" | "updatedAt">
     sortOrder: 2,
     fields: [
       { label: "카드명", type: "text", defaultValue: "" },
-      { label: "카드번호", type: "secureText", defaultValue: "" },
-      { label: "유효기간 (MM/YY)", type: "secureText", defaultValue: "" },
+      { label: "카드번호", type: "password", defaultValue: "" },
+      { label: "유효기간 (MM/YY)", type: "text", defaultValue: "" },
       { label: "CVC", type: "password", defaultValue: "" },
       { label: "카드 종류", type: "select", options: ["Visa", "Mastercard", "Amex", "JCB", "기타"], defaultValue: "" },
       { label: "메모", type: "textarea", defaultValue: "" },
@@ -48,7 +48,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, "id" | "createdAt" | "updatedAt">
     sortOrder: 3,
     fields: [
       { label: "은행명", type: "text", defaultValue: "" },
-      { label: "계좌번호", type: "secureText", defaultValue: "" },
+      { label: "계좌번호", type: "password", defaultValue: "" },
       { label: "예금주", type: "text", defaultValue: "" },
       { label: "은행 코드/라우팅번호", type: "text", defaultValue: "" },
       { label: "메모", type: "textarea", defaultValue: "" },
@@ -73,7 +73,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, "id" | "createdAt" | "updatedAt">
     sortOrder: 5,
     fields: [
       { label: "제목", type: "text", defaultValue: "" },
-      { label: "내용", type: "secureTextarea", defaultValue: "" },
+      { label: "내용", type: "textarea", defaultValue: "" },
     ],
   },
 ];

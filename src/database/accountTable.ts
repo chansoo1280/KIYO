@@ -27,7 +27,7 @@ export const accountTable = {
             // Encrypted record but no key - return minimal
             return { 
               id: record.id, 
-              templateId: 0,
+              templateId: "",
               title: "",
               tags: [],
               favorite: false,
@@ -42,7 +42,7 @@ export const accountTable = {
             console.error("Failed to decrypt account record:", error);
             return { 
               id: record.id, 
-              templateId: 0,
+              templateId: "",
               title: "",
               tags: [],
               favorite: false,
@@ -59,7 +59,7 @@ export const accountTable = {
         } catch {
           return { 
             id: record.id, 
-            templateId: 0,
+            templateId: "",
             title: "",
             tags: [],
             favorite: false,

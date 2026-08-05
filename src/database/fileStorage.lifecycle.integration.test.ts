@@ -361,7 +361,7 @@ describe("fileStorage Lifecycle Integration Tests - Plaintext", () => {
       // Create a complex account with many fields manually for this test
       const complexAcct: Account = {
         id: 1,
-        templateId: 1,
+        templateId: "1",
         title: "Complex Account",
         tags: ["complex"],
         favorite: true,

@@ -41,7 +41,7 @@ const AccountList = () => {
   };
 
   const handleAccountClick = (account: Account) => {
-    navigate(`/account/${account.id}`, { state: { account } });
+    navigate(`/account/${account.id}`);
   };
 
   // Get available tags based on filtered accounts (for AND search)

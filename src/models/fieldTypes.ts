@@ -7,55 +7,39 @@ export type FieldType =
   | "textarea"
   | "totp"
   | "select"
-  | "date"
-  | "secureText"
-  | "secureTextarea";
+  | "date";
 
+export interface FieldTypeOption {
+  value: FieldType;
+  label: string;
+  icon: string;
+  placeholder: string;
+}
+
+export const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
+  { value: "text", label: "텍스트", icon: "📝", placeholder: "입력하세요" },
+  { value: "password", label: "비밀번호", icon: "🔒", placeholder: "비밀번호" },
+  { value: "email", label: "이메일", icon: "📧", placeholder: "이메일 주소" },
+  { value: "url", label: "URL", icon: "🔗", placeholder: "https://example.com" },
+  { value: "number", label: "숫자", icon: "🔢", placeholder: "숫자" },
+  { value: "textarea", label: "긴 텍스트", icon: "📄", placeholder: "내용을 입력하세요" },
+  { value: "totp", label: "TOTP (2FA)", icon: "🔐", placeholder: "TOTP 시크릿 키" },
+  { value: "select", label: "선택", icon: "📋", placeholder: "선택하세요" },
+  { value: "date", label: "날짜", icon: "📅", placeholder: "날짜 선택" },
+];
+
+export function getFieldTypeOption(type: FieldType): FieldTypeOption {
+  return FIELD_TYPE_OPTIONS.find((opt) => opt.value === type) ?? FIELD_TYPE_OPTIONS[0];
+}
 
 export function getFieldTypeLabel(type: FieldType): string {
-  const labels: Record<FieldType, string> = {
-    text: "텍스트",
-    password: "비밀번호",
-    email: "이메일",
-    url: "URL",
-    number: "숫자",
-    textarea: "긴 텍스트",
-    totp: "TOTP (2FA)",
-    select: "선택",
-    date: "날짜",
-    secureText: "암호화 텍스트",
-    secureTextarea: "암호화 긴 텍스트",
-  };
-  return labels[type] ?? type;
+  return getFieldTypeOption(type).label;
 }
 
 export function getFieldTypeIcon(type: FieldType): string {
-  const icons: Record<FieldType, string> = {
-    text: "📝",
-    password: "🔒",
-    email: "📧",
-    url: "🔗",
-    number: "🔢",
-    textarea: "📄",
-    totp: "🔐",
-    select: "📋",
-    date: "📅",
-    secureText: "🔐",
-    secureTextarea: "🔐",
-  };
-  return icons[type] ?? "📝";
+  return getFieldTypeOption(type).icon;
 }
 
-export const FIELD_TYPE_OPTIONS: { value: FieldType; label: string; encrypted: boolean }[] = [
-  { value: "text", label: "텍스트", encrypted: false },
-  { value: "password", label: "비밀번호", encrypted: true },
-  { value: "email", label: "이메일", encrypted: false },
-  { value: "url", label: "URL", encrypted: false },
-  { value: "number", label: "숫자", encrypted: false },
-  { value: "textarea", label: "긴 텍스트", encrypted: false },
-  { value: "totp", label: "TOTP (2FA)", encrypted: true },
-  { value: "select", label: "선택", encrypted: false },
-  { value: "date", label: "날짜", encrypted: false },
-  { value: "secureText", label: "암호화 텍스트", encrypted: true },
-  { value: "secureTextarea", label: "암호화 긴 텍스트", encrypted: true },
-];
+export function getFieldTypePlaceholder(type: FieldType): string {
+  return getFieldTypeOption(type).placeholder;
+}

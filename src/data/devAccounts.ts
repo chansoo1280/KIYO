@@ -4,7 +4,7 @@ import type { Account } from "@/models/account";
 export const devAccounts: Account[] = [
   {
     id: 1,
-    templateId: 1,
+    templateId: "1",
     title: "Google",
     tags: ["email", "work"],
     favorite: true,
@@ -31,7 +31,7 @@ export const devAccounts: Account[] = [
   },
   {
     id: 2,
-    templateId: 2,
+    templateId: "2",
     title: "GitHub",
     tags: ["dev", "work"],
     favorite: false,
@@ -51,7 +51,7 @@ export const devAccounts: Account[] = [
         accountId: 2,
         label: "Token",
         type: "password",
-        value: "ghp_xxxxxxxxxxxx",
+        value: "«redacted:ghp_…»",
         order: 2,
       },
     ],

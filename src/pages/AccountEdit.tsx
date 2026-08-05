@@ -2,12 +2,14 @@ import { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Account, AccountField, FieldType } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
+import { useTemplateStore } from "@/store/templateStore";
 import { PasswordGenerator } from "@/components/PasswordGenerator";
 import { WebsiteSelector } from "@/components/WebsiteSelector";
 import { processWebsiteUrl } from "@/utils/urlUtils";
 import { PasswordField } from "@/components/PasswordField";
 import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
+import { getFieldTypePlaceholder } from "@/models/fieldTypes";
 
 const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
 
   const updateAccount = useAccountStore((state) => state.updateAccount);
   const addAccount = useAccountStore((state) => state.addAccount);
+  const templates = useTemplateStore((state) => state.templates);
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
@@ -31,12 +34,28 @@ const AccountEditor = ({ account }: { account: Account }) => {
     checkFileAndNavigate();
   }, [navigate]);
 
+  // 템플릿에서 필드 초기화 (templateId가 있는 신규 계정인 경우)
+  const [fields, setFields] = useState<AccountField[]>(() => {
+    if (isNew && account.templateId) {
+      const template = templates.find((t) => t.id === String(account.templateId));
+      if (template) {
+        return template.fields.map((field, index) => ({
+          id: `${template.id}-${index + 1}`,
+          accountId: 0,
+          label: field.label,
+          type: field.type,
+          value: field.defaultValue || "",
+          order: index + 1,
+          options: field.options,
+        }));
+      }
+    }
+    return [...account.fields].sort((a, b) => a.order - b.order);
+  });
+
   const [title, setTitle] = useState(account.title);
   const [tags, setTags] = useState<string[]>(account.tags);
   const favorite = account.favorite;
-  const [fields, setFields] = useState<AccountField[]>(() =>
-    [...account.fields].sort((a, b) => a.order - b.order),
-  );
   const [websiteUrl, setWebsiteUrl] = useState(account.websiteUrl ?? "");
   const [domain, setDomain] = useState(account.domain ?? "");
 
@@ -133,9 +152,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
       await updateAccount(updatedAccount);
     }
 
-    navigate("/account", {
-      state: { account: savedAccount },
-    });
+    navigate(`/account/${savedAccount.id}`);
   };
 
   return (
@@ -263,8 +280,6 @@ const AccountEditor = ({ account }: { account: Account }) => {
                     <option value="totp">TOTP (2FA)</option>
                     <option value="select">선택</option>
                     <option value="date">날짜</option>
-                    <option value="secureText">암호화 텍스트</option>
-                    <option value="secureTextarea">암호화 긴 텍스트</option>
                   </select>
                   <button
                     type="button"
@@ -281,6 +296,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
+                  placeholder={getFieldTypePlaceholder(field.type)}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                   rows={4}
                 />
@@ -299,6 +315,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
+                  placeholder={getFieldTypePlaceholder(field.type)}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               ) : field.type === "url" ? (
@@ -308,8 +325,8 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
+                  placeholder={getFieldTypePlaceholder(field.type)}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-                  placeholder="https://example.com"
                 />
               ) : field.type === "number" ? (
                 <input
@@ -318,6 +335,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
+                  placeholder={getFieldTypePlaceholder(field.type)}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               ) : field.type === "date" ? (
@@ -350,8 +368,8 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
+                  placeholder={getFieldTypePlaceholder(field.type)}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-                  placeholder="TOTP 코드 (6자리)"
                   maxLength={6}
                   inputMode="numeric"
                 />
@@ -362,6 +380,7 @@ const AccountEditor = ({ account }: { account: Account }) => {
                   onChange={(event) =>
                     updateField(field.id, { value: event.target.value })
                   }
+                  placeholder={getFieldTypePlaceholder(field.type)}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               )}
@@ -389,9 +408,21 @@ const AccountEdit = () => {
       ? state.accounts.find((item) => item.id === accountId)
       : undefined,
   );
-  const account = storedAccount ?? (location.state?.account as Account | undefined);
+  const account = storedAccount;
 
-  if (!account) {
+  // templateId가 location.state로 넘어온 경우 (TemplatePicker에서 새로 만들기)
+  const templateIdFromState = location.state?.templateId as string | undefined;
+
+  // 템플릿 로드 (templateId가 있는 경우)
+  const loadTemplates = useTemplateStore((state) => state.loadTemplates);
+
+  useEffect(() => {
+    if (templateIdFromState) {
+      loadTemplates();
+    }
+  }, [templateIdFromState, loadTemplates]);
+
+  if (!account && !templateIdFromState) {
     return (
       <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
         <button
@@ -406,7 +437,23 @@ const AccountEdit = () => {
     );
   }
 
-  return <AccountEditor key={account.id} account={account} />;
+  // templateId가 있고 account가 없는 경우 (신규 생성), 기본 Account 객체 생성
+  const effectiveAccount = account ?? ({
+    id: 0,
+    templateId: templateIdFromState ?? "",
+    title: "",
+    description: "",
+    tags: [],
+    favorite: false,
+    createdAt: 0,
+    updatedAt: 0,
+    fields: [],
+    websiteUrl: "",
+    domain: "",
+    packageName: "",
+  } as Account);
+
+  return <AccountEditor key={effectiveAccount.id} account={effectiveAccount} />;
 };
 
 export default AccountEdit;

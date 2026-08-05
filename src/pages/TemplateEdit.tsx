@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
-import { FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
 import IconPicker from "@/components/IconPicker";
 import { TemplateFieldEditor } from "@/components/TemplateFieldEditor";
 
 const defaultFields: TemplateField[] = [
-  { label: "", type: "text", placeholder: "", defaultValue: "", options: [] },
+  { label: "", type: "text", defaultValue: "", options: [] },
 ];
 
 const initialTemplate: Omit<Template, "id" | "createdAt" | "updatedAt"> = {
@@ -282,9 +281,6 @@ const TemplateEdit = () => {
                   onMoveUp={moveFieldUp}
                   onMoveDown={moveFieldDown}
                   onDelete={deleteField}
-                  isEncrypted={
-                    FIELD_TYPE_OPTIONS.find((t) => t.value === field.type)?.encrypted ?? false
-                  }
                   allLabels={form.fields.map((f) => f.label)}
                 />
               ))}

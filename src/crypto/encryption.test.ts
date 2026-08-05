@@ -291,7 +291,7 @@ describe("encryption (KIYO encryption.ts)", () => {
         accounts: [
           {
             id: 1,
-            templateId: 1,
+            templateId: "1",
             title: "Complex Account",
             tags: ["tag1", "tag2"],
             favorite: true,
@@ -326,7 +326,6 @@ describe("encryption (KIYO encryption.ts)", () => {
               {
                 label: "Template Field 1",
                 type: "text",
-                placeholder: "",
                 defaultValue: "",
                 options: [],
               },
@@ -349,7 +348,7 @@ describe("encryption (KIYO encryption.ts)", () => {
         accounts: [
           {
             id: 1,
-            templateId: 1,
+            templateId: "1",
             title: "Unicode Test 🎉",
             tags: ["한글", "日本語", "emoji🚀"],
             favorite: false,

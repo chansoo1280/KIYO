@@ -18,7 +18,7 @@ export const createTestAccount = (
 
   return {
     id: 1,
-    templateId: 1,
+    templateId: "1",
     title: "Test Account",
     tags: ["tag1"],
     favorite: false,
@@ -64,7 +64,7 @@ export const createComplexAccount = (
   overrides: Partial<Account> = {},
 ): Account => ({
   id: 1,
-  templateId: 1,
+  templateId: "1",
   title: "Complex Account",
   tags: ["complex", "test"],
   favorite: true,

@@ -100,7 +100,7 @@ describe("fileStorage - pure functions", () => {
           accounts: [
             {
               id: 1,
-              templateId: 1,
+              templateId: "1",
               title: "Test",
               tags: [],
               favorite: false,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import type { Account, AccountField } from "@/models/account";
+import { useNavigate, useParams } from "react-router-dom";
+import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import { PasswordField } from "@/components/PasswordField";
 import { useSessionStore } from "@/store/sessionStore";
@@ -8,7 +8,6 @@ import { fileTable } from "@/database/fileTable";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { id } = useParams();
   const accountId = Number(id);
   const storedAccount = useAccountStore((state) =>
@@ -16,7 +15,7 @@ const AccountDetail = () => {
       ? state.accounts.find((item) => item.id === accountId)
       : undefined,
   );
-  const account = storedAccount ?? (location.state?.account as Account | undefined);
+  const account = storedAccount;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteAccount, updateAccount } = useAccountStore();
 
@@ -100,7 +99,7 @@ const AccountDetail = () => {
   };
 
   const handleBack = () => {
-    navigate("/list", { state: { account } });
+    navigate("/list");
   };
 
   return (
@@ -118,9 +117,7 @@ const AccountDetail = () => {
             <button
               type="button"
               onClick={() =>
-                navigate(`/account/edit/${account.id}`, {
-                  state: { account },
-                })
+                navigate(`/account/edit/${account.id}`)
               }
               className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
             >

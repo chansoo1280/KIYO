@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { TemplateField } from "@/models/template";
 import type { FieldType } from "@/models/fieldTypes";
+import { FIELD_TYPE_OPTIONS, getFieldTypePlaceholder } from "@/models/fieldTypes";
 
 interface TemplateFieldEditorProps {
   field: TemplateField;
@@ -9,23 +10,8 @@ interface TemplateFieldEditorProps {
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onDelete: (index: number) => void;
-  isEncrypted: boolean;
   allLabels: string[];
 }
-
-const FIELD_TYPES: { value: FieldType; label: string; encrypted: boolean }[] = [
-  { value: "text", label: "텍스트", encrypted: false },
-  { value: "password", label: "비밀번호", encrypted: true },
-  { value: "email", label: "이메일", encrypted: false },
-  { value: "url", label: "URL", encrypted: false },
-  { value: "number", label: "숫자", encrypted: false },
-  { value: "textarea", label: "긴 텍스트", encrypted: false },
-  { value: "totp", label: "TOTP 시크릿", encrypted: true },
-  { value: "select", label: "선택(드롭다운)", encrypted: false },
-  { value: "date", label: "날짜", encrypted: false },
-  { value: "secureText", label: "암호화 텍스트", encrypted: true },
-  { value: "secureTextarea", label: "암호화 긴 텍스트", encrypted: true },
-];
 
 export const TemplateFieldEditor = ({
   field,
@@ -34,7 +20,6 @@ export const TemplateFieldEditor = ({
   onMoveUp,
   onMoveDown,
   onDelete,
-  isEncrypted,
   allLabels,
 }: TemplateFieldEditorProps) => {
   const [optionsText, setOptionsText] = useState(field.options?.join("\n") || "");
@@ -52,6 +37,9 @@ export const TemplateFieldEditor = ({
   };
 
   const isDuplicateLabel = allLabels.filter((l) => l === field.label).length > 1;
+
+  // 타입별 고정 플레이스홀더 표시용 (수정 불가)
+  const fixedPlaceholder = getFieldTypePlaceholder(field.type);
 
   return (
     <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-4">
@@ -106,9 +94,9 @@ export const TemplateFieldEditor = ({
             onChange={(e) => handleTypeChange(e.target.value as FieldType)}
             className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           >
-            {FIELD_TYPES.map((t) => (
+            {FIELD_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>
-                {t.label} {t.encrypted ? "🔒" : ""}
+                {t.label}
               </option>
             ))}
           </select>
@@ -116,13 +104,13 @@ export const TemplateFieldEditor = ({
 
         <div>
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-            플레이스홀더
+            플레이스홀더 (자동 설정)
           </label>
           <input
-            value={field.placeholder || ""}
-            onChange={(e) => onChange(index, { placeholder: e.target.value })}
-            placeholder="예: https://example.com"
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            value={fixedPlaceholder}
+            readOnly
+            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-muted)] outline-none"
+            title="필드 타입에 따라 자동으로 설정됩니다"
           />
         </div>
 
@@ -167,12 +155,6 @@ export const TemplateFieldEditor = ({
 
         {isDuplicateLabel && (
           <p className="text-xs text-red-500">중복된 항목 이름입니다</p>
-        )}
-
-        {isEncrypted && (
-          <p className="text-xs text-[var(--color-accent)] flex items-center gap-1">
-            🔒 이 타입은 저장 시 자동 암호화됩니다
-          </p>
         )}
       </div>
     </div>

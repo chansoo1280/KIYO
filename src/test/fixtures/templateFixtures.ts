@@ -9,7 +9,6 @@ export const createTestTemplateField = (
 ): TemplateField => ({
   label: "Field",
   type: "text",
-  placeholder: "",
   defaultValue: "",
   options: [],
   ...overrides,
@@ -30,14 +29,12 @@ export const createTestTemplate = (
     createTestTemplateField({
       label: "Username",
       type: "text",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
     createTestTemplateField({
       label: "Password",
       type: "password",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -75,7 +72,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "Text",
       type: "text",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -83,7 +79,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "Password",
       type: "password",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -91,7 +86,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "Email",
       type: "email",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -99,7 +93,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "Number",
       type: "number",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -107,7 +100,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "URL",
       type: "url",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -115,7 +107,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "OTP",
       type: "totp",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
@@ -123,7 +114,6 @@ export const createComplexTestTemplate = (
     createTestTemplateField({
       label: "Unicode",
       type: "text",
-      placeholder: "",
       defaultValue: "",
       options: [],
     }),
