@@ -1,5 +1,6 @@
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template } from "@/models/template";
+import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -15,12 +16,7 @@ const DEFAULT_TEMPLATE: Template = {
   description: "간단한 입력 항목만 있는 기본 템플릿",
   icon: "📝",
   sortOrder: -1,
-  fields: [
-    { label: "제목", type: "text", defaultValue: "" },
-    { label: "아이디/이메일", type: "email", defaultValue: "" },
-    { label: "비밀번호", type: "password", defaultValue: "" },
-    { label: "메모", type: "textarea", defaultValue: "" },
-  ],
+  fields: DEFAULT_TEMPLATE_FIELDS,
   createdAt: 0,
   updatedAt: 0,
 };

@@ -10,6 +10,7 @@ import { PasswordField } from "@/components/PasswordField";
 import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
 import { getFieldTypePlaceholder } from "@/models/fieldTypes";
+import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 
 const AccountEditor = ({ account }: { account: Account }) => {
   const navigate = useNavigate();
@@ -37,6 +38,17 @@ const AccountEditor = ({ account }: { account: Account }) => {
   // 템플릿에서 필드 초기화 (templateId가 있는 신규 계정인 경우)
   const [fields, setFields] = useState<AccountField[]>(() => {
     if (isNew && account.templateId) {
+      // 기본 템플릿("default-template")은 DB에 저장되지 않으므로 하드코딩된 필드 사용
+      if (account.templateId === "default-template") {
+        return DEFAULT_TEMPLATE_FIELDS.map((field, index) => ({
+          id: `default-template-${index + 1}`,
+          accountId: 0,
+          label: field.label,
+          type: field.type,
+          value: field.defaultValue || "",
+          order: index + 1,
+        }));
+      }
       const template = templates.find((t) => t.id === String(account.templateId));
       if (template) {
         return template.fields.map((field, index) => ({

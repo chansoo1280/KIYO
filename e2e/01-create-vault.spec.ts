@@ -41,11 +41,11 @@ test.describe('볼트 생성 (Vault Creation)', () => {
     await page.waitForURL('**/list', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
     
-    // 8. 계정 리스트 페이지 확인 (테스트 모드에서는 빈 리스트)
+    // 9. 계정 리스트 페이지 확인 (테스트 모드에서는 빈 리스트)
     const accountListContainer = page.locator('section.min-h-svh').first();
     await expect(accountListContainer).toBeVisible({ timeout: 5000 });
     
-    // 9. 계정 리스트가 비어있음 (dev 계정 생성 안 함)
+    // 10. 계정 리스트가 비어있음 (dev 계정 생성 안 함)
     const accountItems = page.locator('article[role="button"]');
     await expect(await accountItems.count()).toBe(0);
   });

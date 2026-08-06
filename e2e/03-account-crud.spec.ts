@@ -4,14 +4,29 @@ import { TEST_PIN } from './fixtures/test-data';
 
 // 헬퍼: 라벨 텍스트로 동적 필드의 값 입력란 찾기
 async function fillDynamicField(page: import('@playwright/test').Page, labelText: string, value: string) {
-  // 라벨 편집 필드("항목 이름" placeholder)에서 labelText를 값(value)으로 가진 것 찾기
-  const labelInputByValue = page.locator(`input[placeholder="항목 이름"][value="${labelText}"]`);
-  await labelInputByValue.waitFor({ state: 'attached', timeout: 5000 });
+  // "항목 이름" placeholder를 가진 모든 라벨 입력란 찾기
+  const labelInputs = page.getByPlaceholder('항목 이름');
+  const count = await labelInputs.count();
+  
+  let targetLabelInput: import('@playwright/test').Locator | null = null;
+  
+  for (let i = 0; i < count; i++) {
+    const input = labelInputs.nth(i);
+    const inputValue = await input.inputValue();
+    if (inputValue === labelText) {
+      targetLabelInput = input;
+      break;
+    }
+  }
+  
+  if (!targetLabelInput) {
+    throw new Error(`Label input with text "${labelText}" not found`);
+  }
   
   // 같은 필드 컨테이너(부모) 내의 값 입력 필드 찾기
-  const fieldContainer = labelInputByValue.locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+  const fieldContainer = targetLabelInput.locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
   
-  let valueInput;
+  let valueInput: import('@playwright/test').Locator;
   if (labelText === '메모') {
     valueInput = fieldContainer.locator('textarea');
   } else if (labelText === '비밀번호') {
@@ -70,6 +85,10 @@ test.describe('계정 CRUD (Account CRUD)', () => {
       // 4. 계정 편집 페이지 로드 대기
       await page.waitForURL('**/account/edit**', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
+
+      // 템플릿 필드가 로드될 때까지 대기 (템플릿 스토어 로딩 비동기 처리 때문)
+      await page.waitForSelector('input[placeholder="항목 이름"]', { timeout: 15000 });
+      await page.waitForTimeout(500); // 렌더링 완료 대기
 
       // 5. 필수 필드 입력
       // 고정 필드들 (레이블로 찾기)

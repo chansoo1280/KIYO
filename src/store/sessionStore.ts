@@ -84,3 +84,17 @@ export const useSessionStore = create<SessionState>()(
     { name: "session-store" },
   ),
 );
+
+// Dev/테스트 환경에서 Zustand store 디버그용 노출
+if (import.meta.env.DEV) {
+  (window as any).__KIYO_DEBUG__ = {
+    getSession: () => {
+      const state = useSessionStore.getState();
+      return {
+        activeFileName: state.activeFileName,
+        hasCryptoKey: !!state.cryptoKey,
+        hasSalt: !!state.salt,
+      };
+    },
+  };
+}

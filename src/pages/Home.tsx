@@ -12,6 +12,7 @@ import {
   FileStorageErrorCode,
   isFileStorageError,
 } from "@/errors/FileStorageError";
+import { useSessionStore } from "@/store/sessionStore";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -21,8 +22,9 @@ const Home = () => {
   useEffect(() => {
     const checkFileAndNavigate = async () => {
       const { activeFileName, fileData, encrypted } = await fileTable.getActiveFileInfo();
+      const { cryptoKey } = useSessionStore.getState();
       if (!activeFileName) return;
-      if (encrypted) {
+      if (encrypted && !cryptoKey) {
         navigate("/auth", {
           replace: true,
         });
