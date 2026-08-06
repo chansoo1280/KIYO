@@ -36,8 +36,8 @@ test.describe('수동 잠금 / 자동 잠금 (Manual Lock / Auto Lock)', () => {
       await page.fill('input[type="password"]', TEST_PIN);
       await page.getByRole('button', { name: '확인' }).click();
 
-      // 5. 홈 화면(/list) 진입 확인
-      await page.waitForURL('**/list', { timeout: 10000 });
+      // 5. 홈 화면(/accounts) 진입 확인
+      await page.waitForURL('**/accounts', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
 
       // 6. 계정 리스트 페이지 확인
@@ -66,7 +66,7 @@ test.describe('수동 잠금 / 자동 잠금 (Manual Lock / Auto Lock)', () => {
       // 3. 홈으로 돌아가기
       const listTab = page.locator('button[aria-label="List"], button:has-text("📋")').first();
       await listTab.click();
-      await page.waitForURL('**/list', { timeout: 5000 });
+      await page.waitForURL('**/accounts', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
       // 4. 앱 비활성화 시뮬레이션
@@ -83,7 +83,7 @@ test.describe('수동 잠금 / 자동 잠금 (Manual Lock / Auto Lock)', () => {
       });
 
       // 6. 여전히 리스트 페이지에 있어야 함 (자동 잠금 비활성화)
-      await expect(page).toHaveURL(/\/list/);
+      await expect(page).toHaveURL(/\/accounts/);
     });
   });
 });

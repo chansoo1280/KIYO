@@ -57,7 +57,7 @@ async function createAccount(page: import('@playwright/test').Page, account: {
 }) {
   await page.getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: '로그인' }).click();
-  await page.waitForURL('**/account/edit**', { timeout: 10000 });
+  await page.waitForURL('**/accounts/new**', { timeout: 10000 });
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('input[placeholder="항목 이름"]', { timeout: 15000 });
   await page.waitForTimeout(500);
@@ -69,12 +69,12 @@ async function createAccount(page: import('@playwright/test').Page, account: {
   await fillDynamicField(page, '메모', account.note);
 
   await page.getByRole('button', { name: '저장' }).click();
-  await page.waitForURL('**/account/**', { timeout: 10000 });
+  await page.waitForURL('**/accounts/**', { timeout: 10000 });
   await page.waitForLoadState('networkidle');
 
   // 리스트로 돌아가기
   await page.getByRole('button', { name: '← 뒤로 가기' }).click();
-  await page.waitForURL('**/list', { timeout: 5000 });
+  await page.waitForURL('**/accounts', { timeout: 5000 });
   await page.waitForLoadState('networkidle');
 }
 
@@ -123,7 +123,7 @@ test.describe('데이터 지속성 (Persistence after Reload)', () => {
     // 리스트로 돌아가기
     const listTab = page.locator('button[aria-label="List"], button:has-text("📋")').first();
     await listTab.click();
-    await page.waitForURL('**/list', { timeout: 5000 });
+    await page.waitForURL('**/accounts', { timeout: 5000 });
     await page.waitForLoadState('networkidle');
 
     // 3. 브라우저 새로고침
@@ -134,7 +134,7 @@ test.describe('데이터 지속성 (Persistence after Reload)', () => {
     await page.waitForURL('**/auth', { timeout: 10000 });
     await page.fill('input[type="password"]', TEST_PIN);
     await page.getByRole('button', { name: '확인' }).click();
-    await page.waitForURL('**/list', { timeout: 10000 });
+    await page.waitForURL('**/accounts', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // 5. 설정 페이지로 가서 값 확인
@@ -172,14 +172,14 @@ test.describe('데이터 지속성 (Persistence after Reload)', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    // 4. PIN 입력 없이 바로 /list 접근 가능해야 함
-    await expect(page).toHaveURL(/\/list/);
+    // 4. PIN 입력 없이 바로 /accounts 접근 가능해야 함
+    await expect(page).toHaveURL(/\/accounts/);
     await accountListPage.addAccountButton.waitFor({ state: 'visible', timeout: 10000 });
     await accountListPage.expectAccountCount(1);
 
-    // 5. 계정 데이터 확인 (비암호화 볼트는 바로 /list로 감)
+    // 5. 계정 데이터 확인 (비암호화 볼트는 바로 /accounts로 감)
     await accountListPage.clickAccount('Unencrypted Account');
-    await page.waitForURL('**/account/**', { timeout: 5000 });
+    await page.waitForURL('**/accounts/**', { timeout: 5000 });
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('text=Unencrypted Account')).toBeVisible();
@@ -218,7 +218,7 @@ test.describe('데이터 지속성 (Persistence after Reload)', () => {
     // 5. PIN 입력 후 잠금 해제
     await page.fill('input[type="password"]', TEST_PIN);
     await page.getByRole('button', { name: '확인' }).click();
-    await page.waitForURL('**/list', { timeout: 10000 });
+    await page.waitForURL('**/accounts', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // 6. 계정 리스트가 로드될 때까지 대기 (플로팅 액션 버튼 확인)

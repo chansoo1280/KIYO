@@ -1,10 +1,6 @@
-import { useAutoLock } from "@/hooks/useAutoLock";
 
-export function AutoLockIndicator() {
-  const { remainingSeconds } = useAutoLock();
-
+export function AutoLockIndicator({ remainingSeconds }: { remainingSeconds: number }) {
   if (remainingSeconds <= 0) return null;
-
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = remainingSeconds % 60;
   const timeString = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;

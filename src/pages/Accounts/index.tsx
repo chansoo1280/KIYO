@@ -4,7 +4,7 @@ import type { Account } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import BottomTabs from "@/components/BottomTabs";
 import { useSessionStore } from "@/store/sessionStore";
-import TemplatePicker from "./AccountList/components/TemplatePicker";
+import TemplatePicker from "./components/TemplatePicker";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
@@ -26,7 +26,7 @@ const AccountList = () => {
   };
 
   const handleAccountClick = (account: Account) => {
-    navigate(`/account/${account.id}`);
+    navigate(`/accounts/${account.id}`);
   };
 
   // Get available tags based on filtered accounts (for AND search)

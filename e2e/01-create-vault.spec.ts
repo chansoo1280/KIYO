@@ -11,7 +11,7 @@ test.describe('볼트 생성 (Vault Creation)', () => {
     await page.evaluate(() => localStorage.clear());
   });
 
-  test('최초 실행 시 암호화 볼트 생성 후 바로 계정 리스트(/list)로 이동한다', async ({ page }) => {
+  test('최초 실행 시 암호화 볼트 생성 후 바로 계정 리스트(/accounts)로 이동한다', async ({ page }) => {
     // 1. 앱 최초 실행 - Home 페이지에서 파일 생성 다이얼로그 열기
     await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: '파일 생성' }).click();
@@ -37,8 +37,8 @@ test.describe('볼트 생성 (Vault Creation)', () => {
     // 6. 생성 버튼 클릭
     await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
     
-    // 7. 암호화 볼트 최초 생성 시 바로 /list로 이동 (세션이 이미 설정되어 있음)
-    await page.waitForURL('**/list', { timeout: 10000 });
+    // 7. 암호화 볼트 최초 생성 시 바로 /accounts로 이동 (세션이 이미 설정되어 있음)
+    await page.waitForURL('**/accounts', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
     
     // 9. 계정 리스트 페이지 확인 (테스트 모드에서는 빈 리스트)
@@ -72,8 +72,8 @@ test.describe('볼트 생성 (Vault Creation)', () => {
     // 생성 버튼 클릭
     await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
     
-    // 바로 /list로 이동 (인증 페이지 거치지 않음)
-    await page.waitForURL('**/list', { timeout: 10000 });
+    // 바로 /accounts로 이동 (인증 페이지 거치지 않음)
+    await page.waitForURL('**/accounts', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
     
     // 계정 리스트 페이지 확인
@@ -95,8 +95,8 @@ test.describe('볼트 생성 (Vault Creation)', () => {
     
     await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
     
-    // 2. 바로 /list로 이동 확인 (최초 생성 시)
-    await page.waitForURL('**/list', { timeout: 10000 });
+    // 2. 바로 /accounts로 이동 확인 (최초 생성 시)
+    await page.waitForURL('**/accounts', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
     
     // 3. 페이지 새로고침 (cryptoKey는 localStorage에 persist되지 않으므로 /auth로 이동)

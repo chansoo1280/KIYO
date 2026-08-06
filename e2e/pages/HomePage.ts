@@ -41,7 +41,7 @@ export class HomePage {
     }
     
     await this.fileCreateDialog.getByRole('button', { name: '생성' }).click();
-    await this.page.waitForURL('**/list', { timeout: 10000 });
+    await this.page.waitForURL('**/accounts', { timeout: 10000 });
     await this.page.waitForLoadState('networkidle');
   }
 }
@@ -70,8 +70,8 @@ export class AccountListPage {
   }
 
   async goto(): Promise<void> {
-    // 이미 /list에 있으면 스킵
-    if (this.page.url().includes('/list')) {
+    // 이미 /accounts에 있으면 스킵
+    if (this.page.url().includes('/accounts')) {
       return;
     }
     // client-side navigation via bottom tab to preserve session (cryptoKey in memory)
@@ -79,16 +79,16 @@ export class AccountListPage {
     const listTab = this.page.locator('button[aria-label="List"], button:has-text("📋")').first();
     if (await listTab.count() > 0 && await listTab.isVisible()) {
       await listTab.click();
-      // /auth 또는 /list 중 어디로 가든 대기 (암호화 볼트는 세션 복구 전 /auth로 리다이렉트됨)
+      // /auth 또는 /accounts 중 어디로 가든 대기 (암호화 볼트는 세션 복구 전 /auth로 리다이렉트됨)
       await Promise.race([
         this.page.waitForURL('**/auth', { timeout: 10000 }),
-        this.page.waitForURL('**/list', { timeout: 10000 })
+        this.page.waitForURL('**/accounts', { timeout: 10000 })
       ]);
-      // /auth라면 PIN 입력 후 /list 대기
+      // /auth라면 PIN 입력 후 /accounts 대기
       if (this.page.url().includes('/auth')) {
         await this.page.fill('input[type="password"]', '1234');
         await this.page.getByRole('button', { name: '확인' }).click();
-        await this.page.waitForURL('**/list', { timeout: 10000 });
+        await this.page.waitForURL('**/accounts', { timeout: 10000 });
       }
       await this.page.waitForLoadState('networkidle');
       // 플로팅 액션 버튼이 렌더링될 때까지 대기
@@ -99,8 +99,8 @@ export class AccountListPage {
   }
 
   async addAccount(): Promise<void> {
-    // 계정 리스트 페이지(/list)에 있지 않으면 이동
-    if (!this.page.url().includes('/list')) {
+    // 계정 리스트 페이지(/accounts)에 있지 않으면 이동
+    if (!this.page.url().includes('/accounts')) {
       await this.goto();
     }
     // goto에서 이미 버튼 대기함
@@ -110,7 +110,7 @@ export class AccountListPage {
 
   async selectTemplate(templateName: string): Promise<void> {
     await this.templatePickerDialog.getByRole('button', { name: templateName }).click();
-    await this.page.waitForURL('**/account/edit**', { timeout: 10000 });
+    await this.page.waitForURL('**/accounts/new**', { timeout: 10000 });
     await this.page.waitForLoadState('networkidle');
     // 템플릿 필드 로드 대기
     await this.page.waitForSelector('input[placeholder="항목 이름"]', { timeout: 15000 });
@@ -128,7 +128,7 @@ export class AccountListPage {
 
   async clickAccount(name: string): Promise<void> {
     await this.accountItems.filter({ hasText: name }).first().click();
-    await this.page.waitForURL('**/account/**', { timeout: 5000 });
+    await this.page.waitForURL('**/accounts/**', { timeout: 5000 });
     await this.page.waitForLoadState('networkidle');
   }
 

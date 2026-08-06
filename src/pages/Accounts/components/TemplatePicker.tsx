@@ -38,7 +38,7 @@ const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
   const handleSelect = (template: Template) => {
       onClose();
       // templateId만 전달하고 AccountEdit에서 템플릿 로드 및 필드 생성 처리
-      navigate("/account/edit", { state: { templateId: template.id } });
+      navigate("/accounts/new", { state: { templateId: template.id } });
     };
 
   return (

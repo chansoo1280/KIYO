@@ -103,7 +103,7 @@ export async function createAccount(page: Page, account: {
   await addButton.click();
   
   // 계정 편집 페이지 로드 대기
-  await page.waitForURL('**/account/**', { timeout: 5000 });
+  await page.waitForURL('**/accounts/**', { timeout: 5000 });
   await page.waitForLoadState('networkidle');
   
   // 폼 채우기

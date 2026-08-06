@@ -57,7 +57,7 @@ async function createAccount(page: import('@playwright/test').Page, account: {
 }) {
   await page.getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: '기본 템플릿' }).click();
-  await page.waitForURL('**/account/edit**', { timeout: 10000 });
+  await page.waitForURL('**/accounts/new**', { timeout: 10000 });
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('input[placeholder="항목 이름"]', { timeout: 15000 });
   await page.waitForTimeout(500);
@@ -69,12 +69,12 @@ async function createAccount(page: import('@playwright/test').Page, account: {
   await fillDynamicField(page, '메모', account.note);
 
   await page.getByRole('button', { name: '저장' }).click();
-  await page.waitForURL('**/account/**', { timeout: 10000 });
+  await page.waitForURL('**/accounts/**', { timeout: 10000 });
   await page.waitForLoadState('networkidle');
 
   // 리스트로 돌아가기
   await page.getByRole('button', { name: '← 뒤로 가기' }).click();
-  await page.waitForURL('**/list', { timeout: 5000 });
+  await page.waitForURL('**/accounts', { timeout: 5000 });
   await page.waitForLoadState('networkidle');
 }
 
@@ -169,7 +169,7 @@ test.describe('백업 내보내기 / 가져오기 (Import/Export)', () => {
       // 4. PIN 입력으로 언락
       await page.fill('input[type="password"]', TEST_PIN);
       await page.getByRole('button', { name: '확인' }).click();
-      await page.waitForURL('**/list', { timeout: 10000 });
+      await page.waitForURL('**/accounts', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
 
       // 5. 설정 → 복원 (불러오기) 다이얼로그 열림 확인

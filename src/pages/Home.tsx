@@ -30,7 +30,7 @@ const Home = () => {
         });
         return;
       } else if (isKiyoFile(fileData)) {
-        navigate("/list", { replace: true });
+        navigate("/accounts", { replace: true });
       }
     };
     checkFileAndNavigate();
@@ -49,7 +49,7 @@ const Home = () => {
       throw new Error("핀번호를 입력하세요");
     }
     await createDataFile(fileName, pin);
-    navigate("/list", { replace: true });
+    navigate("/accounts", { replace: true });
     setShowCreateDialog(false);
   };
 

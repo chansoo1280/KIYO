@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
-import IconPicker from "./TemplateEdit/components/IconPicker";
-import { TemplateFieldEditor } from "./TemplateEdit/components/TemplateFieldEditor";
+import IconPicker from "./components/IconPicker";
+import { TemplateFieldEditor } from "./components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 
 const TemplateEdit = () => {

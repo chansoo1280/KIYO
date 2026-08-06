@@ -55,7 +55,7 @@ const Auth = () => {
       }
 
       // Navigate to list page
-      navigate("/list", { replace: true });
+      navigate("/accounts", { replace: true });
     } catch (err) {
       console.error("PIN verification failed:", err);
       setError(`PIN verification failed:${err}`);

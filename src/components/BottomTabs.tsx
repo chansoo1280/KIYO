@@ -9,7 +9,7 @@ const BottomTabs = () => {
         return "templates";
       case "/settings":
         return "settings";
-      case "/list":
+      case "/accounts":
       case "/":
       default:
         return "list";
@@ -42,7 +42,7 @@ const BottomTabs = () => {
             : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
         }`}
         aria-label="List"
-        onClick={() => navigate("/list")}
+        onClick={() => navigate("/accounts")}
       >
         📋
       </button>

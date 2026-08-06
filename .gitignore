@@ -28,3 +28,5 @@ playwright-report/
 *.sw?
 .clinerules
 .agent/*
+
+.history

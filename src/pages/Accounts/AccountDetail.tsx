@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
-import { PasswordFieldView } from "./AccountDetail/components/PasswordFieldView";
+import { PasswordFieldView } from "./components/PasswordFieldView";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
@@ -69,12 +69,12 @@ const AccountDetail = () => {
 
   const handleDelete = async () => {
     await deleteAccount(account.id);
-    navigate("/list");
+    navigate("/accounts");
     setShowDeleteConfirm(false);
   };
 
   const handleBack = () => {
-    navigate("/list");
+    navigate("/accounts");
   };
 
   return (
@@ -91,7 +91,7 @@ const AccountDetail = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate(`/account/edit/${account.id}`)}
+              onClick={() => navigate(`/accounts/${account.id}/edit`)}
               className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
             >
               수정

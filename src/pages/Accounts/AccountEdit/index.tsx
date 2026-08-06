@@ -5,8 +5,12 @@ import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { AccountTitleSection } from "./components/AccountTitleSection";
+import { AccountFieldsSection } from "./components/AccountFieldsSection";
+import WebsiteSelector from "./components/WebsiteSelector";
+import { PasswordGenerator } from "./components/PasswordGenerator";
 
-export function useAccountEdit() {
+const AccountEdit = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -39,20 +43,24 @@ export function useAccountEdit() {
   const account = storedAccount;
 
   // Effective account (for new accounts with templateId)
-  const effectiveAccount = useMemo(() => account ?? ({
-    id: 0,
-    templateId: templateIdFromState ?? "",
-    title: "",
-    description: "",
-    tags: [],
-    favorite: false,
-    createdAt: 0,
-    updatedAt: 0,
-    fields: [],
-    websiteUrl: "",
-    domain: "",
-    packageName: "",
-  } as Account), [account, templateIdFromState]);
+  const effectiveAccount = useMemo(
+    () =>
+      account ?? ({
+        id: 0,
+        templateId: templateIdFromState ?? "",
+        title: "",
+        description: "",
+        tags: [],
+        favorite: false,
+        createdAt: 0,
+        updatedAt: 0,
+        fields: [],
+        websiteUrl: "",
+        domain: "",
+        packageName: "",
+      } as Account),
+    [account, templateIdFromState],
+  );
 
   // Initialize fields from template or existing account
   const [fields, setFields] = useState<AccountField[]>(() => {
@@ -67,7 +75,9 @@ export function useAccountEdit() {
           order: index + 1,
         }));
       }
-      const template = templates.find((t) => t.id === String(effectiveAccount.templateId));
+      const template = templates.find(
+        (t) => t.id === String(effectiveAccount.templateId),
+      );
       if (template) {
         return template.fields.map((field, index) => ({
           id: `${template.id}-${index + 1}`,
@@ -80,22 +90,29 @@ export function useAccountEdit() {
         }));
       }
     }
-    return [...(effectiveAccount.fields || [])].sort((a, b) => a.order - b.order);
+    return [...(effectiveAccount.fields || [])].sort(
+      (a, b) => a.order - b.order,
+    );
   });
 
   const [title, setTitle] = useState(effectiveAccount.title);
   const [tags, setTags] = useState<string[]>(effectiveAccount.tags);
   const [websiteUrl, setWebsiteUrl] = useState(effectiveAccount.websiteUrl ?? "");
   const [domain, setDomain] = useState(effectiveAccount.domain ?? "");
-  const [passwordGeneratorOpen, setPasswordGeneratorOpen] = useState<string | null>(null);
+  const [passwordGeneratorOpen, setPasswordGeneratorOpen] = useState<
+    string | null
+  >(null);
   const [websiteSelectorOpen, setWebsiteSelectorOpen] = useState(false);
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
-  const handleWebsiteSelect = useCallback((preset: import("@/models/websitePreset").WebsitePreset) => {
-    setWebsiteUrl(preset.websiteUrl);
-    setDomain(preset.domain);
-  }, []);
+  const handleWebsiteSelect = useCallback(
+    (preset: import("@/models/websitePreset").WebsitePreset) => {
+      setWebsiteUrl(preset.websiteUrl);
+      setDomain(preset.domain);
+    },
+    [],
+  );
 
   const handleTagInput = useCallback((value: string) => {
     const parsed = value
@@ -167,7 +184,7 @@ export function useAccountEdit() {
       await updateAccount(updatedAccount);
     }
 
-    navigate(`/account/${savedAccount.id}`);
+    navigate(`/accounts/${savedAccount.id}`);
   }, [
     fields,
     title,
@@ -181,27 +198,61 @@ export function useAccountEdit() {
     navigate,
   ]);
 
-  return {
-    // State
-    fields,
-    title,
-    setTitle,
-    websiteUrl,
-    setWebsiteUrl,
-    domain,
-    passwordGeneratorOpen,
-    websiteSelectorOpen,
-    setWebsiteSelectorOpen,
-    tagInput,
-    // Handlers
-    handleWebsiteSelect,
-    handleTagInput,
-    updateField,
-    addField,
-    removeField,
-    openPasswordGenerator,
-    handlePasswordGenerated,
-    handleSave,
-    setPasswordGeneratorOpen,
-  };
-}
+  return (
+    <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
+        >
+          ← 취소
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
+        >
+          저장
+        </button>
+      </div>
+
+      <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
+        <AccountTitleSection
+          title={title}
+          onTitleChange={setTitle}
+          websiteUrl={websiteUrl}
+          onWebsiteUrlChange={setWebsiteUrl}
+          domain={domain}
+          onWebsiteSelectorClick={() => setWebsiteSelectorOpen(true)}
+          tagInput={tagInput}
+          onTagInputChange={handleTagInput}
+        />
+
+        <WebsiteSelector
+          open={websiteSelectorOpen}
+          onClose={() => setWebsiteSelectorOpen(false)}
+          onSelect={handleWebsiteSelect}
+          currentTitle={title}
+          currentWebsiteUrl={websiteUrl}
+        />
+
+        <AccountFieldsSection
+          fields={fields}
+          onUpdateField={updateField}
+          onAddField={addField}
+          onRemoveField={removeField}
+          onOpenPasswordGenerator={openPasswordGenerator}
+        />
+      </article>
+
+      <PasswordGenerator
+        open={passwordGeneratorOpen !== null}
+        onClose={() => setPasswordGeneratorOpen(null)}
+        onApply={handlePasswordGenerated}
+      />
+    </section>
+  );
+};
+
+export default AccountEdit;
