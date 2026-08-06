@@ -87,7 +87,7 @@ export const useSessionStore = create<SessionState>()(
 
 // Dev/테스트 환경에서 Zustand store 디버그용 노출
 if (import.meta.env.DEV) {
-  (window as any).__KIYO_DEBUG__ = {
+  (window as unknown as Record<string, unknown>).__KIYO_DEBUG__ = {
     getSession: () => {
       const state = useSessionStore.getState();
       return {

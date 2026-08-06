@@ -47,7 +47,7 @@ export function useSettingsActions() {
     try {
       navigate("/list", { replace: true });
     } catch (cause) {
-      throw new Error(cause instanceof Error ? cause.message : "파일을 복원하지 못했습니다.");
+      throw new Error(cause instanceof Error ? cause.message : "파일을 복원하지 못했습니다.", { cause });
     }
   }, [navigate]);
 

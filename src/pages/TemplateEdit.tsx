@@ -2,20 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
-import IconPicker from "@/components/IconPicker";
-import { TemplateFieldEditor } from "@/components/TemplateFieldEditor";
-
-const defaultFields: TemplateField[] = [
-  { label: "", type: "text", defaultValue: "", options: [] },
-];
-
-const initialTemplate: Omit<Template, "id" | "createdAt" | "updatedAt"> = {
-  name: "",
-  description: "",
-  icon: "📋",
-  sortOrder: 0,
-  fields: defaultFields,
-};
+import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
+import IconPicker from "./TemplateEdit/components/IconPicker";
+import { TemplateFieldEditor } from "./TemplateEdit/components/TemplateFieldEditor";
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 
 const TemplateEdit = () => {
   const navigate = useNavigate();
@@ -26,7 +16,13 @@ const TemplateEdit = () => {
 
   const [form, setForm] = useState<
     Omit<Template, "id" | "createdAt" | "updatedAt">
-  >(initialTemplate);
+  >({
+    name: "",
+    description: "",
+    icon: "📋",
+    sortOrder: 0,
+    fields: DEFAULT_TEMPLATE_FIELDS.map(f => ({ ...f, options: f.options ?? [] })),
+  });
   const [errors, setErrors] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -107,7 +103,7 @@ const TemplateEdit = () => {
   const addField = () => {
     setForm((prev) => ({
       ...prev,
-      fields: [...prev.fields, { ...defaultFields[0] }],
+      fields: [...prev.fields, { label: "", type: "text", defaultValue: "", options: [] }],
     }));
   };
 
@@ -289,43 +285,15 @@ const TemplateEdit = () => {
         </div>
       </main>
 
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-confirm-title"
-        >
-          <div className="bg-[var(--color-bg)] rounded-3xl p-6 w-full max-w-sm mx-4 shadow-xl">
-            <h3
-              id="delete-confirm-title"
-              className="text-lg font-semibold text-[var(--color-text-h)] mb-2"
-            >
-              템플릿 삭제
-            </h3>
-            <p className="text-[var(--color-text)] mb-6">
-              "{form.name}" 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수
-              없습니다.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="템플릿 삭제"
+        message={"\"" + form.name + "\" 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        confirmLabel="삭제"
+        variant="danger"
+      />
     </>
   );
 };

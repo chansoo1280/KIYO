@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { lockDataFile } from "@/database/fileStorage";
@@ -13,7 +12,6 @@ const TIMEOUT_MAP: Record<AutoLockTimeout, number> = {
 };
 
 export function useAutoLock() {
-  const navigate = useNavigate();
   const autoLockTimeout = useSettingsStore((state) => state.autoLockTimeout);
   const cryptoKey = useSessionStore((state) => state.cryptoKey);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
@@ -26,25 +24,23 @@ export function useAutoLock() {
 
   // interval callback
   const tick = useCallback(() => {
-    timeoutRef.current -= 1;
-    
-    if (timeoutRef.current <= 0) {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+      timeoutRef.current -= 1;
+
+      if (timeoutRef.current <= 0) {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        isActiveRef.current = false;
+        startedRef.current = false;
+        lockedRef.current = true;
+        setRemainingSeconds(0);
+        lockDataFile();
+        return;
       }
-      isActiveRef.current = false;
-      startedRef.current = false;
-      lockedRef.current = true;
-      setRemainingSeconds(0);
-      lockDataFile().then(() => {
-        navigate("/", { replace: true });
-      });
-      return;
-    }
-    
-    setRemainingSeconds(timeoutRef.current);
-  }, [navigate]);
+
+      setRemainingSeconds(timeoutRef.current);
+    }, []);
 
   // 타이머 시작/재시작
   const startTimer = useCallback(() => {
@@ -85,7 +81,7 @@ export function useAutoLock() {
     }
     startedRef.current = false; // 재시작 허용
     startTimer();
-  }, [autoLockTimeout, cryptoKey]);
+  }, [autoLockTimeout, cryptoKey, startTimer]);
 
   // 활동 감지 리셋
   useEffect(() => {

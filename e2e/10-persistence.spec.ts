@@ -263,7 +263,7 @@ test.describe('데이터 지속성 (Persistence after Reload)', () => {
     expect(Array.isArray(indexedDBInfo.files)).toBe(true);
     expect(indexedDBInfo.files.length).toBeGreaterThan(0);
     
-    const activeFile = indexedDBInfo.files.find((f: any) => f.id === "active");
+    const activeFile = indexedDBInfo.files.find((f: { id: string }) => f.id === "active");
     expect(activeFile).toBeDefined();
     expect(activeFile.fileName).toBe('test-indexeddb-persistence.json');
     expect(activeFile.encrypted).toBe(true);

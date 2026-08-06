@@ -4,8 +4,7 @@ import type { Account, AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
-import { useSessionStore } from "@/store/sessionStore";
-import { fileTable } from "@/database/fileTable";
+import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
 export function useAccountEdit() {
   const navigate = useNavigate();
@@ -20,21 +19,8 @@ export function useAccountEdit() {
   const templateIdFromState = location.state?.templateId as string | undefined;
   const isNew = !accountId;
 
-  // Check file and navigate if needed
-  useEffect(() => {
-    const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      const { cryptoKey } = useSessionStore.getState();
-      if (!activeFileName) {
-        navigate("/", { replace: true });
-        return;
-      } else if (encrypted && !cryptoKey) {
-        navigate("/auth", { replace: true });
-        return;
-      }
-    };
-    checkFileAndNavigate();
-  }, [navigate]);
+  // 파일/인증 상태 체크 (훅으로 분리)
+  useFileAuthGuard({ skipRedirect: false });
 
   // Load templates when templateId comes from state
   useEffect(() => {
@@ -53,7 +39,7 @@ export function useAccountEdit() {
   const account = storedAccount;
 
   // Effective account (for new accounts with templateId)
-  const effectiveAccount = account ?? ({
+  const effectiveAccount = useMemo(() => account ?? ({
     id: 0,
     templateId: templateIdFromState ?? "",
     title: "",
@@ -66,7 +52,7 @@ export function useAccountEdit() {
     websiteUrl: "",
     domain: "",
     packageName: "",
-  } as Account);
+  } as Account), [account, templateIdFromState]);
 
   // Initialize fields from template or existing account
   const [fields, setFields] = useState<AccountField[]>(() => {

@@ -59,13 +59,6 @@ test.describe('비밀번호 생성기 (Password Generator)', () => {
     await expect(page.locator('text=길이: 20자')).toBeVisible();
 
     // 7. 문자 종류 토글 (기본 모두 켜짐 → 하나씩 끄기)
-    const charSetLabels = [
-      '영대문자 (A-Z)',
-      '영소문자 (a-z)', 
-      '숫자 (0-9)',
-      '특수문자 (!@#$%^&*)'
-    ];
-
     // 모두 켜진 상태에서 "특수문자" 끄기
     const symbolsLabel = page.locator('label:has-text("특수문자")').first();
     await symbolsLabel.click();

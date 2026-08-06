@@ -1,8 +1,8 @@
 import { useAccountEdit } from "./hooks/useAccountEdit";
 import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
-import { WebsiteSelectorTrigger } from "./components/WebsiteSelectorTrigger";
-import { PasswordGenerator } from "@/components/PasswordGenerator";
+import WebsiteSelector from "./components/WebsiteSelector";
+import { PasswordGenerator } from "./components/PasswordGenerator";
 import { useNavigate } from "react-router-dom";
 
 const AccountEdit = () => {
@@ -63,8 +63,8 @@ const AccountEdit = () => {
           onTagInputChange={handleTagInput}
         />
 
-        <WebsiteSelectorTrigger
-          isOpen={websiteSelectorOpen}
+        <WebsiteSelector
+          open={websiteSelectorOpen}
           onClose={() => setWebsiteSelectorOpen(false)}
           onSelect={handleWebsiteSelect}
           currentTitle={title}

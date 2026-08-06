@@ -6,8 +6,8 @@ import {
   openImportedDataFile,
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
-import FileCreateDialog from "@/components/FileCreateDialog";
-import FileOpenDialog from "@/components/FileOpenDialog";
+import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
+import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import {
   FileStorageErrorCode,
   isFileStorageError,

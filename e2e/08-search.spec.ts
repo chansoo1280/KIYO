@@ -236,7 +236,7 @@ test.describe('검색 (Search)', () => {
 
       // 검색어 초기화 확인 (ESC로 닫히거나 초기화될 수 있음)
       // 구현에 따라 다름 - 여기서는 검색어 값 확인
-      const searchValue = await searchInput.inputValue();
+      await searchInput.inputValue();
       // ESC 후 검색어가 비어있거나 그대로일 수 있음
     });
 

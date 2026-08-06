@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Account } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import BottomTabs from "@/components/BottomTabs";
 import { useSessionStore } from "@/store/sessionStore";
-import TemplatePicker from "@/components/TemplatePicker";
-import { fileTable } from "@/database/fileTable";
+import TemplatePicker from "./AccountList/components/TemplatePicker";
 import { useClipboard } from "@/hooks/useClipboard";
+import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -18,24 +18,8 @@ const AccountList = () => {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { activeFileName: fileName } = useSessionStore((state) => state);
 
-  useEffect(() => {
-    const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      const { cryptoKey } = useSessionStore.getState();
-      if (!activeFileName) {
-        navigate("/", {
-          replace: true,
-        });
-        return;
-      } else if (encrypted && !cryptoKey) {
-        navigate("/auth", {
-          replace: true,
-        });
-        return;
-      }
-    };
-    checkFileAndNavigate();
-  }, [navigate]);
+  // 파일/인증 상태 체크 (훅으로 분리)
+  useFileAuthGuard({ skipRedirect: false });
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });

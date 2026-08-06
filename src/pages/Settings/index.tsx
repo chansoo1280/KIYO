@@ -1,21 +1,19 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { fileTable } from "@/database/fileTable";
+import { useState } from "react";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
-import { AutofillSettings } from "@/components/AutofillSettings";
-import FileCreateDialog from "@/components/FileCreateDialog";
-import FileOpenDialog from "@/components/FileOpenDialog";
-import PinChangeDialog from "@/components/PinChangeDialog";
+import { AutofillSettings } from "./components/AutofillSettings";
+import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
+import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
+import PinChangeDialog from "@/components/dialogs/PinChangeDialog";
 import BottomTabs from "@/components/BottomTabs";
 import { SecuritySection } from "./components/SecuritySection";
 import { UISection } from "./components/UISection";
 import { DataSection } from "./components/DataSection";
 import { AppInfoDialog } from "./components/AppInfoDialog";
 import { useSettingsActions } from "./hooks/useSettingsActions";
+import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
 const Settings = () => {
-  const navigate = useNavigate();
   const [securityMessage, setSecurityMessage] = useState("");
   const [uiMessage, setUiMessage] = useState("");
   const [dataMessage, setDataMessage] = useState("");
@@ -23,7 +21,7 @@ const Settings = () => {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
   const [showAppInfoDialog, setShowAppInfoDialog] = useState(false);
-  const { activeFileName: fileName, cryptoKey } = useSessionStore();
+  const { activeFileName: fileName } = useSessionStore();
   const { theme, toggleTheme, fontSize, setFontSize, autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
   const [isEncrypted, setIsEncrypted] = useState(false);
 
@@ -35,22 +33,10 @@ const Settings = () => {
     isAndroid,
   } = useSettingsActions();
 
-  // Combined check for encryption status and navigation
-  useEffect(() => {
-    const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      const { cryptoKey: currentCryptoKey } = useSessionStore.getState();
-      setIsEncrypted(encrypted);
-      if (!activeFileName) {
-        navigate("/", { replace: true });
-        return;
-      } else if (encrypted && !currentCryptoKey) {
-        navigate("/auth", { replace: true });
-        return;
-      }
-    };
-    checkFileAndNavigate();
-  }, [navigate, fileName, cryptoKey]);
+  // 파일/인증 상태 체크 및 네비게이션 (훅으로 분리)
+  useFileAuthGuard({
+    skipRedirect: false,
+  });
 
   const handleBackupConfirm = async (options: { fileName: string; encrypted: boolean; pin: string }) => {
     await handleBackup(options);

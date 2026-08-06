@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
-import { PasswordFieldView } from "@/components/PasswordFieldView";
-import { useSessionStore } from "@/store/sessionStore";
-import { fileTable } from "@/database/fileTable";
+import { PasswordFieldView } from "./AccountDetail/components/PasswordFieldView";
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
+import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -19,20 +19,8 @@ const AccountDetail = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteAccount, updateAccount } = useAccountStore();
 
-  useEffect(() => {
-    const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      const { cryptoKey } = useSessionStore.getState();
-      if (!activeFileName) {
-        navigate("/", { replace: true });
-        return;
-      } else if (encrypted && !cryptoKey) {
-        navigate("/auth", { replace: true });
-        return;
-      }
-    };
-    checkFileAndNavigate();
-  }, [navigate]);
+  // 파일/인증 상태 체크 (훅으로 분리)
+  useFileAuthGuard({ skipRedirect: false });
 
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
@@ -103,9 +91,7 @@ const AccountDetail = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() =>
-                navigate(`/account/edit/${account.id}`)
-              }
+              onClick={() => navigate(`/account/edit/${account.id}`)}
               className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
             >
               수정
@@ -166,43 +152,15 @@ const AccountDetail = () => {
         </article>
       </section>
 
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-confirm-title"
-        >
-          <div className="bg-[var(--color-bg)] rounded-3xl p-6 w-full max-w-sm mx-4 shadow-xl">
-            <h3
-              id="delete-confirm-title"
-              className="text-lg font-semibold text-[var(--color-text-h)] mb-2"
-            >
-              계정 삭제
-            </h3>
-            <p className="text-[var(--color-text)] mb-6">
-              "{account.title}" 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수
-              없습니다.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDelete()}
-                className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="계정 삭제"
+        message={"\"" + account.title + "\" 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        confirmLabel="삭제"
+        variant="danger"
+      />
     </>
   );
 };

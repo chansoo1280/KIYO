@@ -1,6 +1,6 @@
-import { PasswordFieldEdit } from "@/components/PasswordFieldEdit";
+import { PasswordFieldEdit } from "./PasswordFieldEdit";
 import type { AccountField, FieldType } from "@/models/account";
-import { getFieldTypePlaceholder } from "@/models/fieldTypes";
+import { getFieldTypePlaceholder, FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
 
 interface FieldEditorProps {
   field: AccountField;
@@ -140,15 +140,11 @@ export function FieldEditor({
             onChange={(e) => handleTypeChange(e.target.value as FieldType)}
             className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           >
-            <option value="text">텍스트</option>
-            <option value="password">비밀번호</option>
-            <option value="email">이메일</option>
-            <option value="url">URL</option>
-            <option value="number">숫자</option>
-            <option value="textarea">긴 텍스트</option>
-            <option value="totp">TOTP (2FA)</option>
-            <option value="select">선택</option>
-            <option value="date">날짜</option>
+            {FIELD_TYPE_OPTIONS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
           </select>
           <button
             type="button"

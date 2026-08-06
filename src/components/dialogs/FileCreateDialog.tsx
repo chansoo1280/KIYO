@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { BaseDialog } from "@/components/BaseDialog";
-import { useDialog } from "@/hooks/useDialog";
+import { FormDialog } from "./FormDialog";
 
 interface FileCreateDialogProps {
   open: boolean;
@@ -28,56 +27,46 @@ const FileCreateDialog = ({
   onClose,
 }: FileCreateDialogProps) => {
   const [fileName, setFileName] = useState(defaultValue.replace(".json", ""));
-
   const [encrypted, setEncrypted] = useState(true);
-
   const [pin, setPin] = useState("");
-
-  const { close, setError, setConfirmDisabled, handleConfirm } = useDialog({
-    onConfirm: async () => {
-      if (!fileName.trim()) {
-        setError("파일을 선택해주세요.");
-        return;
-      }
-
-      if (encrypted && !pin) {
-        setError("PIN 번호를 입력해주세요.");
-        return;
-      }
-      await onConfirm({
-        fileName: `${fileName.trim()}.json`,
-        encrypted,
-        pin,
-      });
-
-      resetState();
-    },
-    onClose: () => {
-      resetState();
-      onClose();
-    },
-    initialConfirmDisabled: !defaultValue.trim(),
-  });
-
-  const resetState = () => {
-    setFileName(defaultValue.replace(".json", ""));
-    setPin("");
-    setEncrypted(true);
-    setError("");
-    setConfirmDisabled(!fileName.trim() || (encrypted && !pin));
-  };
 
   const confirmDisabled = !fileName.trim() || (encrypted && !pin);
 
+  const handleClose = () => {
+    setFileName(defaultValue.replace(".json", ""));
+    setPin("");
+    setEncrypted(true);
+    onClose();
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!fileName.trim()) {
+      throw new Error("파일 이름을 입력해주세요.");
+    }
+
+    if (encrypted && !pin) {
+      throw new Error("PIN 번호를 입력해주세요.");
+    }
+
+    await onConfirm({
+      fileName: `${fileName.trim()}.json`,
+      encrypted,
+      pin,
+    });
+
+    handleClose();
+  };
+
   return (
-    <BaseDialog
+    <FormDialog
       open={open}
       title={title}
       description={description}
-      onClose={close}
-      confirmLabel={confirmLabel}
-      onConfirm={handleConfirm}
-      confirmDisabled={confirmDisabled}
+      onClose={handleClose}
+      onSubmit={handleSubmit}
+      submitLabel={confirmLabel}
+      disabled={confirmDisabled}
     >
       {/* 파일 이름 */}
       <label className="mt-5 block text-sm font-medium text-[var(--color-text)]">
@@ -87,9 +76,7 @@ const FileCreateDialog = ({
       <div className="mt-2 flex items-center gap-2">
         <input
           value={fileName}
-          onChange={(e) => {
-            setFileName(e.target.value);
-          }}
+          onChange={(e) => setFileName(e.target.value)}
           className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
         />
 
@@ -125,7 +112,7 @@ const FileCreateDialog = ({
           />
         </div>
       )}
-    </BaseDialog>
+    </FormDialog>
   );
 };
 

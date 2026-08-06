@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { BaseDialog } from "@/components/BaseDialog";
+import { FormDialog } from "@/components/dialogs/FormDialog";
 import { useClipboard } from "@/hooks/useClipboard";
 
 interface PasswordGeneratorProps {
@@ -94,7 +94,8 @@ export const PasswordGenerator = ({
     setCharSets((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleApply = async () => {
+  const handleApply = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (generatedPassword) {
       onApply(generatedPassword);
       onClose();
@@ -123,14 +124,14 @@ export const PasswordGenerator = ({
   ];
 
   return (
-    <BaseDialog
+    <FormDialog
       open={open}
       title="비밀번호 생성기"
       description="강력한 비밀번호를 생성하여 계정 보안을 강화하세요."
       onClose={handleClose}
-      confirmLabel="적용"
-      onConfirm={handleApply}
-      confirmDisabled={!generatedPassword}
+      onSubmit={handleApply}
+      submitLabel="적용"
+      disabled={!generatedPassword}
     >
       <div className="space-y-4">
         {/* Length Slider */}
@@ -224,7 +225,7 @@ export const PasswordGenerator = ({
           생성된 비밀번호는 브라우저의 암호화된 난수 생성기(crypto.getRandomValues)를 사용하여 안전하게 생성됩니다.
         </p>
       </div>
-    </BaseDialog>
+    </FormDialog>
   );
 };
 
