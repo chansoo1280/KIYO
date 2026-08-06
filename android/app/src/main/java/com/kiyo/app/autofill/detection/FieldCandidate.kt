@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.detection
 
 import android.view.autofill.AutofillId
 

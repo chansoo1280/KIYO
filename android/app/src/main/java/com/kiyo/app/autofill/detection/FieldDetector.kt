@@ -1,8 +1,9 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.detection
 
 import android.app.assist.AssistStructure
 import android.util.Log
 import android.view.autofill.AutofillId
+import com.kiyo.app.autofill.viewnode.ViewNodeUtils
 
 /**
  * 필드 탐지기

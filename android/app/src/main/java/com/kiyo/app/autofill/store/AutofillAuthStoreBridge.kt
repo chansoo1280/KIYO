@@ -1,14 +1,14 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.store
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
 /**
- * Java-friendly wrapper for AutofillDataStore suspend functions.
+ * Java-friendly wrapper for AutofillAuthStore suspend functions.
  * Provides blocking calls for Java interop using runBlocking.
  */
-object AutofillDataStoreJavaBridge {
+object AutofillAuthStoreBridge {
 
     /**
      * Save autofill token (blocking call for Java).
@@ -21,7 +21,7 @@ object AutofillDataStoreJavaBridge {
         isEncrypted: Boolean
     ) {
         runBlocking(Dispatchers.IO) {
-            AutofillDataStore.saveAutofillToken(context, token, expireAt, isEncrypted)
+            AutofillAuthStore.saveAutofillToken(context, token, expireAt, isEncrypted)
         }
     }
 
@@ -31,7 +31,7 @@ object AutofillDataStoreJavaBridge {
     @JvmStatic
     fun clearToken(context: Context) {
         runBlocking(Dispatchers.IO) {
-            AutofillDataStore.clearToken(context)
+            AutofillAuthStore.clearToken(context)
         }
     }
 
@@ -41,7 +41,7 @@ object AutofillDataStoreJavaBridge {
     @JvmStatic
     fun getAutofillToken(context: Context): String? {
         return runBlocking(Dispatchers.IO) {
-            AutofillDataStore.getAutofillToken(context)
+            AutofillAuthStore.getAutofillToken(context)
         }
     }
 
@@ -51,7 +51,7 @@ object AutofillDataStoreJavaBridge {
     @JvmStatic
     fun getTokenExpireAt(context: Context): Long? {
         return runBlocking(Dispatchers.IO) {
-            AutofillDataStore.getTokenExpireAt(context)
+            AutofillAuthStore.getTokenExpireAt(context)
         }
     }
 
@@ -61,7 +61,7 @@ object AutofillDataStoreJavaBridge {
     @JvmStatic
     fun isEncrypted(context: Context): Boolean {
         return runBlocking(Dispatchers.IO) {
-            AutofillDataStore.isEncrypted(context)
+            AutofillAuthStore.isEncrypted(context)
         }
     }
 
@@ -71,7 +71,7 @@ object AutofillDataStoreJavaBridge {
     @JvmStatic
     fun hasValidToken(context: Context): Boolean {
         return runBlocking(Dispatchers.IO) {
-            AutofillDataStore.hasValidToken(context)
+            AutofillAuthStore.hasValidToken(context)
         }
     }
 
@@ -81,7 +81,7 @@ object AutofillDataStoreJavaBridge {
     @JvmStatic
     fun setVaultEncryptionStatus(context: Context, isEncrypted: Boolean) {
         runBlocking(Dispatchers.IO) {
-            AutofillDataStore.setVaultEncryptionStatus(context, isEncrypted)
+            AutofillAuthStore.setVaultEncryptionStatus(context, isEncrypted)
         }
     }
 }

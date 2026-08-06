@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.service
 
 import android.app.assist.AssistStructure
 import android.content.ComponentName
@@ -20,14 +20,17 @@ import android.view.autofill.AutofillManager
 import android.view.autofill.AutofillValue
 import androidx.core.content.ContextCompat
 import com.kiyo.app.BuildConfig
-import com.kiyo.app.autofill.CredentialExtractor
-import com.kiyo.app.autofill.FillResponseBuilder
-import com.kiyo.app.autofill.ViewNodeUtils
+import com.kiyo.app.autofill.credential.CredentialExtractor
+import com.kiyo.app.autofill.detection.FieldDetector
+import com.kiyo.app.autofill.detection.FieldScorer
+import com.kiyo.app.autofill.repository.AutofillRepository
+import com.kiyo.app.autofill.response.FillResponseBuilder
+import com.kiyo.app.autofill.store.AutofillAuthStore
+import com.kiyo.app.autofill.viewnode.ViewNodeUtils
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.collections.any
-import com.kiyo.app.autofill.AutofillDataStore
 import android.content.Intent
 import com.kiyo.app.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -104,7 +107,7 @@ class KiyoAutofillService : AutofillService() {
                 val rootViewNode = structure.getWindowNodeAt(0).rootViewNode
 
                 // Skip autofill for KIYO app itself (package name: com.kiyo.app)
-                val packageNames = extractPackageNamesFromStructure(rootViewNode)
+                val packageNames = ViewNodeUtils.extractPackageNamesFromStructure(rootViewNode)
                 if (packageNames.contains("com.kiyo.app")) {
                     Log.d(TAG, "Skipping autofill for KIYO app (com.kiyo.app)")
                     handler.post { callback.onSuccess(null) }
@@ -155,7 +158,7 @@ class KiyoAutofillService : AutofillService() {
                 }
 
                 // Get domain from structure for account matching
-                val domain = extractDomainFromStructure(rootViewNode)
+                val domain = ViewNodeUtils.extractDomainFromStructure(rootViewNode)
                 Log.d(TAG, "Extracted domain: $domain")
 
                 // Find matching accounts from repository
@@ -170,8 +173,8 @@ class KiyoAutofillService : AutofillService() {
 
                 // Check vault encryption status and token validity via DataStore
                 CoroutineScope(Dispatchers.IO).launch {
-                    val isEncrypted = AutofillDataStore.isEncrypted(this@KiyoAutofillService)
-                    Log.d(TAG, "AutofillDataStore :: isEncrypted=$isEncrypted")
+                    val isEncrypted = AutofillAuthStore.isEncrypted(this@KiyoAutofillService)
+                    Log.d(TAG, "AutofillAuthStore :: isEncrypted=$isEncrypted")
 
                     // 1. Non-encrypted vault -> return fill response directly
                     if (!isEncrypted) {
@@ -186,8 +189,8 @@ class KiyoAutofillService : AutofillService() {
                     }
 
                     // 2. Encrypted vault -> check for valid token
-                    val hasValidToken = AutofillDataStore.hasValidToken(this@KiyoAutofillService)
-                    Log.d(TAG, "AutofillDataStore :: hasValidToken=$hasValidToken")
+                    val hasValidToken = AutofillAuthStore.hasValidToken(this@KiyoAutofillService)
+                    Log.d(TAG, "AutofillAuthStore :: hasValidToken=$hasValidToken")
 
                     if (!hasValidToken) {
                         // No valid token -> request auth
@@ -246,7 +249,7 @@ class KiyoAutofillService : AutofillService() {
                 val rootViewNode = structure.getWindowNodeAt(0).rootViewNode
 
                 // Skip autofill for KIYO app itself (package name: com.kiyo.app)
-                val packageNames = extractPackageNamesFromStructure(rootViewNode)
+                val packageNames = ViewNodeUtils.extractPackageNamesFromStructure(rootViewNode)
                 if (packageNames.contains("com.kiyo.app")) {
                     Log.d(TAG, "Skipping save for KIYO app (com.kiyo.app)")
                     return@execute
@@ -273,7 +276,7 @@ class KiyoAutofillService : AutofillService() {
                 val extractedData = CredentialExtractor.extractCredentialsFromFields(rootViewNode, usernameId, passwordId)
                 val username = extractedData.username
                 val password = extractedData.password
-                val domain = extractDomainFromStructure(rootViewNode)
+                val domain = ViewNodeUtils.extractDomainFromStructure(rootViewNode)
 
                 Log.d(TAG, "Extracted credentials: username=${username != null}, password=${password != null}, domain=$domain, packages=$packageNames")
 
@@ -315,128 +318,6 @@ class KiyoAutofillService : AutofillService() {
                 Log.e(TAG, "Error in onSaveRequest", e)
             }
         }
-    }
-
-    /**
-     * Extract credentials from specific field IDs
-     */
-    private data class ExtractedCredentials(
-        val username: String?,
-        val password: String?
-    )
-
-    private fun extractCredentialsFromFields(
-        structure: AssistStructure.ViewNode,
-        usernameId: AutofillId?,
-        passwordId: AutofillId?
-    ): ExtractedCredentials {
-        var username: String? = null
-        var password: String? = null
-
-        fun traverse(node: AssistStructure.ViewNode) {
-            val autofillId = node.autofillId
-            val text = node.text?.toString() ?: ""
-
-            if (text.isNotEmpty()) {
-                if (autofillId != null && autofillId == usernameId && username == null) {
-                    username = text
-                } else if (autofillId != null && autofillId == passwordId && password == null) {
-                    password = text
-                }
-            }
-
-            for (i in 0 until node.childCount) {
-                traverse(node.getChildAt(i))
-            }
-        }
-
-        traverse(structure)
-        return ExtractedCredentials(username, password)
-    }
-
-    /**
-     * Extract domain from assist structure
-     */
-    private fun extractDomainFromStructure(structure: AssistStructure.ViewNode): String {
-        var domain = ""
-
-        fun traverse(node: AssistStructure.ViewNode) {
-            if (domain.isNotEmpty()) return
-            node.webDomain?.let { domain = it.toString() }
-            for (i in 0 until node.childCount) {
-                traverse(node.getChildAt(i))
-                if (domain.isNotEmpty()) break
-            }
-        }
-
-        traverse(structure)
-        return domain
-    }
-
-    /**
-     * Extract package names from assist structure
-     */
-    private fun extractPackageNamesFromStructure(structure: AssistStructure.ViewNode): List<String> {
-        val packages = mutableSetOf<String>()
-
-        fun traverse(node: AssistStructure.ViewNode) {
-            node.idPackage?.let { packages.add(it.toString()) }
-            for (i in 0 until node.childCount) {
-                traverse(node.getChildAt(i))
-            }
-        }
-
-        traverse(structure)
-        return packages.toList()
-    }
-
-    /**
-     * Extract app name from structure
-     */
-    private fun extractAppNameFromStructure(structure: AssistStructure.ViewNode): String? {
-        var appName: String? = null
-
-        fun traverse(node: AssistStructure.ViewNode) {
-            if (appName != null) return
-            node.idPackage?.let { appName = it.toString() }
-            for (i in 0 until node.childCount) {
-                traverse(node.getChildAt(i))
-                if (appName != null) break
-            }
-        }
-
-        traverse(structure)
-        return appName
-    }
-
-    /**
-     * Extract title from structure (web page title)
-     */
-    private fun extractTitleFromStructure(structure: AssistStructure.ViewNode): String? {
-        var title: String? = null
-
-        fun traverse(node: AssistStructure.ViewNode) {
-            if (title != null) return
-            node.htmlInfo?.let { htmlInfo ->
-                // Try to get title from HTML
-                val attributes = htmlInfo.attributes
-                if (attributes != null) {
-                    for (attr in attributes) {
-                        if (attr.first.lowercase() == "title") {
-                            title = attr.second
-                            break
-                        }
-                    }
-                }
-            }
-            for (i in 0 until node.childCount) {
-                traverse(node.getChildAt(i))
-                if (title != null) break
-            }
-        }
-
-        traverse(structure)
-        return title
     }
 
     companion object {

@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.settings
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity

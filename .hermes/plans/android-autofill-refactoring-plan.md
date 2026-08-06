@@ -77,7 +77,7 @@
 **Goal**: Move files into sub-packages. **No class extraction, no merging, no logic changes.**
 
 ### New Package Structure (after move)
-```
+```text
 autofill/
   ├── service/
   │   └── KiyoAutofillService.kt
@@ -86,9 +86,9 @@ autofill/
   │   ├── AutofillRepository.kt
   │   └── AutofillDatabaseHelper.kt
   │
-  ├── session/
-  │   ├── AutofillDataStore.kt           # rename: AutofillSessionStore.kt
-  │   └── AutofillDataStoreJavaBridge.kt # rename: AutofillSessionStoreBridge.kt
+  ├── store/
+  │   ├── AutofillAuthStore.kt           # renamed: AutofillDataStore → AutofillAuthStore
+  │   └── AutofillAuthStoreBridge.kt     # renamed: AutofillDataStoreJavaBridge → AutofillAuthStoreBridge
   │
   ├── detection/
   │   ├── FieldDetector.kt
@@ -117,10 +117,10 @@ autofill/
 ### Actions
 | Action | Details |
 |--------|---------|
-| Create sub-packages | `service`, `repository`, `session`, `detection`, `response`, `viewnode`, `credential`, `icon`, `biometric`, `settings` |
+| Create sub-packages | `service`, `repository`, `store`, `detection`, `response`, `viewnode`, `credential`, `icon`, `biometric`, `settings` |
 | Move files to new packages | Update `package` declarations and all imports |
-| Rename `AutofillDataStore` → `AutofillSessionStore` | Name only, no logic change |
-| Rename `AutofillDataStoreJavaBridge` → `AutofillSessionStoreBridge` | Name only, no logic change |
+| Rename `AutofillDataStore` → `AutofillAuthStore` | Name only, no logic change |
+| Rename `AutofillDataStoreJavaBridge` → `AutofillAuthStoreBridge` | Name only, no logic change |
 
 ### Verification
 - Build passes
@@ -288,3 +288,4 @@ viewnode/
 - **Test on real device** — AutofillService behavior differs on emulator
 - **Preserve SQLCipher encryption** — DatabaseKeyManager/Keystore logic must remain intact
 - **Commit after each phase** — small, reviewable diffs
+- **Phase 2 naming changes**: `session/` → `store/`, `AutofillDataStore` → `AutofillAuthStore`, `AutofillDataStoreJavaBridge` → `AutofillAuthStoreBridge`

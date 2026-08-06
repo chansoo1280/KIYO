@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.response
 
 import android.content.Context
 import android.service.autofill.Dataset
@@ -9,6 +9,8 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
 import com.kiyo.app.R
+import com.kiyo.app.autofill.icon.IconResourceMapper
+import com.kiyo.app.autofill.repository.AutofillRepository
 
 /**
  * FillResponse 빌더

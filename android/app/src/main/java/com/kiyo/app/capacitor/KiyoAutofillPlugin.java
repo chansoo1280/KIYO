@@ -17,8 +17,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import com.kiyo.app.autofill.AutofillRepository;
-import com.kiyo.app.autofill.AutofillDataStoreJavaBridge;
+import com.kiyo.app.autofill.repository.AutofillRepository;
+import com.kiyo.app.autofill.store.AutofillAuthStoreBridge;
 import java.util.List;
 
 @CapacitorPlugin(name = "KiyoAutofill")
@@ -529,7 +529,7 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            AutofillDataStoreJavaBridge.saveAutofillToken(context, token, expireAt, isEncrypted);
+                    AutofillAuthStoreBridge.saveAutofillToken(context, token, expireAt, isEncrypted);
             android.util.Log.d(TAG, "Autofill token saved. isEncrypted=" + isEncrypted + ", expireAt=" + expireAt);
             call.resolve();
         } catch (Exception e) {
@@ -547,7 +547,7 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            AutofillDataStoreJavaBridge.clearToken(context);
+                    AutofillAuthStoreBridge.clearToken(context);
             android.util.Log.d(TAG, "Autofill token cleared");
             call.resolve();
         } catch (Exception e) {
@@ -565,10 +565,10 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            String token = AutofillDataStoreJavaBridge.getAutofillToken(context);
-            Long expireAt = AutofillDataStoreJavaBridge.getTokenExpireAt(context);
-            boolean isEncrypted = AutofillDataStoreJavaBridge.isEncrypted(context);
-            boolean hasValidToken = AutofillDataStoreJavaBridge.hasValidToken(context);
+                    String token = AutofillAuthStoreBridge.getAutofillToken(context);
+                    Long expireAt = AutofillAuthStoreBridge.getTokenExpireAt(context);
+                    boolean isEncrypted = AutofillAuthStoreBridge.isEncrypted(context);
+                    boolean hasValidToken = AutofillAuthStoreBridge.hasValidToken(context);
 
             JSObject result = new JSObject();
             result.put("hasToken", token != null);
@@ -599,7 +599,7 @@ public class KiyoAutofillPlugin extends Plugin {
         }
 
         try {
-            AutofillDataStoreJavaBridge.setVaultEncryptionStatus(context, isEncrypted);
+                    AutofillAuthStoreBridge.setVaultEncryptionStatus(context, isEncrypted);
             android.util.Log.d(TAG, "Vault encryption status set: " + isEncrypted);
             call.resolve();
         } catch (Exception e) {

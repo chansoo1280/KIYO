@@ -1,7 +1,8 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.viewnode
 
 import android.app.assist.AssistStructure
 import android.util.Log
+import com.kiyo.app.autofill.detection.FieldScorer
 
 /**
  * ViewNode 유틸리티 함수들
@@ -122,6 +123,25 @@ object ViewNodeUtils {
         
         traverse(rootNode, 0)
         Log.d(TAG, "=== End Field Detection Debug Info ===")
+    }
+
+    /**
+     * Extract domain from assist structure (webDomain from ViewNode)
+     */
+    fun extractDomainFromStructure(structure: AssistStructure.ViewNode): String {
+        var domain = ""
+
+        fun traverse(node: AssistStructure.ViewNode) {
+            if (domain.isNotEmpty()) return
+            node.webDomain?.let { domain = it.toString() }
+            for (i in 0 until node.childCount) {
+                traverse(node.getChildAt(i))
+                if (domain.isNotEmpty()) break
+            }
+        }
+
+        traverse(structure)
+        return domain
     }
 
     /**

@@ -1,8 +1,9 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.icon
 
 import android.content.Context
 import android.util.Log
 import com.kiyo.app.R
+import com.kiyo.app.autofill.repository.AutofillRepository
 
 /**
  * 사이트 아이콘 리소스 매퍼

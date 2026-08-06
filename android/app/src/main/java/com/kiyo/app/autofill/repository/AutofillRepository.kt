@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.repository
 
 import android.content.ContentValues
 import android.content.Context

@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.store
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
- * DataStore wrapper for autofill session persistence.
+ * DataStore wrapper for autofill authentication session persistence.
  * Replaces in-memory SecuritySession with persistent storage across process restarts.
  */
-object AutofillDataStore {
+object AutofillAuthStore {
 
     private const val DATASTORE_NAME = "autofill_prefs"
     private const val KEY_AUTOFILL_TOKEN = "autofill_token"

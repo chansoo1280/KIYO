@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill
+package com.kiyo.app.autofill.credential
 
 import android.app.assist.AssistStructure
 import android.view.autofill.AutofillId
