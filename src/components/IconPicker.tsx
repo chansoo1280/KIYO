@@ -1,41 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { ICON_OPTIONS } from "@/data/icons";
 
 interface IconPickerProps {
   value: string;
   onChange: (icon: string) => void;
 }
-const ICON_OPTIONS = [
-  "🔐",
-  "🔑",
-  "💳",
-  "🏦",
-  "📶",
-  "📝",
-  "🔒",
-  "🔗",
-  "📧",
-  "🔢",
-  "📄",
-  "📋",
-  "📅",
-  "⚙️",
-  "🌐",
-  "💻",
-  "📱",
-  "🎮",
-  "💰",
-  "📸",
-  "🎫",
-  "🏷️",
-  "🔖",
-  "📌",
-  "🔑",
-  "🗝️",
-  "💾",
-  "💿",
-  "📀",
-  "💽",
-];
 
 const IconPicker = ({ value, onChange }: IconPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);

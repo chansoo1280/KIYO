@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { BaseDialog } from "@/components/BaseDialog";
+import { useClipboard } from "@/hooks/useClipboard";
 
 interface PasswordGeneratorProps {
   open: boolean;
@@ -74,30 +75,7 @@ export const PasswordGenerator = ({
   });
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [hasCopiedText, setHasCopiedText] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(0);
-
-  // Simple clipboard copy without auto-clear
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setHasCopiedText(true);
-      setRemainingTime(30);
-      const timer = setInterval(() => {
-        setRemainingTime((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setHasCopiedText(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  const { copy, copied, remainingTime } = useClipboard();
 
   const generatePassword = useCallback(() => {
     setErrorMessage("");
@@ -116,7 +94,7 @@ export const PasswordGenerator = ({
     setCharSets((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (generatedPassword) {
       onApply(generatedPassword);
       onClose();
@@ -222,11 +200,11 @@ export const PasswordGenerator = ({
               />
               <button
                 type="button"
-                onClick={() => copyToClipboard(generatedPassword)}
+                onClick={() => copy(generatedPassword)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-[var(--color-accent)] px-3 py-1 text-xs font-semibold text-white hover:bg-[var(--color-accent)]/80 transition-colors"
-                disabled={hasCopiedText}
+                disabled={copied}
               >
-                {hasCopiedText ? (
+                {copied ? (
                   <>
                     복사됨 {remainingTime > 0 && `(${remainingTime}s)`}
                   </>

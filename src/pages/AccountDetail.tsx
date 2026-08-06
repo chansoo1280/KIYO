@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
-import { PasswordField } from "@/components/PasswordField";
+import { PasswordFieldView } from "@/components/PasswordFieldView";
 import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
 
@@ -34,24 +34,11 @@ const AccountDetail = () => {
     checkFileAndNavigate();
   }, [navigate]);
 
-  // Simple clipboard copy without auto-clear
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
       return (
-        <PasswordField
+        <PasswordFieldView
           value={field.value}
-          onChange={() => {}}
-          onCopy={() => copyToClipboard(field.value)}
-          mode="view"
         />
       );
     }

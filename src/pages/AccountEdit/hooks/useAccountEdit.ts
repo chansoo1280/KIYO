@@ -1,0 +1,221 @@
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import type { Account, AccountField } from "@/models/account";
+import { useAccountStore } from "@/store/accountStore";
+import { useTemplateStore } from "@/store/templateStore";
+import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
+import { useSessionStore } from "@/store/sessionStore";
+import { fileTable } from "@/database/fileTable";
+
+export function useAccountEdit() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
+  const accountId = Number(id);
+  const updateAccount = useAccountStore((state) => state.updateAccount);
+  const addAccount = useAccountStore((state) => state.addAccount);
+  const templates = useTemplateStore((state) => state.templates);
+  const loadTemplates = useTemplateStore((state) => state.loadTemplates);
+
+  const templateIdFromState = location.state?.templateId as string | undefined;
+  const isNew = !accountId;
+
+  // Check file and navigate if needed
+  useEffect(() => {
+    const checkFileAndNavigate = async () => {
+      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+      const { cryptoKey } = useSessionStore.getState();
+      if (!activeFileName) {
+        navigate("/", { replace: true });
+        return;
+      } else if (encrypted && !cryptoKey) {
+        navigate("/auth", { replace: true });
+        return;
+      }
+    };
+    checkFileAndNavigate();
+  }, [navigate]);
+
+  // Load templates when templateId comes from state
+  useEffect(() => {
+    if (templateIdFromState) {
+      loadTemplates();
+    }
+  }, [templateIdFromState, loadTemplates]);
+
+  // Get stored account
+  const storedAccount = useAccountStore((state) =>
+    Number.isInteger(accountId)
+      ? state.accounts.find((item) => item.id === accountId)
+      : undefined,
+  );
+
+  const account = storedAccount;
+
+  // Effective account (for new accounts with templateId)
+  const effectiveAccount = account ?? ({
+    id: 0,
+    templateId: templateIdFromState ?? "",
+    title: "",
+    description: "",
+    tags: [],
+    favorite: false,
+    createdAt: 0,
+    updatedAt: 0,
+    fields: [],
+    websiteUrl: "",
+    domain: "",
+    packageName: "",
+  } as Account);
+
+  // Initialize fields from template or existing account
+  const [fields, setFields] = useState<AccountField[]>(() => {
+    if (isNew && effectiveAccount.templateId) {
+      if (effectiveAccount.templateId === "default-template") {
+        return DEFAULT_TEMPLATE_FIELDS.map((field, index) => ({
+          id: `default-template-${index + 1}`,
+          accountId: 0,
+          label: field.label,
+          type: field.type,
+          value: field.defaultValue || "",
+          order: index + 1,
+        }));
+      }
+      const template = templates.find((t) => t.id === String(effectiveAccount.templateId));
+      if (template) {
+        return template.fields.map((field, index) => ({
+          id: `${template.id}-${index + 1}`,
+          accountId: 0,
+          label: field.label,
+          type: field.type,
+          value: field.defaultValue || "",
+          order: index + 1,
+          options: field.options,
+        }));
+      }
+    }
+    return [...(effectiveAccount.fields || [])].sort((a, b) => a.order - b.order);
+  });
+
+  const [title, setTitle] = useState(effectiveAccount.title);
+  const [tags, setTags] = useState<string[]>(effectiveAccount.tags);
+  const [websiteUrl, setWebsiteUrl] = useState(effectiveAccount.websiteUrl ?? "");
+  const [domain, setDomain] = useState(effectiveAccount.domain ?? "");
+  const [passwordGeneratorOpen, setPasswordGeneratorOpen] = useState<string | null>(null);
+  const [websiteSelectorOpen, setWebsiteSelectorOpen] = useState(false);
+
+  const tagInput = useMemo(() => tags.join(", "), [tags]);
+
+  const handleWebsiteSelect = useCallback((preset: import("@/models/websitePreset").WebsitePreset) => {
+    setWebsiteUrl(preset.websiteUrl);
+    setDomain(preset.domain);
+  }, []);
+
+  const handleTagInput = useCallback((value: string) => {
+    const parsed = value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    setTags(parsed);
+  }, []);
+
+  const updateField = useCallback((id: string, patch: Partial<AccountField>) => {
+    setFields((current) =>
+      current.map((field) => (field.id === id ? { ...field, ...patch } : field)),
+    );
+  }, []);
+
+  const addField = useCallback(() => {
+    const newField: AccountField = {
+      id: `field-${Date.now()}`,
+      accountId: effectiveAccount.id,
+      label: "",
+      type: "text",
+      value: "",
+      order: fields.length + 1,
+    };
+    setFields((current) => [...current, newField]);
+  }, [effectiveAccount.id, fields.length]);
+
+  const removeField = useCallback((id: string) => {
+    setFields((current) => current.filter((field) => field.id !== id));
+  }, []);
+
+  const openPasswordGenerator = useCallback((fieldId: string) => {
+    setPasswordGeneratorOpen(fieldId);
+  }, []);
+
+  const handlePasswordGenerated = useCallback((password: string) => {
+    if (passwordGeneratorOpen) {
+      updateField(passwordGeneratorOpen, { value: password });
+      setPasswordGeneratorOpen(null);
+    }
+  }, [passwordGeneratorOpen, updateField]);
+
+  const handleSave = useCallback(async () => {
+    const cleanedFields = fields
+      .filter((field) => {
+        const trimmedLabel = field.label.trim();
+        return trimmedLabel.length > 0;
+      })
+      .map((field, index) => ({
+        ...field,
+        order: index + 1,
+      }));
+
+    const updatedAccount: Account = {
+      ...effectiveAccount,
+      title,
+      tags,
+      favorite: effectiveAccount.favorite,
+      fields: cleanedFields,
+      websiteUrl: websiteUrl || undefined,
+      domain: domain || undefined,
+    };
+
+    let savedAccount = updatedAccount;
+
+    if (isNew) {
+      savedAccount = await addAccount(updatedAccount);
+    } else {
+      await updateAccount(updatedAccount);
+    }
+
+    navigate(`/account/${savedAccount.id}`);
+  }, [
+    fields,
+    title,
+    tags,
+    effectiveAccount,
+    websiteUrl,
+    domain,
+    isNew,
+    addAccount,
+    updateAccount,
+    navigate,
+  ]);
+
+  return {
+    // State
+    fields,
+    title,
+    setTitle,
+    websiteUrl,
+    setWebsiteUrl,
+    domain,
+    passwordGeneratorOpen,
+    websiteSelectorOpen,
+    setWebsiteSelectorOpen,
+    tagInput,
+    // Handlers
+    handleWebsiteSelect,
+    handleTagInput,
+    updateField,
+    addField,
+    removeField,
+    openPasswordGenerator,
+    handlePasswordGenerated,
+    handleSave,
+    setPasswordGeneratorOpen,
+  };
+}

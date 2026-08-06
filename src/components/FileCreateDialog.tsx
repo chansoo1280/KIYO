@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BaseDialog } from "@/components/BaseDialog";
+import { useDialog } from "@/hooks/useDialog";
 
 interface FileCreateDialogProps {
   open: boolean;
@@ -32,28 +33,17 @@ const FileCreateDialog = ({
 
   const [pin, setPin] = useState("");
 
-  const [isModify, setIsModify] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const { close, setError, setConfirmDisabled, handleConfirm } = useDialog({
+    onConfirm: async () => {
+      if (!fileName.trim()) {
+        setError("파일을 선택해주세요.");
+        return;
+      }
 
-  const resetState = () => {
-    setFileName(defaultValue.replace(".json", ""));
-    setPin("");
-    setEncrypted(true);
-    setIsModify(false);
-    setErrorMessage("");
-  };
-
-  const handleConfirm = async () => {
-    if (!fileName.trim()) {
-      setErrorMessage("파일을 선택해주세요.");
-      return;
-    }
-
-    if (encrypted && !pin) {
-      setErrorMessage("PIN 번호를 입력해주세요.");
-      return;
-    }
-    try {
+      if (encrypted && !pin) {
+        setError("PIN 번호를 입력해주세요.");
+        return;
+      }
       await onConfirm({
         fileName: `${fileName.trim()}.json`,
         encrypted,
@@ -61,17 +51,20 @@ const FileCreateDialog = ({
       });
 
       resetState();
+    },
+    onClose: () => {
+      resetState();
       onClose();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "파일을 생성할 수 없습니다.",
-      );
-    }
-  };
+    },
+    initialConfirmDisabled: !defaultValue.trim(),
+  });
 
-  const handleClose = () => {
-    resetState();
-    onClose();
+  const resetState = () => {
+    setFileName(defaultValue.replace(".json", ""));
+    setPin("");
+    setEncrypted(true);
+    setError("");
+    setConfirmDisabled(!fileName.trim() || (encrypted && !pin));
   };
 
   const confirmDisabled = !fileName.trim() || (encrypted && !pin);
@@ -81,11 +74,10 @@ const FileCreateDialog = ({
       open={open}
       title={title}
       description={description}
-      onClose={handleClose}
+      onClose={close}
       confirmLabel={confirmLabel}
       onConfirm={handleConfirm}
       confirmDisabled={confirmDisabled}
-      errorMessage={errorMessage && !isModify ? errorMessage : undefined}
     >
       {/* 파일 이름 */}
       <label className="mt-5 block text-sm font-medium text-[var(--color-text)]">
@@ -97,7 +89,6 @@ const FileCreateDialog = ({
           value={fileName}
           onChange={(e) => {
             setFileName(e.target.value);
-            setIsModify(true);
           }}
           className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
         />

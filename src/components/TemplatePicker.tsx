@@ -24,7 +24,7 @@ const DEFAULT_TEMPLATE: Template = {
 const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
   const { templates, loadTemplates } = useTemplateStore();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);

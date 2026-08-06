@@ -7,7 +7,7 @@ interface BaseDialogProps {
   children: ReactNode;
   onClose: () => void;
   confirmLabel?: string;
-  onConfirm?: (event: React.FormEvent) => Promise<void> | void;
+  onConfirm?: () => Promise<void>;
   confirmDisabled?: boolean;
   isLoading?: boolean;
   errorMessage?: string;
@@ -30,7 +30,7 @@ export const BaseDialog = ({
   const handleConfirm = async (event: React.FormEvent) => {
     event.preventDefault();
     if (onConfirm) {
-      await onConfirm(event);
+      await onConfirm();
     }
   };
 

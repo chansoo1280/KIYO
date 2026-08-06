@@ -6,6 +6,7 @@ import BottomTabs from "@/components/BottomTabs";
 import { useSessionStore } from "@/store/sessionStore";
 import TemplatePicker from "@/components/TemplatePicker";
 import { fileTable } from "@/database/fileTable";
+import { useClipboard } from "@/hooks/useClipboard";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -121,15 +122,7 @@ const AccountList = () => {
     });
   }, [accounts, selectedTags, searchQuery, sortOrder]);
 
-  // Simple clipboard copy without auto-clear
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  const { copy } = useClipboard();
 
   return (
     <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8 pb-28">
@@ -279,7 +272,7 @@ const AccountList = () => {
                     (field) => field.type === "password",
                   );
                   if (passwordField) {
-                    copyToClipboard(passwordField.value);
+                    copy(passwordField.value);
                   }
                 }}
                 className="rounded-full bg-[var(--color-accent-bg)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)] transition hover:bg-[var(--color-accent-bg)]/80"

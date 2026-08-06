@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { BaseDialog } from "@/components/BaseDialog";
+import { useDialog } from "@/hooks/useDialog";
 
 interface FileOpenDialogProps {
   open: boolean;
@@ -19,8 +20,46 @@ const FileOpenDialog = ({
   const [file, setFile] = useState<File | null>(null);
   const [pin, setPin] = useState("");
   const [encrypted, setEncrypted] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { close, setError, setLoading, setConfirmDisabled, handleConfirm, isLoading, errorMessage } = useDialog({
+    onConfirm: async () => {
+      if (!file) {
+        setError("파일을 선택해주세요.");
+        return;
+      }
+
+      if (encrypted && !pin) {
+        setError("PIN 번호를 입력해주세요.");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await onConfirm({
+          file,
+          pin,
+        });
+
+        setFile(null);
+        setPin("");
+        setEncrypted(false);
+        setError("");
+
+        onClose();
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "파일을 열 수 없습니다.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onClose: () => {
+      setFile(null);
+      setPin("");
+      setEncrypted(false);
+      setError("");
+      onClose();
+    },
+  });
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -30,7 +69,7 @@ const FileOpenDialog = ({
     if (!selected) return;
 
     setFile(selected);
-    setErrorMessage("");
+    setError("");
     setPin("");
 
     try {
@@ -38,51 +77,11 @@ const FileOpenDialog = ({
       const json = JSON.parse(text);
 
       setEncrypted(json.encrypted === true);
+      setConfirmDisabled(false);
     } catch {
       setEncrypted(false);
-      setErrorMessage("올바른 KIYO 파일이 아닙니다.");
+      setError("올바른 KIYO 파일이 아닙니다.");
     }
-  };
-
-  const handleConfirm = async () => {
-    if (!file) {
-      setErrorMessage("파일을 선택해주세요.");
-      return;
-    }
-
-    if (encrypted && !pin) {
-      setErrorMessage("PIN 번호를 입력해주세요.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await onConfirm({
-        file,
-        pin,
-      });
-
-      setFile(null);
-      setPin("");
-      setEncrypted(false);
-      setErrorMessage("");
-
-      onClose();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "파일을 열 수 없습니다.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleClose = () => {
-    setFile(null);
-    setPin("");
-    setEncrypted(false);
-    setErrorMessage("");
-    onClose();
   };
 
   const confirmDisabled = !file;
@@ -91,7 +90,7 @@ const FileOpenDialog = ({
     <BaseDialog
       open={open}
       title={title}
-      onClose={handleClose}
+      onClose={close}
       confirmLabel="열기"
       onConfirm={handleConfirm}
       confirmDisabled={confirmDisabled}
