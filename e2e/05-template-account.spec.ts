@@ -32,7 +32,8 @@ test.describe('템플릿으로 계정 생성 (Template to Account)', () => {
     await templateListPage.createTemplate();
 
     await templateEditPage.setName('신용카드');
-    await templateEditPage.updateField(0, { label: '카드번호', type: 'text' });
+    // 빈 템플릿에서 필드 추가 (addField 사용)
+    await templateEditPage.addField({ type: 'text', label: '카드번호' });
     await templateEditPage.addField({ type: 'date', label: '만료일' });
     await templateEditPage.addField({ type: 'number', label: 'CVC' });
     await templateEditPage.addField({ type: 'select', label: '카드사', options: ['Visa', 'Mastercard', 'Amex'] });

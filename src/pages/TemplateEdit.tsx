@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
-import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import IconPicker from "./TemplateEdit/components/IconPicker";
 import { TemplateFieldEditor } from "./TemplateEdit/components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
@@ -21,7 +20,7 @@ const TemplateEdit = () => {
     description: "",
     icon: "📋",
     sortOrder: 0,
-    fields: DEFAULT_TEMPLATE_FIELDS.map(f => ({ ...f, options: f.options ?? [] })),
+    fields: [],
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);

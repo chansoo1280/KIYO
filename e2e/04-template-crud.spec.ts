@@ -41,10 +41,10 @@ test.describe('템플릿 CRUD (Template CRUD)', () => {
       await templateEditPage.setName('신용카드');
       await templateEditPage.setDescription('카드번호, 만료일, CVC, 카드사');
 
-      // 첫 번째 필드 수정 (기본으로 빈 필드 1개가 있음)
-      await templateEditPage.updateField(0, { 
-        label: '카드번호', 
-        type: 'text' 
+      // 첫 번째 필드 추가 (빈 템플릿으로 시작하므로 addField 사용)
+      await templateEditPage.addField({
+        type: 'text',
+        label: '카드번호',
       });
 
       // 필드 추가: 만료일 (텍스트)
@@ -84,8 +84,8 @@ test.describe('템플릿 CRUD (Template CRUD)', () => {
       await templateListPage.createTemplate();
       await templateEditPage.setName('서버 접속');
       await templateEditPage.setDescription('SSH 접속 정보');
-      // 첫 번째 빈 필드 채우기
-      await templateEditPage.updateField(0, { label: '호스트', type: 'text' });
+      // 첫 번째 빈 필드 채우기 (addField 사용)
+      await templateEditPage.addField({ type: 'text', label: '호스트' });
       await templateEditPage.addField({ type: 'text', label: '포트' });
       await templateEditPage.addField({ type: 'text', label: '사용자명' });
       await templateEditPage.addField({ type: 'password', label: '비밀번호' });
@@ -122,7 +122,8 @@ test.describe('템플릿 CRUD (Template CRUD)', () => {
       await templateListPage.goto();
       await templateListPage.createTemplate();
       await templateEditPage.setName('기존 템플릿');
-      await templateEditPage.updateField(0, { label: '필드1', type: 'text' });
+      // 빈 템플릿에서 필드 추가
+      await templateEditPage.addField({ type: 'text', label: '필드1' });
       await templateEditPage.addField({ type: 'text', label: '필드2' });
       await templateEditPage.save();
       // save() 후 이미 /templates에 있으므로 추가 goto() 불필요
@@ -160,7 +161,8 @@ test.describe('템플릿 CRUD (Template CRUD)', () => {
       await templateListPage.goto();
       await templateListPage.createTemplate();
       await templateEditPage.setName('삭제할 템플릿');
-      await templateEditPage.updateField(0, { label: '필드', type: 'text' });
+      // 빈 템플릿에서 필드 추가
+      await templateEditPage.addField({ type: 'text', label: '필드' });
       await templateEditPage.save();
       // save() 후 이미 /templates에 있으므로 추가 goto() 불필요
     });

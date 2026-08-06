@@ -21,9 +21,10 @@ const Settings = () => {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
   const [showAppInfoDialog, setShowAppInfoDialog] = useState(false);
-  const { activeFileName: fileName } = useSessionStore();
+  const { activeFileName: fileName, cryptoKey } = useSessionStore();
   const { theme, toggleTheme, fontSize, setFontSize, autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
-  const [isEncrypted, setIsEncrypted] = useState(false);
+  // 세션에 cryptoKey가 있으면 암호화된 볼트
+  const isEncrypted = !!cryptoKey;
 
   const {
     handleBackup,
@@ -51,9 +52,13 @@ const Settings = () => {
   };
 
   const handlePinChangeConfirm = async (newPin: string) => {
-    const newEncrypted = await handlePinChange(newPin);
-    setSecurityMessage(isEncrypted ? "PIN이 변경되었습니다." : "PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
-    setIsEncrypted(newEncrypted);
+    // 변경 전 암호화 상태 저장
+    const wasEncrypted = isEncrypted;
+    await handlePinChange(newPin);
+    // PIN 변경 후 세션의 cryptoKey가 자동으로 업데이트되므로 isEncrypted는 파생 상태에서 자동 반영
+    setSecurityMessage(
+      wasEncrypted ? "PIN이 변경되었습니다." : "PIN이 설정되었습니다. 데이터가 암호화되었습니다."
+    );
     setShowPinChangeDialog(false);
   };
 
