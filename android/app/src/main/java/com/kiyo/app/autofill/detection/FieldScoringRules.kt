@@ -3,7 +3,8 @@ package com.kiyo.app.autofill.detection
 import android.app.assist.AssistStructure
 import android.util.Log
 import android.view.autofill.AutofillId
-import com.kiyo.app.autofill.viewnode.ViewNodeUtils
+import com.kiyo.app.autofill.viewnode.HtmlAttributeExtractor
+import com.kiyo.app.autofill.viewnode.ViewNodePredicate
 
 /**
  * Scoring rules and helper methods for field detection.

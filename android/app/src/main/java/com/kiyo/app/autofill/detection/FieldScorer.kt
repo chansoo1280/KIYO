@@ -3,7 +3,9 @@ package com.kiyo.app.autofill.detection
 import android.app.assist.AssistStructure
 import android.util.Log
 import android.view.autofill.AutofillId
-import com.kiyo.app.autofill.viewnode.ViewNodeUtils
+import com.kiyo.app.autofill.viewnode.HtmlAttributeExtractor
+import com.kiyo.app.autofill.viewnode.ViewNodeExtractor
+import com.kiyo.app.autofill.viewnode.ViewNodePredicate
 
 /**
  * 필드 점수 계산기
@@ -67,7 +69,7 @@ object FieldScorer {
         }
 
         // 2. HTML autocomplete=username/email/user/login: +150
-        val htmlAutocomplete = ViewNodeUtils.getHtmlAutocomplete(node)
+        val htmlAutocomplete = HtmlAttributeExtractor.getHtmlAutocomplete(node)
         if (htmlAutocomplete != null) {
             if (htmlAutocomplete.contains("username") || htmlAutocomplete.contains("email") ||
                 htmlAutocomplete.contains("user") || htmlAutocomplete.contains("login")) {
@@ -77,7 +79,7 @@ object FieldScorer {
         }
 
         // 3. HTML type=email: +100
-        val htmlInputType = ViewNodeUtils.getHtmlInputType(node)
+        val htmlInputType = HtmlAttributeExtractor.getHtmlInputType(node)
         if (htmlInputType != null) {
             if (htmlInputType == "email") {
                 score += FieldScoringRules.SCORE_HTML_INPUT_TYPE_EMAIL
@@ -102,8 +104,8 @@ object FieldScorer {
         }
 
         // 6. HTML name/id attribute keywords: +30
-        val htmlName = ViewNodeUtils.getHtmlName(node)
-        val htmlId = ViewNodeUtils.getHtmlId(node)
+        val htmlName = HtmlAttributeExtractor.getHtmlName(node)
+        val htmlId = HtmlAttributeExtractor.getHtmlId(node)
         if (htmlName != null || htmlId != null) {
             val nameOrId = (htmlName ?: "") + " " + (htmlId ?: "")
             if (nameOrId.contains("email") || nameOrId.contains("user") ||
@@ -130,8 +132,8 @@ object FieldScorer {
 
         // 8. Google accounts.google.com special handling (username screen): +50
         // This is a special case for Google's split username/password screens
-        if (ViewNodeUtils.isGoogleFieldCandidate(node)) {
-            val hasPasswordOnScreen = ViewNodeUtils.hasPasswordFieldOnScreen(node)
+        if (ViewNodePredicate.isGoogleFieldCandidate(node)) {
+            val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
             if (!hasPasswordOnScreen) {
                 score += FieldScoringRules.SCORE_GOOGLE_USERNAME_SCREEN
                 reasons.add("Google login page (username screen)")
@@ -203,7 +205,7 @@ object FieldScorer {
         }
 
         // 2. HTML autocomplete=password/current-password/new-password: +150
-        val htmlAutocomplete = ViewNodeUtils.getHtmlAutocomplete(node)
+        val htmlAutocomplete = HtmlAttributeExtractor.getHtmlAutocomplete(node)
         if (htmlAutocomplete != null) {
             if (htmlAutocomplete.contains("password") || htmlAutocomplete.contains("pass") ||
                 htmlAutocomplete.contains("current-password") || htmlAutocomplete.contains("new-password")) {
@@ -213,7 +215,7 @@ object FieldScorer {
         }
 
         // 3. HTML type=password: +100
-        val htmlInputType = ViewNodeUtils.getHtmlInputType(node)
+        val htmlInputType = HtmlAttributeExtractor.getHtmlInputType(node)
         if (htmlInputType != null) {
             if (htmlInputType == "password") {
                 score += FieldScoringRules.SCORE_HTML_INPUT_TYPE_PASSWORD
@@ -231,8 +233,8 @@ object FieldScorer {
         }
 
         // 5. HTML name/id attribute keywords: +30
-        val htmlName = ViewNodeUtils.getHtmlName(node)
-        val htmlId = ViewNodeUtils.getHtmlId(node)
+        val htmlName = HtmlAttributeExtractor.getHtmlName(node)
+        val htmlId = HtmlAttributeExtractor.getHtmlId(node)
         if (htmlName != null || htmlId != null) {
             val nameOrId = (htmlName ?: "") + " " + (htmlId ?: "")
             if (nameOrId.contains("password") || nameOrId.contains("pass") || nameOrId.contains("pwd")) {
@@ -257,8 +259,8 @@ object FieldScorer {
         }
 
         // 7. Google accounts.google.com special handling (password screen): +50
-        if (ViewNodeUtils.isGoogleFieldCandidate(node)) {
-            val hasPasswordOnScreen = ViewNodeUtils.hasPasswordFieldOnScreen(node)
+        if (ViewNodePredicate.isGoogleFieldCandidate(node)) {
+            val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
             if (hasPasswordOnScreen) {
                 score += FieldScoringRules.SCORE_GOOGLE_PASSWORD_SCREEN
                 reasons.add("Google login page (password screen)")

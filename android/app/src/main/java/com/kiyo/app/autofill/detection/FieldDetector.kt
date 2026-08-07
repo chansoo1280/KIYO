@@ -3,7 +3,7 @@ package com.kiyo.app.autofill.detection
 import android.app.assist.AssistStructure
 import android.util.Log
 import android.view.autofill.AutofillId
-import com.kiyo.app.autofill.viewnode.ViewNodeUtils
+import com.kiyo.app.autofill.viewnode.ViewNodePredicate
 
 /**
  * 필드 탐지기
@@ -94,7 +94,7 @@ object FieldDetector {
         val hasPassword = passwordCandidate != null
         
         // Also check if it's a known login domain (webDomain or HTML attributes)
-        val isKnownLoginDomain = ViewNodeUtils.isKnownLoginDomain(rootNode)
+        val isKnownLoginDomain = ViewNodePredicate.isKnownLoginDomain(rootNode)
         
         Log.d(TAG, "hasLoginForm: hasUsername=$hasUsername, hasPassword=$hasPassword, isKnownLoginDomain=$isKnownLoginDomain")
         

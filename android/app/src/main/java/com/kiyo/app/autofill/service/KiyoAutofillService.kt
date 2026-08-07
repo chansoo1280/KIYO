@@ -26,7 +26,8 @@ import com.kiyo.app.autofill.detection.FieldScorer
 import com.kiyo.app.autofill.repository.AutofillRepository
 import com.kiyo.app.autofill.response.FillResponseBuilder
 import com.kiyo.app.autofill.store.AutofillAuthStore
-import com.kiyo.app.autofill.viewnode.ViewNodeUtils
+import com.kiyo.app.autofill.viewnode.ViewNodeExtractor
+import com.kiyo.app.autofill.viewnode.ViewNodeTraversal
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -111,7 +112,7 @@ class KiyoAutofillService : AutofillService() {
                 val rootViewNode = structure.getWindowNodeAt(0).rootViewNode
 
                 // Skip autofill for KIYO app itself (package name: com.kiyo.app)
-                val packageNames = ViewNodeUtils.extractPackageNamesFromStructure(rootViewNode)
+                val packageNames = ViewNodeExtractor.extractPackageNamesFromStructure(rootViewNode)
                 if (packageNames.contains("com.kiyo.app")) {
                     Log.d(TAG, "Skipping autofill for KIYO app (com.kiyo.app)")
                     handler.post { callback.onSuccess(null) }
@@ -120,7 +121,7 @@ class KiyoAutofillService : AutofillService() {
 
                 // Debug: dump full ViewNode tree for debugging
                 if (BuildConfig.DEBUG) {
-                    ViewNodeUtils.dumpViewNodeTree(rootViewNode, 0)
+                    ViewNodeTraversal.dumpViewNodeTree(rootViewNode, 0)
                 }
                 val focusedNode = FieldDetector.findFocusedNode(rootViewNode)
                 if (focusedNode == null) {
@@ -162,7 +163,7 @@ class KiyoAutofillService : AutofillService() {
                 }
 
                 // Get domain from structure for account matching
-                val domain = ViewNodeUtils.extractDomainFromStructure(rootViewNode)
+                val domain = ViewNodeExtractor.extractDomainFromStructure(rootViewNode)
                 Log.d(TAG, "Extracted domain: $domain")
 
                 // Delegate auth logic to AuthRequestHandler
@@ -207,7 +208,7 @@ class KiyoAutofillService : AutofillService() {
                 val rootViewNode = structure.getWindowNodeAt(0).rootViewNode
 
                 // Skip autofill for KIYO app itself (package name: com.kiyo.app)
-                val packageNames = ViewNodeUtils.extractPackageNamesFromStructure(rootViewNode)
+                val packageNames = ViewNodeExtractor.extractPackageNamesFromStructure(rootViewNode)
                 if (packageNames.contains("com.kiyo.app")) {
                     Log.d(TAG, "Skipping save for KIYO app (com.kiyo.app)")
                     return@execute
@@ -234,7 +235,7 @@ class KiyoAutofillService : AutofillService() {
                 val extractedData = CredentialExtractor.extractCredentialsFromFields(rootViewNode, usernameId, passwordId)
                 val username = extractedData.username
                 val password = extractedData.password
-                val domain = ViewNodeUtils.extractDomainFromStructure(rootViewNode)
+                val domain = ViewNodeExtractor.extractDomainFromStructure(rootViewNode)
 
                 Log.d(TAG, "Extracted credentials: username=${username != null}, password=${password != null}, domain=$domain, packages=$packageNames")
 
@@ -259,8 +260,8 @@ class KiyoAutofillService : AutofillService() {
                     password = password,
                     domain = domain,
                     packageNames = packageNames,
-                    appName = ViewNodeUtils.extractAppNameFromStructure(rootViewNode),
-                    title = ViewNodeUtils.extractTitleFromStructure(rootViewNode),
+                    appName = ViewNodeExtractor.extractAppNameFromStructure(rootViewNode),
+                    title = ViewNodeExtractor.extractTitleFromStructure(rootViewNode),
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis()
                 )
