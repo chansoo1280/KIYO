@@ -99,10 +99,14 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 - **React App**: UI, 계정 관리, 설정, 암호화/복호화 수행
 - **Capacitor Plugin**: React ↔ Native 통신 브리지 (세션 키 전달, 계정 동기화, 자동완성 상태 확인, 토큰 관리)
 - **AutofillService**: Android 시스템 자동완성 제공 (필드 탐지, 계정 매칭, FillResponse 구성, `autofill_prefs` 토큰 검증)
+- **AuthRequestHandler**: 인증 요청 처리 (토큰 검증, 인증 응답 생성)
 - **KeystoreManager**: Android Keystore 마스터 키(`kiyo_master_key`) 생성/관리, DB_KEY 암호화/복호화
 - **DatabaseKeyManager**: `kiyo_security_prefs` DataStore에서 암호화된 DB_KEY 읽기/쓰기, Keystore로 래핑/언래핑
-- **AutofillDataStore**: `autofill_prefs` Preferences DataStore 래퍼, 자동완성 토큰/만료/암호화 상태 저장 (30분 만료, **Keystore와 무관**)
+- **AutofillAuthStore**: `autofill_prefs` Preferences DataStore 래퍼, 자동완성 토큰/만료/암호화 상태 저장 (30분 만료, **Keystore와 무관**)
 - **SQLCipher DB**: `AutofillRepository`가 사용하는 암호화된 SQLite DB (DB_KEY로 암호화)
+- **AutofillRepository**: 자동완성용 계정 리포지토리
+- **DomainMatcher**: 도메인 매칭 로직 (정확/서브도메인)
+- **AccountMapper**: React JSON → AutofillAccount 파싱
 
 ## Security
 
@@ -218,13 +222,17 @@ npm run android:run
 - 다중 데이터 파일 생성/열기/백업/가져오기
 - PIN 기반 인증 및 세션 관리
 - Android AutofillService (API 26+) - 필드 탐지, 도메인/패키지 매칭, FillResponse
-- AutofillDataStore 영구 토큰 저장 (30분 만료)
+- AuthRequestHandler - 인증 요청 처리 (토큰 검증, 인증 응답 생성)
+- AutofillAuthStore 영구 토큰 저장 (30분 만료)
 - Capacitor 플러그인 브리지 (React ↔ Native)
 - IndexedDB (Dexie) 로컬 데이터베이스
 - 계정 CRUD, 즐겨찾기, 태그, 템플릿
 - 비밀번호 생성기
 - 테마/폰트/자동잠금 설정
-- 단위/통합 테스트 (Vitest)
+- 단위/통합 테스트 (Vitest, Robolectric)
+- 자동완성 필드 탐지/점수/매칭 단위 테스트
+- AuthRequestHandler, AutofillAuthStore, DomainMatcher, AccountMapper, FieldScoringRules 단위 테스트
+- KiyoAutofillPlugin 스모크 테스트
 
 ### In Progress 🚧
 
