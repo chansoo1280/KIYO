@@ -63,18 +63,6 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
     return { count: 0 };
   }
 
-  async setBiometricEnabled({ enabled }: { enabled: boolean }): Promise<void> {
-    console.warn(
-      "KiyoAutofill: setBiometricEnabled not available on web",
-      enabled,
-    );
-  }
-
-  async getBiometricEnabled(): Promise<{ enabled: boolean }> {
-    console.warn("KiyoAutofill: getBiometricEnabled not available on web");
-    return { enabled: true };
-  }
-
   async setAutofillToken(options: { token: string; expireAt: number; isEncrypted: boolean }): Promise<void> {
     this.tokenValue = options;
   }

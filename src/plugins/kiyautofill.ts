@@ -39,8 +39,6 @@ export interface KiyoAutofillPlugin {
     accountsJson: string;
   }): Promise<SyncAccountsResult>;
   getAccountCount(): Promise<CountResult>;
-  setBiometricEnabled(options: { enabled: boolean }): Promise<void>;
-  getBiometricEnabled(): Promise<{ enabled: boolean }>;
   setAutofillToken(options: { token: string; expireAt: number; isEncrypted: boolean }): Promise<void>;
   clearAutofillToken(): Promise<void>;
   getAutofillTokenStatus(): Promise<{ hasToken: boolean; hasValidToken: boolean; isEncrypted: boolean; expireAt?: number }>;

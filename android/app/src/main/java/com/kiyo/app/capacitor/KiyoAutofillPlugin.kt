@@ -3,7 +3,6 @@ package com.kiyo.app.capacitor
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -28,8 +27,6 @@ class KiyoAutofillPlugin : Plugin() {
     companion object {
         private const val TAG = "KiyoAutofillPlugin"
         private const val KIYO_PACKAGE_NAME = "com.kiyo.app"
-        private const val PREFS_NAME = "kiyo_autofill_prefs"
-        private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
     }
 
     private var autofillRepository: AutofillRepository? = null
@@ -95,8 +92,6 @@ class KiyoAutofillPlugin : Plugin() {
             put("servicePackageName", servicePackageName)
             put("isOurService", isOurService)
             put("serviceClassName", serviceClassName)
-            put("isEnabled", isEnabled)
-            put("hasEnabledServices", hasEnabledServices)
         }
     }
 
@@ -187,70 +182,6 @@ class KiyoAutofillPlugin : Plugin() {
         } catch (e: Exception) {
             Log.e(TAG, "Error getting autofill service info", e)
             call.reject("Failed to get autofill service info: ${e.message}")
-        }
-    }
-
-    @PluginMethod
-    fun syncAccounts(call: PluginCall) {
-        val accountsArray = call.getArray("accounts") ?: return call.reject("No accounts provided")
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val repository = ensureRepositoryInitialized()
-
-                var syncedCount = 0
-                var errorCount = 0
-
-                for (i in 0 until accountsArray.length()) {
-                    try {
-                        val accountObj = accountsArray.getJSONObject(i)
-
-                        val username = accountObj.getString("username")
-                        val password = accountObj.getString("password")
-                        val title = accountObj.optString("title")?.takeIf { it.isNotEmpty() }
-                        val packageName = accountObj.optString("packageName")?.takeIf { it.isNotEmpty() }
-                        val appName = accountObj.optString("appName")?.takeIf { it.isNotEmpty() }
-                        val domain = accountObj.optString("domain")?.takeIf { it.isNotEmpty() }
-                        val favorite = accountObj.optBoolean("favorite", false)
-
-                        if (username.isEmpty() || password.isEmpty()) {
-                            Log.w(TAG, "Skipping account with empty username/password")
-                            errorCount++
-                            continue
-                        }
-
-                        val packageNames = if (packageName != null) listOf(packageName) else emptyList<String>()
-
-                        val account = AutofillRepository.AutofillAccount(
-                            id = -1L,
-                            username = username,
-                            password = password,
-                            title = title,
-                            packageNames = packageNames,
-                            appName = appName,
-                            domain = domain,
-                            createdAt = System.currentTimeMillis(),
-                            updatedAt = System.currentTimeMillis(),
-                            favorite = favorite
-                        )
-
-                        repository.upsertAccount(account)
-                        syncedCount++
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error syncing account at index $i", e)
-                        errorCount++
-                    }
-                }
-
-                call.resolve(JSObject().apply {
-                    put("syncedCount", syncedCount)
-                    put("errorCount", errorCount)
-                    put("totalProcessed", accountsArray.length())
-                })
-            } catch (e: Exception) {
-                Log.e(TAG, "Error syncing accounts", e)
-                call.reject("Failed to sync accounts: ${e.message}")
-            }
         }
     }
 
@@ -441,39 +372,6 @@ class KiyoAutofillPlugin : Plugin() {
                 Log.e(TAG, "Error syncing accounts from React", e)
                 call.reject("Failed to sync accounts: ${e.message}")
             }
-        }
-    }
-
-    @PluginMethod
-    fun setBiometricEnabled(call: PluginCall) {
-        val context = getContext() ?: return call.reject("Context is null")
-
-        val enabled = call.getBoolean("enabled") ?: return call.reject("enabled parameter is required")
-
-        try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, enabled).apply()
-            Log.d(TAG, "Biometric enabled setting saved: $enabled")
-            call.resolve()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to save biometric setting", e)
-            call.reject("Failed to save biometric setting: ${e.message}")
-        }
-    }
-
-    @PluginMethod
-    fun getBiometricEnabled(call: PluginCall) {
-        val context = getContext() ?: return call.reject("Context is null")
-
-        try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val enabled = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, true)
-            call.resolve(JSObject().apply {
-                put("enabled", enabled)
-            })
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get biometric setting", e)
-            call.reject("Failed to get biometric setting: ${e.message}")
         }
     }
 
