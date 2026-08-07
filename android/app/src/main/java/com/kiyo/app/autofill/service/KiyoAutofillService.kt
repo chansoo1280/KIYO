@@ -36,6 +36,7 @@ import com.kiyo.app.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Android Autofill Service for KIYO Password Manager
@@ -58,7 +59,10 @@ class KiyoAutofillService : AutofillService() {
 
     override fun onCreate() {
         super.onCreate()
-        repository = AutofillRepository(this)
+        // Initialize AutofillRepository asynchronously using runBlocking at service boundary
+        runBlocking(Dispatchers.IO) {
+            repository = AutofillRepository.create(this@KiyoAutofillService)
+        }
         Log.d(TAG, "AutofillService created")
     }
 
@@ -163,7 +167,9 @@ class KiyoAutofillService : AutofillService() {
 
                 // Delegate auth logic to AuthRequestHandler
                 val authRequestHandler = AuthRequestHandler(this@KiyoAutofillService, repository, handler, callback)
-                authRequestHandler.processFillRequest(domain, usernameId, passwordId)
+                CoroutineScope(Dispatchers.IO).launch {
+                    authRequestHandler.processFillRequest(domain, usernameId, passwordId)
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in onFillRequest", e)

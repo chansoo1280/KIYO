@@ -11,9 +11,8 @@ import android.view.autofill.AutofillId
 import com.kiyo.app.autofill.repository.AutofillRepository
 import com.kiyo.app.autofill.response.FillResponseBuilder
 import com.kiyo.app.autofill.store.AutofillAuthStore
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Handles authentication request logic for autofill.
@@ -37,57 +36,22 @@ class AuthRequestHandler(
      * Process fill request with auth logic.
      * Checks token validity and returns appropriate response.
      */
-    fun processFillRequest(
+    suspend fun processFillRequest(
         domain: String,
         usernameId: AutofillId?,
         passwordId: AutofillId?
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val isEncrypted = AutofillAuthStore.isEncrypted(context)
-            Log.d(TAG, "AutofillAuthStore :: isEncrypted=$isEncrypted")
+        val isEncrypted = AutofillAuthStore.isEncrypted(context)
+        Log.d(TAG, "AutofillAuthStore :: isEncrypted=$isEncrypted")
 
-            // 1. Non-encrypted vault -> return fill response directly
-            if (!isEncrypted) {
-                val accounts = repository.findMatchingAccounts(domain)
-                Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
-                
-                if (accounts.isEmpty()) {
-                    handler.post { callback.onSuccess(null) }
-                    return@launch
-                }
-
-                val response = FillResponseBuilder.createFillResponse(
-                    context,
-                    accounts,
-                    usernameId,
-                    passwordId
-                )
-                handler.post { callback.onSuccess(response) }
-                return@launch
-            }
-
-            // 2. Encrypted vault -> check for valid token
-            val hasValidToken = AutofillAuthStore.hasValidToken(context)
-            Log.d(TAG, "AutofillAuthStore :: hasValidToken=$hasValidToken")
-
-            if (!hasValidToken) {
-                // No valid token -> request auth
-                val response = FillResponseBuilder.createAuthResponse(
-                    context,
-                    usernameId,
-                    passwordId
-                )
-                handler.post { callback.onSuccess(response) }
-                return@launch
-            }
-
-            // 3. Valid token exists -> return fill response
+        // 1. Non-encrypted vault -> return fill response directly
+        if (!isEncrypted) {
             val accounts = repository.findMatchingAccounts(domain)
             Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
-            
+
             if (accounts.isEmpty()) {
                 handler.post { callback.onSuccess(null) }
-                return@launch
+                return
             }
 
             val response = FillResponseBuilder.createFillResponse(
@@ -97,6 +61,39 @@ class AuthRequestHandler(
                 passwordId
             )
             handler.post { callback.onSuccess(response) }
+            return
         }
+
+        // 2. Encrypted vault -> check for valid token
+        val hasValidToken = AutofillAuthStore.hasValidToken(context)
+        Log.d(TAG, "AutofillAuthStore :: hasValidToken=$hasValidToken")
+
+        if (!hasValidToken) {
+            // No valid token -> request auth
+            val response = FillResponseBuilder.createAuthResponse(
+                context,
+                usernameId,
+                passwordId
+            )
+            handler.post { callback.onSuccess(response) }
+            return
+        }
+
+        // 3. Valid token exists -> return fill response
+        val accounts = repository.findMatchingAccounts(domain)
+        Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
+
+        if (accounts.isEmpty()) {
+            handler.post { callback.onSuccess(null) }
+            return
+        }
+
+        val response = FillResponseBuilder.createFillResponse(
+            context,
+            accounts,
+            usernameId,
+            passwordId
+        )
+        handler.post { callback.onSuccess(response) }
     }
 }

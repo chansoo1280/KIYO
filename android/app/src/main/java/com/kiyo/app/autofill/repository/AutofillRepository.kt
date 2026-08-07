@@ -10,7 +10,7 @@ import android.util.Pair
 import com.kiyo.app.security.DatabaseKeyManager
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmStatic
@@ -30,24 +30,25 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase as SQLCipherDatabase
  * Provides CRUD operations for the autofill SQLite database (encrypted via SQLCipher).
  * All database operations run on a background thread via ExecutorService.
  */
-class AutofillRepository(private val context: Context) {
-
-    private val dbHelper = AutofillDatabaseHelper(context, getEncryptionKeyBlocking())
+class AutofillRepository internal constructor(
+    private val context: Context,
+    private val dbHelper: AutofillDatabaseHelper
+) {
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val accountMapper = AccountMapper()
     private val domainMatcher = DomainMatcher()
 
     companion object {
         private const val TAG = "AutofillRepository"
-    }
 
-    /**
-     * Get encryption key synchronously (blocking) for database helper initialization.
-     * Uses runBlocking to bridge from non-coroutine context to suspend function.
-     */
-    private fun getEncryptionKeyBlocking(): ByteArray {
-        return runBlocking(Dispatchers.IO) {
-            DatabaseKeyManager.getKey(context).encoded
+        /**
+         * Create AutofillRepository asynchronously.
+         * Gets encryption key from DatabaseKeyManager (suspend) and initializes dbHelper.
+         */
+        suspend fun create(context: Context): AutofillRepository = withContext(Dispatchers.IO) {
+            val encryptionKey = DatabaseKeyManager.getKey(context).encoded
+            val dbHelper = AutofillDatabaseHelper(context, encryptionKey)
+            AutofillRepository(context, dbHelper)
         }
     }
 
