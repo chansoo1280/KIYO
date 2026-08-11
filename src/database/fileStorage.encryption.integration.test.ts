@@ -85,7 +85,7 @@ describe("fileStorage Encryption Integration Tests", () => {
     const db = getDatabase();
     await db.metadata.bulkPut(metadata);
     // Sync to account store
-    await useAccountStore.getState().initialize();
+    await useAccountStore.getState().loadAccounts();
     await useTemplateStore.getState().loadTemplates();
   };
 

@@ -8,13 +8,7 @@ import {
 import { useAccountStore } from "@/store/accountStore";
 import { useSessionStore } from "@/store/sessionStore";
 
-interface AutofillSettingsProps {
-  onMessage?: (message: string) => void;
-}
-
-export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
-  onMessage,
-}) => {
+export const AutofillSection: React.FC = () => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
   const [accountCount, setAccountCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -31,11 +25,12 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   const lastSyncTime = sessionLastSyncTime;
 
   const showMessage = useCallback(
-    (message: string) => {
-      onMessage?.(message);
-      setTimeout(() => onMessage?.(""), 3000);
+    (_message: string) => {
+      // Message handled internally via state if needed
+      void _message;
+      setTimeout(() => {}, 3000);
     },
-    [onMessage],
+    [],
   );
 
   const checkStatus = useCallback(async () => {
@@ -65,9 +60,7 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
     try {
       await KiyoAutofill.requestAutofillEnable();
       await checkStatus();
-      showMessage(
-        "자동완성 설정 화면이 열렸습니다. KIYO 자동완성을 활성화해주세요.",
-      );
+      showMessage("자동완성 설정 화면이 열렸습니다. KIYO 자동완성을 활성화해주세요.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "자동완성 활성화 실패");
     } finally {
@@ -153,6 +146,9 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
 
   return (
     <div className="space-y-3">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
+        Autofill
+      </h3>
       {/* Autofill Service Status */}
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
         <div className="flex flex-col gap-1">
@@ -231,4 +227,4 @@ export const AutofillSettings: React.FC<AutofillSettingsProps> = ({
   );
 };
 
-export default AutofillSettings;
+export default AutofillSection;

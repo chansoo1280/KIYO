@@ -83,7 +83,7 @@ describe("fileStorage Lifecycle Integration Tests - Plaintext", () => {
     const db = getDatabase();
     await db.metadata.bulkPut(metadata);
     // Sync to account store
-    await useAccountStore.getState().initialize();
+    await useAccountStore.getState().loadAccounts();
     await useTemplateStore.getState().loadTemplates();
   };
 
@@ -392,14 +392,13 @@ describe("fileStorage Lifecycle Integration Tests - Plaintext", () => {
 
       const sessionAfterCreate = useSessionStore.getState();
       const sessionCryptoKey = sessionAfterCreate.cryptoKey;
-      await accountTable.create(complexAcct, sessionCryptoKey ?? undefined);
+      // Add account via store (which also creates in DB)
+      await useAccountStore.getState().addAccount(complexAcct);
       for (const template of templates) {
         await templateTable.create(template, sessionCryptoKey ?? undefined);
       }
       const db = getDatabase();
       await db.metadata.bulkPut(metadata);
-      // Sync to account store
-      useAccountStore.getState().setAccounts([complexAcct]);
 
       const backedUp = await backupDataFile("complex-backup.json", "");
       const backupJson = JSON.stringify(backedUp);

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Filesystem } from "@capacitor/filesystem";
-import { openImportedDataFile, exportDataFile, importDataFile } from "@/database/fileStorage";
+import { openImportedDataFile, exportDataFile } from "@/database/fileStorage";
 import { FileStorageError, FileStorageErrorCode, isFileStorageError } from "@/errors/FileStorageError";
 import { createTestEncryptedFile } from "@/test/fixtures/databaseFixtures";
 import type { KiyoVaultData } from "@/models/vault";
@@ -74,14 +74,4 @@ describe("fileStorage - error handling", () => {
     });
   });
 
-  describe("importDataFile", () => {
-    it("파일 읽기 실패 → FILE_READ_FAILED 에러", async () => {
-      vi.mocked(Filesystem.readFile).mockRejectedValueOnce(new Error("Read failed"));
-      try { await importDataFile("test.json"); }
-      catch (error: unknown) { 
-        expect(isFileStorageError(error)).toBe(true); 
-        expect((error as FileStorageError).code).toBe(FileStorageErrorCode.FILE_READ_FAILED); 
-      }
-    });
-  });
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FormDialog } from "./FormDialog";
+import { FormDialog } from "@/components/dialogs/FormDialog";
 import { fileTable } from "@/database/fileTable";
 import { verifyPin } from "@/crypto/encryption";
 

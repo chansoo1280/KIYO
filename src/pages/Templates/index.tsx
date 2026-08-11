@@ -5,11 +5,13 @@ import { useTemplateStore } from "@/store/templateStore";
 
 const TemplateList = () => {
   const navigate = useNavigate();
-  const { templates, isLoading, loadTemplates } = useTemplateStore();
+  const { templates, isLoading, initialized, loadTemplates } = useTemplateStore();
 
   useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
+    if (!initialized) {
+      loadTemplates();
+    }
+  }, [initialized, loadTemplates]);
 
   const handleNewTemplate = () => {
     navigate("/templates/new");

@@ -10,7 +10,7 @@ const TemplateEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
-  const { templates, loadTemplates, createTemplate, updateTemplate, deleteTemplate, getTemplate } =
+  const { templates, initialized, loadTemplates, createTemplate, updateTemplate, deleteTemplate, getTemplate } =
     useTemplateStore();
 
   const [form, setForm] = useState<
@@ -23,20 +23,20 @@ const TemplateEdit = () => {
     fields: [],
   });
   const [errors, setErrors] = useState<string[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
+    if (!initialized) {
+      loadTemplates();
+    }
+  }, [initialized, loadTemplates]);
 
   // 템플릿 로드 후 초기화
   useEffect(() => {
-    if (!isInitialized) {
+    if (initialized) {
       if (isEdit && id) {
         const template = getTemplate(id);
         if (template) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setForm({
             name: template.name,
             description: template.description || "",
@@ -52,9 +52,8 @@ const TemplateEdit = () => {
           sortOrder: templates.length,
         }));
       }
-      setIsInitialized(true);
     }
-  }, [isEdit, id, templates.length, getTemplate, isInitialized]);
+  }, [initialized, isEdit, id, templates.length, getTemplate]);
 
   const validateForm = (): boolean => {
     const newErrors: string[] = [];

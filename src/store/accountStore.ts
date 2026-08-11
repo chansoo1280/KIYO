@@ -12,15 +12,16 @@ import { useSessionStore } from "@/store/sessionStore";
 export interface AccountState {
   accounts: Account[];
   initialized: boolean;
+  isLoading: boolean;
 
-  initialize: () => Promise<void>;
-  setAccounts: (accounts: Account[]) => Promise<void>;
+  loadAccounts: () => Promise<void>;
   addAccount: (account: Account) => Promise<Account>;
   updateAccount: (account: Account) => Promise<void>;
   deleteAccount: (id: number) => Promise<void>;
   getAccountById: (id: number) => Account | undefined;
   clearAccounts: () => Promise<void>;
   syncToAutofill: () => Promise<void>;
+  _persistAccounts: () => Promise<void>;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -28,20 +29,10 @@ export const useAccountStore = create<AccountState>()(
     (set, get) => ({
       accounts: [],
       initialized: false,
-      initialize: async () => {
-        const sessionState = useSessionStore.getState();
-        const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
+      isLoading: false,
 
-        set({
-          accounts,
-          initialized: true,
-        });
-
-        // Sync to Android Autofill after initialization
-        await get().syncToAutofill();
-      },
-      setAccounts: async (accounts) => {
-        set({ accounts });
+      // Private: persist current accounts to File + Autofill
+      _persistAccounts: async () => {
         const sessionState = useSessionStore.getState();
         await syncDatabaseToFile({
           activeFileName: sessionState.activeFileName,
@@ -50,6 +41,21 @@ export const useAccountStore = create<AccountState>()(
           clearSyncError: sessionState.clearSyncError,
           setSyncError: sessionState.setSyncError,
         });
+        await get().syncToAutofill();
+      },
+
+      loadAccounts: async () => {
+        set({ isLoading: true });
+        const sessionState = useSessionStore.getState();
+        const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
+
+        set({
+          accounts,
+          initialized: true,
+          isLoading: false,
+        });
+
+        // Sync to Android Autofill after initialization
         await get().syncToAutofill();
       },
 
@@ -57,14 +63,7 @@ export const useAccountStore = create<AccountState>()(
         const sessionState = useSessionStore.getState();
         const newAccount = await accountTable.create(account, sessionState.cryptoKey ?? undefined);
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
-          clearSyncError: sessionState.clearSyncError,
-          setSyncError: sessionState.setSyncError,
-        });
-        await get().syncToAutofill();
+        await get()._persistAccounts();
         return newAccount;
       },
 
@@ -77,14 +76,7 @@ export const useAccountStore = create<AccountState>()(
             a.id === updatedAccount.id ? updatedAccount : a,
           ),
         }));
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
-          clearSyncError: sessionState.clearSyncError,
-          setSyncError: sessionState.setSyncError,
-        });
-        await get().syncToAutofill();
+        await get()._persistAccounts();
       },
 
       deleteAccount: async (id) => {
@@ -92,24 +84,15 @@ export const useAccountStore = create<AccountState>()(
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
         }));
-
-        const sessionState = useSessionStore.getState();
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
-          clearSyncError: sessionState.clearSyncError,
-          setSyncError: sessionState.setSyncError,
-        });
-        await get().syncToAutofill();
+        await get()._persistAccounts();
       },
 
       getAccountById: (id) => get().accounts.find((a) => a.id === id),
 
       clearAccounts: async () => {
-        set({ accounts: [], initialized: false });
         await accountTable.clear();
-        await get().syncToAutofill();
+        set({ accounts: [], initialized: false });
+        await get()._persistAccounts();
       },
 
       syncToAutofill: async () => {

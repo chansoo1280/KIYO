@@ -9,6 +9,7 @@ import AutofillTestLogin from "@/pages/AutofillTestLogin";
 import TemplateList from "@/pages/Templates";
 import TemplateEdit from "@/pages/Templates/TemplateEdit";
 import { useAccountStore } from "@/store/accountStore";
+import { useTemplateStore } from "@/store/templateStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { AutoLockIndicator } from "@/components/AutoLockIndicator";
 import { useEffect } from "react";
@@ -16,7 +17,8 @@ import { useAutoLock } from "./hooks/useAutoLock";
 
 function App() {
   const { remainingSeconds } = useAutoLock();
-  const initialize = useAccountStore((state) => state.initialize);
+  const loadAccounts = useAccountStore((state) => state.loadAccounts);
+  const loadTemplates = useTemplateStore((state) => state.loadTemplates);
   const initializeTheme = useSettingsStore((state) => state.initializeTheme);
   const initializeFontSize = useSettingsStore(
     (state) => state.initializeFontSize,
@@ -26,8 +28,12 @@ function App() {
   );
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    loadAccounts();
+  }, [loadAccounts]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   useEffect(() => {
     initializeTheme();

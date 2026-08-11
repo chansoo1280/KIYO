@@ -13,7 +13,7 @@ import {
   initializeDatabase,
   getDatabase,
 } from "@/database/db";
-import { fileTable, parseFileData } from "@/database/fileTable";
+import { fileTable } from "@/database/fileTable";
 import { accountTable } from "@/database/accountTable";
 import { useAccountStore } from "@/store/accountStore";
 import { templateTable } from "@/database/templateTable";
@@ -66,6 +66,41 @@ export const createEncryptedVault = async (
 };
 
 /**
+ * 1.5단계: PIN과 salt로 CryptoKey 생성 후 암호화된 볼트 데이터 복호화
+ * createCryptoKey, decryptData 실패는 PIN_MISMATCH로 매핑
+ * @returns { decryptedVaultData, cryptoKey }
+ */
+export const decryptVaultData = async (
+  encryptedData: EncryptedKiyoVaultData,
+  pin: string,
+  salt: Uint8Array
+): Promise<{
+  decryptedVaultData: KiyoVaultData;
+  cryptoKey: CryptoKey;
+}> => {
+  try {
+    const { key } = await createCryptoKey(pin, salt);
+    const decryptedVaultData = await decryptData(encryptedData, key);
+    return { decryptedVaultData, cryptoKey: key };
+  } catch (cryptoError) {
+    throw FileStorageError.create(
+      FileStorageErrorCode.PIN_MISMATCH,
+      "PIN 불일치",
+      { operation: "decryptVaultData", originalError: cryptoError instanceof Error ? cryptoError : undefined },
+    );
+  }
+};
+
+/**
+ * 3.5단계: 세션 설정 후 Store들 초기화 (계정/템플릿 로드)
+ * setupVaultSession과 syncAutofillToken 호출 후 사용
+ */
+export const initializeStores = async (): Promise<void> => {
+  await useAccountStore.getState().loadAccounts();
+  await useTemplateStore.getState().loadTemplates();
+};
+
+/**
  * 2단계: 볼트 데이터를 FileRecord로 변환해 DB에 저장
  */
 export const persistVaultRecord = async (
@@ -87,10 +122,7 @@ export const setupVaultSession = async ({
   cryptoKey?: CryptoKey;
   salt?: Uint8Array;
 }): Promise<void> => {
-  const sessionData: { fileName: string; cryptoKey?: CryptoKey; salt?: Uint8Array } = { fileName };
-  if (cryptoKey !== undefined) sessionData.cryptoKey = cryptoKey;
-  if (salt !== undefined) sessionData.salt = salt;
-  await useSessionStore.getState().setSession(sessionData);
+  await useSessionStore.getState().setSession({ fileName, cryptoKey, salt });
 };
 
 /**
@@ -128,6 +160,97 @@ export const syncAutofillToken = async (
 /**
  * 5단계: 볼트 데이터를 파일 시스템에 export
  */
+export const exportDataFile = async (
+  data: EncryptedKiyoVaultData | KiyoVaultData,
+  fileName: string,
+): Promise<void> => {
+  if (!fileName) {
+    console.error("exportDataFile: fileName is empty");
+    throw FileStorageError.create(
+      FileStorageErrorCode.INVALID_FORMAT,
+      "fileName is empty",
+      { operation: "exportDataFile" },
+    );
+  }
+  const normalizedFileName = normalizeDataFileName(fileName);
+  if (!isNativeFileStorageAvailable()) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = normalizedFileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  try {
+    await Filesystem.writeFile({
+      path: normalizedFileName,
+      data: JSON.stringify(data, null, 2),
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+      recursive: true,
+    });
+  } catch (error) {
+    console.error("exportDataFile: Filesystem.writeFile failed", error);
+    throw FileStorageError.create(
+      FileStorageErrorCode.WRITE_FAILED,
+      "Failed to write file",
+      {
+        originalError: error instanceof Error ? error : undefined,
+        fileName: normalizedFileName,
+        operation: "exportDataFile",
+      },
+    );
+  }
+};
+
+/**
+ * Import file data from filesystem
+ * @deprecated Android 11+ (API 30) Scoped Storage 정책으로 Documents 폴더 직접 접근 불가
+ * - MANAGE_EXTERNAL_STORAGE 권한 필요 (Play 스토어 정책상 일반 앱 승인 어려움)
+ * - Storage Access Framework (SAF) / DocumentFile API 사용 필요
+ * - 현재는 File Picker (Capacitor Filesystem pickFile) 방식으로 대체되어 사용 안 함
+ * - 향후 SAF 구현 시 복원 검토
+ */
+/*
+export const importDataFile = async (
+  fileName: string
+): Promise<EncryptedKiyoVaultData | KiyoVaultData> => {
+  const normalizedFileName = normalizeDataFileName(fileName);
+
+  if (!isNativeFileStorageAvailable()) {
+    // 웹 환경에서는 파일 선택 다이얼로그 필요 - 여기서는 에러
+    throw FileStorageError.create(
+      FileStorageErrorCode.FILE_READ_FAILED,
+      "웹 환경에서는 파일 직접 읽기 불가",
+      { operation: "importDataFile", fileName: normalizedFileName },
+    );
+  }
+
+  try {
+    const result = await Filesystem.readFile({
+      path: normalizedFileName,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    });
+    return parseFileData(result.data as string);
+  } catch (error) {
+    console.error("importDataFile: Filesystem.readFile failed", error);
+    throw FileStorageError.create(
+      FileStorageErrorCode.FILE_READ_FAILED,
+      "Failed to read file",
+      {
+        originalError: error instanceof Error ? error : undefined,
+        fileName: normalizedFileName,
+        operation: "importDataFile",
+      },
+    );
+  }
+};
+*/
 
 // ============================================
 // Legacy: saveDataFile (deprecated - 단계적 제거 예정)
@@ -136,7 +259,9 @@ export const syncAutofillToken = async (
 
 // Helper function to save data (encrypted or plain) to file and update security store
 // Refactored to use pipeline functions - REMOVED: use pipeline functions instead
-
+// Note: createDataFile은 새 파일 생성이므로 replaceDatabaseData 불필요
+// - 기존 암호화 파일 데이터(encryptedFileData)가 없음
+// - 내장 템플릿 생성 → 세션 설정 → 스토어 로드 → 스토어에서 데이터 읽어 볼트 구성
 export const createDataFile = async (
   fileName: string,
   pin?: string
@@ -159,8 +284,7 @@ export const createDataFile = async (
     await syncAutofillToken(true, cryptoKey);
 
     // Now initialize stores from DB using session's cryptoKey
-    await useAccountStore.getState().initialize();
-    await useTemplateStore.getState().loadTemplates();
+    await initializeStores();
 
     const accounts = useAccountStore.getState().accounts ?? [];
     const templates = useTemplateStore.getState().templates ?? [];
@@ -190,8 +314,7 @@ export const createDataFile = async (
     await syncAutofillToken(false);
 
     // Now initialize stores from DB
-    await useAccountStore.getState().initialize();
-    await useTemplateStore.getState().loadTemplates();
+    await initializeStores();
 
     const accounts = useAccountStore.getState().accounts ?? [];
     const templates = useTemplateStore.getState().templates ?? [];
@@ -219,6 +342,10 @@ export const backupDataFile = async (
   const cryptoKey = useSessionStore.getState().cryptoKey ?? undefined;
   const data: KiyoVaultData = await getDatabaseSnapshot(normalizedFileName, cryptoKey);
 
+  // 백업만 수행하므로 세션/자동완성/DB 동기화 불필요
+  // - 세션 상태 유지 (activeFileName, cryptoKey, salt 변경 안 함)
+  // - files 테이블 upsert 안 함 (파일 시스템에만 저장)
+  // - replaceDatabaseData, initializeStores 호출 안 함
   if (pin) {
     const { encryptedVaultData } = await createEncryptedVault(data, pin);
     // Persist encrypted backup to DB files table (for verification/querying)
@@ -277,6 +404,7 @@ export const openImportedDataFile = async (
         cryptoKey: undefined,
         encryptedFileData: undefined,
       });
+      await initializeStores();
     } catch (error) {
       if (isFileStorageError(error)) throw error;
       throw FileStorageError.create(
@@ -285,8 +413,6 @@ export const openImportedDataFile = async (
         { operation: "openImportedDataFile", originalError: error instanceof Error ? error : undefined },
       );
     }
-    await useAccountStore.getState().initialize();
-    await useTemplateStore.getState().loadTemplates();
     return { ...parsedData, fileName: normalizedFileName };
   }
 
@@ -309,21 +435,12 @@ export const openImportedDataFile = async (
     );
   }
 
-  let key: CryptoKey;
-  let decrypted: KiyoVaultData;
-
-  // createCryptoKey, decryptData 실패는 PIN_MISMATCH로 매핑
-  try {
-    const keyResult = await createCryptoKey(pin, salt);
-    key = keyResult.key;
-    decrypted = await decryptData(parsedData, key);
-  } catch (cryptoError) {
-    throw FileStorageError.create(
-      FileStorageErrorCode.PIN_MISMATCH,
-      "PIN 불일치",
-      { operation: "openImportedDataFile", originalError: cryptoError instanceof Error ? cryptoError : undefined },
-    );
-  }
+  // 1.5단계 파이프라인 함수로 복호화 (PIN_MISMATCH 처리 포함)
+  const { decryptedVaultData: decrypted, cryptoKey: key } = await decryptVaultData(
+    parsedData,
+    pin,
+    salt
+  );
 
   // isKiyoFile 검증 실패는 INVALID_DATA_FORMAT으로 별도 처리
   if (!isKiyoFile(decrypted)) {
@@ -347,6 +464,7 @@ export const openImportedDataFile = async (
       cryptoKey: key,
       encryptedFileData: parsedData,
     });
+    await initializeStores();
   } catch (error) {
     if (isFileStorageError(error)) throw error;
     throw FileStorageError.create(
@@ -356,8 +474,6 @@ export const openImportedDataFile = async (
     );
   }
 
-  await useAccountStore.getState().initialize();
-  await useTemplateStore.getState().loadTemplates();
   return { ...decrypted, fileName: normalizedFileName };
 };
 
@@ -384,97 +500,21 @@ export const changePin = async (newPin: string): Promise<void> => {
   // 데이터 암호화
   const encryptedData = await encryptData(fileData, newKey, newSalt);
 
-  // Pipeline: persist → session → autofill → export
+  // Pipeline: persist → session → autofill → export → replaceDatabaseData → initializeStores
   await persistVaultRecord(normalizedFileName, encryptedData);
   await setupVaultSession({ fileName: normalizedFileName, cryptoKey: newKey, salt: newSalt });
   await syncAutofillToken(true, newKey);
   await exportVaultFile(normalizedFileName, encryptedData);
+  // Save decrypted data to DB with new encryption (like openImportedDataFile)
+  await replaceDatabaseData({
+    data: fileData,
+    fileName: normalizedFileName,
+    cryptoKey: newKey,
+    encryptedFileData: encryptedData,
+  });
+  await initializeStores();
 };
 
-export const exportDataFile = async (
-  data: EncryptedKiyoVaultData | KiyoVaultData,
-  fileName: string,
-): Promise<void> => {
-  if (!fileName) {
-    console.error("exportDataFile: fileName is empty");
-    throw FileStorageError.create(
-      FileStorageErrorCode.INVALID_FORMAT,
-      "fileName is empty",
-      { operation: "exportDataFile" },
-    );
-  }
-  const normalizedFileName = normalizeDataFileName(fileName);
-  if (!isNativeFileStorageAvailable()) {
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = normalizedFileName;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    return;
-  }
-  try {
-    await Filesystem.writeFile({
-      path: normalizedFileName,
-      data: JSON.stringify(data, null, 2),
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-      recursive: true,
-    });
-  } catch (error) {
-    console.error("exportDataFile: Filesystem.writeFile failed", error);
-    throw FileStorageError.create(
-      FileStorageErrorCode.WRITE_FAILED,
-      "Failed to write file",
-      {
-        originalError: error instanceof Error ? error : undefined,
-        fileName: normalizedFileName,
-        operation: "exportDataFile",
-      },
-    );
-  }
-};
-
-/**
- * Import file data from filesystem
- */
-export const importDataFile = async (
-  fileName: string
-): Promise<EncryptedKiyoVaultData | KiyoVaultData> => {
-  const normalizedFileName = normalizeDataFileName(fileName);
-
-  if (!isNativeFileStorageAvailable()) {
-    // 웹 환경에서는 파일 선택 다이얼로그 필요 - 여기서는 에러
-    throw FileStorageError.create(
-      FileStorageErrorCode.FILE_READ_FAILED,
-      "웹 환경에서는 파일 직접 읽기 불가",
-      { operation: "importDataFile", fileName: normalizedFileName },
-    );
-  }
-
-  try {
-    const result = await Filesystem.readFile({
-      path: normalizedFileName,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    });
-    return parseFileData(result.data as string);
-  } catch (error) {
-    console.error("importDataFile: Filesystem.readFile failed", error);
-    throw FileStorageError.create(
-      FileStorageErrorCode.FILE_READ_FAILED,
-      "Failed to read file",
-      {
-        originalError: error instanceof Error ? error : undefined,
-        fileName: normalizedFileName,
-        operation: "importDataFile",
-      },
-    );
-  }
-};
 
 /**
  * Unlocks an encrypted file with the given PIN.
@@ -522,45 +562,35 @@ export const unlockFile = async (
     );
   }
 
-  try {
-    const { key } = await createCryptoKey(pin, salt);
-    const decrypted = await decryptData(fileData, key);
-    if (!isKiyoFile(decrypted)) {
-      throw FileStorageError.create(
-        FileStorageErrorCode.INVALID_DATA_FORMAT,
-        "파일 형식이 올바르지 않습니다.",
-        { operation: "unlockFile" },
-      );
-    }
+  // 1.5단계 파이프라인 함수로 복호화 (PIN_MISMATCH 처리 포함)
+  const { decryptedVaultData: decrypted, cryptoKey: key } = await decryptVaultData(
+    fileData,
+    pin,
+    salt
+  );
 
-    const normalizedFileName = normalizeDataFileName(fileName);
-
-    // Pipeline: session with key → autofill → export (file data already in DB)
-    await setupVaultSession({ fileName: normalizedFileName, cryptoKey: key, salt });
-    await syncAutofillToken(true, key);
-    await exportVaultFile(normalizedFileName, fileData);
-    await replaceDatabaseData({
-      data: decrypted,
-      fileName: normalizedFileName,
-      cryptoKey: key,
-      encryptedFileData: fileData,
-    });
-
-    await useAccountStore.getState().initialize();
-    await useTemplateStore.getState().loadTemplates();
-
-    return { ...decrypted, fileName: normalizedFileName };
-  } catch (error) {
-    // 복호화 실패 등을 PIN_MISMATCH로 매핑
-    if (isFileStorageError(error) && error.code === FileStorageErrorCode.PIN_MISMATCH) {
-      throw error;
-    }
+  // isKiyoFile 검증
+  if (!isKiyoFile(decrypted)) {
     throw FileStorageError.create(
-      FileStorageErrorCode.PIN_MISMATCH,
-      "PIN 불일치",
-      { operation: "unlockFile", originalError: error instanceof Error ? error : undefined },
+      FileStorageErrorCode.INVALID_DATA_FORMAT,
+      "파일 형식이 올바르지 않습니다.",
+      { operation: "unlockFile" },
     );
   }
+
+  // Pipeline: session with key → autofill → export (file data already in DB)
+  await setupVaultSession({ fileName: normalizedFileName, cryptoKey: key, salt });
+  await syncAutofillToken(true, key);
+  await exportVaultFile(normalizedFileName, fileData);
+  await replaceDatabaseData({
+    data: decrypted,
+    fileName: normalizedFileName,
+    cryptoKey: key,
+    encryptedFileData: fileData,
+  });
+  await initializeStores();
+
+  return { ...decrypted, fileName: normalizedFileName };
 };
 
 /**

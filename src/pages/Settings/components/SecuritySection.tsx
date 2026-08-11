@@ -1,20 +1,60 @@
+import { useState, useCallback } from "react";
 import type { AutoLockTimeout } from "@/store/settingsStore";
+import { useSettingsStore } from "@/store/settingsStore";
+import { useSessionStore } from "@/store/sessionStore";
+import { fileTable } from "@/database/fileTable";
+import { changePin } from "@/database/fileStorage";
+import { PinChangeDialog } from "./PinChangeDialog";
 
-interface SecuritySectionProps {
-  isEncrypted: boolean;
-  autoLockTimeout: AutoLockTimeout;
-  onPinChangeClick: () => void;
-  onAutoLockChange: (value: string) => void;
-  securityMessage?: string;
-}
+export function SecuritySection() {
+  const [securityMessage, setSecurityMessage] = useState("");
+  const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
+  const { cryptoKey } = useSessionStore();
+  const { autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
+  const isEncrypted = !!cryptoKey;
 
-export function SecuritySection({
-  isEncrypted,
-  autoLockTimeout,
-  onPinChangeClick,
-  onAutoLockChange,
-  securityMessage,
-}: SecuritySectionProps) {
+  const handlePinChangeClick = () => {
+    setSecurityMessage("");
+    setShowPinChangeDialog(true);
+  };
+
+  const handleAutoLockChange = useCallback((value: string) => {
+    if (!isEncrypted) {
+      setSecurityMessage("암호화된 파일에서만 자동잠금을 설정할 수 있습니다. PIN을 설정해 파일을 암호화하세요.");
+      return;
+    }
+    setAutoLockTimeout(value as AutoLockTimeout);
+    setSecurityMessage(
+      value === "none"
+        ? "자동잠금이 비활성화되었습니다."
+        : `자동잠금: ${value === "1m" ? "1분" : value === "10m" ? "10분" : "30분"}로 설정되었습니다.`,
+    );
+  }, [isEncrypted, setAutoLockTimeout]);
+
+  const handlePinChange = useCallback(async (newPin: string) => {
+    const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+    if (!activeFileName) {
+      throw new Error("활성 데이터 파일이 없습니다.");
+    }
+
+    if (encrypted) {
+      if (!cryptoKey) {
+        throw new Error("암호화 키 정보가 없습니다.");
+      }
+      await changePin(newPin);
+    } else {
+      await changePin(newPin);
+    }
+    const { encrypted: newEncrypted } = await fileTable.getActiveFileInfo();
+    return newEncrypted;
+  }, [cryptoKey]);
+
+  const handlePinChangeConfirm = async (newPin: string) => {
+    await handlePinChange(newPin);
+    setSecurityMessage(isEncrypted ? "PIN이 변경되었습니다." : "PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
+    setShowPinChangeDialog(false);
+  };
+
   return (
     <div>
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
@@ -25,7 +65,7 @@ export function SecuritySection({
           <span>PIN</span>
           <button
             type="button"
-            onClick={onPinChangeClick}
+            onClick={handlePinChangeClick}
             className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
           >
             {isEncrypted ? "변경" : "설정"}
@@ -35,7 +75,7 @@ export function SecuritySection({
           <span>자동잠금</span>
           <select
             value={autoLockTimeout}
-            onChange={(e) => onAutoLockChange(e.target.value)}
+            onChange={(e) => handleAutoLockChange(e.target.value)}
             onPointerDown={(e) => {
               if (!isEncrypted) {
                 e.preventDefault();
@@ -61,6 +101,13 @@ export function SecuritySection({
           {securityMessage}
         </p>
       )}
+
+      <PinChangeDialog
+        open={showPinChangeDialog}
+        onClose={() => setShowPinChangeDialog(false)}
+        onConfirm={handlePinChangeConfirm}
+        isEncrypted={isEncrypted}
+      />
     </div>
   );
 }

@@ -1,21 +1,26 @@
+import { useState } from "react";
+import { useSettingsStore } from "@/store/settingsStore";
+
 type FontSize = "small" | "medium" | "large";
-type Theme = "light" | "dark";
 
-interface UISectionProps {
-  theme: Theme;
-  fontSize: FontSize;
-  onThemeToggle: () => void;
-  onFontSizeChange: (size: FontSize) => void;
-  uiMessage?: string;
-}
+export function UISection() {
+  const [uiMessage, setUiMessage] = useState("");
+  const { theme, toggleTheme, fontSize, setFontSize } = useSettingsStore();
 
-export function UISection({
-  theme,
-  fontSize,
-  onThemeToggle,
-  onFontSizeChange,
-  uiMessage,
-}: UISectionProps) {
+  const handleThemeToggle = () => {
+    toggleTheme();
+    setUiMessage(
+      theme === "dark"
+        ? "다크모드가 해제되었습니다."
+        : "다크모드가 적용되었습니다.",
+    );
+  };
+
+  const handleFontSizeChange = (size: FontSize) => {
+    setFontSize(size);
+    setUiMessage(`글자크기: ${size === "small" ? "작게" : size === "medium" ? "보통" : "크게"}로 변경되었습니다.`);
+  };
+
   return (
     <div>
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
@@ -28,7 +33,7 @@ export function UISection({
             type="button"
             role="switch"
             aria-checked={theme === "dark"}
-            onClick={onThemeToggle}
+            onClick={handleThemeToggle}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 ${
               theme === "dark"
                 ? "bg-[var(--color-accent)]"
@@ -47,7 +52,7 @@ export function UISection({
           <span>글자크기</span>
           <select
             value={fontSize}
-            onChange={(e) => onFontSizeChange(e.target.value as FontSize)}
+            onChange={(e) => handleFontSizeChange(e.target.value as FontSize)}
             className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
             aria-label="글자 크기 선택"
           >

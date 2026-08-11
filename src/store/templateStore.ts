@@ -8,13 +8,13 @@ import { useSessionStore } from "@/store/sessionStore";
 export interface TemplateState {
   templates: Template[];
   isLoading: boolean;
+  initialized: boolean;
   loadTemplates: () => Promise<void>;
   createTemplate: (t: Omit<Template, "id" | "createdAt" | "updatedAt">) => Promise<Template>;
   updateTemplate: (id: string, patch: Partial<Template>) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
   clearTemplates: () => Promise<void>;
   getTemplate: (id: string) => Template | undefined;
-  _syncToFile: () => Promise<void>;
 }
 
 export const useTemplateStore = create<TemplateState>()(
@@ -22,24 +22,14 @@ export const useTemplateStore = create<TemplateState>()(
     (set, get) => ({
       templates: [],
       isLoading: false,
-
-      // Common sync helper
-      _syncToFile: async () => {
-        const sessionState = useSessionStore.getState();
-        if (!sessionState.activeFileName) return;
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
-        });
-      },
+      initialized: false,
 
       loadTemplates: async () => {
         set({ isLoading: true });
         try {
           const sessionState = useSessionStore.getState();
           const dbTemplates = await templateTable.getAll(sessionState.cryptoKey ?? undefined);
-          set({ templates: dbTemplates, isLoading: false });
+          set({ templates: dbTemplates, isLoading: false, initialized: true });
         } catch (error) {
           console.error("Failed to load templates:", error);
           set({ isLoading: false });
@@ -52,7 +42,11 @@ export const useTemplateStore = create<TemplateState>()(
         set((state) => ({
           templates: [...state.templates, newTemplate].sort((a, b) => a.sortOrder - b.sortOrder),
         }));
-        await get()._syncToFile();
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+        });
         return newTemplate;
       },
 
@@ -67,7 +61,11 @@ export const useTemplateStore = create<TemplateState>()(
               .map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t))
               .sort((a, b) => a.sortOrder - b.sortOrder),
           }));
-          await get()._syncToFile();
+          await syncDatabaseToFile({
+            activeFileName: sessionState.activeFileName,
+            cryptoKey: sessionState.cryptoKey,
+            salt: sessionState.salt,
+          });
         }
       },
 
@@ -76,13 +74,25 @@ export const useTemplateStore = create<TemplateState>()(
         set((state) => ({
           templates: state.templates.filter((t) => t.id !== id),
         }));
-        await get()._syncToFile();
+
+        const sessionState = useSessionStore.getState();
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+        });
       },
 
       clearTemplates: async () => {
         await templateTable.clear();
         set({ templates: [] });
-        await get()._syncToFile();
+
+        const sessionState = useSessionStore.getState();
+        await syncDatabaseToFile({
+          activeFileName: sessionState.activeFileName,
+          cryptoKey: sessionState.cryptoKey,
+          salt: sessionState.salt,
+        });
       },
 
       getTemplate: (id) => get().templates.find((t) => t.id === id),
