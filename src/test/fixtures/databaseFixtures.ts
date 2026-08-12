@@ -79,7 +79,7 @@ export const createTestEncryptedFileData = (
   fileName: "test-encrypted.json",
   fileData: JSON.stringify(createTestEncryptedFile()),
   encrypted: true,
-  salt: "c2FsdA==",
+  salt: "bW9ja1NhbHQxMjM0NTY3OA==", // 16 bytes base64 encoded (mockSalt12345678)
   createdAt: Date.now(),
   updatedAt: Date.now(),
   ...overrides,

@@ -487,7 +487,8 @@ export const changePin = async (newPin: string): Promise<void> => {
     throw new Error("활성 데이터 파일이 없습니다.");
   }
   const normalizedFileName = normalizeDataFileName(activeFileName);
-  const fileData: KiyoVaultData = await getDatabaseSnapshot(normalizedFileName);
+  // cryptoKey를 전달하여 암호화된 레코드 복호화 (특히 templates)
+  const fileData: KiyoVaultData = await getDatabaseSnapshot(normalizedFileName, cryptoKey ?? undefined);
 
   if (!cryptoKey && encrypted) {
     // 암호화 키가 없고 salt만 있는 경우 -> 비로그인 상태

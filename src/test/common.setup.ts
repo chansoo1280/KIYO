@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
 // Mock TextEncoder and TextDecoder
 globalThis.TextEncoder = TextEncoder;
 globalThis.TextDecoder = TextDecoder;

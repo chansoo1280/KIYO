@@ -12,10 +12,12 @@ export interface Template {
 }
 
 export interface TemplateField {
+  id?: string;
   label: string;
   type: FieldType;
   defaultValue?: string;
   options?: string[];
+  order?: number;
 }
 
 // 기본 템플릿 필드 정의 (TemplatePicker, AccountEdit에서 공통 사용)

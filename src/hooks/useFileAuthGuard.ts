@@ -21,23 +21,28 @@ export function useFileAuthGuard(options: {
     let mounted = true;
 
     const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      const { cryptoKey } = useSessionStore.getState();
+      try {
+        const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+        const { cryptoKey } = useSessionStore.getState();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (!activeFileName) {
-        onNoFile?.();
-        if (!skipRedirect) {
-          navigate("/", { replace: true });
+        if (!activeFileName) {
+          onNoFile?.();
+          if (!skipRedirect) {
+            navigate("/", { replace: true });
+          }
+          return;
+        } else if (encrypted && !cryptoKey) {
+          onLocked?.();
+          if (!skipRedirect) {
+            navigate("/auth", { replace: true });
+          }
+          return;
         }
-        return;
-      } else if (encrypted && !cryptoKey) {
-        onLocked?.();
-        if (!skipRedirect) {
-          navigate("/auth", { replace: true });
-        }
-        return;
+      } catch (error) {
+        console.error("useFileAuthGuard: getActiveFileInfo failed:", error);
+        // Error is handled gracefully - don't redirect
       }
     };
 
