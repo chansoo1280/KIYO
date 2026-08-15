@@ -39,10 +39,6 @@ export interface KiyoAutofillPlugin {
     accountsJson: string;
   }): Promise<SyncAccountsResult>;
   getAccountCount(): Promise<CountResult>;
-  setAutofillToken(options: { token: string; expireAt: number; isEncrypted: boolean }): Promise<void>;
-  clearAutofillToken(): Promise<void>;
-  getAutofillTokenStatus(): Promise<{ hasToken: boolean; hasValidToken: boolean; isEncrypted: boolean; expireAt?: number }>;
-  setVaultEncryptionStatus(options: { isEncrypted: boolean }): Promise<void>;
 }
 
 export interface CountResult {

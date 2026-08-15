@@ -85,7 +85,7 @@ export const useTemplateStore = create<TemplateState>()(
 
       clearTemplates: async () => {
         await templateTable.clear();
-        set({ templates: [] });
+        set({ templates: [], initialized: false });
 
         const sessionState = useSessionStore.getState();
         await syncDatabaseToFile({
@@ -100,3 +100,18 @@ export const useTemplateStore = create<TemplateState>()(
     { name: "TemplateStore" },
   ),
 );
+
+// Dev/테스트 환경에서 Zustand store 디버그용 노출
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__KIYO_DEBUG__ = {
+    ...((window as unknown as Record<string, unknown>).__KIYO_DEBUG__ ?? {}),
+    getTemplateStore: () => {
+      const state = useTemplateStore.getState();
+      return {
+        templatesCount: state.templates.length,
+        initialized: state.initialized,
+        isLoading: state.isLoading,
+      };
+    },
+  };
+}

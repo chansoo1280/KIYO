@@ -22,6 +22,7 @@ export interface AccountState {
   clearAccounts: () => Promise<void>;
   syncToAutofill: () => Promise<void>;
   _persistAccounts: () => Promise<void>;
+  getAutofillAccounts(): Promise<{ username: string; password: string; domain: string | null; title?: string }[]>;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -73,7 +74,7 @@ export const useAccountStore = create<AccountState>()(
         await accountTable.update(updatedAccount, sessionState.cryptoKey ?? undefined);
         set((state) => ({
           accounts: state.accounts.map((a) =>
-            a.id === updatedAccount.id ? updatedAccount : a,
+            a.id === updatedAccount.id ? updatedAccount : a
           ),
         }));
         await get()._persistAccounts();
@@ -102,7 +103,14 @@ export const useAccountStore = create<AccountState>()(
         }
 
         try {
-          const accounts = get().accounts;
+          // Check if autofill service is enabled
+          const autofillStatus = await KiyoAutofill.isAutofillEnabled();
+          if (!autofillStatus.enabled || !autofillStatus.isOurService) {
+            // Autofill is not enabled or not our service, skip sync
+            return;
+          }
+
+          const accounts = await get().getAutofillAccounts();
           const accountsJson = JSON.stringify(accounts);
           const result = await KiyoAutofill.syncAccountsFromReact({
             accountsJson,
@@ -110,18 +118,81 @@ export const useAccountStore = create<AccountState>()(
 
           if (result.success) {
             console.log(
-              `[Autofill] Synced ${result.syncedCount} accounts, ${result.errorCount} errors`,
+              `[Autofill] Synced ${result.syncedCount} accounts, ${result.errorCount} errors`
             );
           } else {
             console.warn(
-              `[Autofill] Sync completed with errors: ${result.errorCount} errors`,
+              `[Autofill] Sync completed with errors: ${result.errorCount} errors`
             );
           }
         } catch (error) {
           console.error("[Autofill] Failed to sync accounts:", error);
         }
       },
+
+      // Get accounts formatted for autofill (username, password, domain)
+      getAutofillAccounts: async () => {
+        const accounts = get().accounts;
+        const autofillAccounts = [];
+
+        for (const account of accounts) {
+          // Find username field (email or text type)
+          let username = "";
+          let password = "";
+
+          for (const field of account.fields) {
+            if (field.type === "email" || field.type === "text") {
+              // Prefer email for username, but take first text/email field
+              if (!username || field.type === "email") {
+                username = field.value;
+              }
+            } else if (field.type === "password") {
+              password = field.value;
+            }
+          }
+
+          // Skip if we don't have both username and password
+          if (!username || !password) {
+            continue;
+          }
+
+          // Determine domain: prefer account.domain, otherwise try to extract from websiteUrl
+          let domain = account.domain ?? null;
+          if (!domain && account.websiteUrl) {
+            try {
+              const url = new URL(account.websiteUrl);
+              domain = url.hostname;
+            } catch (e) {
+              // Invalid URL, keep domain as null
+            }
+          }
+
+          autofillAccounts.push({
+            username,
+            password,
+            domain,
+            title: account.title,
+          });
+        }
+
+        return autofillAccounts;
+      },
     }),
-    { name: "AccountStore" },
+    { name: "AccountStore" }
   ),
 );
+
+// Dev/테스트 환경에서 Zustand store 디버그용 노출
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__KIYO_DEBUG__ = {
+    ...((window as unknown as Record<string, unknown>).__KIYO_DEBUG__ ?? {}),
+    getAccountStore: () => {
+      const state = useAccountStore.getState();
+      return {
+        accountsCount: state.accounts.length,
+        initialized: state.initialized,
+        isLoading: state.isLoading,
+      };
+    },
+  };
+}

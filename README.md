@@ -15,7 +15,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 - **즐겨찾기·태그·템플릿** - 계정 분류와 자주 쓰는 필드 템플릿 관리
 - **안전한 세션 관리** - 암호화 키를 디스크에 저장하지 않고 메모리에만 보관
 - **Android Keystore 연동** - 자동완성용 SQLite DB 마스터 키를 Keystore로 래핑하여 평문 저장 방지
-- **Autofill 세션 저장** - DataStore로 프로세스 재시작 후에도 자동완성 세션 유지 (30분 만료)
+- **자동완성 인증 캐싱** - Android Keystore를 통한 사용자 인증 캐싱 (30분)
 - **자동 잠금 (Auto-lock)** - `none` / `1m` / `10m` / `30m` 4단계 설정 (활동 감지 시 타이머 리셋, 암호화 키 상실 시 즉시 잠금)
 
 ## Tech Stack
@@ -33,81 +33,120 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 
 ```
 ┌─────────────┐     Capacitor Bridge      ┌──────────────────┐
+
 │  React App  │ ◄──────────────────────► │  Android Native  │
+
 │  (WebView)  │   Plugin: KiyoAutofill   │  AutofillService │
+
 └──────┬──────┘                           └────────┬─────────┘
+
        │                                           │
+
        ▼                                           ▼
+
 ┌─────────────┐                           ┌──────────────────┐
+
 │  IndexedDB  │                           │ SQLCipher DB     │
+
 │  (Dexie)    │                           │ (Autofill Repo)  │
+
 │  - 계정/설정 │                           │  - 자동완성용 계정 │
+
 └─────────────┘                           └────────┬─────────┘
+
        │                                           │
+
        │ 파일 시스템 (Documents)                   │
-       ▼                                           │
+
+       ▼                                           ▼
+
 ┌─────────────┐                           ┌────────▼────────┐
+
 │  암호화 JSON │                           │  DB_KEY (AES-256)│
+
 │  (PBKDF2+AES)│                           │  SQLCipher 암호화 │
+
 └─────────────┘                           └────────┬────────┘
+
                                                    │
+
                                                    ▼
+
 ┌─────────────────────────────────────────────────────────────────┐
+
 │                      Android Keystore                            │
+
 │  ┌────────────────────┐                                         │
+
 │  │ kiyo_master_key    │                                         │
+
 │  │ (AES-256-GCM, TEE) │                                         │
+
 │  └─────────┬──────────┘                                         │
+
 │            │                                                     │
+
 │            ▼                                                     │
+
 │  ┌─────────────────────────────────────────────────────────┐    │
+
 │  │                  DatabaseKeyManager                       │    │
+
 │  │  - DB_KEY: random 32-byte ByteArray                      │    │
+
 │  │  - Encrypt with kiyo_master_key (AES-256-GCM)            │    │
+
 │  │  - Store encrypted in kiyo_security_prefs DataStore      │    │
+
 │  │  - getKey(): SecretKey (for SQLCipher)                   │    │
+
 │  └─────────────────────┬────────────────────────────────────┘    │
+
 └────────────────────────┼─────────────────────────────────────────┘
+
                          │
+
                          ▼
+
               ┌─────────────────────────┐
+
               │ kiyo_security_prefs     │
+
               │ DataStore               │
+
               │                         │
+
               │ - db_encrypted_key      │
+
               │   { "iv": "...",         │
+
               │     "ciphertext": "..." }│
+
               └─────────────────────────┘
 
-    ┌─────────────────────────────────────────────┐
-    │              autofill_prefs                  │
-    │              DataStore (별도)                 │
-    │                                             │
-    │  - autofill_token (String)                  │
-    │  - token_expire_at (Long, 30분)             │
-    │  - is_encrypted (String "true"/"false")     │
-    └─────────────────────────────────────────────┘
-           ▲
-           │ (AutofillService.onFillRequest 시에만 사용)
-           │
-    ┌──────┴──────┐
-    │ Autofill    │
-    │ Service     │
-    └─────────────┘
+                         │
+
+                         ▼
+
+              ┌─────────────────────────┐
+
+              │   AutofillService       │
+
+              │   (Keystore 인증)        │
+
+              └─────────────────────────┘
+
 ```
 
 - **React App**: UI, 계정 관리, 설정, 암호화/복호화 수행
-- **Capacitor Plugin**: React ↔ Native 통신 브리지 (세션 키 전달, 계정 동기화, 자동완성 상태 확인, 토큰 관리)
-- **AutofillService**: Android 시스템 자동완성 제공 (필드 탐지, 계정 매칭, FillResponse 구성, `autofill_prefs` 토큰 검증)
-- **AuthRequestHandler**: 인증 요청 처리 (토큰 검증, 인증 응답 생성)
+- **Capacitor Plugin**: React ↔ Native 통신 브리지 (세션 키 전달, 계정 동기화, 자동완성 상태 확인)
+- **AutofillService**: Android 시스템 자동완성 제공 (필드 탐지, 계정 매칭, FillResponse 구성, Keystore를 통한 인증)
 - **KeystoreManager**: Android Keystore 마스터 키(`kiyo_master_key`) 생성/관리, DB_KEY 암호화/복호화
 - **DatabaseKeyManager**: `kiyo_security_prefs` DataStore에서 암호화된 DB_KEY 읽기/쓰기, Keystore로 래핑/언래핑
-- **AutofillAuthStore**: `autofill_prefs` Preferences DataStore 래퍼, 자동완성 토큰/만료/암호화 상태 저장 (30분 만료, **Keystore와 무관**)
 - **SQLCipher DB**: `AutofillRepository`가 사용하는 암호화된 SQLite DB (DB_KEY로 암호화)
 - **AutofillRepository**: 자동완성용 계정 리포지토리
 - **DomainMatcher**: 도메인 매칭 로직 (정확/서브도메인)
 - **AccountMapper**: React JSON → AutofillAccount 파싱
-
 ## Security
 
 ### 암호화 방식 (React Vault)
@@ -120,7 +159,7 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 ### 키 관리
 
 - **PIN 검증**: 저장된 솔트로 키 파생 → 복호화 시도 → 성공 시 세션에 키 보관 (메모리만)
-- **Autofill 세션**: DataStore(`autofill_prefs`)에 토큰/만료/암호화 상태 저장, 30분 만료, 프로세스 재시작 후 유지
+- **Autofill 인증**: Android Keystore를 통한 사용자 인증 캐싱 (30분 만료, 프로세스 재시작 후 유지)
 
 ### Android Keystore 연동 (Autofill DB 보호)
 
@@ -143,30 +182,28 @@ KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android Autofill
 | 자동완성용 계정  | SQLite Database (Native) | SQLCipher + Keystore | AutofillService 전용, Keystore로 DB_KEY 보호 |
 | IndexedDB 계정   | IndexedDB (Dexie)        | AES-GCM 레코드 단위 | 전체 Account/Template 객체 암호화 |
 | 앱 설정          | IndexedDB (Dexie)        | 평문               | 테마, 폰트 등 비민감 설정       |
-| Autofill 토큰    | DataStore (autofill_prefs) | 평문 (토큰 만료 30분) | 프로세스 재시작 후에도 세션 유지 |
 | Keystore 마스터 키 | Android Keystore         | 하드웨어/TEE 보호  | 앱 삭제 시 함께 소멸, 추출 불가 |
 
-### Autofill 세션 저장 (DataStore, 30분 만료)
+### 자동완성 인증 캐싱 (Keystore, 30분 만료)
 
-자동완성 서비스에서 PIN 인증 후 발급된 세션 토큰을 `androidx.datastore:datastore-preferences`로 저장합니다 (프로세스 재시작 후에도 유지, 30분 후 만료):
+자동완성 서비스는 PIN 인증 후 Android Keystore를 통해 사용자 인증을 캐시합니다 (프로세스 재시작 후에도 유지, 30분 후 만료):
 
 | 키 | 타입 | 설명 |
 |-----|------|-------------|
-| `autofill_token` | String | PIN 인증 성공 시 발급된 세션 토큰 (암호화 키 export 또는 unencrypted_vault_token) |
-| `token_expire_at` | Long | 토큰 만료 타임스탬프 (epoch ms), 기본 30분 (1800000 ms) |
-| `is_encrypted` | Boolean (String) | 현재 볼트가 암호화된 상태인지 여부 (`"true"`/`"false"`) |
+| `db_encrypted_key` | 암호화된 키 | Keystore로 보호된 SQLCipher DB_KEY (iv + ciphertext) |
+| `isEncrypted` | Boolean | 현재 볼트가 암호화된 상태인지 여부 (React에서 동기화) |
 
 **채우기 요청 처리 로직** (`KiyoAutofillService.onFillRequest`):
 
-1. `isEncrypted` 확인 → `false`면 바로 채우기 응답 반환 (비암호화 볼트)
-2. 암호화 볼트면 토큰 유효성 검사 (`token != null && now < expireAt`)
-3. 유효한 토큰 없음 → `FillResponseBuilder.createAuthResponse()`로 인증 요청 반환
-4. 유효한 토큰 있음 → 채우기 응답 반환
+1. Keystore를 통한 DB_KEY 접근 시도 (인증이 필요하면 `UserNotAuthenticatedException` 발생)
+2. 예외 발생 시 → `FillResponseBuilder.createAuthResponse()`로 인증 요청 반환
+3. 성공 시 → 계정 조회 및 채우기 응답 반환
 
-**토큰 발급/갱신** (React → Native):
-- `setAutofillToken(token, expireAt, isEncrypted)` - PIN 인증 성공 시 호출
-- `clearAutofillToken()` - 로그아웃, 볼트 전환 시 호출
-- `setVaultEncryptionStatus(isEncrypted)` - 볼트 생성/열기 시 호출
+**인증 상태 관리** (React → Native):
+
+- 볼트 암호화 상태(`isEncrypted`)는 Keystore 기반 인증으로 대체됨
+- 인증 만료는 Keystore가 자체적으로 처리 (30분 캐시)
+- 별도의 토큰 발급/갱신 로직 없음 (Keystore 인증에 의존)
 
 ## Installation
 
@@ -223,7 +260,6 @@ npm run android:run
 - PIN 기반 인증 및 세션 관리
 - Android AutofillService (API 26+) - 필드 탐지, 도메인/패키지 매칭, FillResponse
 - AuthRequestHandler - 인증 요청 처리 (토큰 검증, 인증 응답 생성)
-- AutofillAuthStore 영구 토큰 저장 (30분 만료)
 - Capacitor 플러그인 브리지 (React ↔ Native)
 - IndexedDB (Dexie) 로컬 데이터베이스
 - 계정 CRUD, 즐겨찾기, 태그, 템플릿
@@ -231,7 +267,7 @@ npm run android:run
 - 테마/폰트/자동잠금 설정
 - 단위/통합 테스트 (Vitest, Robolectric)
 - 자동완성 필드 탐지/점수/매칭 단위 테스트
-- AuthRequestHandler, AutofillAuthStore, DomainMatcher, AccountMapper, FieldScoringRules 단위 테스트
+- AuthRequestHandler, DomainMatcher, AccountMapper, FieldScoringRules 단위 테스트
 - KiyoAutofillPlugin 스모크 테스트
 
 ### In Progress 🚧

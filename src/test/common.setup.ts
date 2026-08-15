@@ -63,10 +63,23 @@ vi.mock("@/plugins/kiyautofill", () => ({
       hasEnabledServices: false,
       serviceClassName: null,
     }),
-    setAutofillToken: vi.fn().mockResolvedValue(undefined),
-    clearAutofillToken: vi.fn().mockResolvedValue(undefined),
-    getAutofillTokenStatus: vi.fn().mockResolvedValue({ hasToken: false, hasValidToken: false, isEncrypted: true }),
-    setVaultEncryptionStatus: vi.fn().mockResolvedValue(undefined),
+    getAutofillServiceInfo: vi.fn().mockResolvedValue({
+      servicePackageName: null,
+      isOurService: false,
+      isEnabled: false,
+      hasEnabledServices: false,
+      serviceClassName: null,
+    }),
+    requestAutofillEnable: vi.fn().mockResolvedValue(undefined),
+    ping: vi.fn().mockResolvedValue({
+      pong: true,
+      timestamp: Date.now(),
+      message: "KiyoAutofill plugin is working",
+    }),
+    getAccountCount: vi.fn().mockResolvedValue({ count: 0 }),
+    syncAccountsFromReact: vi
+      .fn()
+      .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
   },
 }));
 // Export mock for use in tests

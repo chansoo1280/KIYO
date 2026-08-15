@@ -15,7 +15,6 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.kiyo.app.autofill.repository.AutofillRepository
-import com.kiyo.app.autofill.store.AutofillAuthStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -371,84 +370,6 @@ class KiyoAutofillPlugin : Plugin() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing accounts from React", e)
                 call.reject("Failed to sync accounts: ${e.message}")
-            }
-        }
-    }
-
-    @PluginMethod
-    fun setAutofillToken(call: PluginCall) {
-        val context = getContext() ?: return call.reject("Context is null")
-
-        val token = call.getString("token") ?: return call.reject("token parameter is required")
-        val expireAt = call.getLong("expireAt") ?: return call.reject("expireAt parameter is required")
-        val isEncrypted = call.getBoolean("isEncrypted") ?: return call.reject("isEncrypted parameter is required")
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                AutofillAuthStore.saveAutofillToken(context, token, expireAt, isEncrypted)
-                Log.d(TAG, "Autofill token saved. isEncrypted=$isEncrypted, expireAt=$expireAt")
-                call.resolve()
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to save autofill token", e)
-                call.reject("Failed to save autofill token: ${e.message}")
-            }
-        }
-    }
-
-    @PluginMethod
-    fun clearAutofillToken(call: PluginCall) {
-        val context = getContext() ?: return call.reject("Context is null")
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                AutofillAuthStore.clearToken(context)
-                Log.d(TAG, "Autofill token cleared")
-                call.resolve()
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to clear autofill token", e)
-                call.reject("Failed to clear autofill token: ${e.message}")
-            }
-        }
-    }
-
-    @PluginMethod
-    fun getAutofillTokenStatus(call: PluginCall) {
-        val context = getContext() ?: return call.reject("Context is null")
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val token = AutofillAuthStore.getAutofillToken(context)
-                val expireAt = AutofillAuthStore.getTokenExpireAt(context)
-                val isEncrypted = AutofillAuthStore.isEncrypted(context)
-                val hasValidToken = AutofillAuthStore.hasValidToken(context)
-
-                call.resolve(JSObject().apply {
-                    put("hasToken", token != null)
-                    put("hasValidToken", hasValidToken)
-                    put("isEncrypted", isEncrypted)
-                    expireAt?.let { put("expireAt", it) }
-                })
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to get autofill token status", e)
-                call.reject("Failed to get autofill token status: ${e.message}")
-            }
-        }
-    }
-
-    @PluginMethod
-    fun setVaultEncryptionStatus(call: PluginCall) {
-        val context = getContext() ?: return call.reject("Context is null")
-
-        val isEncrypted = call.getBoolean("isEncrypted") ?: return call.reject("isEncrypted parameter is required")
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                AutofillAuthStore.setVaultEncryptionStatus(context, isEncrypted)
-                Log.d(TAG, "Vault encryption status set: $isEncrypted")
-                call.resolve()
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to set vault encryption status", e)
-                call.reject("Failed to set vault encryption status: ${e.message}")
             }
         }
     }

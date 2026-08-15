@@ -25,7 +25,6 @@ import com.kiyo.app.autofill.detection.FieldDetector
 import com.kiyo.app.autofill.detection.FieldScorer
 import com.kiyo.app.autofill.repository.AutofillRepository
 import com.kiyo.app.autofill.response.FillResponseBuilder
-import com.kiyo.app.autofill.store.AutofillAuthStore
 import com.kiyo.app.autofill.viewnode.ViewNodeExtractor
 import com.kiyo.app.autofill.viewnode.ViewNodeTraversal
 import java.util.Locale

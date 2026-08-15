@@ -7,21 +7,16 @@ import type { FileRecord } from "@/database/db";
 
 export const ACTIVE_FILE_ID = "active" as const;
 
-export function parseFileData(rawData: string): KiyoVaultData | EncryptedKiyoVaultData {
-  const parsed = JSON.parse(rawData);
-
-  if (isEncryptedKiyoVaultData(parsed)) {
-    return parsed;
-  }
-
-  return parsed as KiyoVaultData;
-}
 
 export type ActiveFileInfo =
   | { encrypted: true; fileData: EncryptedKiyoVaultData; salt: Uint8Array; activeFileName: string }
   | { encrypted: false; fileData: KiyoVaultData; salt: null; activeFileName: string }
   | { encrypted: false; fileData: null; salt: null; activeFileName: null };
 
+
+export const parseFileData = (json: string): any => {
+  return JSON.parse(json);
+}
 export const fileTable = {
   /**
    * Update salt and updatedAt fields only (partial update)
@@ -65,7 +60,7 @@ export const fileTable = {
         fileData: null,
       };
     }
-    const parsedData = parseFileData(fileRecord.fileData);
+    const parsedData = JSON.parse(fileRecord.fileData);
     const isEncrypted = isEncryptedKiyoVaultData(parsedData);
     if (isEncrypted) {
       return {
@@ -107,12 +102,16 @@ export const fileTable = {
   },
 
   /**
-   * Get all file names from files table
-   */
-  async getAllFileNames(): Promise<string[]> {
-    const files = await db.files.toArray();
-    return files.map((f) => f.fileName);
-  },
+     * Get all file names from files table
+     */
+    async getAllFileNames(): Promise<string[]> {
+      const files = await db.files.toArray();
+      return files.map((f) => f.fileName);
+    },
+
+    /**
+     * Get file record by fileName
+     */
 
   /**
    * Delete active file record from files table
