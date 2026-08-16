@@ -14,9 +14,9 @@ const Settings = () => {
   const navigate = useNavigate();
 
   const handleFileChange = async () => {
-    await closeDataFile();
-    navigate("/", { state: { selectFile: true } });
-  };
+      await closeDataFile();
+      navigate("/", { state: { selectFile: true }, replace: true });
+    };
 
   // 파일/인증 상태 체크 및 네비게이션 (훅으로 분리)
   useFileAuthGuard({

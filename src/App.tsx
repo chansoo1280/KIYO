@@ -14,6 +14,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { AutoLockIndicator } from "@/components/AutoLockIndicator";
 import { useEffect } from "react";
 import { useAutoLock } from "./hooks/useAutoLock";
+import useAndroidBackButton from "./hooks/useAndroidBackButton";
 
 function App() {
   const { remainingSeconds } = useAutoLock();
@@ -26,6 +27,8 @@ function App() {
   const initializeAutoLockTimeout = useSettingsStore(
     (state) => state.initializeAutoLockTimeout,
   );
+
+  useAndroidBackButton();
 
   useEffect(() => {
     loadAccounts();
