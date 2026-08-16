@@ -525,15 +525,13 @@ export const changePin = async (newPin: string): Promise<void> => {
   // 데이터 암호화
   const encryptedData = await encryptData(fileData, newKey, newSalt);
 
-  // Pipeline: persist → export → replaceDatabaseData → initializeStores
-  await persistVaultRecord(normalizedFileName, encryptedData);
-  await exportVaultFile(normalizedFileName, encryptedData);
-  // Save decrypted data to DB with new encryption (like openImportedDataFile)
+  // replaceDatabaseData가 files 테이블까지 처리하므로 별도 persistVaultRecord 불필요
   await replaceDatabaseData({
     data: fileData,
     fileName: normalizedFileName,
     cryptoKey: newKey,
     encryptedFileData: encryptedData,
   });
+  await exportVaultFile(normalizedFileName, encryptedData);
   await initializeStores();
 };

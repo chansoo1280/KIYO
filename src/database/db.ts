@@ -12,6 +12,7 @@ import { fileTable, ACTIVE_FILE_ID } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
 import { exportVaultFile, isNativeFileStorageAvailable } from "@/database/fileExport";
+import { createEncryptedRecord, createPlaintextRecord } from "@/crypto/recordEncryption";
 
 export interface FileRecord {
   id: typeof ACTIVE_FILE_ID;
@@ -141,12 +142,70 @@ type ReplaceDatabaseDataParams =
 
 export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Promise<void> => {
   const { data, fileName, cryptoKey, encryptedFileData } = params;
-  
+
   const fileDataToSave = cryptoKey ? encryptedFileData : data;
   if (cryptoKey && !encryptedFileData || !fileDataToSave) {
     throw new Error("저장할 파일 데이터가 없습니다.");
   }
 
+  // === 1단계: 트랜잭션 밖에서 암호화 완료 ===
+  let accountRecords: AccountRecord[] = [];
+  let templateRecords: TemplateRecord[] = [];
+
+  if (cryptoKey) {
+    const now = Date.now();
+    // 계정 암호화
+    accountRecords = await Promise.all(
+      data.accounts.map(async (account) => {
+        const encryptedRecord = await createEncryptedRecord({ ...account, updatedAt: now }, cryptoKey);
+        return {
+          id: account.id,
+          ...encryptedRecord,
+          createdAt: account.createdAt,
+          updatedAt: now,
+        };
+      })
+    );
+    // 템플릿 암호화
+    templateRecords = await Promise.all(
+      data.templates.map(async (template) => {
+        const encryptedRecord = await createEncryptedRecord({ ...template, updatedAt: now }, cryptoKey);
+        return {
+          id: template.id,
+          ...encryptedRecord,
+          createdAt: template.createdAt,
+          updatedAt: now,
+        };
+      })
+    );
+  } else {
+    // 평문 레코드 생성
+    const now = Date.now();
+    accountRecords = await Promise.all(
+      data.accounts.map(async (account) => {
+        const plaintextRecord = await createPlaintextRecord({ ...account, updatedAt: now });
+        return {
+          id: account.id,
+          ...plaintextRecord,
+          createdAt: account.createdAt,
+          updatedAt: now,
+        };
+      })
+    );
+    templateRecords = await Promise.all(
+      data.templates.map(async (template) => {
+        const plaintextRecord = await createPlaintextRecord({ ...template, updatedAt: now });
+        return {
+          id: template.id,
+          ...plaintextRecord,
+          createdAt: template.createdAt,
+          updatedAt: now,
+        };
+      })
+    );
+  }
+
+  // === 2단계: 짧은 트랜잭션으로 DB 저장만 ===
   await db.transaction(
     "rw",
     db.accounts,
@@ -159,19 +218,11 @@ export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Pr
       await db.metadata.clear();
       await db.files.clear();
 
-      // Insert accounts and templates with encryption using restore to preserve IDs
-      if (cryptoKey) {
-        await accountTable.bulkRestore(data.accounts, cryptoKey);
-        await templateTable.bulkRestore(data.templates, cryptoKey);
-      } else {
-        // Fallback - should not happen in production
-        await accountTable.bulkRestore(data.accounts);
-        await templateTable.bulkRestore(data.templates);
-      }
+      // 이미 완성된 레코드 바로 bulkPut
+      await db.accounts.bulkPut(accountRecords);
+      await db.templates.bulkPut(templateRecords);
 
       await db.metadata.bulkPut(data.metadata);
-
-      // Save file data to files table (encrypted or plain based on cryptoKey presence)
       await fileTable.upsertFileRecord(fileName, fileDataToSave);
     },
   );
