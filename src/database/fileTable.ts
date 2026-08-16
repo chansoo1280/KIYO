@@ -14,7 +14,7 @@ export type ActiveFileInfo =
   | { encrypted: false; fileData: null; salt: null; activeFileName: null };
 
 
-export const parseFileData = (json: string): any => {
+export const parseFileData = (json: string): KiyoVaultData | EncryptedKiyoVaultData => {
   return JSON.parse(json);
 }
 export const fileTable = {

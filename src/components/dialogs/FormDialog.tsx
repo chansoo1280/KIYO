@@ -62,7 +62,7 @@ export const FormDialog = ({
         {children}
 
         {displayError && (
-          <p className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">
+          <p className="mt-4 text-sm font-medium text-[var(--color-error)]">
             {displayError}
           </p>
         )}

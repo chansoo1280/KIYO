@@ -117,16 +117,22 @@ export const useAccountStore = create<AccountState>()(
           });
 
           if (result.success) {
-            console.log(
-              `[Autofill] Synced ${result.syncedCount} accounts, ${result.errorCount} errors`
-            );
+            if (import.meta.env.DEV) {
+              console.log(
+                `[Autofill] Synced ${result.syncedCount} accounts, ${result.errorCount} errors`
+              );
+            }
           } else {
-            console.warn(
-              `[Autofill] Sync completed with errors: ${result.errorCount} errors`
-            );
+            if (import.meta.env.DEV) {
+              console.warn(
+                `[Autofill] Sync completed with errors: ${result.errorCount} errors`
+              );
+            }
           }
         } catch (error) {
-          console.error("[Autofill] Failed to sync accounts:", error);
+          if (import.meta.env.DEV) {
+            console.error("[Autofill] Failed to sync accounts:", error);
+          }
         }
       },
 
@@ -162,7 +168,7 @@ export const useAccountStore = create<AccountState>()(
             try {
               const url = new URL(account.websiteUrl);
               domain = url.hostname;
-            } catch (e) {
+            } catch {
               // Invalid URL, keep domain as null
             }
           }

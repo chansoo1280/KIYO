@@ -54,10 +54,9 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
 
   describe("create → getAll → getById (평문)", () => {
     it("평문 템플릿을 생성하고 조회한다", async () => {
-      const testTemplate: Omit<Template, "id" | "createdAt" | "updatedAt"> = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
+          const testTemplate: Omit<Template, "id" | "createdAt" | "updatedAt"> = createTestTemplates(1)[0];
 
-      const created = await templateTable.create(templateInput);
+          const created = await templateTable.create(testTemplate);
 
       expect(created.id).toBeDefined();
       expect(created.name).toBe(testTemplate.name);
@@ -79,11 +78,10 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
     });
 
     it("getAll은 sortOrder 순으로 정렬된다", async () => {
-      const templates = createTestTemplates(3);
-      for (const template of templates) {
-        const { id, createdAt, updatedAt, ...input } = template as any;
-        await templateTable.create(input);
-      }
+          const templates = createTestTemplates(3);
+          for (const template of templates) {
+            await templateTable.create(template);
+          }
 
       const all = await templateTable.getAll();
       expect(all).toHaveLength(3);
@@ -97,9 +95,8 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
   describe("create → getAll → getById (암호화)", () => {
     it("암호화된 템플릿을 생성하고 키로 복호화 조회한다", async () => {
       const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
 
-      const created = await templateTable.create(templateInput, testKey);
+      const created = await templateTable.create(testTemplate, testKey);
 
       expect(created.id).toBeDefined();
       expect(created.name).toBe(testTemplate.name);
@@ -122,9 +119,8 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
     });
 
     it("잘못된 키로 복호화 시도 시 에러 던짐", async () => {
-      const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
-      await templateTable.create(templateInput, testKey);
+          const testTemplate = createTestTemplates(1)[0];
+          await templateTable.create(testTemplate, testKey);
 
       const wrongKeyResult = await createCryptoKey("wrong-pin");
       await expect(templateTable.getAll(wrongKeyResult.key)).rejects.toThrow();
@@ -132,8 +128,7 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
 
     it("키 없이 getById 호출 시 undefined 반환", async () => {
       const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
-      const created = await templateTable.create(templateInput, testKey);
+      const created = await templateTable.create(testTemplate, testKey);
 
       const withoutKey = await templateTable.getById(created.id);
       expect(withoutKey).toBeUndefined();
@@ -143,8 +138,7 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
   describe("update", () => {
     it("평문 템플릿을 수정한다", async () => {
       const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
-      const created = await templateTable.create(templateInput);
+      const created = await templateTable.create(testTemplate);
 
       // 수정
       const updatedTemplate: Template = {
@@ -168,8 +162,7 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
 
     it("암호화 템플릿을 수정한다 (키 필요)", async () => {
       const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
-      const created = await templateTable.create(templateInput, testKey);
+      const created = await templateTable.create(testTemplate, testKey);
 
       const updatedTemplate: Template = {
         ...created,
@@ -201,8 +194,7 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
   describe("delete", () => {
     it("템플릿을 삭제한다", async () => {
       const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
-      const created = await templateTable.create(templateInput, testKey);
+      const created = await templateTable.create(testTemplate, testKey);
 
       expect(await templateTable.getById(created.id, testKey)).toBeDefined();
 
@@ -221,8 +213,7 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
     it("모든 템플릿을 삭제한다", async () => {
       const templates = createTestTemplates(3);
       for (const template of templates) {
-        const { id, createdAt, updatedAt, ...input } = template as any;
-        await templateTable.create(input, testKey);
+        await templateTable.create(template, testKey);
       }
 
       expect(await templateTable.getAll(testKey)).toHaveLength(3);
@@ -346,8 +337,7 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
 
     it("DB에 저장된 암호화 레코드 직접 조회 시 구조 확인", async () => {
       const testTemplate = createTestTemplates(1)[0];
-      const { id, createdAt, updatedAt, ...templateInput } = testTemplate as any;
-      const created = await templateTable.create(templateInput, testKey);
+      const created = await templateTable.create(testTemplate, testKey);
 
       const db = getDatabase();
       const rawRecord = await db.templates.get(created.id);

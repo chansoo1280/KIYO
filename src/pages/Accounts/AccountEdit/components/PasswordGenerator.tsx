@@ -218,7 +218,7 @@ export const PasswordGenerator = ({
         )}
 
         {errorMessage && (
-          <p className="text-sm font-medium text-red-600 dark:text-red-400 text-center">{errorMessage}</p>
+          <p className="text-sm font-medium text-[var(--color-error)] text-center">{errorMessage}</p>
         )}
 
         <p className="text-xs text-[var(--color-text)] text-center">

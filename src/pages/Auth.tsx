@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/sessionStore";
 import {
@@ -70,7 +71,7 @@ const Auth = () => {
   };
 
   return (
-    <main className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center gap-4">
           <button
@@ -79,21 +80,9 @@ const Auth = () => {
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text-h)]"
             aria-label="첫 화면으로 돌아가기"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-              />
-            </svg>
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
+          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
             K
           </div>
           <div>
@@ -131,13 +120,13 @@ const Auth = () => {
           </div>
 
           {error && (
-            <div
-              className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm dark:bg-red-900/30 dark:text-red-400"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
+                      <div
+                        className="mt-4 p-3 rounded-lg border border-[var(--error)]/20 bg-[var(--error)]/10 text-[var(--error)] text-sm dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]"
+                        role="alert"
+                      >
+                        {error}
+                      </div>
+                    )}
 
           <div className="mt-6 space-y-4">
             {/* PIN input */}

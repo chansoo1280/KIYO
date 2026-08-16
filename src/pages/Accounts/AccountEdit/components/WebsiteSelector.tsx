@@ -130,7 +130,7 @@ const WebsiteSelector = ({
         {/* Title-based Recommendation */}
         {recommendation.show && recommendation.preset && (
           <div className="space-y-3 border-t border-[var(--color-border)] pt-4">
-            <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-[var(--color-text-muted)]">
               추천 사이트
             </h3>
             <p className="text-xs text-[var(--color-text-muted)]">
@@ -157,7 +157,7 @@ const WebsiteSelector = ({
         {/* Search Results */}
         {searchQuery.trim() && searchResults.length > 0 && (
           <div className="space-y-3 border-t border-[var(--color-border)] pt-4">
-            <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-[var(--color-text-muted)]">
               검색 결과 ({searchResults.length}개)
             </h3>
             <div className="space-y-2">
@@ -199,7 +199,7 @@ const WebsiteSelector = ({
 
               return (
                 <div key={category} className="space-y-3">
-                  <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-muted)]">
                     {categoryLabels[category] || category}
                   </h3>
                   <div className="space-y-2">

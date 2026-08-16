@@ -23,7 +23,7 @@ const TemplateList = () => {
 
   if (isLoading) {
     return (
-      <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
+      <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
           <header className="flex items-center gap-3">
             <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
@@ -40,7 +40,7 @@ const TemplateList = () => {
   }
 
   return (
-    <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
+    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header className="flex items-center justify-between gap-3">
           <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">

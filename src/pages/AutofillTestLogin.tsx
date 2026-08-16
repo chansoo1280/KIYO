@@ -5,12 +5,14 @@ const AutofillTestLogin = () => {
   const [password, setPassword] = useState("");
 
   const handleLogin = () => {
-    console.log("Login attempt:", { email, password });
+    if (import.meta.env.DEV) {
+      console.log("Login attempt:", { email, password });
+    }
     alert(`로그인 시도\n이메일: ${email}\n비밀번호: ${password}`);
   };
 
   return (
-    <main className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center gap-4">
           <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">

@@ -294,6 +294,8 @@ export const accountTable = {
       await db.accounts.bulkPut(records as AccountRecord[]);
     });
 
-    console.log("개발용 seed 데이터가 추가되었습니다.");
+    if (import.meta.env.DEV) {
+      console.log("개발용 seed 데이터가 추가되었습니다.");
+    }
   },
 };

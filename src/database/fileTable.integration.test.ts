@@ -9,7 +9,7 @@ import {
   createTestEncryptedFileData,
 } from "@/test/fixtures/databaseFixtures";
 import type { FileRecord } from "@/database/db";
-import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
+import type { KiyoVaultData, EncryptedKiyoVaultData } from "@/models/vault";
 import { useSessionStore } from "@/store/sessionStore";
 
 // Use real IndexedDB via Dexie (works in Vitest with jsdom)
@@ -141,8 +141,9 @@ describe("fileTable - 파일 레코드 관리", () => {
       expect(info.salt).toBeNull();
       expect(info.encrypted).toBe(false);
       expect(info.fileData).not.toBeNull();
-      expect((info.fileData as any).accounts).toBeDefined();
-      expect((info.fileData as any).templates).toBeDefined();
+      const plainData = info.fileData as KiyoVaultData;
+      expect(plainData.accounts).toBeDefined();
+      expect(plainData.templates).toBeDefined();
     });
 
     it("암호화 레코드면 암호화 정보와 salt를 Uint8Array로 반환한다", async () => {
@@ -165,7 +166,7 @@ describe("fileTable - 파일 레코드 관리", () => {
       const record: FileRecord = {
         id: ACTIVE_FILE_ID,
         fileName: "no-salt.json",
-        fileData: JSON.stringify(createTestEncryptedFile({ salt: undefined as any })),
+        fileData: JSON.stringify(createTestEncryptedFile({ salt: undefined })),
         encrypted: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),

@@ -25,8 +25,8 @@ export const ConfirmDialog = ({
   isLoading = false,
 }: ConfirmDialogProps) => {
   const confirmClassName = variant === "danger"
-    ? "rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-    : "rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--color-accent)]/80";
+    ? "rounded-md border border-[var(--color-accent)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] shadow-sm hover:bg-[var(--color-accent)]/10 dark:border-[var(--color-accent)] dark:bg-[var(--color-bg)]/80 dark:text-[var(--color-accent)] dark:hover:bg-[var(--color-accent)]/20"
+    : "rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--color-accent)]/80 dark:bg-[var(--color-accent)]/80";
 
   return (
     <BaseDialog
@@ -42,7 +42,7 @@ export const ConfirmDialog = ({
           type="button"
           onClick={onClose}
           disabled={isLoading}
-          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm disabled:opacity-50"
+          className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm disabled:opacity-50"
         >
           {cancelLabel}
         </button>

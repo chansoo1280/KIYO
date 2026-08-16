@@ -5,15 +5,15 @@ import { TEST_PIN } from './fixtures/test-data';
 // 헬퍼: 스토어 상태 확인
 async function checkStoresReset(page: import('@playwright/test').Page) {
   const accountStore = await page.evaluate(() => {
-    // @ts-ignore
+    // @ts-expect-error - accessing debug window property
     return window.__KIYO_DEBUG__?.getAccountStore?.() ?? null;
   });
   const templateStore = await page.evaluate(() => {
-    // @ts-ignore
+    // @ts-expect-error - accessing debug window property
     return window.__KIYO_DEBUG__?.getTemplateStore?.() ?? null;
   });
   const sessionStore = await page.evaluate(() => {
-    // @ts-ignore
+    // @ts-expect-error - accessing debug window property
     return window.__KIYO_DEBUG__?.getSession?.() ?? null;
   });
   return { accountStore, templateStore, sessionStore };
@@ -126,8 +126,6 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await page.waitForLoadState('networkidle');
 
       // 3. "파일변경" 버튼 찾기 및 클릭
-      const fileChangeButton = page.getByRole('button', { name: '이동' }).filter({ hasText: '파일변경' });
-      // 더 정확하게: "파일변경" 텍스트가 있는 행의 "이동" 버튼
       const fileChangeRow = page.locator('text=파일변경').locator('..');
       await expect(fileChangeRow.locator('button:has-text("이동")')).toBeVisible({ timeout: 5000 });
       await fileChangeRow.locator('button:has-text("이동")').click();

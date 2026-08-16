@@ -316,8 +316,8 @@ test.describe('계정 CRUD (Account CRUD)', () => {
       // 삭제 버튼 클릭 (상세 페이지 헤더의 삭제 버튼 - 첫 번째)
       await page.locator('button:has-text("삭제")').first().click();
 
-      // 확인 모달에서 삭제 클릭 (모달 내의 삭제 버튼 - 빨간색 버튼)
-      await page.locator('button.bg-red-600:has-text("삭제")').click({ timeout: 5000 });
+      // 확인 모달에서 삭제 클릭 (모달 내의 삭제 버튼)
+          await page.getByRole('dialog').getByRole('button', { name: '삭제' }).click({ timeout: 5000 });
 
       // 리스트로 리다이렉트 대기
       await page.waitForURL('**/accounts', { timeout: 10000 });

@@ -10,6 +10,9 @@
   --color-accent-bg: var(--accent-bg);
   --color-accent-border: var(--accent-border);
   --color-social-bg: var(--social-bg);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
   
   /* Font size utilities for global font size control */
   --text-size-sm: 14px;
@@ -47,6 +50,18 @@
   --mono: ui-monospace, Consolas, monospace;
 
   --base-font-size: 18px;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  /* semantic tokens for layering */
+  --bg: var(--color-bg);
+  --surface: var(--color-bg);
+  --card: var(--color-bg);
+  --rule: var(--color-border);
+  --ink: var(--color-text-h);
+  --ink-2: var(--color-text);
+  --ink-3: #6b6375;
+  --radius: 0.5rem;
   font: var(--base-font-size)/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
@@ -168,11 +183,11 @@ h2 {
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
+  font-size: 2rem;
+  letter-spacing: -0.24px;
   margin: 32px 0;
   @media (max-width: 1024px) {
-    font-size: 36px;
+    font-size: 1.5rem;
     margin: 20px 0;
   }
 }

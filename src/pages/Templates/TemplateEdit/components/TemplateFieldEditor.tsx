@@ -67,7 +67,7 @@ export const TemplateFieldEditor = ({
             onChange={(e) => onChange(index, { label: e.target.value })}
             placeholder="항목 이름"
             className={`flex-1 rounded-2xl border px-3 py-2 text-sm text-[var(--color-text-h)] bg-[var(--color-bg)] outline-none focus:border-[var(--color-accent)] ${
-              isDuplicateLabel ? "border-red-500" : "border-[var(--color-border)]"
+              isDuplicateLabel ? "border-[var(--color-error)]" : "border-[var(--color-border)]"
             }`}
           />
           <span className="text-xs text-[var(--color-text-muted)]">
@@ -77,7 +77,7 @@ export const TemplateFieldEditor = ({
         <button
           type="button"
           onClick={() => onDelete(index)}
-          className="p-2 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
+          className="p-2 rounded-xl bg-[var(--color-error)]/10 text-[var(--color-error)] hover:bg-[var(--color-error)]/20 dark:bg-[var(--color-error)]/20 dark:hover:bg-[var(--color-error)]/30"
           aria-label="필드 삭제"
         >
           ✕
@@ -154,7 +154,7 @@ export const TemplateFieldEditor = ({
         )}
 
         {isDuplicateLabel && (
-          <p className="text-xs text-red-500">중복된 항목 이름입니다</p>
+          <p className="text-xs text-[var(--color-error)]">중복된 항목 이름입니다</p>
         )}
       </div>
     </div>

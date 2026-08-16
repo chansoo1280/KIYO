@@ -199,7 +199,7 @@ const AccountEdit = () => {
   ]);
 
   return (
-    <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+    <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"

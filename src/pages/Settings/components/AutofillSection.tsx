@@ -163,7 +163,7 @@ export const AutofillSection: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`w-2 h-2 rounded-full ${isEnabled ? "bg-green-500" : isOurService ? "bg-yellow-500" : "bg-gray-400"}`}
+            className={`w-2 h-2 rounded-full ${isEnabled ? "bg-[var(--color-success)]" : isOurService ? "bg-[var(--color-warning)]" : "bg-[var(--color-border)]"}`}
           />
           {isEnabled ? (
             <button
@@ -219,7 +219,7 @@ export const AutofillSection: React.FC = () => {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)] dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]">
           {error}
         </div>
       )}

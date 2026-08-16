@@ -22,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: 'cross-env VITE_E2E=true npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120000,
   },
 });

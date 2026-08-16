@@ -48,12 +48,12 @@ const AccountDetail = () => {
 
   if (!account) {
     return (
-      <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
         <div className="flex justify-start">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
           >
             ← 뒤로 가기
           </button>
@@ -79,12 +79,12 @@ const AccountDetail = () => {
 
   return (
     <>
-      <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={handleBack}
-            className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
           >
             ← 뒤로 가기
           </button>
@@ -92,14 +92,14 @@ const AccountDetail = () => {
             <button
               type="button"
               onClick={() => navigate(`/accounts/${account.id}/edit`)}
-              className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
+              className="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
             >
               수정
             </button>
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
-              className="rounded-full border border-red-200 bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+              className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text-h)] shadow-sm"
             >
               삭제
             </button>
@@ -116,7 +116,7 @@ const AccountDetail = () => {
                 {account.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]"
+                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]"
                   >
                     {tag}
                   </span>

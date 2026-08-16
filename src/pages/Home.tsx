@@ -89,7 +89,7 @@ const Home = () => {
   };
 
   return (
-    <main className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8">
+    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">

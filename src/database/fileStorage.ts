@@ -519,13 +519,14 @@ export const changePin = async (newPin: string): Promise<void> => {
   // 새 PIN으로 CryptoKey 생성
   const { key: newKey, salt: newSalt } = await createCryptoKey(newPin);
 
+  // Update session with new key early to avoid transaction issues
+  await setupVaultSession({ fileName: normalizedFileName, cryptoKey: newKey, salt: newSalt });
+
   // 데이터 암호화
   const encryptedData = await encryptData(fileData, newKey, newSalt);
 
-  // Pipeline: session → autofill → export → replaceDatabaseData → initializeStores
+  // Pipeline: persist → export → replaceDatabaseData → initializeStores
   await persistVaultRecord(normalizedFileName, encryptedData);
-  await setupVaultSession({ fileName: normalizedFileName, cryptoKey: newKey, salt: newSalt });
-  // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
   await exportVaultFile(normalizedFileName, encryptedData);
   // Save decrypted data to DB with new encryption (like openImportedDataFile)
   await replaceDatabaseData({

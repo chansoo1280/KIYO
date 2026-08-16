@@ -29,7 +29,7 @@ export const BaseDialog = ({
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-sm rounded-3xl bg-[var(--color-bg)] p-6 shadow-xl border border-[var(--color-border)] ${className}`}
+            className={`w-full max-w-sm rounded-md bg-[var(--color-bg)] p-6 shadow-sm border border-[var(--color-border)] ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -43,7 +43,7 @@ export const BaseDialog = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-code-bg)] flex-shrink-0"
+              className="rounded-md p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-code-bg)] flex-shrink-0"
               aria-label="닫기"
             >
               ✕

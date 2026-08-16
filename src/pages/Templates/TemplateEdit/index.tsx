@@ -37,6 +37,7 @@ const TemplateEdit = () => {
       if (isEdit && id) {
         const template = getTemplate(id);
         if (template) {
+          // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- Initialization on mount is intentional
           setForm({
             name: template.name,
             description: template.description || "",
@@ -47,6 +48,7 @@ const TemplateEdit = () => {
         }
       } else {
         // 새 템플릿 생성 시 sortOrder를 마지막에 위치하도록 설정
+        // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- Initialization on mount is intentional
         setForm((prev) => ({
           ...prev,
           sortOrder: templates.length,
@@ -166,7 +168,7 @@ const TemplateEdit = () => {
 
   return (
     <>
-      <main className="min-h-svh bg-gradient-to-b from-accent-bg to-[var(--color-bg)] px-5 py-8 pb-28">
+      <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
           <header className="flex items-center justify-between gap-3">
             <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
@@ -177,7 +179,7 @@ const TemplateEdit = () => {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-full border border-red-200 bg-[var(--color-bg)] px-4 py-2 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--error)] shadow-sm hover:bg-[var(--error)]/10 dark:border-[var(--border)]/30"
                 >
                   삭제
                 </button>
@@ -200,8 +202,8 @@ const TemplateEdit = () => {
           </header>
 
           {errors.length > 0 && (
-            <div className="rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20">
-              <ul className="space-y-1 text-sm text-red-600 dark:text-red-400">
+            <div className="rounded-2xl border border-[var(--error)]/20 bg-[var(--error)]/10 p-4 dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20">
+              <ul className="space-y-1 text-sm text-[var(--error)] dark:text-[var(--error)]">
                 {errors.map((err, i) => (
                   <li key={i}>• {err}</li>
                 ))}
@@ -211,7 +213,7 @@ const TemplateEdit = () => {
 
           {/* 기본 정보 섹션 */}
           <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
-            <h2 className="text-lg font-semibold text-[var(--color-text-h)]">기본 정보</h2>
+            <h2 className="text-2xl font-bold text-[var(--color-text-h)]">기본 정보</h2>
 
             <div className="space-y-4">
               <div>
@@ -255,7 +257,7 @@ const TemplateEdit = () => {
           {/* 필드 정의 섹션 */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[var(--color-text-h)]">필드 정의</h2>
+              <h2 className="text-2xl font-bold text-[var(--color-text-h)]">필드 정의</h2>
               <button
                 type="button"
                 onClick={addField}

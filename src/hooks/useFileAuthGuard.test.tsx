@@ -8,6 +8,7 @@ import { fileTable } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
 import type { ActiveFileInfo } from "@/database/fileTable";
 import type { SessionState } from "@/store/sessionStore";
+import type { EncryptedKiyoVaultData } from "@/models/vault";
 
 // Mock dependencies BEFORE importing the hook
 vi.mock("@/database/fileTable", () => ({
@@ -57,7 +58,14 @@ const createMockActiveFileInfo = (overrides: Partial<ActiveFileInfo>): ActiveFil
     // For encrypted, we need all required fields
     return {
       encrypted: true,
-      fileData: { encrypted: true, encryptedData: new Uint8Array(), iv: new Uint8Array(), salt: "salt", algorithm: "AES-GCM", version: 1 } as any,
+      fileData: { 
+        encrypted: true, 
+        ciphertext: "ciphertext", 
+        iv: "iv", 
+        salt: "salt", 
+        algorithm: "AES-GCM", 
+        version: 1 
+      } as EncryptedKiyoVaultData,
       salt: new Uint8Array(),
       activeFileName: "test.json",
       ...overrides,

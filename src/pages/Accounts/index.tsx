@@ -109,7 +109,7 @@ const AccountList = () => {
   const { copy } = useClipboard();
 
   return (
-    <section className="min-h-svh bg-gradient-to-b from-[var(--color-accent-bg)] to-[var(--color-bg)] px-5 py-8 pb-28">
+    <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -235,7 +235,7 @@ const AccountList = () => {
                       {account.title}
                     </p>
                     {account.favorite && (
-                      <span className="text-yellow-500 text-sm">★</span>
+                      <span className="text-[var(--color-warning)] text-sm">★</span>
                     )}
                   </div>
                   <p className="truncate text-sm text-[var(--color-text)]">

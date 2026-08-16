@@ -56,11 +56,9 @@ describe("accountTable - 계정 암호화 CRUD", () => {
 
   describe("create → getAll → getById (평문)", () => {
     it("평문 계정을 생성하고 조회한다", async () => {
-      const testAccount: Omit<Account, "id" | "createdAt" | "updatedAt"> = createTestAccounts(1)[0];
-      // id, createdAt, updatedAt 제거
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
+      const testAccount = createTestAccounts(1)[0];
 
-      const created = await accountTable.create(accountInput);
+      const created = await accountTable.create(testAccount);
 
       expect(created.id).toBeGreaterThan(0);
       expect(created.title).toBe(testAccount.title);
@@ -83,8 +81,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
     it("여러 계정 생성 시 updatedAt 역순으로 정렬된다", async () => {
       const accounts = createTestAccounts(3);
       for (const account of accounts) {
-        const { id, createdAt, updatedAt, ...input } = account as any;
-        await accountTable.create(input);
+        await accountTable.create(account);
         // 약간의 시간 간격
         await new Promise((r) => setTimeout(r, 5));
       }
@@ -101,9 +98,8 @@ describe("accountTable - 계정 암호화 CRUD", () => {
   describe("create → getAll → getById (암호화)", () => {
     it("암호화된 계정을 생성하고 키로 복호화 조회한다", async () => {
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
 
-      const created = await accountTable.create(accountInput, testKey);
+      const created = await accountTable.create(testAccount, testKey);
 
       expect(created.id).toBeGreaterThan(0);
       expect(created.title).toBe(testAccount.title);
@@ -131,8 +127,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
 
     it("잘못된 키로 복호화 시도 시 최소 정보 반환 (에러 던지지 않음)", async () => {
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
-      await accountTable.create(accountInput, testKey);
+      await accountTable.create(testAccount, testKey);
 
       const wrongKeyResult = await createCryptoKey("wrong-pin");
       const withWrongKey = await accountTable.getAll(wrongKeyResult.key);
@@ -147,8 +142,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
   describe("update", () => {
     it("평문 계정을 수정한다", async () => {
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
-      const created = await accountTable.create(accountInput);
+      const created = await accountTable.create(testAccount);
 
       // 수정
       const updatedAccount: Account = {
@@ -172,8 +166,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
 
     it("암호화 계정을 수정한다 (키 필요)", async () => {
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
-      const created = await accountTable.create(accountInput, testKey);
+      const created = await accountTable.create(testAccount, testKey);
 
       // 키 없이 수정 시도 - 에러가 나거나 무시됨 (현재 구현은 암호화된 상태로 저장 시도)
       const updatedAccount: Account = {
@@ -206,8 +199,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
   describe("delete", () => {
     it("계정을 삭제한다", async () => {
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
-      const created = await accountTable.create(accountInput, testKey);
+      const created = await accountTable.create(testAccount, testKey);
 
       expect(await accountTable.getById(created.id, testKey)).toBeDefined();
 
@@ -226,8 +218,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
     it("모든 계정을 삭제한다", async () => {
       const accounts = createTestAccounts(3);
       for (const account of accounts) {
-        const { id, createdAt, updatedAt, ...input } = account as any;
-        await accountTable.create(input, testKey);
+        await accountTable.create(account, testKey);
       }
 
       expect(await accountTable.getAll(testKey)).toHaveLength(3);
@@ -324,8 +315,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
     it("이미 데이터가 있으면 initializeDevData는 아무것도 하지 않는다", async () => {
       // 먼저 데이터 생성
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
-      await accountTable.create(accountInput);
+      await accountTable.create(testAccount);
 
       // dev 데이터로 초기화 시도 (기존 데이터 1개 있음)
       const devAccounts = createTestAccounts(5);
@@ -376,8 +366,7 @@ describe("accountTable - 계정 암호화 CRUD", () => {
 
     it("DB에 저장된 암호화 레코드 직접 조회 시 구조 확인", async () => {
       const testAccount = createTestAccounts(1)[0];
-      const { id, createdAt, updatedAt, ...accountInput } = testAccount as any;
-      const created = await accountTable.create(accountInput, testKey);
+      const created = await accountTable.create(testAccount, testKey);
 
       const db = getDatabase();
       const rawRecord = await db.accounts.get(created.id);

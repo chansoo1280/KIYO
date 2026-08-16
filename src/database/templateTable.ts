@@ -4,6 +4,7 @@ import {
   createEncryptedRecord,
   createPlaintextRecord,
   decryptRecord,
+  generateUUID,
   type EncryptedRecord,
 } from "@/crypto/recordEncryption";
 
@@ -82,7 +83,7 @@ export const templateTable = {
     const now = Date.now();
     const newTemplate: Template = {
       ...template,
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       createdAt: now,
       updatedAt: now,
     };

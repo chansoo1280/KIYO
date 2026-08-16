@@ -178,7 +178,9 @@ export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Pr
 };
 
 export const initializeDatabase = async () => {
-  console.log("Initializing database...");
+  if (import.meta.env.DEV) {
+    console.log("Initializing database...");
+  }
   const metadata = {
         id: 1,
         version: "1.0.0",
