@@ -1,6 +1,10 @@
 import type { KiyoVaultData } from "@/models/vault";
 import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
 
+// Web Crypto API types (available globally in browser environments)
+type CryptoKey = globalThis.CryptoKey;
+type KeyUsage = globalThis.KeyUsage;
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -127,4 +131,19 @@ export const verifyPin = async (
     // 복호화 실패 시 false 반환 (PIN이 틀린 경우)
     return false;
   }
+};
+
+// Raw key를 CryptoKey로 import
+export const importKey = async (
+  keyData: Uint8Array,
+  algorithm: string,
+  usages: KeyUsage[]
+): Promise<CryptoKey> => {
+  return crypto.subtle.importKey("raw", keyData.buffer as ArrayBuffer, { name: algorithm }, true, usages);
+};
+
+// CryptoKey를 raw bytes로 export
+export const exportKey = async (key: CryptoKey): Promise<Uint8Array> => {
+  const exported = await crypto.subtle.exportKey("raw", key);
+  return new Uint8Array(exported as ArrayBuffer);
 };

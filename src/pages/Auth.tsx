@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Fingerprint } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/sessionStore";
 import {
@@ -7,6 +7,7 @@ import {
   closeDataFile,
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
+import { SecureKey } from "@/plugins/kiyosecurekey";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ const Auth = () => {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [biometryAvailable, setBiometryAvailable] = useState<{ available: boolean; type: string }>({ available: false, type: "none" });
+  const [showBiometricButton, setShowBiometricButton] = useState(false);
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
@@ -21,6 +24,22 @@ const Auth = () => {
       if (!activeFileName || !encrypted) {
         navigate("/", { replace: true });
         return;
+      }
+
+      // Check if biometric key exists and biometry is available
+      if (encrypted) {
+        try {
+          const hasKeyResult = await SecureKey.hasKey({ vaultId: activeFileName });
+          if (hasKeyResult.exists) {
+            const bioResult = await SecureKey.isBiometryAvailable();
+            if (bioResult.available) {
+              setBiometryAvailable(bioResult);
+              setShowBiometricButton(true);
+            }
+          }
+        } catch (err) {
+          console.warn("Biometric check failed:", err);
+        }
       }
     };
     checkFileAndNavigate();
@@ -60,6 +79,41 @@ const Auth = () => {
     } catch (err) {
       console.error("PIN verification failed:", err);
       setError(`PIN verification failed:${err}`);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    if (!fileName) {
+      setError("파일 정보가 없습니다.");
+      return;
+    }
+
+    setIsVerifying(true);
+    setError("");
+
+    try {
+      const result = await SecureKey.unlockKeyWithBiometric({ vaultId: fileName });
+      const cryptoKeyBase64 = result.key;
+
+      // Get the salt from the file
+      const { salt } = await fileTable.getActiveFileInfo();
+      if (!salt) {
+        throw new Error("Salt not found for encrypted file");
+      }
+
+      // Import the cryptoKey from base64 and set up session
+      await useSessionStore.getState().setCryptoKeyFromBase64(cryptoKeyBase64, salt);
+      
+      navigate("/accounts", { replace: true });
+    } catch (err) {
+      console.error("Biometric login failed:", err);
+      if (err instanceof Error && err.message.includes("biometric")) {
+        setError("생체인증에 실패했습니다. PIN으로 로그인해 주세요.");
+      } else {
+        setError(`생체인증 로그인 실패: ${err}`);
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -129,6 +183,19 @@ const Auth = () => {
                     )}
 
           <div className="mt-6 space-y-4">
+            {/* Biometric login button */}
+            {showBiometricButton && (
+              <button
+                type="button"
+                onClick={handleBiometricLogin}
+                disabled={isVerifying}
+                className="w-full flex items-center justify-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-medium text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Fingerprint className="h-4 w-4" />
+                {biometryAvailable.type === "face" ? "Face ID로 로그인" : "지문으로 로그인"}
+              </button>
+            )}
+
             {/* PIN input */}
             <div>
               <label

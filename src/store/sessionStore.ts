@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, devtools } from "zustand/middleware";
+import { fromBase64 } from "@/crypto/crypto.utils";
+import { importKey } from "@/crypto/encryption";
+
+// Web Crypto API types (available globally in browser environments)
+type CryptoKey = globalThis.CryptoKey;
 
 export interface SessionState {
   activeFileName: string | null;
@@ -18,6 +23,7 @@ export interface SessionState {
     salt?: Uint8Array;
   }) => Promise<void>;
   setCryptoKey: (key: CryptoKey, salt: Uint8Array) => Promise<void>;
+  setCryptoKeyFromBase64: (keyBase64: string, salt: Uint8Array) => Promise<void>;
   clearCryptoKey: () => Promise<void>;
   clearSession: () => Promise<void>;
   setSyncError: (error: string | null) => void;
@@ -45,6 +51,12 @@ export const useSessionStore = create<SessionState>()(
         },
 
         setCryptoKey: async (key, salt) => {
+          set({ cryptoKey: key, salt });
+        },
+
+        setCryptoKeyFromBase64: async (keyBase64, salt) => {
+          const keyData = fromBase64(keyBase64);
+          const key = await importKey(keyData, "AES-GCM", ["encrypt", "decrypt"]);
           set({ cryptoKey: key, salt });
         },
 

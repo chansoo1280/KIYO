@@ -44,6 +44,7 @@ const createMockSessionState = (overrides: Partial<SessionState> = {}): SessionS
   lastSyncTime: null,
   setSession: vi.fn(),
   setCryptoKey: vi.fn(),
+  setCryptoKeyFromBase64: vi.fn(),
   clearCryptoKey: vi.fn(),
   clearSession: vi.fn(),
   setSyncError: vi.fn(),

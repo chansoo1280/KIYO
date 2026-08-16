@@ -5,12 +5,16 @@ import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
 import { changePin } from "@/database/fileStorage";
 import { PinChangeDialog } from "./PinChangeDialog";
+import { SecureKey } from "@/plugins/kiyosecurekey";
+import { exportKey } from "@/crypto/encryption";
+import { toBase64 } from "@/crypto/crypto.utils";
 
 export function SecuritySection() {
   const [securityMessage, setSecurityMessage] = useState("");
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
+  const [showBiometricSetupDialog, setShowBiometricSetupDialog] = useState(false);
   const { cryptoKey } = useSessionStore();
-  const { autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
+  const { autoLockTimeout, setAutoLockTimeout, biometricEnabled, setBiometricEnabled } = useSettingsStore();
   const isEncrypted = !!cryptoKey;
 
   const handlePinChangeClick = () => {
@@ -54,6 +58,79 @@ export function SecuritySection() {
     setSecurityMessage(isEncrypted ? "PIN이 변경되었습니다." : "PIN이 설정되었습니다. 데이터가 암호화되었습니다.");
     setShowPinChangeDialog(false);
   };
+
+  const checkBiometryAvailability = useCallback(async () => {
+    try {
+      const result = await SecureKey.isBiometryAvailable();
+      return result;
+    } catch (err) {
+      console.warn("Biometry availability check failed:", err);
+      return { available: false, type: "none" as const };
+    }
+  }, []);
+
+  const handleBiometricToggle = useCallback(async (enabled: boolean) => {
+    if (!isEncrypted) {
+      setSecurityMessage("암호화된 파일에서만 생체인증을 사용할 수 있습니다.");
+      return;
+    }
+
+    if (enabled) {
+      // Check biometry availability first
+      const bioResult = await checkBiometryAvailability();
+      if (!bioResult.available) {
+        setSecurityMessage("생체인증 하드웨어가 없거나 등록된 생체정보가 없습니다.");
+        return;
+      }
+
+      // Show confirmation dialog before enabling
+      setShowBiometricSetupDialog(true);
+    } else {
+      // Disable biometric - delete stored key
+      const { activeFileName } = await fileTable.getActiveFileInfo();
+      if (activeFileName) {
+        try {
+          await SecureKey.deleteKey({ vaultId: activeFileName });
+          await setBiometricEnabled(false);
+          setSecurityMessage("생체인증이 비활성화되었습니다. 저장된 키가 삭제되었습니다.");
+        } catch (err) {
+          console.error("Failed to delete biometric key:", err);
+          setSecurityMessage("생체인증 비활성화에 실패했습니다.");
+        }
+      }
+    }
+  }, [isEncrypted, checkBiometryAvailability, setBiometricEnabled]);
+
+  const handleBiometricSetupConfirm = useCallback(async () => {
+    if (!cryptoKey) {
+      setSecurityMessage("암호화 키가 없습니다. PIN으로 먼저 잠금 해제하세요.");
+      setShowBiometricSetupDialog(false);
+      return;
+    }
+
+    const { activeFileName } = await fileTable.getActiveFileInfo();
+    if (!activeFileName) {
+      setSecurityMessage("파일 정보가 없습니다.");
+      setShowBiometricSetupDialog(false);
+      return;
+    }
+
+    try {
+      // Export cryptoKey to base64 for storage
+      const keyData = await exportKey(cryptoKey);
+      const keyBase64 = toBase64(keyData);
+
+      // Store with biometric protection
+      await SecureKey.storeKey({ vaultId: activeFileName, key: keyBase64 });
+      await setBiometricEnabled(true);
+      setSecurityMessage("생체인증이 활성화되었습니다.");
+    } catch (err) {
+      console.error("Biometric setup failed:", err);
+      setSecurityMessage("생체인증 설정에 실패했습니다.");
+    } finally {
+      setShowBiometricSetupDialog(false);
+    }
+  }, [cryptoKey, setBiometricEnabled]);
 
   return (
     <div>
@@ -102,12 +179,65 @@ export function SecuritySection() {
         </p>
       )}
 
+      <div className="space-y-3 mt-4">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
+          <span>생체인증 로그인</span>
+          <button
+            type="button"
+            onClick={() => handleBiometricToggle(!biometricEnabled)}
+            disabled={!isEncrypted}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              biometricEnabled
+                ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
+                : "bg-[var(--color-bg)] text-[var(--color-text-muted)]"
+            } ${!isEncrypted ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {biometricEnabled ? "사용 중" : "사용 안 함"}
+          </button>
+        </div>
+      </div>
+
       <PinChangeDialog
         open={showPinChangeDialog}
         onClose={() => setShowPinChangeDialog(false)}
         onConfirm={handlePinChangeConfirm}
         isEncrypted={isEncrypted}
       />
+
+      {showBiometricSetupDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="biometric-setup-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-[var(--color-bg)] p-6 shadow-xl">
+            <h3 id="biometric-setup-title" className="text-lg font-semibold text-[var(--color-text-h)]">
+              생체인증 등록
+            </h3>
+            <p className="mt-2 text-sm text-[var(--color-text)]">
+              현재 PIN으로 잠금 해제된 상태에서 생체인증을 등록합니다.
+              생체인증 프롬프트가 표시되면 지문 또는 얼굴을 인증해 주세요.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBiometricSetupDialog(false)}
+                className="flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] py-2 text-sm font-medium text-[var(--color-text)]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleBiometricSetupConfirm}
+                className="flex-1 rounded-full bg-[var(--color-accent)] py-2 text-sm font-semibold text-white"
+              >
+                등록하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
