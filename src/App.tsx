@@ -16,6 +16,11 @@ import { useEffect } from "react";
 import { useAutoLock } from "./hooks/useAutoLock";
 import useAndroidBackButton from "./hooks/useAndroidBackButton";
 
+function AndroidBackButtonHandler() {
+  useAndroidBackButton();
+  return null;
+}
+
 function App() {
   const { remainingSeconds } = useAutoLock();
   const loadAccounts = useAccountStore((state) => state.loadAccounts);
@@ -27,8 +32,6 @@ function App() {
   const initializeAutoLockTimeout = useSettingsStore(
     (state) => state.initializeAutoLockTimeout,
   );
-
-  useAndroidBackButton();
 
   useEffect(() => {
     loadAccounts();
@@ -52,6 +55,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AndroidBackButtonHandler />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
