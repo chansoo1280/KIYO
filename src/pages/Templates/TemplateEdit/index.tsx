@@ -95,7 +95,7 @@ const TemplateEdit = () => {
       }
       navigate("/templates");
     } catch (error) {
-      console.error("템플릿 저장 실패:", error);
+      console.error("템플릿 저장 실패:", error instanceof Error ? error.message : String(error), error);
       setErrors(["템플릿 저장에 실패했습니다."]);
     }
   };

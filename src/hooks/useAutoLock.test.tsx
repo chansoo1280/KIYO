@@ -70,6 +70,7 @@ describe("useAutoLock - Edge Cases", () => {
       lastSyncError: null,
       lastSyncErrorTime: null,
       lastSyncTime: null,
+      lastAutofillAccountCount: null,
       setSession: vi.fn(),
       setCryptoKey: vi.fn(),
       setCryptoKeyFromBase64: vi.fn(),
@@ -78,6 +79,7 @@ describe("useAutoLock - Edge Cases", () => {
       setSyncError: vi.fn(),
       clearSyncError: vi.fn(),
       setLastSyncTime: vi.fn(),
+      setLastAutofillAccountCount: vi.fn(),
     };
 
     mockUseSettingsStore.mockImplementation((selector) => selector(mockSettingsState));

@@ -77,7 +77,7 @@ const Auth = () => {
       // Navigate to list page
       navigate("/accounts", { replace: true });
     } catch (err) {
-      console.error("PIN verification failed:", err);
+      console.error("PIN verification failed:", err instanceof Error ? err.message : String(err), err);
       setError(`PIN verification failed:${err}`);
     } finally {
       setIsVerifying(false);
@@ -108,7 +108,7 @@ const Auth = () => {
       
       navigate("/accounts", { replace: true });
     } catch (err) {
-      console.error("Biometric login failed:", err);
+      console.error("Biometric login failed:", err instanceof Error ? err.message : String(err), err);
       if (err instanceof Error && err.message.includes("biometric")) {
         setError("생체인증에 실패했습니다. PIN으로 로그인해 주세요.");
       } else {

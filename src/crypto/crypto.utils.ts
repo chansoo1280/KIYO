@@ -30,7 +30,7 @@ export const exportCryptoKey = async (
 
     return toBase64(new Uint8Array(rawKey));
   } catch (error) {
-    console.error("CryptoKey export failed:", error);
+    console.error("CryptoKey export failed:", error instanceof Error ? error.message : String(error), error);
     throw error;
   }
 };

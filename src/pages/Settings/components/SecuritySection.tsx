@@ -64,7 +64,7 @@ export function SecuritySection() {
       const result = await SecureKey.isBiometryAvailable();
       return result;
     } catch (err) {
-      console.warn("Biometry availability check failed:", err);
+      console.warn("Biometry availability check failed:", err instanceof Error ? err.message : String(err), err);
       return { available: false, type: "none" as const };
     }
   }, []);
@@ -94,7 +94,7 @@ export function SecuritySection() {
           await setBiometricEnabled(false);
           setSecurityMessage("생체인증이 비활성화되었습니다. 저장된 키가 삭제되었습니다.");
         } catch (err) {
-          console.error("Failed to delete biometric key:", err);
+          console.error("Failed to delete biometric key:", err instanceof Error ? err.message : String(err), err);
           setSecurityMessage("생체인증 비활성화에 실패했습니다.");
         }
       }
@@ -125,7 +125,7 @@ export function SecuritySection() {
       await setBiometricEnabled(true);
       setSecurityMessage("생체인증이 활성화되었습니다.");
     } catch (err) {
-      console.error("Biometric setup failed:", err);
+      console.error("Biometric setup failed:", err instanceof Error ? err.message : String(err), err);
       setSecurityMessage("생체인증 설정에 실패했습니다.");
     } finally {
       setShowBiometricSetupDialog(false);

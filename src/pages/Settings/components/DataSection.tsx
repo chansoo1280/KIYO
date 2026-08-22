@@ -49,7 +49,7 @@ export function DataSection() {
       throw new Error("지원하지 않는 파일 형식입니다.");
     }
     try {
-      navigate("/list", { replace: true });
+      navigate("/accounts", { replace: true });
     } catch (cause) {
       throw new Error(cause instanceof Error ? cause.message : "파일을 복원하지 못했습니다.", { cause });
     }

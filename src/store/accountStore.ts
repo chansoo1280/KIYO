@@ -134,7 +134,7 @@ export const useAccountStore = create<AccountState>()(
           }
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error("[Autofill] Failed to sync accounts:", error);
+            console.error("[Autofill] Failed to sync accounts:", error instanceof Error ? error.message : String(error), error);
           }
         }
       },

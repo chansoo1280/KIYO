@@ -12,7 +12,6 @@ import { useSettingsStore } from "@/store/settingsStore";
 
 export const AutofillSection: React.FC = () => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
-  const [accountCount, setAccountCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -21,11 +20,14 @@ export const AutofillSection: React.FC = () => {
   const {
     lastSyncTime: sessionLastSyncTime,
     setLastSyncTime: setSessionLastSyncTime,
+    lastAutofillAccountCount,
+    setLastAutofillAccountCount,
   } = useSessionStore();
   const { autofillEnabled, setAutofillEnabled } = useSettingsStore();
 
-  // Use session store value directly instead of syncing to local state
+  // Use session store values directly
   const lastSyncTime = sessionLastSyncTime;
+  const accountCount = lastAutofillAccountCount ?? 0;
 
   const showMessage = useCallback(
     (_message: string) => {
@@ -42,12 +44,11 @@ export const AutofillSection: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [statusResult, countResult] = await Promise.all([
-        KiyoAutofill.isAutofillEnabled(),
-        KiyoAutofill.getAccountCount(),
-      ]);
+      const statusResult = await KiyoAutofill.isAutofillEnabled();
       setStatus(statusResult);
-      setAccountCount(countResult.count);
+      
+      // Don't fetch account count on initial status check to avoid Keystore auth prompt
+      // Account count is stored from last successful sync
     } catch (err) {
       setError(err instanceof Error ? err.message : "상태 확인 실패");
     } finally {
@@ -84,20 +85,21 @@ export const AutofillSection: React.FC = () => {
           accountsJson,
         });
 
-      if (result.authRequired) {
-        // Authentication required - open KIYO app for PIN/biometric unlock
-        setError(result.message || "인증이 필요합니다. KIYO 앱에서 잠금을 해제해주세요.");
-        await KiyoAutofill.openAppForAuth();
-        showMessage("KIYO 앱에서 인증 후 다시 동기화해주세요.");
-      } else if (result.success) {
+      // Native side now handles auth automatically and retries sync
+      // We only get here when sync is complete (success or error)
+      if (result.success) {
         const now = Date.now();
         setSessionLastSyncTime(now); // Also save to session store
+        setLastAutofillAccountCount(result.syncedCount); // Store autofill DB account count
         showMessage(`자동완성 계정 ${result.syncedCount}개 동기화 완료`);
-        await checkStatus();
+      } else if (result.authRequired) {
+        // Auth was cancelled or failed after native retry
+        setError(result.message || "인증이 취소되거나 실패했습니다.");
+        showMessage("인증이 필요합니다. 다시 시도해주세요.");
       } else {
         showMessage(`동기화 완료 (${result.errorCount}개 오류)`);
-        await checkStatus();
       }
+      await checkStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "동기화 실패");
       showMessage("동기화 실패");
@@ -134,8 +136,9 @@ export const AutofillSection: React.FC = () => {
           showMessage("KIYO 앱에서 인증 후 자동완성 데이터가 삭제됩니다.");
         } else if (result.success) {
           showMessage(`자동완성 데이터 ${result.deletedCount}개 삭제 완료`);
-          // Also clear last sync time
+          // Also clear last sync time and stored autofill account count
           setSessionLastSyncTime(null);
+          setLastAutofillAccountCount(null);
         } else {
           showMessage("자동완성 데이터 삭제 실패");
         }

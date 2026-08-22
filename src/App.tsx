@@ -14,12 +14,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { AutoLockIndicator } from "@/components/AutoLockIndicator";
 import { useEffect } from "react";
 import { useAutoLock } from "./hooks/useAutoLock";
-import useAndroidBackButton from "./hooks/useAndroidBackButton";
-
-function AndroidBackButtonHandler() {
-  useAndroidBackButton();
-  return null;
-}
+import AndroidBackButtonHandler from "./hooks/useAndroidBackButton";
 
 function App() {
   const { remainingSeconds } = useAutoLock();

@@ -13,6 +13,7 @@ export interface SessionState {
   lastSyncError: string | null;
   lastSyncErrorTime: number | null;
   lastSyncTime: number | null;
+  lastAutofillAccountCount: number | null;
   setSession: ({
     fileName,
     cryptoKey,
@@ -29,6 +30,7 @@ export interface SessionState {
   setSyncError: (error: string | null) => void;
   clearSyncError: () => void;
   setLastSyncTime: (time: number | null) => void;
+  setLastAutofillAccountCount: (count: number | null) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -41,6 +43,7 @@ export const useSessionStore = create<SessionState>()(
         lastSyncError: null,
         lastSyncErrorTime: null,
         lastSyncTime: null,
+        lastAutofillAccountCount: null,
 
         setSession: async ({ fileName, cryptoKey, salt }) => {
           set((state) => ({
@@ -82,6 +85,10 @@ export const useSessionStore = create<SessionState>()(
         setLastSyncTime: (time: number | null) => {
           set({ lastSyncTime: time });
         },
+
+        setLastAutofillAccountCount: (count: number | null) => {
+          set({ lastAutofillAccountCount: count });
+        },
       }),
       {
         name: "kiyo-session",
@@ -90,6 +97,7 @@ export const useSessionStore = create<SessionState>()(
           activeFileName: state.activeFileName,
           salt: state.salt,
           lastSyncTime: state.lastSyncTime,
+          lastAutofillAccountCount: state.lastAutofillAccountCount,
         }),
       },
     ),

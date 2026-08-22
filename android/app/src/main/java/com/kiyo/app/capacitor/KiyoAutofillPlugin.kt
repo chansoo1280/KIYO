@@ -1,5 +1,6 @@
 package com.kiyo.app.capacitor
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -8,6 +9,9 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.view.autofill.AutofillManager
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.FragmentActivity
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -29,6 +33,13 @@ class KiyoAutofillPlugin : Plugin() {
     }
 
     private var autofillRepository: AutofillRepository? = null
+    
+    // Track pending sync call for auto-retry after authentication
+    private var pendingSyncCall: PluginCall? = null
+    private var pendingSyncAccountsJson: String? = null
+    
+    // ActivityResultLauncher for handling authentication result
+    private lateinit var authActivityLauncher: ActivityResultLauncher<Intent>
 
     private val autofillManager: AutofillManager? by lazy {
         getContext()?.getSystemService(AutofillManager::class.java)
@@ -38,6 +49,15 @@ class KiyoAutofillPlugin : Plugin() {
         super.load()
         // Repository is lazily initialized on first use via ensureRepositoryInitialized()
         // This ensures proper initialization timing without blocking load()
+        
+        // Register ActivityResultLauncher for authentication
+        val activity = getActivity() ?: return
+        val fragmentActivity = activity as FragmentActivity
+        authActivityLauncher = fragmentActivity.registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            handleAuthResult(result)
+        }
     }
 
     private suspend fun ensureRepositoryInitialized(): AutofillRepository {
@@ -163,7 +183,8 @@ class KiyoAutofillPlugin : Plugin() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 putExtra("reason", "autofill_auth_required")
             }
-            context.startActivity(intent)
+            // Use ActivityResultLauncher to track result
+            authActivityLauncher.launch(intent)
             call.resolve()
         } catch (e: Exception) {
             Log.e(TAG, "Error opening app for auth", e)
@@ -398,13 +419,18 @@ class KiyoAutofillPlugin : Plugin() {
                     put("success", result.second == 0)
                 })
             } catch (e: android.security.keystore.UserNotAuthenticatedException) {
-                // Authentication required - notify React to trigger auth flow
-                Log.d(TAG, "User authentication required for sync")
-                call.resolve(JSObject().apply {
-                    put("authRequired", true)
-                    put("success", false)
-                    put("message", "Authentication required to access autofill database")
-                })
+                // Authentication required - store pending sync and trigger auth
+                Log.d(TAG, "User authentication required for sync - storing pending sync")
+                pendingSyncCall = call
+                pendingSyncAccountsJson = call.getString("accountsJson")
+                
+                // Open auth activity and track result
+                val context = getContext() ?: return@launch call.reject("Context is null")
+                val intent = Intent(context, Class.forName("com.kiyo.app.MainActivity")).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    putExtra("reason", "autofill_auth_required")
+                }
+                authActivityLauncher.launch(intent)
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing accounts from React", e)
                 call.reject("Failed to sync accounts: ${e.message}")
@@ -466,6 +492,59 @@ class KiyoAutofillPlugin : Plugin() {
                 Log.e(TAG, "Error syncing test accounts", e)
                 call.reject("Failed to sync test accounts: ${e.message}")
             }
+        }
+    }
+
+    /**
+     * Handle authentication activity result.
+     * If authentication succeeded, retry the pending sync operation.
+     * If authentication failed or was cancelled, reject the pending call with authRequired.
+     */
+    private fun handleAuthResult(result: androidx.activity.result.ActivityResult) {
+        if (pendingSyncCall == null) {
+            Log.d(TAG, "Auth result received but no pending sync call")
+            return
+        }
+
+        val call = pendingSyncCall!!
+        val accountsJson = pendingSyncAccountsJson
+        pendingSyncCall = null
+        pendingSyncAccountsJson = null
+
+        if (result.resultCode == Activity.RESULT_OK) {
+            // Authentication succeeded - retry sync
+            Log.d(TAG, "Authentication succeeded - retrying sync")
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val repository = ensureRepositoryInitialized()
+                    val accountsJsonStr = accountsJson ?: return@launch
+                    val syncResult = repository.syncAccountsFromReact(accountsJsonStr)
+                    call.resolve(JSObject().apply {
+                        put("syncedCount", syncResult.first)
+                        put("errorCount", syncResult.second)
+                        put("success", syncResult.second == 0)
+                    })
+                } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                    // Still needs auth (shouldn't happen right after successful auth, but handle it)
+                    Log.d(TAG, "Still needs auth after authentication attempt")
+                    call.resolve(JSObject().apply {
+                        put("authRequired", true)
+                        put("success", false)
+                        put("message", "Authentication required to access autofill database")
+                    })
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error retrying sync after auth", e)
+                    call.reject("Failed to sync accounts: ${e.message}")
+                }
+            }
+        } else {
+            // Authentication failed or cancelled
+            Log.d(TAG, "Authentication failed or cancelled - resultCode: ${result.resultCode}")
+            call.resolve(JSObject().apply {
+                put("authRequired", true)
+                put("success", false)
+                put("message", "Authentication cancelled or failed")
+            })
         }
     }
 }

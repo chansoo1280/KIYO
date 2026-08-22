@@ -5,12 +5,14 @@ import android.content.Intent;
 
 import com.getcapacitor.BridgeActivity;
 import com.kiyo.app.capacitor.KiyoAutofillPlugin;
+import com.kiyo.app.capacitor.KiyoFilePlugin;
 import com.kiyo.app.autofill.auth.AutofillAuthActivity;
 
 public class MainActivity extends BridgeActivity {
 
     public MainActivity() {
         registerPlugin(KiyoAutofillPlugin.class);
+        registerPlugin(KiyoFilePlugin.class);
     }
 
     @Override

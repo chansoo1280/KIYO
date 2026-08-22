@@ -41,7 +41,7 @@ export function useFileAuthGuard(options: {
           return;
         }
       } catch (error) {
-        console.error("useFileAuthGuard: getActiveFileInfo failed:", error);
+        console.error("useFileAuthGuard: getActiveFileInfo failed:", error instanceof Error ? error.message : String(error), error);
         // Error is handled gracefully - don't redirect
       }
     };

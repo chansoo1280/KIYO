@@ -39,7 +39,7 @@ export const accountTable = {
           try {
             return await decryptRecord<Account>(record.encryptedData, record.iv, cryptoKey);
           } catch (error) {
-            console.error("Failed to decrypt account record:", error);
+            console.error("Failed to decrypt account record:", error instanceof Error ? error.message : String(error), error);
             return { 
               id: record.id, 
               templateId: "",
@@ -85,7 +85,7 @@ export const accountTable = {
       try {
         return await decryptRecord<Account>(record.encryptedData, record.iv, cryptoKey);
       } catch (error) {
-        console.error("Failed to decrypt account record:", error);
+        console.error("Failed to decrypt account record:", error instanceof Error ? error.message : String(error), error);
         return undefined;
       }
     }
@@ -95,7 +95,7 @@ export const accountTable = {
       const decoded = new TextDecoder().decode(record.encryptedData);
       return JSON.parse(decoded) as Account;
     } catch (error) {
-      console.error("Failed to parse plaintext account record:", error);
+      console.error("Failed to parse plaintext account record:", error instanceof Error ? error.message : String(error), error);
       return undefined;
     }
   },

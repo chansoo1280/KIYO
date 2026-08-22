@@ -31,7 +31,7 @@ export const useTemplateStore = create<TemplateState>()(
           const dbTemplates = await templateTable.getAll(sessionState.cryptoKey ?? undefined);
           set({ templates: dbTemplates, isLoading: false, initialized: true });
         } catch (error) {
-          console.error("Failed to load templates:", error);
+          console.error("Failed to load templates:", error instanceof Error ? error.message : String(error), error);
           set({ isLoading: false });
         }
       },

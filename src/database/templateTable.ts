@@ -31,7 +31,7 @@ export const templateTable = {
           try {
             return await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
           } catch (error) {
-            console.error("Failed to decrypt template record:", error);
+            console.error("Failed to decrypt template record:", error instanceof Error ? error.message : String(error), error);
             throw new Error("Failed to decrypt template record", { cause: error });
           }
         }
@@ -61,7 +61,7 @@ export const templateTable = {
       try {
         return await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
       } catch (error) {
-        console.error("Failed to decrypt template record:", error);
+        console.error("Failed to decrypt template record:", error instanceof Error ? error.message : String(error), error);
         return undefined;
       }
     }
@@ -71,7 +71,7 @@ export const templateTable = {
       const decoded = new TextDecoder().decode(record.encryptedData);
       return JSON.parse(decoded) as Template;
     } catch (error) {
-      console.error("Failed to parse plaintext template record:", error);
+      console.error("Failed to parse plaintext template record:", error instanceof Error ? error.message : String(error), error);
       return undefined;
     }
   },

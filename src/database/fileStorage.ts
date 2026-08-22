@@ -27,7 +27,7 @@ import { devAccounts } from "@/data/devAccounts";
 import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 import type { KiyoVaultData } from "@/models/vault";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
-import { exportVaultFile, isNativeFileStorageAvailable, normalizeDataFileName } from "./fileExport";
+import { exportBackupFile, isNativeFileStorageAvailable, normalizeDataFileName } from "./fileExport";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 
 export const isKiyoFile = (value: unknown): value is KiyoVaultData => {
@@ -177,7 +177,7 @@ export const exportDataFile = async (
       recursive: true,
     });
   } catch (error) {
-    console.error("exportDataFile: Filesystem.writeFile failed", error);
+    console.error("exportDataFile: Filesystem.writeFile failed", error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : "");
     throw FileStorageError.create(
       FileStorageErrorCode.WRITE_FAILED,
       "Failed to write file",
@@ -221,7 +221,7 @@ export const importDataFile = async (
     });
     return parseFileData(result.data as string);
   } catch (error) {
-    console.error("importDataFile: Filesystem.readFile failed", error);
+    console.error("importDataFile: Filesystem.readFile failed", error instanceof Error ? error.message : String(error), error);
     throw FileStorageError.create(
       FileStorageErrorCode.FILE_READ_FAILED,
       "Failed to read file",
@@ -333,7 +333,6 @@ export const createDataFile = async (
 
     const encryptedVaultData = await encryptData(baseData, cryptoKey, salt);
     await persistVaultRecord(normalizedFileName, encryptedVaultData);
-    await exportVaultFile(normalizedFileName, encryptedVaultData);
     return { ...baseData, accounts, templates, metadata };
   } else {
     // Plaintext case
@@ -361,7 +360,6 @@ export const createDataFile = async (
     };
 
     await persistVaultRecord(normalizedFileName, baseData);
-    await exportVaultFile(normalizedFileName, baseData);
     return { ...baseData, accounts, templates, metadata };
   }
 };
@@ -380,11 +378,11 @@ export const backupDataFile = async (
   // - replaceDatabaseData, initializeStores 호출 안 함
   if (pin) {
     const { encryptedVaultData } = await createEncryptedVault(data, pin);
-    // Persist encrypted backup to DB files table (for verification/querying)
-    await exportVaultFile(normalizedFileName, encryptedVaultData);
+    // Save backup to user-chosen location via SAF
+    await exportBackupFile(normalizedFileName, encryptedVaultData);
   } else {
     // Plaintext backup: export as-is
-    await exportVaultFile(normalizedFileName, data);
+    await exportBackupFile(normalizedFileName, data);
   }
   return data;
 };
@@ -424,12 +422,11 @@ export const openImportedDataFile = async (
         { operation: "openImportedDataFile" }
       );
     }
-    // Pipeline for plaintext: persist → session → autofill → export
+    // Pipeline for plaintext: persist → session → replaceDatabaseData → initialize
     try {
       await persistVaultRecord(normalizedFileName, parsedData);
       await setupVaultSession({ fileName: normalizedFileName });
       // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
-      await exportVaultFile(normalizedFileName, parsedData);
       await replaceDatabaseData({
         data: parsedData,
         fileName: normalizedFileName,
@@ -483,12 +480,11 @@ export const openImportedDataFile = async (
     );
   }
 
-  // Pipeline for encrypted: persist encrypted file data → session with key → autofill → export
+  // Pipeline for encrypted: persist encrypted file data → session with key → replaceDatabaseData → initialize
   try {
     await persistVaultRecord(normalizedFileName, parsedData);
     await setupVaultSession({ fileName: normalizedFileName, cryptoKey: key, salt });
     // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
-    await exportVaultFile(normalizedFileName, parsedData);
     // Save decrypted data to DB - 암호화된 파일 데이터(parsedData)를 그대로 전달
     await replaceDatabaseData({
       data: decrypted,
@@ -543,6 +539,5 @@ export const changePin = async (newPin: string): Promise<void> => {
     cryptoKey: newKey,
     encryptedFileData: encryptedData,
   });
-  await exportVaultFile(normalizedFileName, encryptedData);
   await initializeStores();
 };

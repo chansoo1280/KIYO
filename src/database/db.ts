@@ -11,7 +11,7 @@ import { isFileStorageError } from "@/errors/FileStorageError";
 import { fileTable, ACTIVE_FILE_ID } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
-import { exportVaultFile, isNativeFileStorageAvailable } from "@/database/fileExport";
+import { isNativeFileStorageAvailable } from "@/database/fileExport";
 import { createEncryptedRecord, createPlaintextRecord } from "@/crypto/recordEncryption";
 
 export interface FileRecord {
@@ -83,12 +83,16 @@ export interface SyncDatabaseParams {
   setSyncError?: (error: string) => void;
 }
 
-export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<void> => {
+/**
+ * Persist vault snapshot to files table (internal auto-save)
+ * Does NOT write to external filesystem - use exportBackupFile for that
+ */
+export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<void> => {
   const { activeFileName, cryptoKey, salt, clearSyncError, setSyncError } = params;
 
   try {
     if (!activeFileName) {
-      console.warn("syncDatabaseToFile: No active file name");
+      console.warn("persistVaultSnapshot: No active file name");
       return;
     }
     if (!isNativeFileStorageAvailable()) {
@@ -97,24 +101,21 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
     }
     const data = await getDatabaseSnapshot(activeFileName, cryptoKey ?? undefined);
     
-    // Also write to filesystem
     if (!cryptoKey) {
       await fileTable.upsertFileRecord(activeFileName, data);
-      await exportVaultFile(activeFileName, data);
       return;
     }
     const encrypted = await encryptData(data, cryptoKey, salt!);
     if (encrypted === null) {
-      console.error("syncDatabaseToFile: Encryption returned null");
+      console.error("persistVaultSnapshot: Encryption returned null");
       return;
     }
     await fileTable.upsertFileRecord(activeFileName, encrypted);
-    await exportVaultFile(activeFileName, encrypted);
 
     // Clear any previous sync error on success
     clearSyncError?.();
   } catch (error) {
-    console.error("syncDatabaseToFile failed:", error);
+    console.error("persistVaultSnapshot failed:", error instanceof Error ? error.message : String(error), error);
     // Store error in sessionStore for UI to display
     const errorMessage = isFileStorageError(error)
       ? error.message
@@ -125,6 +126,9 @@ export const syncDatabaseToFile = async (params: SyncDatabaseParams): Promise<vo
     // Don't throw - auto-save should not break the app
   }
 };
+
+// Deprecated alias for backward compatibility
+export const syncDatabaseToFile = persistVaultSnapshot;
 
 type ReplaceDatabaseDataParams =
   | {
