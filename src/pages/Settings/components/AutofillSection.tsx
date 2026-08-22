@@ -111,6 +111,7 @@ export const AutofillSection: React.FC = () => {
     checkStatus,
     showMessage,
     setSessionLastSyncTime,
+    setLastAutofillAccountCount,
   ]);
 
   const openAutofillSettings = useCallback(async () => {
@@ -151,7 +152,7 @@ export const AutofillSection: React.FC = () => {
       // Enabling autofill - just update status
       await checkStatus();
     }
-  }, [autofillEnabled, setAutofillEnabled, showMessage, checkStatus]);
+  }, [autofillEnabled, setAutofillEnabled, showMessage, checkStatus, setSessionLastSyncTime, setLastAutofillAccountCount]);
 
   // Initial load - intentional side effect on mount to check autofill status
   useEffect(() => {

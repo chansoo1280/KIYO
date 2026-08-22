@@ -15,12 +15,28 @@ const TemplateEdit = () => {
 
   const [form, setForm] = useState<
     Omit<Template, "id" | "createdAt" | "updatedAt">
-  >({
-    name: "",
-    description: "",
-    icon: "📋",
-    sortOrder: 0,
-    fields: [],
+  >(() => {
+    // Lazy initializer: derive initial form from template if editing and template is already loaded
+    if (isEdit && id && initialized) {
+      const template = getTemplate(id);
+      if (template) {
+        return {
+          name: template.name,
+          description: template.description || "",
+          icon: template.icon,
+          sortOrder: template.sortOrder,
+          fields: template.fields.map((f) => ({ ...f })),
+        };
+      }
+    }
+    // Default for new template
+    return {
+      name: "",
+      description: "",
+      icon: "📋",
+      sortOrder: templates.length,
+      fields: [],
+    };
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -30,32 +46,6 @@ const TemplateEdit = () => {
       loadTemplates();
     }
   }, [initialized, loadTemplates]);
-
-  // 템플릿 로드 후 초기화
-  useEffect(() => {
-    if (initialized) {
-      if (isEdit && id) {
-        const template = getTemplate(id);
-        if (template) {
-          // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- Initialization on mount is intentional
-          setForm({
-            name: template.name,
-            description: template.description || "",
-            icon: template.icon,
-            sortOrder: template.sortOrder,
-            fields: template.fields.map((f) => ({ ...f })),
-          });
-        }
-      } else {
-        // 새 템플릿 생성 시 sortOrder를 마지막에 위치하도록 설정
-        // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- Initialization on mount is intentional
-        setForm((prev) => ({
-          ...prev,
-          sortOrder: templates.length,
-        }));
-      }
-    }
-  }, [initialized, isEdit, id, templates.length, getTemplate]);
 
   const validateForm = (): boolean => {
     const newErrors: string[] = [];

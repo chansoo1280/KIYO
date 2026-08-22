@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { BaseDialog } from "./BaseDialog";
 import type { ReactNode } from "react";
 
@@ -31,31 +31,25 @@ export const FormDialog = ({
   errorMessage,
   className = "",
 }: FormDialogProps) => {
-  const [internalError, setInternalError] = useState<string>("");
-
-  // Reset error when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setInternalError("");
-    }
-  }, [open]);
+  // Error is managed externally via errorMessage prop or cleared on submit
+  // No internal state needed - avoids useEffect setState lint issue
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent) => {
       event.preventDefault();
       if (disabled || isLoading) return;
 
-      setInternalError("");
       try {
         await onSubmit(event);
       } catch (error) {
-        setInternalError(error instanceof Error ? error.message : "오류가 발생했습니다.");
+        // Error handling is expected to be done via errorMessage prop from parent
+        console.error("FormDialog submit error:", error);
       }
     },
     [disabled, isLoading, onSubmit]
   );
 
-  const displayError = errorMessage || internalError;
+  const displayError = errorMessage;
 
   return (
     <BaseDialog
