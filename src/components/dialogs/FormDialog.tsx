@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { BaseDialog } from "./BaseDialog";
 import type { ReactNode } from "react";
 
@@ -32,6 +32,13 @@ export const FormDialog = ({
   className = "",
 }: FormDialogProps) => {
   const [internalError, setInternalError] = useState<string>("");
+
+  // Reset error when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setInternalError("");
+    }
+  }, [open]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent) => {

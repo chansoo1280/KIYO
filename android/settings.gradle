@@ -3,6 +3,8 @@ plugins {
 }
 include ':app'
 include ':capacitor-cordova-android-plugins'
+include ':autofill-test-host'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+project(':autofill-test-host').projectDir = new File('./autofill-test-host/')
 
 apply from: 'capacitor.settings.gradle'

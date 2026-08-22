@@ -9,6 +9,8 @@ interface AccountTitleSectionProps {
   onWebsiteSelectorClick: () => void;
   tagInput: string;
   onTagInputChange: (value: string) => void;
+  packageName: string;
+  onPackageNameChange: (name: string) => void;
 }
 
 export function AccountTitleSection({
@@ -20,6 +22,8 @@ export function AccountTitleSection({
   onWebsiteSelectorClick,
   tagInput,
   onTagInputChange,
+  packageName,
+  onPackageNameChange,
 }: AccountTitleSectionProps) {
   return (
     <>
@@ -63,6 +67,19 @@ export function AccountTitleSection({
           </svg>
         </button>
       </div>
+
+      <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
+        안드로이드 패키지명 (자동완성용)
+        <input
+          value={packageName}
+          onChange={(e) => onPackageNameChange(e.target.value)}
+          placeholder="com.example.app, com.example.debug"
+          className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+        />
+        <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+          쉼표(,)로 구분하여 여러 개 입력 가능
+        </p>
+      </label>
 
       <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
         태그

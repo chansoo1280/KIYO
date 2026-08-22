@@ -9,14 +9,17 @@ export interface SettingsState {
   fontSize: FontSize;
   autoLockTimeout: AutoLockTimeout;
   biometricEnabled: boolean;
+  autofillEnabled: boolean;
   setTheme: (theme: "light" | "dark") => Promise<void>;
   toggleTheme: () => Promise<void>;
   setFontSize: (fontSize: FontSize) => Promise<void>;
   setAutoLockTimeout: (timeout: AutoLockTimeout) => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
+  setAutofillEnabled: (enabled: boolean) => Promise<void>;
   initializeTheme: () => Promise<void>;
   initializeFontSize: () => Promise<void>;
   initializeAutoLockTimeout: () => Promise<void>;
+  initializeAutofillEnabled: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -27,6 +30,7 @@ export const useSettingsStore = create<SettingsState>()(
         fontSize: "medium" as FontSize,
         autoLockTimeout: "none" as AutoLockTimeout,
         biometricEnabled: false,
+        autofillEnabled: false,
 
         setTheme: async (theme: "light" | "dark") => {
           set({ theme });
@@ -69,6 +73,10 @@ export const useSettingsStore = create<SettingsState>()(
           set({ biometricEnabled: enabled });
         },
 
+        setAutofillEnabled: async (enabled: boolean) => {
+          set({ autofillEnabled: enabled });
+        },
+
         initializeTheme: async () => {
           // Theme is loaded from localStorage via zustand persist middleware
           const theme = get().theme;
@@ -100,6 +108,11 @@ export const useSettingsStore = create<SettingsState>()(
           // Auto lock timeout is loaded from localStorage via zustand persist middleware
           // No side effects needed, just ensure it's loaded
         },
+
+        initializeAutofillEnabled: async () => {
+          // Autofill enabled is loaded from localStorage via zustand persist middleware
+          // No side effects needed, just ensure it's loaded
+        },
       }),
       {
         name: "kiyo-settings",
@@ -109,6 +122,7 @@ export const useSettingsStore = create<SettingsState>()(
           fontSize: state.fontSize,
           autoLockTimeout: state.autoLockTimeout,
           biometricEnabled: state.biometricEnabled,
+          autofillEnabled: state.autofillEnabled,
         }),
       },
     ),

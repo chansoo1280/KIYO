@@ -56,6 +56,12 @@ dependencies {
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    // Espresso-Web for WebView testing in Capacitor apps
+    androidTestImplementation "androidx.test.espresso:espresso-web:3.5.1"
+    // UI Automator for E2E tests (system UI, Autofill dropdown, native dialogs)
+    androidTestImplementation "androidx.test.uiautomator:uiautomator:2.3.0"
+    // Coroutines test for androidTest
+    androidTestImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1"
     implementation project(':capacitor-cordova-android-plugins')
 
     // Autofill Service dependencies

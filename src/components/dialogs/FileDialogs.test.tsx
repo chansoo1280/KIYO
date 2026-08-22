@@ -141,6 +141,40 @@ describe("FileCreateDialog - Component Tests", () => {
     expect(checkbox).toBeChecked();
   });
 
+  it("체크박스 토글 시 파일명 값이 유지되어야 함", () => {
+    render(
+      <FileCreateDialog
+        open={true}
+        title="파일 생성"
+        description="설명"
+        defaultValue="new.json"
+        confirmLabel="생성"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    
+    // 파일명 입력
+    const fileNameInput = screen.getByDisplayValue("new");
+    fireEvent.change(fileNameInput, { target: { value: "my-custom-vault" } });
+    expect(screen.getByDisplayValue("my-custom-vault")).toBeInTheDocument();
+    
+    // 암호화 체크박스 해제
+    const checkbox = screen.getByRole("checkbox", { name: "파일 암호화 사용" });
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+    
+    // 파일명이 유지되어야 함
+    expect(screen.getByDisplayValue("my-custom-vault")).toBeInTheDocument();
+    
+    // 다시 체크
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+    
+    // 파일명이 여전히 유지되어야 함
+    expect(screen.getByDisplayValue("my-custom-vault")).toBeInTheDocument();
+  });
+
   it("취소/닫기 버튼이 있음", () => {
     render(
       <FileCreateDialog

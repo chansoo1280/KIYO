@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import {
   createCryptoKey,
@@ -27,6 +28,7 @@ import { BUILTIN_TEMPLATES } from "@/data/builtinTemplates";
 import type { KiyoVaultData } from "@/models/vault";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import { exportVaultFile, isNativeFileStorageAvailable, normalizeDataFileName } from "./fileExport";
+import { KiyoAutofill } from "@/plugins/kiyautofill";
 
 export const isKiyoFile = (value: unknown): value is KiyoVaultData => {
   if (!value || typeof value !== "object") return false;
@@ -239,6 +241,15 @@ export const closeDataFile = async (): Promise<void> => {
   // Clear in-memory stores
   await useAccountStore.getState().clearAccounts();
   await useTemplateStore.getState().clearTemplates();
+  // Clear autofill data (if autofill enabled)
+  if (Capacitor.getPlatform() === "android") {
+    try {
+      await KiyoAutofill.clearAllAccounts();
+    } catch (e) {
+      // Ignore errors during cleanup
+      console.warn("Failed to clear autofill data on close:", e);
+    }
+  }
 };
 
 export const lockDataFile = async (): Promise<void> => {

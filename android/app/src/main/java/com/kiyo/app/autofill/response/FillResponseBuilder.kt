@@ -1,6 +1,8 @@
 package com.kiyo.app.autofill.response
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.service.autofill.Dataset
 import android.service.autofill.FillResponse
 import android.service.autofill.SaveInfo
@@ -9,6 +11,7 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
 import com.kiyo.app.R
+import com.kiyo.app.autofill.auth.AutofillAuthActivity
 import com.kiyo.app.autofill.repository.AutofillRepository
 
 /**
@@ -20,43 +23,77 @@ object FillResponseBuilder {
     private const val TAG = "FillResponseBuilder"
 
     fun createAuthResponse(
-        context: Context,
-        usernameId: AutofillId?,
-        passwordId: AutofillId?
-    ): FillResponse {
+            context: Context,
+            usernameId: AutofillId? = null,
+            passwordId: AutofillId? = null,
+        ): FillResponse {
 
-        val presentation = RemoteViews(
-            context.packageName,
-            R.layout.autofill_auth_item
-        )
-
-        presentation.setTextViewText(
-            R.id.tv_message,
-            "🔒 잠금 해제하여 자동완성을 사용하세요."
-        )
-
-        val datasetBuilder = Dataset.Builder(presentation)
-
-        usernameId?.let {
-            datasetBuilder.setValue(
-                it,
-                AutofillValue.forText("")
+            val autofillIds = listOfNotNull(
+                usernameId,
+                passwordId
             )
-        } ?: passwordId?.let {
-            datasetBuilder.setValue(
-                it,
-                AutofillValue.forText("")
+
+            check(autofillIds.isNotEmpty()) {
+                "Cannot create authentication response: no AutofillId"
+            }
+
+            /*
+             * Android Autofill Framework가 인증 Activity를 실행할 때
+             * 원래 화면의 AssistStructure 등을 Intent extras로 전달한다.
+             *
+             * 따라서 여기서는 ID를 직접 넘길 필요가 없다.
+             */
+            val authIntent = Intent(
+                context,
+                AutofillAuthActivity::class.java
             )
+
+            /*
+             * IMPORTANT:
+             *
+             * Android 12+ (API 31+)에서는 PendingIntent 생성 시
+             * FLAG_IMMUTABLE 또는 FLAG_MUTABLE 중 하나를 반드시 지정해야 함.
+             *
+             * Autofill Framework가 authentication Intent에 extras를 추가해야 하므로
+             * FLAG_MUTABLE을 사용해야 함.
+             */
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                1001,
+                authIntent,
+                PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+
+            val presentation = RemoteViews(
+                context.packageName,
+                R.layout.autofill_auth_item
+            ).apply {
+                setTextViewText(
+                    R.id.tv_message,
+                    "🔒 잠금 해제하여 자동완성을 사용하세요."
+                )
+            }
+
+            Log.d(
+                TAG,
+                "createAuthResponse: " +
+                    "usernameId=${usernameId != null}, " +
+                    "passwordId=${passwordId != null}, " +
+                    "autofillIds=${autofillIds.size}"
+            )
+
+            return FillResponse.Builder()
+                .setAuthentication(
+                    autofillIds.toTypedArray(),
+                    pendingIntent.intentSender,
+                    presentation
+                )
+                .build()
         }
-
-        return FillResponse.Builder()
-            .addDataset(datasetBuilder.build())
-            .build()
-    }
 
     /**
      * FillResponse 생성
-     * 
+     *
      * @param context 컨텍스트
      * @param accounts 매칭된 계정 리스트
      * @param usernameId 사용자명 필드 AutofillId
@@ -76,7 +113,6 @@ object FillResponseBuilder {
         Log.d(TAG, "createFillResponse: usernameId=${usernameId != null}, passwordId=${passwordId != null}, accounts=${accounts.size}")
 
         val datasetFactory = DatasetFactory(context)
-
         accounts.forEach { account ->
             val dataset = datasetFactory.createDataset(account, usernameId, passwordId)
             if (dataset != null) {
@@ -90,7 +126,7 @@ object FillResponseBuilder {
         val fieldIds = mutableListOf<AutofillId>()
         usernameId?.let { fieldIds.add(it) }
         passwordId?.let { fieldIds.add(it) }
-        
+
         if (fieldIds.isNotEmpty()) {
             val saveInfo = SaveInfo.Builder(
                 SaveInfo.SAVE_DATA_TYPE_PASSWORD,

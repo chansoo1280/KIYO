@@ -41,6 +41,12 @@
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar" />
 
+        <!-- Autofill Authentication Activity (for DEVICE_CREDENTIAL / PIN) -->
+        <activity
+            android:name=".autofill.auth.AutofillAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Kiyo.AutofillAuth" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -53,7 +59,7 @@
 
         <!-- Autofill Service -->
         <service
-            android:name=".autofill.KiyoAutofillService"
+            android:name=".autofill.service.KiyoAutofillService"
             android:label="@string/autofill_service_description"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE"
             android:exported="true">

@@ -11,6 +11,7 @@
 | 오토필 서비스 | `KiyoAutofillService.kt`, `KiyoAutofillPlugin.kt`, `AutofillSettingsActivity.kt` |
 | 시스템 설정 연동 | 위 플러그인을 통해 Android 설정 화면 호출 |
 | 앱 수명 주기 | 백그라운드 ↔ 포그라운드 전환 시 상태 유지 확인 |
+| **오토필 테스트 호스트** | `AutofillTestHostActivity.kt` (네이티브 테스트용 로그인 화면) |
 
 ## 3. 테스트 케이스 (간결)
 
@@ -33,10 +34,10 @@
 | Auto‑02 | 설정 화면에서 KIYO Autofill Service 토글이 OFF 상태 |
 | Auto‑03 | 토글을 ON → 앱 복귀 후 `AutofillManager.isAutofillEnabled()` = **true** |
 | Auto‑04 | 테스트 계정 저장 → `AutofillRepository.syncToAutofillService()` 호출 → **AutofillService가 KIYO 계정 데이터를 정상적으로 조회할 수 있는 상태** 확인 |
-| Auto‑05 | Chrome(또는 테스트 WebView)에서 로그인 폼 오픈 → 사용자명 필드 포커스 시 오토필 드롭다운 표시 및 “testuser” 항목 노출 |
-| Auto‑06 | 드롭다운에서 계정 선택 → 사용자명·비밀번호 필드에 자동 입력 |
-| Auto‑07 | 자동 입력된 값으로 폼 제출 → 전송된 사용자명·비밀번호가 입력값과 일치 |
-| Auto‑08 | 존재하지 않는 계정 선택 시도 → 입력값 변화 없음 (또는 정의된 토스트/스낵바 피드백) |
+| **Auto‑05** | **AutofillTestHost에서 로그인 폼 오픈 → 사용자명 필드 포커스 시 오토필 드롭다운 표시 및 “testuser” 항목 노출** |
+| **Auto‑06** | **드롭다운에서 계정 선택 → 사용자명·비밀번호 필드에 자동 입력** |
+| **Auto‑07** | **자동 입력된 값으로 폼 제출 → 전송된 사용자명·비밀번호가 입력값과 일치** |
+| **Auto‑08** | **존재하지 않는 도메인(nomatch.example.com) 테스트 → 오토필 드롭다운 표시 안 됨 (매칭 실패)** |
 | Auto‑09 | 오토필 서비스 OFF 전환 후 동일한 로그인 폼 테스트 → 오토필 드롭다운이 전혀 표시되지 않음 |
 | Auto‑10 | 오토필 활성화 상태에서 홈→백그라운드→포그라운드 전환 → 오토필 드롭다운드가 여전히 표시되고 정상 입력 가능 (상태 유지) |
 
@@ -62,7 +63,7 @@
 | Err‑02 | 오토필 서비스 OFF 상태에서 로그인 필드 포커스 → 오토필 드롭다운이 전혀 표시되지 않음 |
 | Err‑03 | 오토필 드롭다운에 존재하지 않는 계정 선택 시도 → 입력값 변화 없음 (또는 정의된 토스트/스낵바 피드백) |
 
-## 4. 권장 테스트 구조
+### 권장 테스트 구조
 ```
 androidTest/
 ├── biometric/
@@ -72,7 +73,8 @@ androidTest/
 ├── autofill/
 │   ├── AutofillSettingsE2ETest.kt   # Sys‑01~05, Auto‑01~03
 │   ├── AutofillServiceE2ETest.kt    # Auto‑04, Auto‑09~10 (Service 상태 확인)
-│   └── AutofillChromeE2ETest.kt     # Auto‑05~08 (실제 폼 입력/제출)
+│   ├── AutofillE2ETest.kt           # Auto‑05~08 (AutofillTestHost 기반 E2E)
+│   └── AutofillTestHost/            # 별도 모듈: 네이티브 테스트용 로그인 화면
 │
 └── lifecycle/
     └── AppLifecycleE2ETest.kt       # Life‑01, Life‑02, Err‑01~03
@@ -86,13 +88,14 @@ androidTest/
 | BiometricPrompt 실제 UI (사용자 인증 흐름) | **UI Automator** |
 | Android 설정 화면 이동·확인 | **UI Automator** |
 | Autofill Service (드롭다운 표시, 계정 조회 가능 여부) | **UI Automator** |
-| Chrome → KIYO Autofill (실제 폼 자동 입력/제출) | **UI Automator** |
+| **AutofillTestHost → KIYO Autofill (네이티브 폼 자동 입력/제출)** | **UI Automator** |
 | 앱 생명주기 및 오류 상황 | **UI Automator + Instrumentation** (상태 확인은 Instrumentation) |
 
 ## 5. 참고 사항
 - 실제 기기(지문/얼굴 인식 센서 보유) 사용을 권장; 에뮬레이터는 지문 시뮬레이션(`adb emu finger print <id>`) 가능하지만 오토필 서비스는 일부 제한이 있을 수 있음.
 - 각 테스트 종료 후 `adb shell pm clear com.kiyo.app` 혹은 고유한 alias 사용으로 상태 초기화.
 - CI에서는 Firebase Test Lab 또는 GitHub Actions에서 실제 기기 farm을 이용해 실행하도록 스크립트 작성 가능.
+- **오토필 테스트는 Chrome 의존성 없이 `AutofillTestHost` 네이티브 Activity로 수행** (별도 모듈 `android/autofill-test-host/`).
 
 ---
 *이 계획서는 KIYO 프로젝트의 현재 구현 범위에 맞춰 작성되었습니다. 추후 새 플러그인(예: SecuritySession)이 추가될 경우 해당 섹션을 확장하면 됩니다.*

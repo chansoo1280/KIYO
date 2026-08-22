@@ -9,7 +9,7 @@ import android.service.autofill.FillResponse
 import android.view.autofill.AutofillId
 import com.kiyo.app.autofill.repository.AutofillRepository
 import com.kiyo.app.autofill.response.FillResponseBuilder
-import com.kiyo.app.autofill.security.DatabaseKeyManager
+import com.kiyo.app.security.DatabaseKeyManager
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -76,8 +76,8 @@ class AuthRequestHandlerTest {
         )
         val mockFillResponse = mockk<FillResponse>()
         coEvery { FillResponseBuilder.createFillResponse(context, any(), testUsernameId, testPasswordId) } returns mockFillResponse
-        // Mock successful DB_KEY access
-        every { DatabaseKeyManager.getKey(context) } returns mockk()
+        // Mock successful DB_KEY access (suspend function)
+        coEvery { DatabaseKeyManager.getKey(context) } returns mockk()
 
         // When
         authRequestHandler.processFillRequest(testDomain, testUsernameId, testPasswordId)
@@ -93,8 +93,8 @@ class AuthRequestHandlerTest {
     fun `DB_KEY access with no matching accounts returns null`() = runTest {
         // Given
         every { mockRepository.findMatchingAccounts(testDomain) } returns emptyList()
-        // Mock successful DB_KEY access
-        every { DatabaseKeyManager.getKey(context) } returns mockk()
+        // Mock successful DB_KEY access (suspend function)
+        coEvery { DatabaseKeyManager.getKey(context) } returns mockk()
 
         // When
         authRequestHandler.processFillRequest(testDomain, testUsernameId, testPasswordId)
@@ -110,8 +110,8 @@ class AuthRequestHandlerTest {
         // Given
         val mockAuthResponse = mockk<FillResponse>()
         coEvery { FillResponseBuilder.createAuthResponse(context, testUsernameId, testPasswordId) } returns mockAuthResponse
-        // Mock DB_KEY access to throw authentication required exception
-        every { DatabaseKeyManager.getKey(context) } throws UserNotAuthenticatedException()
+        // Mock DB_KEY access to throw authentication required exception (suspend function)
+        coEvery { DatabaseKeyManager.getKey(context) } throws UserNotAuthenticatedException()
 
         // When
         authRequestHandler.processFillRequest(testDomain, testUsernameId, testPasswordId)
@@ -123,22 +123,46 @@ class AuthRequestHandlerTest {
     }
 
     @Test
-    fun `repository error during findMatchingAccounts handled gracefully`() = runTest {
+    fun `DB_KEY access with package name fallback finds accounts`() = runTest {
+        // Given
+        every { mockRepository.findMatchingAccounts("") } returns emptyList()
+        val testAccount = AutofillRepository.AutofillAccount(
+            id = 1,
+            username = "testuser",
+            password = "testpass",
+            domain = "example.com",
+            packageNames = listOf("com.example.app")
+        )
+        every { mockRepository.findByPackageName("com.example.app") } returns listOf(testAccount)
+        val mockFillResponse = mockk<FillResponse>()
+        coEvery { FillResponseBuilder.createFillResponse(context, any(), testUsernameId, testPasswordId) } returns mockFillResponse
+        coEvery { DatabaseKeyManager.getKey(context) } returns mockk()
+
+        // When - empty domain, but package name provided
+        authRequestHandler.processFillRequest("", testUsernameId, testPasswordId, listOf("com.example.app"))
+        advanceUntilIdle()
+        runBlocking { processLooper() }
+
+        // Then
+        verify { mockRepository.findByPackageName("com.example.app") }
+        verify { mockCallback.onSuccess(mockFillResponse) }
+    }
+
+    @Test
+    fun `repository error during findMatchingAccounts returns null via callback`() = runTest {
         // Given
         every { mockRepository.findMatchingAccounts(testDomain) } throws RuntimeException("DB error")
-        // Mock successful DB_KEY access
-        every { DatabaseKeyManager.getKey(context) } returns mockk()
+        // Mock successful DB_KEY access (suspend function)
+        coEvery { DatabaseKeyManager.getKey(context) } returns mockk()
 
-        // When / Then - exception should propagate since AuthRequestHandler doesn't catch it
-        try {
-            authRequestHandler.processFillRequest(testDomain, testUsernameId, testPasswordId)
-            advanceUntilIdle()
-            runBlocking { processLooper() }
-            fail("Expected RuntimeException to be thrown")
-        } catch (e: RuntimeException) {
-            assertEquals("DB error", e.message)
-        }
+        // When - exception should be caught and handled gracefully (callback.onSuccess(null))
+        authRequestHandler.processFillRequest(testDomain, testUsernameId, testPasswordId)
+        advanceUntilIdle()
+        runBlocking { processLooper() }
 
+        // Then - callback should be called with null (error handled gracefully)
+        verify { mockCallback.onSuccess(null) }
+        
         // Verify the repository call was attempted
         verify { mockRepository.findMatchingAccounts(testDomain) }
     }

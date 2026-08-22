@@ -26,6 +26,7 @@ export interface Account {
   websiteUrl?: string;    // Original URL entered by user (e.g., "https://www.naver.com/login")
   domain?: string;        // Normalized domain for web autofill matching (e.g., "naver.com")
   packageName?: string;   // Android package name for app autofill matching (e.g., "com.nhn.android.search")
+  packageNames?: string[];  // Multiple package names for autofill matching
 }
 
 export type FontSize = "small" | "medium" | "large";
@@ -42,7 +43,7 @@ export interface AppSettings {
 // Alias for backward compatibility with tests
 export type Setting = AppSettings;
 
-// File-specific metadata (stored in data files)
+// File-specific metadata (stored in DB settings table)
 export interface FileMetadata {
   id: number;
   version: string;

@@ -99,6 +99,9 @@ const AccountEdit = () => {
   const [tags, setTags] = useState<string[]>(effectiveAccount.tags);
   const [websiteUrl, setWebsiteUrl] = useState(effectiveAccount.websiteUrl ?? "");
   const [domain, setDomain] = useState(effectiveAccount.domain ?? "");
+  const [packageName, setPackageName] = useState(
+    effectiveAccount.packageNames?.join(", ") ?? effectiveAccount.packageName ?? ""
+  );
   const [passwordGeneratorOpen, setPasswordGeneratorOpen] = useState<
     string | null
   >(null);
@@ -166,6 +169,11 @@ const AccountEdit = () => {
         order: index + 1,
       }));
 
+    const packageNames = packageName
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
     const updatedAccount: Account = {
       ...effectiveAccount,
       title,
@@ -174,6 +182,8 @@ const AccountEdit = () => {
       fields: cleanedFields,
       websiteUrl: websiteUrl || undefined,
       domain: domain || undefined,
+      packageName: packageNames[0] || undefined,
+      packageNames: packageNames.length > 0 ? packageNames : undefined,
     };
 
     let savedAccount = updatedAccount;
@@ -192,6 +202,7 @@ const AccountEdit = () => {
     effectiveAccount,
     websiteUrl,
     domain,
+    packageName,
     isNew,
     addAccount,
     updateAccount,
@@ -227,6 +238,8 @@ const AccountEdit = () => {
           onWebsiteSelectorClick={() => setWebsiteSelectorOpen(true)}
           tagInput={tagInput}
           onTagInputChange={handleTagInput}
+          packageName={packageName}
+          onPackageNameChange={setPackageName}
         />
 
         <WebsiteSelector

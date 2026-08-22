@@ -6,6 +6,7 @@ import type {
   PingResponse,
   SyncAccountsResult,
   CountResult,
+  ClearAccountsResult,
 } from "@/plugins/kiyautofill";
 
 export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
@@ -24,6 +25,10 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
 
   async requestAutofillEnable(): Promise<void> {
     console.warn("KiyoAutofill: requestAutofillEnable not available on web");
+  }
+
+  async openAppForAuth(): Promise<void> {
+    console.warn("KiyoAutofill: openAppForAuth not available on web");
   }
 
   async ping(): Promise<PingResponse> {
@@ -60,5 +65,10 @@ export class KiyoAutofillWeb extends WebPlugin implements KiyoAutofillPlugin {
   async getAccountCount(): Promise<CountResult> {
     console.warn("KiyoAutofill: getAccountCount not available on web");
     return { count: 0 };
+  }
+
+  async clearAllAccounts(): Promise<ClearAccountsResult> {
+    console.warn("KiyoAutofill: clearAllAccounts not available on web");
+    return { deletedCount: 0, success: false };
   }
 }

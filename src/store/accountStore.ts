@@ -8,6 +8,7 @@ import { accountTable } from "@/database/accountTable";
 import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import { useSessionStore } from "@/store/sessionStore";
+import { useSettingsStore } from "@/store/settingsStore";
 
 export interface AccountState {
   accounts: Account[];
@@ -22,7 +23,7 @@ export interface AccountState {
   clearAccounts: () => Promise<void>;
   syncToAutofill: () => Promise<void>;
   _persistAccounts: () => Promise<void>;
-  getAutofillAccounts(): Promise<{ username: string; password: string; domain: string | null; title?: string }[]>;
+  getAutofillAccounts(): Promise<{ username: string; password: string; domain: string | null; title?: string; packageNames?: string[]; packageName?: string | null }[]>;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -32,7 +33,7 @@ export const useAccountStore = create<AccountState>()(
       initialized: false,
       isLoading: false,
 
-      // Private: persist current accounts to File + Autofill
+      // Private: persist current accounts to File only (autofill sync is manual)
       _persistAccounts: async () => {
         const sessionState = useSessionStore.getState();
         await syncDatabaseToFile({
@@ -42,7 +43,6 @@ export const useAccountStore = create<AccountState>()(
           clearSyncError: sessionState.clearSyncError,
           setSyncError: sessionState.setSyncError,
         });
-        await get().syncToAutofill();
       },
 
       loadAccounts: async () => {
@@ -55,9 +55,6 @@ export const useAccountStore = create<AccountState>()(
           initialized: true,
           isLoading: false,
         });
-
-        // Sync to Android Autofill after initialization
-        await get().syncToAutofill();
       },
 
       addAccount: async (account) => {
@@ -102,6 +99,12 @@ export const useAccountStore = create<AccountState>()(
           return;
         }
 
+        // Check app-level autofill enabled setting
+        const { autofillEnabled } = useSettingsStore.getState();
+        if (!autofillEnabled) {
+          return;
+        }
+
         try {
           // Check if autofill service is enabled
           const autofillStatus = await KiyoAutofill.isAutofillEnabled();
@@ -136,7 +139,7 @@ export const useAccountStore = create<AccountState>()(
         }
       },
 
-      // Get accounts formatted for autofill (username, password, domain)
+      // Get accounts formatted for autofill (username, password, domain, package names)
       getAutofillAccounts: async () => {
         const accounts = get().accounts;
         const autofillAccounts = [];
@@ -173,11 +176,17 @@ export const useAccountStore = create<AccountState>()(
             }
           }
 
+          // Include package names for Android app autofill matching
+          const packageNames = account.packageNames ?? [];
+          const packageName = account.packageName ?? null;
+
           autofillAccounts.push({
             username,
             password,
             domain,
             title: account.title,
+            packageNames,
+            packageName,
           });
         }
 

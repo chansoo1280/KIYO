@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.AutofillTestHost" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#6C5CE7</item>
+        <item name="colorPrimaryDark">#5A4AD1</item>
+        <item name="colorAccent">#6C5CE7</item>
+        <item name="android:windowBackground">#1A1A2E</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

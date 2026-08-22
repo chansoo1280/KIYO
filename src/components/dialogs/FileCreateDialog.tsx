@@ -84,9 +84,10 @@ const FileCreateDialog = ({
       </div>
 
       {/* 암호화 여부 */}
-      <label className="mt-5 flex items-center gap-3 text-sm font-medium text-[var(--color-text)]">
+      <label className="mt-5 flex items-center gap-3 text-sm font-medium text-[var(--color-text)]" htmlFor="encrypt-checkbox">
         <input
           type="checkbox"
+          id="encrypt-checkbox"
           checked={encrypted}
           onChange={(e) => setEncrypted(e.target.checked)}
           className="h-4 w-4 accent-[var(--color-accent)]"

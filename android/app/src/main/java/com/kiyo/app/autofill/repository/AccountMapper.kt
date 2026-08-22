@@ -8,43 +8,73 @@ import org.json.JSONObject
 
 /**
  * Maps React Account JSON to AutofillAccount.
- * Extracted from AutofillRepository to separate parsing logic.
  */
 class AccountMapper {
 
     private val TAG = "AccountMapper"
 
     /**
+     * Extract package name from fields array
+     */
+    private fun findPackageNameFromFields(fieldsArray: JSONArray?): String? {
+        if (fieldsArray == null) return null
+        for (i in 0 until fieldsArray.length()) {
+            val field = fieldsArray.getJSONObject(i)
+            val label = field.optString("label", "").lowercase()
+            val value = field.optString("value", "")
+            if (label in setOf("package", "package name", "app", "application") && value.isNotEmpty()) {
+                return value
+            }
+        }
+        return null
+    }
+
+    /**
+     * Extract domain from URL
+     */
+    fun extractDomain(url: String): String? {
+        try {
+            val uri = android.net.Uri.parse(url)
+            return uri.host
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    /**
      * Parse React Account JSON to AutofillAccount.
-     * React Account structure:
-     * {
-     *   id: number,
-     *   templateId: number,
-     *   title: string,
-     *   description?: string,
-     *   tags: string[],
-     *   favorite: boolean,
-     *   fields: AccountField[],
-     *   createdAt: number,
-     *   updatedAt: number,
-     *   websiteUrl?: string,    // Original URL entered by user
-     *   domain?: string,        // Normalized domain for web autofill matching
-     *   packageName?: string    // Android package name for app autofill matching
-     * }
-     *
-     * AccountField:
-     * {
-     *   id: string,
-     *   accountId?: number,
-     *   label: string,
-     *   type: "text" | "password" | "email" | "number" | "textarea",
-     *   value: string,
-     *   order: number
-     * }
      */
     fun parseReactAccount(json: JSONObject): AutofillAccount? {
         try {
-            // Extract username and password from fields
+            // Read packageNames array if present
+            val packageNamesFromArray = if (json.has("packageNames")) {
+                val arr = json.getJSONArray("packageNames")
+                val list = mutableListOf<String>()
+                for (i in 0 until arr.length()) {
+                    val pkg = arr.optString(i)
+                    if (pkg.isNotEmpty()) list.add(pkg)
+                }
+                list
+            } else {
+                emptyList<String>()
+            }
+
+            // Extract single packageName
+            val singlePackageName = json.optString("packageName").takeIf { it.isNotEmpty() }
+                ?: findPackageNameFromFields(json.optJSONArray("fields"))
+
+            // Combine packageNames
+            val combinedPackageNames = mutableListOf<String>()
+            if (singlePackageName != null && singlePackageName.isNotEmpty()) {
+                combinedPackageNames.add(singlePackageName)
+            }
+            combinedPackageNames.addAll(packageNamesFromArray)
+
+            // Extract domain
+            val domainOpt = json.optString("domain").takeIf { it.isNotEmpty() }
+            val finalDomain = domainOpt ?: json.optString("websiteUrl").takeIf { it.isNotEmpty() }?.let { extractDomain(it) }
+
+            // Extract username and password
             var username = ""
             var password = ""
 
@@ -57,70 +87,44 @@ class AccountMapper {
 
                     when (type) {
                         "password" -> password = value
-                        "email" -> if (username.isEmpty()) username = value
-                        "text" -> if (username.isEmpty()) username = value
+                        "email", "text" -> if (username.isEmpty()) username = value
                     }
                 }
             }
 
             // Fallback: if no username found, use first text field
-            if (username.isEmpty() && fieldsArray != null) {
-                for (i in 0 until fieldsArray.length()) {
-                    val field = fieldsArray.getJSONObject(i)
-                    val type = field.optString("type", "")
-                    val value = field.optString("value", "")
-                    if (type == "text" && value.isNotEmpty()) {
-                        username = value
-                        break
+            if (username.isEmpty()) {
+                json.optJSONArray("fields")?.let { fields ->
+                    for (i in 0 until fields.length()) {
+                        val field = fields.getJSONObject(i)
+                        val type = field.optString("type", "")
+                        val value = field.optString("value", "")
+                        if (type == "text" && value.isNotEmpty()) {
+                            username = value
+                            return@let
+                        }
                     }
                 }
             }
 
             // Skip if no username or password
             if (username.isEmpty() || password.isEmpty()) {
-                Log.w(TAG, "Skipping account with missing username/password: ${json.optString("title", "unknown")}")
+                val skippedTitle = json.optString("title", "unknown")
+                Log.w(TAG, "Skipping account with missing username/password: $skippedTitle")
                 return null
             }
 
-            // Use dedicated domain and packageName fields from React Account model
-            // These are now stored directly on the Account object
-            val domain = json.optString("domain").takeIf { it.isNotEmpty() }
-            val packageName = json.optString("packageName").takeIf { it.isNotEmpty() }
             val appName = json.optString("appName").takeIf { it.isNotEmpty() }
-
-            // Fallback: extract domain from websiteUrl if domain field not set
-            val finalDomain = domain ?: json.optString("websiteUrl").takeIf { it.isNotEmpty() }?.let { extractDomain(it) }
-
-            // Fallback: extract packageName from fields if not set
-            val finalPackageName = packageName ?: fieldsArray?.let { fields ->
-                for (i in 0 until fields.length()) {
-                    val field = fields.getJSONObject(i)
-                    val label = field.optString("label", "").lowercase()
-                    val value = field.optString("value", "")
-                    if (label in setOf("package", "package name", "app", "application") && value.isNotEmpty()) {
-                        return@let value
-                    }
-                }
-                null
-            }
-
-            val title: String? = json.optString("title").takeIf { it.isNotEmpty() }
+            val title = json.optString("title").takeIf { it.isNotEmpty() }
             val favorite = json.optBoolean("favorite", false)
             val createdAt = json.optLong("createdAt", System.currentTimeMillis())
             val updatedAt = json.optLong("updatedAt", System.currentTimeMillis())
-
-            // Convert single packageName to packageNames list
-            val packageNames = if (finalPackageName != null && finalPackageName.isNotEmpty()) {
-                listOf(finalPackageName)
-            } else {
-                emptyList()
-            }
 
             return AutofillAccount(
                 username = username,
                 password = password,
                 title = title,
-                packageNames = packageNames,
+                packageNames = combinedPackageNames,
                 appName = appName,
                 domain = finalDomain,
                 createdAt = createdAt,
@@ -129,18 +133,6 @@ class AccountMapper {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing React account", e)
-            return null
-        }
-    }
-
-    /**
-     * Extract domain from URL
-     */
-    fun extractDomain(url: String): String? {
-        try {
-            val uri = android.net.Uri.parse(url)
-            return uri.host
-        } catch (e: Exception) {
             return null
         }
     }

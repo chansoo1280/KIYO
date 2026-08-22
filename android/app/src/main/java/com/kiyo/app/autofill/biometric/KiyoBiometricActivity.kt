@@ -42,6 +42,8 @@ class KiyoBiometricActivity : AppCompatActivity() {
         /**
          * 생체 인증 Activity를 시작하는 헬퍼 메서드
          */
+        @JvmStatic
+        @JvmOverloads
         fun startBiometricAuth(
             context: Context,
             packageName: String,

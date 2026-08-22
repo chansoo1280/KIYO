@@ -1,7 +1,9 @@
 package com.kiyo.app.securekey
 
+import android.annotation.SuppressLint
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.util.Base64
 import android.util.Log
 import java.security.KeyStore
@@ -31,6 +33,7 @@ object SecureKeyManager {
     /**
      * Get or create the master key from Android Keystore.
      * Returns cached key if already loaded.
+     * Handles key invalidation due to biometric enrollment changes.
      */
     @Throws(Exception::class)
     fun getOrCreateKey(): SecretKey {
@@ -41,31 +44,96 @@ object SecureKeyManager {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
 
-        if (!keyStore.containsAlias(KEY_ALIAS)) {
+        val keyExisted = keyStore.containsAlias(KEY_ALIAS)
+        if (!keyExisted) {
             Log.d(TAG, "Creating new secure master key in Keystore: $KEY_ALIAS")
-            val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
-            val spec = KeyGenParameterSpec.Builder(
-                KEY_ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(KEY_SIZE)
-                .setUserAuthenticationRequired(true)
-                .setUserAuthenticationParameters(
-                    AUTH_VALIDITY_DURATION_SECONDS,
-                    KeyProperties.AUTH_BIOMETRIC_STRONG
-                )
-                .setInvalidatedByBiometricEnrollment(true)
-                .build()
-            keyGenerator.init(spec)
-            keyGenerator.generateKey()
+        } else {
+            Log.d(TAG, "Reusing existing secure master key in Keystore: $KEY_ALIAS")
         }
+
+        if (!keyExisted) {
+            generateNewKey(keyStore)
+        } else {
+            // Try to load existing key - if it's invalidated, recreate
+            try {
+                val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry
+                cachedKey = entry.secretKey
+
+                // Test if key is usable (not invalidated)
+                testKeyUsability(cachedKey!!)
+
+                Log.d(TAG, "Secure master key loaded from Keystore: ${cachedKey!!.algorithm}")
+            } catch (e: KeyPermanentlyInvalidatedException) {
+                Log.w(TAG, "Secure master key permanently invalidated (biometric changed), recreating")
+                deleteKeyInternal(keyStore)
+                generateNewKey(keyStore)
+            } catch (e: Exception) {
+                // Other exceptions - key might be invalidated
+                if (e is java.security.KeyStoreException ||
+                    e.message?.contains("invalidated", true) == true) {
+                    Log.w(TAG, "Secure master key appears invalidated, recreating: ${e.message}")
+                    deleteKeyInternal(keyStore)
+                    generateNewKey(keyStore)
+                } else {
+                    throw e
+                }
+            }
+        }
+
+        return cachedKey!!
+    }
+
+    private fun testKeyUsability(key: SecretKey) {
+            // Try to initialize cipher with the key to verify it's usable
+            // Note: This may fail with UserNotAuthenticatedException if the key requires
+            // user authentication and the user hasn't authenticated recently.
+            // In that case, the key is still valid - it just needs authentication when actually used.
+            try {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.ENCRYPT_MODE, key)
+            } catch (e: java.security.InvalidKeyException) {
+                // Key is not usable (e.g., permanently invalidated)
+                throw e
+            } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                // Key requires user authentication - this is expected in test environments
+                // or when the auth timeout has expired. The key itself is valid.
+                Log.d(TAG, "Key requires user authentication (will prompt when actually used)")
+            }
+        }
+
+    private fun generateNewKey(keyStore: KeyStore) {
+        Log.d(TAG, "Creating new secure master key in Keystore: $KEY_ALIAS")
+        val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
+        val spec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(KEY_SIZE)
+            .setUserAuthenticationRequired(true)
+            .setUserAuthenticationParameters(
+                AUTH_VALIDITY_DURATION_SECONDS,
+                KeyProperties.AUTH_BIOMETRIC_STRONG
+            )
+            .setInvalidatedByBiometricEnrollment(true)
+            .build()
+        keyGenerator.init(spec)
+        keyGenerator.generateKey()
 
         val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry
         cachedKey = entry.secretKey
-        Log.d(TAG, "Secure master key loaded from Keystore: ${cachedKey!!.algorithm}")
-        return cachedKey!!
+        Log.d(TAG, "New secure master key generated and loaded: ${cachedKey!!.algorithm}")
+    }
+
+    private fun deleteKeyInternal(keyStore: KeyStore): Boolean {
+        if (keyStore.containsAlias(KEY_ALIAS)) {
+            keyStore.deleteEntry(KEY_ALIAS)
+            cachedKey = null
+            Log.d(TAG, "Invalidated secure master key deleted from Keystore")
+            return true
+        }
+        return false
     }
 
     /**
@@ -115,13 +183,26 @@ object SecureKeyManager {
     fun deleteKey(): Boolean {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
-        if (keyStore.containsAlias(KEY_ALIAS)) {
-            keyStore.deleteEntry(KEY_ALIAS)
-            cachedKey = null
-            Log.d(TAG, "Secure master key deleted from Keystore")
-            return true
-        }
-        return false
+        return deleteKeyInternal(keyStore)
+    }
+
+    /**
+     * Clear cached key (for testing).
+     */
+    @SuppressLint("VisibleForTests")
+    internal fun clearCache() {
+        cachedKey = null
+        Log.d(TAG, "Secure master key cache cleared")
+    }
+
+    /**
+     * Check if master key exists in Keystore (for testing).
+     */
+    @SuppressLint("VisibleForTests")
+    fun hasKey(): Boolean {
+        val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
+        keyStore.load(null)
+        return keyStore.containsAlias(KEY_ALIAS)
     }
 
     data class EncryptedKey(

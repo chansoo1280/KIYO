@@ -42,9 +42,26 @@ class AutofillRepository internal constructor(
         private const val TAG = "AutofillRepository"
 
         /**
+         * Create a fully‑initialized repository.
+         * The caller must have already obtained the plain‑text DB key (e.g. from Keystore).
+         * No Keystore access happens inside this method.
+         */
+        @JvmStatic
+        fun create(context: Context, dbKey: ByteArray): AutofillRepository {
+            val helper = AutofillDatabaseHelper(context, dbKey)
+            return AutofillRepository(context, helper)
+        }
+
+        /**
          * Create AutofillRepository asynchronously.
          * Gets encryption key from DatabaseKeyManager (suspend) and initializes dbHelper.
+         * @deprecated Use {@link #create(Context, ByteArray)} and obtain the key yourself.
          */
+        @Deprecated(
+            message = "Use create(context, dbKey) and obtain the key yourself from Keystore.",
+            replaceWith = ReplaceWith("create(context, DatabaseKeyManager.getKey(context).encoded)")
+        )
+        @JvmStatic
         suspend fun create(context: Context): AutofillRepository = withContext(Dispatchers.IO) {
             val encryptionKey = DatabaseKeyManager.getKey(context).encoded
             val dbHelper = AutofillDatabaseHelper(context, encryptionKey)

@@ -156,6 +156,22 @@ class KiyoAutofillPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun openAppForAuth(call: PluginCall) {
+        val context = getContext() ?: return call.reject("Context is null")
+        try {
+            val intent = Intent(context, Class.forName("com.kiyo.app.MainActivity")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                putExtra("reason", "autofill_auth_required")
+            }
+            context.startActivity(intent)
+            call.resolve()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening app for auth", e)
+            call.reject("Failed to open app for authentication: ${e.message}")
+        }
+    }
+
+    @PluginMethod
     fun ping(call: PluginCall) {
         Log.d(TAG, "Ping received from React")
         call.resolve(JSObject().apply {
@@ -328,6 +344,13 @@ class KiyoAutofillPlugin : Plugin() {
                 call.resolve(JSObject().apply {
                     put("count", count)
                 })
+            } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                Log.d(TAG, "User authentication required for getAccountCount")
+                call.resolve(JSObject().apply {
+                    put("authRequired", true)
+                    put("success", false)
+                    put("message", "Authentication required to access autofill database")
+                })
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting account count", e)
                 call.reject("Failed to get account count: ${e.message}")
@@ -345,6 +368,13 @@ class KiyoAutofillPlugin : Plugin() {
                 call.resolve(JSObject().apply {
                     put("deletedCount", count)
                     put("success", true)
+                })
+            } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                Log.d(TAG, "User authentication required for clearAllAccounts")
+                call.resolve(JSObject().apply {
+                    put("authRequired", true)
+                    put("success", false)
+                    put("message", "Authentication required to access autofill database")
                 })
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing all accounts", e)
@@ -367,9 +397,74 @@ class KiyoAutofillPlugin : Plugin() {
                     put("errorCount", result.second)
                     put("success", result.second == 0)
                 })
+            } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                // Authentication required - notify React to trigger auth flow
+                Log.d(TAG, "User authentication required for sync")
+                call.resolve(JSObject().apply {
+                    put("authRequired", true)
+                    put("success", false)
+                    put("message", "Authentication required to access autofill database")
+                })
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing accounts from React", e)
                 call.reject("Failed to sync accounts: ${e.message}")
+            }
+        }
+    }
+
+    // Test-only method to sync accounts directly from native test code
+    // This bypasses the JS bridge but uses the same Keystore-protected AutofillRepository
+    @PluginMethod
+    fun syncAccountsForTest(call: PluginCall) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val repository = ensureRepositoryInitialized()
+
+                val username = call.getString("username") ?: return@launch call.reject("username required")
+                val password = call.getString("password") ?: return@launch call.reject("password required")
+                val domain = call.getString("domain") ?: return@launch call.reject("domain required")
+                val packageNamesJson = call.getString("packageNames") ?: "[]"
+                val appName = call.getString("appName") ?: "Autofill Test Host"
+                val title = call.getString("title") ?: "Test Account"
+
+                // Parse packageNames from JSON array string
+                val packageNames = try {
+                    val jsonArray = org.json.JSONArray(packageNamesJson)
+                    val list = mutableListOf<String>()
+                    for (i in 0 until jsonArray.length()) {
+                        list.add(jsonArray.getString(i))
+                    }
+                    list
+                } catch (e: Exception) {
+                    listOf("com.kiyo.autofilltest")
+                }
+
+                // Create test account JSON
+                val accountsJsonArray = org.json.JSONArray()
+                val account = org.json.JSONObject()
+                account.put("username", username)
+                account.put("password", password)
+                account.put("domain", domain)
+                account.put("packageNames", org.json.JSONArray(packageNames))
+                account.put("appName", appName)
+                account.put("title", title)
+                account.put("createdAt", System.currentTimeMillis())
+                account.put("updatedAt", System.currentTimeMillis())
+                account.put("favorite", false)
+                accountsJsonArray.put(account)
+
+                val accountsJson = accountsJsonArray.toString()
+                Log.d(TAG, "Test sync: $accountsJson")
+
+                val result = repository.syncAccountsFromReact(accountsJson)
+                call.resolve(JSObject().apply {
+                    put("syncedCount", result.first)
+                    put("errorCount", result.second)
+                    put("success", result.second == 0)
+                })
+            } catch (e: Exception) {
+                Log.e(TAG, "Error syncing test accounts", e)
+                call.reject("Failed to sync test accounts: ${e.message}")
             }
         }
     }

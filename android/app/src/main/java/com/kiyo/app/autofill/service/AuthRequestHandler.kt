@@ -39,7 +39,8 @@ class AuthRequestHandler(
     suspend fun processFillRequest(
         domain: String,
         usernameId: AutofillId?,
-        passwordId: AutofillId?
+        passwordId: AutofillId?,
+        packageNames: List<String> = emptyList()
     ) {
         // Always try to access DB_KEY (requires authentication via Keystore)
         // Removed isEncrypted check to rely solely on user authentication for DB access
@@ -49,8 +50,21 @@ class AuthRequestHandler(
             Log.d(TAG, "Successfully accessed DB_KEY - authentication satisfied")
 
             // Key access succeeded, proceed with fill response
-            val accounts = repository.findMatchingAccounts(domain)
-            Log.d(TAG, "Found ${accounts.size} matching accounts for domain: $domain")
+            // Try domain first, then fallback to package names for native apps
+            val accounts = if (domain.isNotEmpty()) {
+                repository.findMatchingAccounts(domain)
+            } else if (packageNames.isNotEmpty()) {
+                // For native apps without webDomain, match by package name
+                val accountsByPackage = mutableListOf<AutofillRepository.AutofillAccount>()
+                for (pkg in packageNames) {
+                    accountsByPackage.addAll(repository.findByPackageName(pkg))
+                    if (accountsByPackage.isNotEmpty()) break
+                }
+                accountsByPackage
+            } else {
+                emptyList()
+            }
+            Log.d(TAG, "Found ${accounts.size} matching accounts for domain: '$domain', packages: $packageNames")
 
             if (accounts.isEmpty()) {
                 handler.post { callback.onSuccess(null) }

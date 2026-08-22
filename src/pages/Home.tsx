@@ -65,7 +65,7 @@ const Home = () => {
         throw new Error("지원하지 않는 파일 형식입니다.");
       }
 
-      navigate("/list", {
+      navigate("/accounts", {
         replace: true,
       });
       setShowOpenDialog(false);
