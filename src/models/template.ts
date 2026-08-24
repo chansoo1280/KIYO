@@ -1,0 +1,29 @@
+import type { FieldType } from "@/models/fieldTypes";
+
+export interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  icon: string;
+  sortOrder: number;
+  fields: TemplateField[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TemplateField {
+  id?: string;
+  label: string;
+  type: FieldType;
+  defaultValue?: string;
+  options?: string[];
+  order?: number;
+}
+
+// 기본 템플릿 필드 정의 (TemplatePicker, AccountEdit에서 공통 사용)
+// "제목" 필드 제거: 새 템플릿 생성 시 빈 템플릿으로 시작하도록 변경
+export const DEFAULT_TEMPLATE_FIELDS: TemplateField[] = [
+  { label: "아이디/이메일", type: "email", defaultValue: "" },
+  { label: "비밀번호", type: "password", defaultValue: "" },
+  { label: "메모", type: "textarea", defaultValue: "" },
+];
