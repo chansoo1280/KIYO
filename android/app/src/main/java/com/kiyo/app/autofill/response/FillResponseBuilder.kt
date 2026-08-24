@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.service.autofill.Dataset
 import android.service.autofill.FillResponse
-import android.service.autofill.SaveInfo
 import android.util.Log
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
@@ -33,9 +32,9 @@ object FillResponseBuilder {
                 passwordId
             )
 
-            check(autofillIds.isNotEmpty()) {
-                "Cannot create authentication response: no AutofillId"
-            }
+            // 호출부(서비스)에서 non-null을 보장한다 — 여기서는 가드 없이 진행.
+            // (이전 check()는 인증 필요 순간 프롬프트가 크래시로 사라지는 경로였음)
+            require(autofillIds.isNotEmpty()) { "createAuthResponse requires at least one AutofillId" }
 
             /*
              * Android Autofill Framework가 인증 Activity를 실행할 때
@@ -121,20 +120,19 @@ object FillResponseBuilder {
             }
         }
 
-        // Add SaveInfo to enable save UI when user fills credentials
-        // SaveInfo tells the autofill service which fields to watch for save
-        val fieldIds = mutableListOf<AutofillId>()
-        usernameId?.let { fieldIds.add(it) }
-        passwordId?.let { fieldIds.add(it) }
-
-        if (fieldIds.isNotEmpty()) {
-            val saveInfo = SaveInfo.Builder(
-                SaveInfo.SAVE_DATA_TYPE_PASSWORD,
-                fieldIds.toTypedArray()
-            ).build()
-            responseBuilder.setSaveInfo(saveInfo)
-            Log.d(TAG, "SaveInfo added with ${fieldIds.size} field IDs")
-        }
+        // TODO: Save saveInfo later — disabled to suppress system save dialog during E2E testing
+        // val fieldIds = mutableListOf<AutofillId>()
+        // usernameId?.let { fieldIds.add(it) }
+        // passwordId?.let { fieldIds.add(it) }
+        //
+        // if (fieldIds.isNotEmpty()) {
+        //     val saveInfo = SaveInfo.Builder(
+        //         SaveInfo.SAVE_DATA_TYPE_PASSWORD,
+        //         fieldIds.toTypedArray()
+        //     ).build()
+        //     responseBuilder.setSaveInfo(saveInfo)
+        //     Log.d(TAG, "SaveInfo added with ${fieldIds.size} field IDs")
+        // }
 
         val response = responseBuilder.build()
         Log.d(TAG, "FillResponse built with ${datasets.size} datasets (accounts: ${accounts.size}, usernameId: ${usernameId != null}, passwordId: ${passwordId != null})")

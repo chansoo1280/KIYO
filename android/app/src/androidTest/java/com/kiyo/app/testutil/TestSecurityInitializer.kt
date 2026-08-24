@@ -22,6 +22,10 @@ object TestSecurityInitializer {
     private const val TAG = "TestSecurityInitializer"
     private const val AUTO_FILL_DB_NAME = "kiyo_autofill.db"
 
+    /** 테스트 정리 대상 autofill 마스터 키 alias 목록 (레거시 + 인덱스 alias 전체) */
+    private val AUTOFILL_KEY_ALIASES =
+        listOf(KeystoreManager.LEGACY_KEY_ALIAS) + (1..64).map { "kiyo_master_key_$it" }
+
     /**
      * Initialize a clean test environment (synchronous cleanup only):
      * 1. Delete Keystore master key (autofill: kiyo_master_key) - ONLY if recreate=true
@@ -38,18 +42,17 @@ object TestSecurityInitializer {
 
         var success = true
 
-        // 1. Delete Keystore master key (autofill) - only if recreate
+        // 1. Delete Keystore master keys (autofill: legacy + indexed aliases) - only if recreate
         if (recreateKeystoreKeys) {
-            try {
-                val keystoreDeleted = KeystoreManager.deleteKey()
-                if (keystoreDeleted) {
-                    Log.d(TAG, "Keystore master key (autofill) deleted")
-                } else {
-                    Log.d(TAG, "No Keystore master key (autofill) to delete")
+            for (alias in AUTOFILL_KEY_ALIASES) {
+                try {
+                    if (KeystoreManager.deleteKey(alias)) {
+                        Log.d(TAG, "Keystore master key (autofill) deleted: $alias")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete Keystore master key (autofill): $alias", e)
+                    success = false
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to delete Keystore master key (autofill)", e)
-                success = false
             }
 
             // 2. Delete Keystore master key (biometric/securekey) - only if recreate
@@ -68,9 +71,8 @@ object TestSecurityInitializer {
             Log.d(TAG, "Keeping existing Keystore keys (recreateKeystoreKeys=false)")
         }
 
-        // 3. Clear in-memory caches (only if recreating keys)
+        // 3. (in-memory key cache no longer exists in KeystoreManager - nothing to clear)
         if (recreateKeystoreKeys) {
-            KeystoreManager.clearCache()
             SecureKeyManager.clearCache()
         } else {
             Log.d(TAG, "Keeping Keystore caches (recreateKeystoreKeys=false)")
@@ -107,7 +109,7 @@ object TestSecurityInitializer {
         }
 
         // 6. Verify clean state
-        val hasAutofillKeystoreKey = KeystoreManager.hasKey()
+        val hasAutofillKeystoreKey = AUTOFILL_KEY_ALIASES.any { KeystoreManager.hasKey(it) }
         val hasSecureKeystoreKey = SecureKeyManager.hasKey()
         Log.d(TAG, "Clean init complete - Keystore autofill has key: $hasAutofillKeystoreKey, securekey has key: $hasSecureKeystoreKey, success: $success")
 
@@ -119,7 +121,7 @@ object TestSecurityInitializer {
      */
     fun logEnvironmentState(context: Context) {
         Log.d(TAG, "=== Test Environment State ===")
-        Log.d(TAG, "Keystore autofill has master key: ${KeystoreManager.hasKey()}")
+        Log.d(TAG, "Keystore autofill has master key: ${AUTOFILL_KEY_ALIASES.any { KeystoreManager.hasKey(it) }}")
         Log.d(TAG, "Keystore securekey has master key: ${SecureKeyManager.hasKey()}")
         
         runBlocking(Dispatchers.IO) {

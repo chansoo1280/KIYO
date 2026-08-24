@@ -92,6 +92,10 @@ export const AutofillSection: React.FC = () => {
         setSessionLastSyncTime(now); // Also save to session store
         setLastAutofillAccountCount(result.syncedCount); // Store autofill DB account count
         showMessage(`자동완성 계정 ${result.syncedCount}개 동기화 완료`);
+      } else if (result.securityDowngrade) {
+        // 기기 잠금화면 제거로 보안 키 무효화 - 사용자의 재클릭으로 초기화 후 재동기화됨
+        setError(result.message || "기기 잠금 화면 변경이 감지되었습니다.");
+        showMessage("동기화 버튼을 한 번 더 눌러 자동완성 데이터를 초기화하고 다시 동기화해주세요.");
       } else if (result.authRequired) {
         // Auth was cancelled or failed after native retry
         setError(result.message || "인증이 취소되거나 실패했습니다.");
@@ -212,6 +216,7 @@ export const AutofillSection: React.FC = () => {
             type="button"
             role="switch"
             aria-checked={autofillEnabled}
+            aria-label={autofillEnabled ? "자동완성 사용 켜짐" : "자동완성 사용 꺼짐"}
             onClick={handleAutofillToggle}
             className={`relative w-11 h-6 rounded-full transition-colors ${
               autofillEnabled

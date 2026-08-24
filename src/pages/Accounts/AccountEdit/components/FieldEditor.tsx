@@ -29,6 +29,7 @@ export function FieldEditor({
             placeholder={getFieldTypePlaceholder(field.type)}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
             rows={4}
+            data-field-value="true"
           />
         );
 
@@ -49,6 +50,7 @@ export function FieldEditor({
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            data-field-value="true"
           />
         );
 
@@ -60,6 +62,7 @@ export function FieldEditor({
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            data-field-value="true"
           />
         );
 
@@ -71,6 +74,7 @@ export function FieldEditor({
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            data-field-value="true"
           />
         );
 
@@ -81,6 +85,7 @@ export function FieldEditor({
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            data-field-value="true"
           />
         );
 
@@ -90,6 +95,7 @@ export function FieldEditor({
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            data-field-value="true"
           >
             {(field.options || []).map((opt, idx) => (
               <option key={idx} value={opt}>
@@ -109,6 +115,7 @@ export function FieldEditor({
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
             maxLength={6}
             inputMode="numeric"
+            data-field-value="true"
           />
         );
 
@@ -120,6 +127,7 @@ export function FieldEditor({
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            data-field-value="true"
           />
         );
     }

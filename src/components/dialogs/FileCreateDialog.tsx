@@ -69,12 +69,13 @@ const FileCreateDialog = ({
       disabled={confirmDisabled}
     >
       {/* 파일 이름 */}
-      <label className="mt-5 block text-sm font-medium text-[var(--color-text)]">
+      <label htmlFor="vault-name-input" className="mt-5 block text-sm font-medium text-[var(--color-text)]">
         파일 이름
       </label>
 
       <div className="mt-2 flex items-center gap-2">
         <input
+          id="vault-name-input"
           value={fileName}
           onChange={(e) => setFileName(e.target.value)}
           className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"

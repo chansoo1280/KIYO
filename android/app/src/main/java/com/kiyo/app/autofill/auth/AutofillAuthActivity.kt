@@ -164,10 +164,24 @@ class AutofillAuthActivity : AppCompatActivity() {
 
                 // Extract domain and package names for account matching
                 val domain = ViewNodeExtractor.extractDomainFromStructure(rootViewNode)
-                val packageNames = ViewNodeExtractor
+                val extractedPackages = ViewNodeExtractor
                     .extractPackageNamesFromStructure(rootViewNode)
                     .filter { !it.equals("com.kiyo.app", ignoreCase = true) }
-                    .distinct()
+                    .toMutableList()
+                // 서비스(onFillRequest)와 동일한 폴백: idPackage가 비어있는 구조에서는
+                // activityComponent.packageName으로 대상 앱을 식별한다 (검증됨 2026-08:
+                // auth Intent의 AssistStructure에서는 idPackage가 비어 packages=[]가 되어 매칭 실패)
+                if (extractedPackages.isEmpty()) {
+                    val activityComponent = structure.activityComponent?.packageName
+                    if (activityComponent != null &&
+                        !activityComponent.equals("com.kiyo.app", ignoreCase = true) &&
+                        !activityComponent.startsWith("android")
+                    ) {
+                        extractedPackages.add(activityComponent)
+                        Log.d(TAG, "packages empty from idPackage - fell back to activityComponent: $activityComponent")
+                    }
+                }
+                val packageNames = extractedPackages.distinct()
 
                 Log.d(TAG, "Authenticated lookup: domain='$domain', packages=$packageNames")
 
@@ -230,43 +244,17 @@ class AutofillAuthActivity : AppCompatActivity() {
         passwordId: android.view.autofill.AutofillId?
     ): FillResponse {
         val builder = FillResponse.Builder()
+        val datasetFactory = com.kiyo.app.autofill.response.DatasetFactory(this)
 
         for (account in accounts) {
-            val datasetBuilder = Dataset.Builder()
-
-            // Username field
-            usernameId?.let { id ->
-                val usernamePresentation = RemoteViews(
-                    packageName,
-                    R.layout.autofill_dataset_item
-                ).apply {
-                    setTextViewText(R.id.tv_message, account.username)
-                }
-
-                datasetBuilder.setValue(
-                    id,
-                    AutofillValue.forText(account.username),
-                    usernamePresentation
-                )
+            // DatasetFactory 재사용 (검증됨 2026-08): 기존 인라인 구현은
+            // autofill_dataset_item 레이아웃에 존재하지 않는 tv_message에 텍스트를 설정해서
+            // XML 프리뷰 기본값("Site Name"/"domain.com"/"user@email.com")이 그대로 노출됐다.
+            // DatasetFactory는 정상 fill 경로와 동일하게 3개 필드를 모두 채운다.
+            val dataset = datasetFactory.createDataset(account, usernameId, passwordId)
+            if (dataset != null) {
+                builder.addDataset(dataset)
             }
-
-            // Password field
-            passwordId?.let { id ->
-                val passwordPresentation = RemoteViews(
-                    packageName,
-                    R.layout.autofill_dataset_item
-                ).apply {
-                    setTextViewText(R.id.tv_message, "KIYO")
-                }
-
-                datasetBuilder.setValue(
-                    id,
-                    AutofillValue.forText(account.password),
-                    passwordPresentation
-                )
-            }
-
-            builder.addDataset(datasetBuilder.build())
         }
 
         return builder.build()

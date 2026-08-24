@@ -17,6 +17,7 @@ export const PasswordFieldEdit = ({ value, onChange, onGenerate }: PasswordField
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 pr-12 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+        data-field-value="true"
       />
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
         <button

@@ -48,6 +48,18 @@ object DeviceLockHelper {
                 "Run: adb shell locksettings set-pin 1234 && adb shell input keyevent KEYCODE_WAKEUP ...")
         }
     }
+
+    /** Verify no secure lock screen exists (isDeviceSecure=false) - fail test if PIN/pattern/password is set */
+    fun assertNoLockScreen() {
+        ensureInitialized()
+        val km = context!!.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (km.isDeviceSecure) {
+            throw AssertionError("Device has a secure lock screen (isDeviceSecure=true)! " +
+                "1단계 테스트는 잠금화면 없는 상태가 전제입니다. " +
+                "Run: adb shell locksettings clear --old <pin>")
+        }
+        Log.i(TAG, "No secure lock screen confirmed (isDeviceSecure=false)")
+    }
     
     /** Reset state (no-op, kept for compatibility) */
     fun reset() {

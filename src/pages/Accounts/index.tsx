@@ -240,9 +240,12 @@ const AccountList = () => {
                   </div>
                   <p className="truncate text-sm text-[var(--color-text)]">
                     {account.fields.find(
-                      (field) =>
-                        field.label.toLowerCase() === "email" ||
-                        field.label.toLowerCase() === "이메일",
+                      (field) => {
+                        const label = field.label.toLowerCase();
+                        return label === "email" || 
+                               label === "이메일" ||
+                               label === "아이디/이메일";
+                      }
                     )?.value ?? "No email"}
                   </p>
                 </div>

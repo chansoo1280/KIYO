@@ -19,6 +19,7 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.kiyo.app.autofill.repository.AutofillRepository
+import com.kiyo.app.security.DatabaseKeyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,6 +38,7 @@ class KiyoAutofillPlugin : Plugin() {
     // Track pending sync call for auto-retry after authentication
     private var pendingSyncCall: PluginCall? = null
     private var pendingSyncAccountsJson: String? = null
+    // 보안 다운그레이드 재시도 대기 플래그 (첫 동기화 시도 후 사용자 재클릭 시 리셋 진행)
     
     // ActivityResultLauncher for handling authentication result
     private lateinit var authActivityLauncher: ActivityResultLauncher<Intent>
@@ -408,15 +410,36 @@ class KiyoAutofillPlugin : Plugin() {
     fun syncAccountsFromReact(call: PluginCall) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val context = getContext() ?: return@launch call.reject("Context is null")
+
+                // 보안 다운그레이드 감지: 잠금화면 제거로 auth-required 키가 무효화된 상태.
+                // 계정 원본 데이터는 React 앱(IndexedDB)에 그대로 남아 있으므로 즉시 리셋 후 재동기화한다.
+                // (리셋 대상은 자동완성 전용 DB뿐 — 사용자 데이터 소실 아님)
+                val currentAliasForDowngradeCheck = DatabaseKeyManager.getCurrentAlias(context)
+                if (DatabaseKeyManager.isSecurityDowngrade(currentAliasForDowngradeCheck)) {
+                    Log.w(TAG, "Security downgrade detected at sync - resetting security state immediately")
+                    DatabaseKeyManager.resetAutofillData(context)
+                    Log.w(TAG, "Security state reset completed - proceeding with fresh key")
+                    // 리셋 후 정상 흐름으로 계속 (새 키 생성됨)
+                }
+
                 val repository = ensureRepositoryInitialized()
 
                 val accountsJson = call.getString("accountsJson") ?: return@launch call.reject("No accounts JSON provided")
+
+                // 보안 업그레이드 감지: 잠금화면이 새로 설정되어 기존 키가 auth-required가 아닌 경우.
+                // getKey() 내부에서 DB_KEY가 auth-required 키로 자동 재래핑됨 → 사용자에게 안내.
+                val securityUpgraded = DatabaseKeyManager.wasSecurityUpgraded()
 
                 val result = repository.syncAccountsFromReact(accountsJson)
                 call.resolve(JSObject().apply {
                     put("syncedCount", result.first)
                     put("errorCount", result.second)
                     put("success", result.second == 0)
+                    if (securityUpgraded) {
+                        put("securityUpgrade", true)
+                        put("message", "기기 잠금 화면이 설정되어 자동완성 보안 키를 강화했습니다. 이제 동기화 시 기기 인증을 요구할 수 있습니다.")
+                    }
                 })
             } catch (e: android.security.keystore.UserNotAuthenticatedException) {
                 // Authentication required - store pending sync and trigger auth

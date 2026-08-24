@@ -2,8 +2,7 @@ package com.kiyo.app.autofill
 
 import android.content.Context
 import android.content.Intent
-import android.os.SystemClock
-import android.provider.Settings
+import android.net.Uri
 import android.util.Log
 import android.view.autofill.AutofillManager
 import androidx.test.core.app.ApplicationProvider
@@ -11,672 +10,371 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
+import com.kiyo.app.autofill.pageobjects.AccountCreatePage
+import com.kiyo.app.autofill.pageobjects.AccountEditPage
+import com.kiyo.app.autofill.pageobjects.AccountsPage
+import com.kiyo.app.autofill.pageobjects.HomePage
+import com.kiyo.app.autofill.pageobjects.SettingsPage
 import com.kiyo.app.autofill.repository.AutofillRepository
-import com.kiyo.app.capacitor.KiyoAutofillPlugin
+import com.kiyo.app.autofill.testutil.AutofillTestHost
+import com.kiyo.app.autofill.testutil.TestDataFactory
+import com.kiyo.app.autofill.testutil.WebViewTestHelper
 import com.kiyo.app.testutil.DeviceLockHelper
 import com.kiyo.app.testutil.TestSecurityInitializer
 import kotlinx.coroutines.runBlocking
-import org.hamcrest.CoreMatchers.allOf
-import org.hamcrest.CoreMatchers.notNullValue
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.FixMethodOrder
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 import org.junit.runner.RunWith
-
-// Espresso-Web imports
-import androidx.test.espresso.web.sugar.Web.onWebView
-import androidx.test.espresso.web.webdriver.DriverAtoms.findElement
-import androidx.test.espresso.web.webdriver.DriverAtoms.getText
-import androidx.test.espresso.web.webdriver.DriverAtoms.webClick
-import androidx.test.espresso.web.webdriver.DriverAtoms.webKeys
-import androidx.test.espresso.web.webdriver.Locator
-import androidx.test.espresso.web.assertion.WebViewAssertions
+import org.junit.runners.MethodSorters
 
 @RunWith(AndroidJUnit4::class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class AutofillE2ETest {
+
+    // 테스트 실패 시 스크린샷/덤프 자동 캡처
+    @get:Rule
+    val failureWatcher = object : TestWatcher() {
+        override fun failed(e: Throwable, description: Description) {
+            val testName = description.methodName
+            Log.e("AUTOFILL_E2E_DEBUG", ">>> TEST FAILED: $testName - ${e.message}", e)
+            try {
+                helper.dumpViewHierarchy("FAILURE_$testName")
+                helper.captureScreen("FAILURE_$testName")
+            } catch (ex: Exception) {
+                Log.w("AUTOFILL_E2E_DEBUG", "Failed to capture failure state: ${ex.message}")
+            }
+        }
+    }
 
     private lateinit var device: UiDevice
     private lateinit var context: Context
     private lateinit var autofillManager: AutofillManager
-    // private lateinit var scenario: ActivityScenario<MainActivity> // Not using ActivityScenario anymore
+    private lateinit var helper: WebViewTestHelper
+    private lateinit var homePage: HomePage
+    private lateinit var accountsPage: AccountsPage
+    private lateinit var settingsPage: SettingsPage
+    private lateinit var testHost: AutofillTestHost
 
-    // Test data
-    private val testUsername = "testuser"
-    private val testPassword = "testpass123"
-    private val testDomain = "example.com"
-    private val testFileName = "e2e-test-vault.json"
-    private val testPin = "1234"
+    // 테스트 데이터 (팩토리에서 생성)
+    private lateinit var vaultName: String
+    private lateinit var account: TestDataFactory.AccountInfo
+    private val testPin = TestDataFactory.TEST_PIN
+
+    /** 클래스 전체에서 1회만 초기화 수행하기 위한 플래그
+     *  - JUnit4는 테스트 메서드마다 새 클래스 인스턴스를 생성하므로 반드시 static(companion) 필드여야 함
+     *    (인스턴스 필드면 두 번째 테스트에서 false로 초기화되어 setup이 재실행됨 — 검증됨 2026-08)
+     *  - 두 번째 테스트부터는 setup이 스킵되어 이전 테스트의 상태(볼트/계정/설정)가 유지됨
+     */
+    companion object {
+        private var initialized = false
+        private const val TEST_DEVICE_PIN = "1234"
+
+        /** 1단계에서 만든 계정 정보 — 2단계는 새 계정을 만들지 않고 이것을 재사용해야 한다.
+         *  (인스턴스 필드로 두면 JUnit4가 테스트마다 새 인스턴스를 만들 때
+         *   TestDataFactory가 다른 username을 생성해 DB의 실제 계정과 불일치 — 검증됨 2026-08) */
+        private lateinit var sharedAccount: TestDataFactory.AccountInfo
+    }
 
     @Before
     fun setup() {
-        Log.e("AUTOFILL_E2E", "SETUP START")
+        if (initialized) {
+            Log.e("AUTOFILL_E2E_DEBUG", ">>> SETUP SKIPPED (already initialized)")
+            // JUnit4가 테스트마다 새 인스턴스를 만들므로 lateinit 필드는 매번 재바인딩 필요
+            device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            context = ApplicationProvider.getApplicationContext<Context>()
+            autofillManager = context.getSystemService(AutofillManager::class.java)
+            helper = WebViewTestHelper("AutofillE2ETest")
+            testHost = AutofillTestHost(device)
+            homePage = HomePage(helper)
+            accountsPage = AccountsPage(helper)
+            settingsPage = SettingsPage(helper, testHost)
+            // 1단계에서 만든 계정을 그대로 재사용 (새 값 생성 금지 — DB의 실제 계정과 불일치함)
+            account = sharedAccount
+            return
+        }
+
+        Log.e("AUTOFILL_E2E_DEBUG", ">>> SETUP START")
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         context = ApplicationProvider.getApplicationContext<Context>()
         autofillManager = context.getSystemService(AutofillManager::class.java)
+        helper = WebViewTestHelper("AutofillE2ETest")
+        testHost = AutofillTestHost(device)
 
-        // Verify device is unlocked (prerequisite)
+        // 테스트 데이터 생성
+        vaultName = TestDataFactory.uniqueVaultName(encrypted = false) // 비암호화로 단순화
+        account = TestDataFactory.accountForDomain("example.com")
+        sharedAccount = account
+
+        // 디바이스 언락 확인
         DeviceLockHelper.assertUnlocked()
 
-        // Initialize clean security environment (keep Keystore keys since device is unlocked)
+        // 1단계 전제: 잠금화면 없는 상태 (auth 없는 Keystore 키 생성 조건)
+        DeviceLockHelper.assertNoLockScreen()
+
+        // 보안 환경 초기화 (Keystore 키 유지 - 디바이스가 언락되어 있으므로)
         TestSecurityInitializer.initializeCleanEnvironment(context, recreateKeystoreKeys = false)
         TestSecurityInitializer.logEnvironmentState(context)
 
-        // Verify autofill service is configured
-        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val currentService = Settings.Secure.getString(targetContext.contentResolver, "autofill_service")
-        Log.e("AUTOFILL_E2E", "currentService (target ctx): $currentService")
+        // 앱 데이터 초기화 (WebView 캐시 등) - 테스트 간 상태 격리
+        Log.e("AUTOFILL_E2E_DEBUG", "Clearing app data...")
+        context.packageManager.getPackageInfo("com.kiyo.app", 0).let { pkgInfo ->
+            val appContext = context.createPackageContext("com.kiyo.app", Context.CONTEXT_IGNORE_SECURITY)
+            appContext.deleteDatabase("webview.db")
+            appContext.deleteDatabase("webviewCache.db")
+            appContext.cacheDir.deleteRecursively()
+            appContext.getDir("webview", Context.MODE_PRIVATE).deleteRecursively()
+        }
 
-        val expectedService = "com.kiyo.app/com.kiyo.app.autofill.service.KiyoAutofillService"
-        assertEquals("KIYO autofill service must be enabled via host ADB before test", expectedService, currentService)
-        Log.e("AUTOFILL_E2E", "Skipping isEnabled check, proceeding to test actual autofill behavior")
-
-        // Launch the main activity via UiAutomator (not ActivityScenario)
+        // 메인 액티비티 실행 (CLEAR_TASK로 기존 태스크 완전 정리)
+        // Deep link로 Files 탭 바로 열기 시도
         val intent = Intent().apply {
             setClassName("com.kiyo.app", "com.kiyo.app.MainActivity")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            // Ionic/Capacitor 앱에서 탭 선택을 위한 deep link 시도
+            data = Uri.parse("kiyo://files")
         }
         context.startActivity(intent)
-        
-        // Wait for app to be in foreground
+
         device.wait(Until.hasObject(By.pkg("com.kiyo.app").depth(0)), 15000)
-        Thread.sleep(5000) // Wait for Capacitor/React to fully load
+        Thread.sleep(3000) // 초기 로드 대기
 
-        Log.e("AUTOFILL_E2E", "SETUP END - All preconditions verified")
-    }
+        // 홈 화면(파일 탭)으로 강제 이동 (앱 상태 무관하게)
+        homePage = HomePage(helper)
+        homePage.ensureHomeScreen()
+        accountsPage = AccountsPage(helper)
+        settingsPage = SettingsPage(helper, testHost)
 
-    @After
-    fun tearDown() {
-        // Don't close scenario - we're not using ActivityScenario
+        initialized = true
+        Log.e("AUTOFILL_E2E_DEBUG", ">>> SETUP END - Ready")
     }
 
     /**
-     * Test A: Complete flow - Create vault -> Create account -> Sync -> Autofill
-     * This test requires the KIYO app to be installed and autofill service enabled via ADB.
+     * 비암호화·비인증 상태에서의 자동완성 E2E 테스트 (1단계)
+     * 볼트 생성(비암호화) → 계정 저장 → 설정 탭 이동 → 자동완성 사용 토글 ON
+     * → 서비스 활성화(시스템 다이얼로그에서 KIYO 선택) → 동기화
+     * → testHost 앱에서 실제 자동완성 드롭다운 표시 및 username/password 채움 검증
      */
     @Test
-    fun `E2E_A_CreateVaultCreateAccountSyncAndVerifyAutofill`() {
-        // Step 1: Create unencrypted vault file via WebView UI
-        Log.e("AUTOFILL_E2E", "Step 1: Create vault file via WebView")
-        createVaultViaWebView(testFileName)
+    fun `autofillEnableSyncAndFill_unencryptedVault_noAuth`() {
+        Log.e("DEBUG", "=== DEBUG_3: Autofill enable and sync ===")
+        val vaultName = TestDataFactory.uniqueVaultName(encrypted = false)
+        accountsPage = homePage.clickCreateVaultButton()
+            .createVault(vaultName, encrypted = false)
 
-        // Step 2: Create account via WebView UI
-        Log.e("AUTOFILL_E2E", "Step 2: Create test account via WebView")
-        createAccountViaWebView(testUsername, testPassword, testDomain)
+        val accountEditPage = accountsPage.clickAddAccount()
+            .selectDefaultTemplate()
+            .fillAccount(AccountEditPage.AccountData(
+                title = "Sync Account",
+                websiteUrl = account.websiteUrl,
+                username = account.username,
+                password = account.password,
+                packageName = account.packageName
+            ))
+        accountEditPage.save()
 
-        // Step 3: Sync accounts to autofill service
-        Log.e("AUTOFILL_E2E", "Step 3: Sync accounts to autofill service")
-        syncAccountsToAutofillService()
+        // 설정 화면으로 이동
+        settingsPage.navigateToSettings()
 
-        // Step 4: Launch test host and verify autofill
-        Log.e("AUTOFILL_E2E", "Step 4: Launch test host and verify autofill dropdown")
-        verifyAutofillInTestHost()
+        // 자동완성 사용 토글 ON
+        settingsPage.enableAutofillToggle()
 
-        Log.e("AUTOFILL_E2E", "E2E Test completed successfully")
+        // 자동완성 서비스 활성화 (시스템 다이얼로그에서 KIYO 선택)
+        settingsPage.activateAutofillService()
+
+        // 동기화 버튼 클릭 (네이티브 인증 프롬프트 처리 포함)
+        settingsPage.clickSyncAccounts()
+
+        // ===== 자동완성 검증: testHost 앱에서 실제 자동완성 드롭다운 확인 =====
+        Log.e("DEBUG", "=== DEBUG_3: Verifying autofill in test host ===")
+
+        // testHost 앱 실행 - 내부에서 새 인스턴스 시작 + 포커스 순환으로 자동완성 요청까지 수행
+        // (드롭다운이 이미 떠 있는 상태로 반환되므로 별도 클릭 트리거 불필요)
+        testHost.launch(account.domain)
+
+        // 자동완성 드롭다운에서 계정 선택
+        testHost.selectAutofillSuggestion(account.username)
+
+        // 비밀번호 자동완성 검증 (마스킹 길이 간접 비교)
+        assertTrue("Password should be autofilled", testHost.verifyPasswordFilled(account.password))
+        Log.e("AUTOFILL_E2E", "Autofill verified: username and password filled correctly")
+
+        helper.dumpViewHierarchy("autofill_verified")
+        helper.captureScreen("autofill_verified")
+
+        Log.e("DEBUG", "=== autofillEnableSyncAndFill_unencryptedVault_noAuth: PASS ===")
     }
 
     /**
-     * Create UNENCRYPTED vault file via WebView UI (Espresso-Web)
-     * Navigates: Home (file selection) -> Create file dialog -> Enter name -> Uncheck encryption -> Confirm
+     * 기기 자격증명(PIN) 추가 후 재동기화 E2E 테스트 (2단계)
+     *
+     * 사전 조건: 1단계 테스트가 먼저 실행되어 자동완성 설정+동기화 완료된 상태
+     * (setup 스킵 플래그 + @FixMethodOrder 알파벳순으로 순서 보장)
+     *
+     * 흐름: 기기 PIN 설정 → 설정 화면에서 동기화 클릭
+     * → Keystore가 업그레이드 감지(needsSecurityUpgrade): DB_KEY를 auth-required 마스터 키로 재래핑
+     * → 인증 프롬프트 처리(PIN 입력) → 동기화 성공 및 DB 카운트 유지 검증
      */
-    private fun createVaultViaWebView(fileName: String) {
-        // Wait for React app to fully load in WebView
-        waitForWebViewReady()
+    @Test
+    fun `resyncAfterDeviceCredentialAdded_authRequired`() {
+        Log.e("DEBUG", "=== resyncAfterDeviceCredentialAdded: START ===")
 
-        // Dump elements first for debugging
-        dumpWebViewElements("before-create-vault")
-
-        // Click "파일 생성" button in WebView - try multiple selectors
-        clickWebElementByText("파일 생성", "create file button")
-
-        Thread.sleep(3000)
-
-        // Dump after dialog opens
-        dumpWebViewElements("after-create-dialog-opened")
-
-        // Fill file name input - find first text input
-        typeInFirstTextInput(fileName)
-        Thread.sleep(500)
-
-        // Uncheck "파일 암호화 사용" checkbox - find checkbox input directly
-        try {
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//input[@type='checkbox']"))
-                .perform(webClick())
-            Thread.sleep(500)
-            Log.e("AUTOFILL_E2E", "Clicked encryption checkbox to uncheck")
-        } catch (e: Exception) {
-            // Fallback: try clicking the label
-            try {
-                clickWebElementByText("파일 암호화 사용", "encrypt checkbox label")
-                Thread.sleep(500)
-                Log.e("AUTOFILL_E2E", "Clicked label to uncheck checkbox")
-            } catch (e2: Exception) {
-                Log.w("AUTOFILL_E2E", "Checkbox uncheck failed: ${e2.message}")
-            }
-        }
-
-        // Click "생성" button
-        clickWebElementByText("생성", "confirm create button")
-
-        // Wait for navigation to accounts page
-        waitForAccountsPage()
-        Thread.sleep(3000)
-
-        // Dump after navigation attempt
-        dumpWebViewElements("after-create-click")
-
-        // Verify we're on accounts list page
-        verifyOnAccountsListPage()
-    }
-
-    /**
-     * Wait for React app to be fully loaded in WebView
-     * Tries to find a known element that exists on the home page
-     */
-    private fun waitForWebViewReady() {
-        val maxRetries = 60
-        val retryDelay = 1000L
-
-        for (i in 1..maxRetries) {
-            Log.e("AUTOFILL_E2E", "Waiting for WebView/React to load... attempt $i/$maxRetries")
-
-            // Try to find "파일 생성" button which indicates React app is loaded
-            try {
-                onWebView()
-                    .withElement(findElement(Locator.XPATH, "//button[contains(text(), '파일 생성')]"))
-                    .check(WebViewAssertions.webMatches(
-                        getText(),
-                        allOf(notNullValue())
-                    ))
-                Log.e("AUTOFILL_E2E", "WebView/React loaded successfully (found '파일 생성' button)")
-                Thread.sleep(2000) // Additional wait for full render
-                return
-            } catch (e: Exception) {
-                Log.w("AUTOFILL_E2E", "Button '파일 생성' not ready yet: ${e.message}")
-            }
-
-            // Fallback: check if WebView has ion-app (Ionic/Capacitor app root)
-            try {
-                onWebView()
-                    .withElement(findElement(Locator.TAG_NAME, "ion-app"))
-                    .check(WebViewAssertions.webMatches(
-                        getText(),
-                        allOf(notNullValue())
-                    ))
-                Log.e("AUTOFILL_E2E", "Found ion-app, trying to click button...")
-                try {
-                    onWebView()
-                        .withElement(findElement(Locator.XPATH, "//button[contains(text(), '파일 생성')]"))
-                        .perform(webClick())
-                    Log.e("AUTOFILL_E2E", "Clicked '파일 생성' button directly after ion-app found")
-                    Thread.sleep(2000)
-                    return
-                } catch (e: Exception) {
-                    Log.w("AUTOFILL_E2E", "ion-app found but button click failed: ${e.message}")
-                }
-            } catch (e: Exception) {
-                // Try alternative: check for WebView content
-            }
-
-            // Fallback: check if WebView has any content (body)
-            try {
-                onWebView()
-                    .withElement(findElement(Locator.TAG_NAME, "body"))
-                    .check(WebViewAssertions.webMatches(
-                        getText(),
-                        allOf(notNullValue())
-                    ))
-                Log.e("AUTOFILL_E2E", "WebView body found, trying to click button directly...")
-                // Body exists, try to click button directly
-                try {
-                    onWebView()
-                        .withElement(findElement(Locator.XPATH, "//button[contains(text(), '파일 생성')]"))
-                        .perform(webClick())
-                    Log.e("AUTOFILL_E2E", "Clicked '파일 생성' button directly after body found")
-                    Thread.sleep(2000)
-                    return
-                } catch (e: Exception) {
-                    // Button not ready yet, continue waiting
-                    Log.w("AUTOFILL_E2E", "Body found but button not ready: ${e.message}")
-                }
-            } catch (e: Exception) {
-                Log.w("AUTOFILL_E2E", "WebView body not found yet: ${e.message}")
-            }
-
-            Thread.sleep(1000)
-        }
-
-        throw AssertionError("WebView/React failed to load after $maxRetries seconds")
-    }
-
-    /**
-     * Click a web element by its visible text content
-     */
-    private fun clickWebElementByText(text: String, description: String) {
-        try {
-            // Try button with text
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//button[contains(text(), '$text')]"))
-                .perform(webClick())
-            Log.e("AUTOFILL_E2E", "Clicked $description (button) with text: $text")
-            return
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "Button with text '$text' not found: ${e.message}")
-        }
-
-        try {
-            // Try div/span with text
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//*[contains(text(), '$text')]"))
-                .perform(webClick())
-            Log.e("AUTOFILL_E2E", "Clicked $description (any element) with text: $text")
-            return
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "Any element with text '$text' not found: ${e.message}")
-        }
-
-        throw AssertionError("Could not find $description with text: $text")
-    }
-
-    /**
-     * Type text in the first available text input
-     */
-    private fun typeInFirstTextInput(text: String) {
-        try {
-            // Try input[type="text"]
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//input[@type='text']"))
-                .perform(webKeys(text))
-            Log.e("AUTOFILL_E2E", "Typed in text input: $text")
-            return
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "input[type='text'] not found: ${e.message}")
-        }
-
-        try {
-            // Try first input
-            onWebView()
-                .withElement(findElement(Locator.TAG_NAME, "input"))
-                .perform(webKeys(text))
-            Log.e("AUTOFILL_E2E", "Typed in first input: $text")
-            return
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "First input not found: ${e.message}")
-        }
-
-        try {
-            // Try textarea
-            onWebView()
-                .withElement(findElement(Locator.TAG_NAME, "textarea"))
-                .perform(webKeys(text))
-            Log.e("AUTOFILL_E2E", "Typed in textarea: $text")
-            return
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "Textarea not found: ${e.message}")
-        }
-
-        // Fallback to first input
-        typeInFirstTextInput(text)
-    }
-
-    /**
-     * Type text in an input by placeholder
-     */
-    private fun typeInInputByPlaceholder(placeholder: String, text: String) {
-        try {
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//input[@placeholder='$placeholder']"))
-                .perform(webKeys(text))
-            Log.e("AUTOFILL_E2E", "Typed in input with placeholder '$placeholder': $text")
-            return
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "Input with placeholder '$placeholder' not found: ${e.message}")
-        }
-
-        // Fallback to first input
-        typeInFirstTextInput(text)
-    }
-
-    /**
-     * Wait for accounts page to load by detecting FAB or account list elements
-     */
-    private fun waitForAccountsPage() {
-        val maxRetries = 15
-        val retryDelay = 2000L
-
-        for (i in 1..maxRetries) {
-            Log.e("AUTOFILL_E2E", "Waiting for accounts page... attempt $i/$maxRetries")
-
-            // Try to find FAB or accounts page indicator
-            val selectors = arrayOf(
-                "//button[@aria-label='Add account']",
-                "//button[contains(text(), '+')]",
-                "//ion-fab-button",
-                "//*[contains(text(), '계정') or contains(text(), 'Accounts')]"
-            )
-
-            var found = false
-            for (selector in selectors) {
-                try {
-                    onWebView()
-                        .withElement(findElement(Locator.XPATH, selector))
-                        .check(WebViewAssertions.webMatches(
-                            getText(),
-                            allOf(notNullValue())
-                        ))
-                    found = true
-                    Log.e("AUTOFILL_E2E", "Found accounts page indicator: $selector")
-                    break
-                } catch (e: Exception) {
-                    // Try next selector
-                }
-            }
-
-            if (found) {
-                return
-            }
-
-            Thread.sleep(retryDelay)
-        }
-
-        Log.w("AUTOFILL_E2E", "Accounts page not detected after $maxRetries attempts, proceeding anyway")
-    }
-
-    /**
-     * Verify we're on the accounts list page after vault creation
-     */
-    private fun verifyOnAccountsListPage() {
-        dumpWebViewElements("after-vault-create")
-
-        // Try FAB button first with aria-label (like React E2E test)
-        var found = false
-        try {
-            onWebView()
-                .withElement(findElement(Locator.XPATH, "//button[@aria-label='Add account']"))
-                .check(WebViewAssertions.webMatches(
-                    getText(),
-                    allOf(notNullValue())
-                ))
-            found = true
-            Log.e("AUTOFILL_E2E", "Found FAB button with aria-label=Add account")
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "FAB with aria-label=Add account not found: ${e.message}")
-        }
-
-        // Fallback: FAB with + text
-        if (!found) {
-            try {
-                onWebView()
-                    .withElement(findElement(Locator.XPATH, "//button[contains(text(), '+')]"))
-                    .check(WebViewAssertions.webMatches(
-                        getText(),
-                        allOf(notNullValue())
-                    ))
-                found = true
-                Log.e("AUTOFILL_E2E", "Found FAB button with +")
-            } catch (e: Exception) {
-                Log.w("AUTOFILL_E2E", "FAB with + not found: ${e.message}")
-            }
-        }
-
-        // Try Ionic FAB button and other common selectors
-        if (!found) {
-            val fabSelectors = arrayOf(
-                "//ion-fab-button",
-                "//button[@data-testid='add-account']",
-                "//button[contains(@class, 'add') or contains(@class, 'fab')]",
-                "//button[@aria-label='계정 추가']",
-                "//button[contains(text(), '계정')]",
-                "//*[@role='button' and (contains(text(), '추가') or contains(text(), 'Add'))]"
-            )
-
-            for (selector in fabSelectors) {
-                try {
-                    onWebView()
-                        .withElement(findElement(Locator.XPATH, selector))
-                        .check(WebViewAssertions.webMatches(
-                            getText(),
-                            allOf(notNullValue())
-                        ))
-                    found = true
-                    Log.e("AUTOFILL_E2E", "Found FAB with selector: $selector")
-                    break
-                } catch (e: Exception) {
-                    // Try next
-                }
-            }
-        }
-
-        // Try to find account list indicators
-        if (!found) {
-            val accountIndicators = arrayOf(
-                "My accounts", "내 계정", "계정", "Accounts", "My",
-                "add-account-fab", "plus", "+"
-            )
-
-            for (indicator in accountIndicators) {
-                try {
-                    onWebView()
-                        .withElement(findElement(Locator.XPATH, "//*[contains(text(), '$indicator')]"))
-                        .check(WebViewAssertions.webMatches(
-                            getText(),
-                            allOf(notNullValue())
-                        ))
-                    found = true
-                    Log.e("AUTOFILL_E2E", "Found account indicator: $indicator")
-                    break
-                } catch (e: Exception) {
-                    // Try next
-                }
-            }
-        }
-
-        if (!found) {
-            throw AssertionError("Should be on accounts list page. Could not find expected elements. Check dump for actual content.")
-        }
-
-        Log.e("AUTOFILL_E2E", "Successfully verified on accounts list page")
-    }
-
-    /**
-     * Create account via WebView UI (Espresso-Web)
-     * Navigates: Accounts list -> Add account (FAB) -> Template picker -> Fill form -> Save
-     */
-    private fun createAccountViaWebView(username: String, password: String, domain: String) {
-        // Click add account button (FAB with +)
-        clickWebElementByText("+", "add account FAB")
-        Thread.sleep(3000)
-
-        // Click "기본 템플릿" (default template)
-        try {
-            clickWebElementByText("기본 템플릿", "default template")
-            Thread.sleep(3000)
-        } catch (e: Exception) {
-            try {
-                clickWebElementByText("Default Template", "default template (EN)")
-                Thread.sleep(3000)
-            } catch (e2: Exception) {
-                try {
-                    clickWebElementByText("새 계정", "new account")
-                    Thread.sleep(3000)
-                } catch (e3: Exception) {
-                    Log.w("AUTOFILL_E2E", "Template selection failed: ${e3.message}")
-                }
-            }
-        }
-
-        // Fill form fields using placeholders
-        // Title field
-        typeInInputByPlaceholder("제목", "Test Account")
-        Thread.sleep(500)
-
-        // Website URL field
-        typeInInputByPlaceholder("웹사이트", "https://$domain")
-        Thread.sleep(500)
-
-        // Username/Email field - try multiple placeholders
-        try {
-            typeInInputByPlaceholder("이메일", username)
-        } catch (e: Exception) {
-            try {
-                typeInInputByPlaceholder("Email", username)
-            } catch (e2: Exception) {
-                try {
-                    typeInInputByPlaceholder("사용자", username)
-                } catch (e3: Exception) {
-                    Log.w("AUTOFILL_E2E", "Username field not found with any placeholder")
-                }
-            }
-        }
-        Thread.sleep(500)
-
-        // Password field
-        try {
-            typeInInputByPlaceholder("비밀번호", password)
-        } catch (e: Exception) {
-            try {
-                typeInInputByPlaceholder("Password", password)
-            } catch (e2: Exception) {
-                Log.w("AUTOFILL_E2E", "Password field not found with any placeholder")
-            }
-        }
-        Thread.sleep(500)
-
-        // Memo field (optional)
-        try {
-            typeInInputByPlaceholder("메모", "Test note")
-            Thread.sleep(500)
-        } catch (e: Exception) {
-            // Memo field not found, skip
-        }
-
-        // Click "저장" button
-        clickWebElementByText("저장", "save button")
-        Thread.sleep(5000)
-    }
-
-    /**
-     * Sync accounts to autofill service via plugin
-     */
-    private fun syncAccountsToAutofillService() {
-        runBlocking {
-            val plugin = KiyoAutofillPlugin()
-            plugin.load()
-            syncViaRepository()
-        }
-    }
-
-    /**
-     * Direct repository sync using the Keystore-protected key
-     */
-    private fun syncViaRepository() = runBlocking {
-        // Get the DB key from Keystore (requires device unlocked)
-        val dbKey = com.kiyo.app.security.DatabaseKeyManager.getKey(context).encoded
-        val repository = AutofillRepository.create(context, dbKey)
-
-        val testAccountsJson = """
-            [{
-                "id": 1,
-                "title": "Test Account",
-                "websiteUrl": "https://$testDomain",
-                "domain": "$testDomain",
-                "packageName": "com.kiyo.autofilltest",
-                "fields": [
-                    {"id": "1", "label": "Username", "type": "email", "value": "$testUsername", "order": 0},
-                    {"id": "2", "label": "Password", "type": "password", "value": "$testPassword", "order": 1}
-                ],
-                "favorite": false,
-                "createdAt": ${System.currentTimeMillis()},
-                "updatedAt": ${System.currentTimeMillis()}
-            }]
-        """.trimIndent()
-
-        val result = repository.syncAccountsFromReact(testAccountsJson)
-        val synced = result.first
-        val errors = result.second
-        Log.e("AUTOFILL_E2E", "Synced $synced accounts, errors: $errors")
-        assertTrue("Should sync 1 account", synced == 1)
-        repository.close()
-    }
-
-    /**
-     * Launch autofill test host and verify autofill dropdown appears (UiAutomator)
-     */
-    private fun verifyAutofillInTestHost() {
-        val intent = Intent().apply {
-            setClassName("com.kiyo.autofilltest", "com.kiyo.autofilltest.AutofillTestHostActivity")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra("domain_hint", testDomain)
-        }
-        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
-        targetContext.startActivity(intent)
-
-        device.wait(Until.hasObject(By.pkg("com.kiyo.autofilltest")), 10000)
+        // 1. 기기에 PIN 설정 (Keystore auth-required 키 생성 가능 상태로 전환)
+        setDevicePin(TEST_DEVICE_PIN)
         Thread.sleep(2000)
 
-        // Find and click username field to trigger autofill
-        val usernameField = device.wait(
-            Until.findObject(By.clazz("android.widget.EditText")
-                .hint("example@email.com")
-                .enabled(true)),
-            10000
-        )
-        assertNotNull("Username field should be found", usernameField)
-        usernameField.click()
+        // 2. KIYO 앱을 포어그라운드로 복귀 (testHost 실행으로 화면이 이동했을 수 있음)
+        //    - PIN 설정으로 Activity가 재생성되어 WebView 바인딩이 무효화될 수 있으므로 재바인딩 대기
+        bringKiyoAppToForeground()
+        Thread.sleep(3000)
+        helper.waitForWebViewReady()
 
-        // Wait for autofill dropdown with testuser
-        val autofillDropdown = device.wait(
-            Until.findObject(By.text(testUsername).clazz("android.widget.TextView")),
-            15000
-        )
+        // 3. 계정 리스트로 진입 - 사용자 환경처럼 하단 List 탭으로 이동
+        //    (강제 이동 없음: 이미 계정 리스트면 그대로 진행, 아니면 List 탭 클릭)
+        //    - 볼트는 IndexedDB의 고정 active 레코드이므로 useFileAuthGuard를 통과하여
+        //      /accounts에서 기존 볼트 데이터가 그대로 로드됨 (파일 재선택 불필요)
+        if (!helper.waitForText("My accounts", 3000)) {
+            helper.clickByAriaLabel("List", "list tab")
+        }
+        if (!helper.waitForText("My accounts", 10000)) {
+            helper.dumpViewHierarchy("accounts_list_not_loaded")
+            helper.captureScreen("accounts_list_not_loaded")
+            throw AssertionError("Accounts list did not load after app restart")
+        }
+        // 계정 리스트 진입 직후 상태 캡처 (볼트/계정 데이터 유지 여부 확인용)
+        helper.dumpViewHierarchy("accounts_list_loaded")
+        helper.captureScreen("accounts_list_loaded")
 
-        assertNotNull("Autofill dropdown should show testuser", autofillDropdown)
-        assertTrue("Dropdown should contain testuser", autofillDropdown.text.contains(testUsername))
-        Log.e("AUTOFILL_E2E", "Autofill dropdown found with testuser")
+        // 4. 설정 화면에서 동기화 클릭 - 업그레이드(재래핑) 발생 지점
+        settingsPage.navigateToSettings()
+        settingsPage.clickSyncAccountsWithPinAuth(TEST_DEVICE_PIN)
 
-        // Click the dropdown item to fill
-        autofillDropdown.click()
-        Thread.sleep(1000)
+        // 5. 검증: 동기화 성공 - 계정 수 유지 + 마지막 동기화 갱신
+        assertTrue("KIYO account count should be preserved",
+            helper.waitForText("KIYO 앱"))
+        helper.dumpViewHierarchy("after_resync_with_auth")
+        helper.captureScreen("after_resync_with_auth")
 
-        // Verify password field also gets filled
-        val passwordField = device.wait(
-            Until.findObject(By.clazz("android.widget.EditText")
-                .hint("비밀번호")
-                .enabled(true)),
-            5000
-        )
-        assertNotNull("Password field should be found", passwordField)
-        assertTrue("Password should be filled", passwordField.text.isNotEmpty())
-        assertEquals("Password should match test value", testPassword, passwordField.text)
+        // 6. 재래핑 직후 fill 검증 (v3 회귀 핵심):
+        //    debug 빌드는 인증 유효시간 30초 → 35초 대기 후 fill하면
+        //    서비스가 UserNotAuthenticatedException → createAuthResponse() → 인증 프롬프트 경로를 탄다.
+        //    "재래핑 → 캐시 만료 → 즉시 fill + 사용자 인증" 전체 흐름의 실기기 검증.
+        Log.e("DEBUG", "=== resyncAfterDeviceCredentialAdded: waiting 35s for Keystore auth cache expiry ===")
+        Thread.sleep(35_000)
+
+        Log.e("DEBUG", "=== resyncAfterDeviceCredentialAdded: verifying autofill in test host with auth ===")
+        testHost.launch(account.domain)
+
+        // launch() 내부의 triggerAutofillRequest로 onFillRequest가 이미 발화됨.
+        // 인증 캐시 만료 상태이므로 여기서 인증 프롬프트(auth dataset)가 떠야 한다.
+        if (!testHost.isAutofillDropdownVisible(account.username)) {
+            // 디버그: 현재 화면에 어떤 노드가 있는지 기록 (auth dataset 탐지 실패 원인 분석용)
+            helper.dumpViewHierarchy("before_auth_dataset_click")
+            helper.captureScreen("before_auth_dataset_click")
+            // auth dataset 항목 탭 — 부분 문자열 매칭 (실제 노드 텍스트: "🔒 잠금 해제하여 자동완성을 사용하세요.")
+            val authDatasetText = "잠금 해제하여 자동완성을 사용하세요"
+            val authTapped = helper.clickByTextContains(authDatasetText, "auth dataset")
+                || run {
+                    Log.w("AUTOFILL_E2E", "Auth dataset not found, retrying after 3s (save UI delay)")
+                    Thread.sleep(3000)
+                    helper.clickByTextContains(authDatasetText, "auth dataset retry")
+                }
+            assertTrue("Neither autofill dropdown nor auth dataset appeared after re-wrap+expiry", authTapped)
+
+            // 네이티브 인증 프롬프트 처리.
+            // 참고(검증됨 2026-08): 이 프롬프트는 BiometricPrompt 시스템 창이라 접근성 트리에
+            // 노드가 노출되지 않아 UIAutomator 탐지가 불가능하다. 대신 프롬프트가 뜰 것이
+            // 확실한 상태(35초 캐시 만료 + dataset 탭 성공)이므로 키코드로 PIN을 직접 입력한다.
+            Thread.sleep(2500) // 프롬프트 렌더링 대기
+            val pinEntered = testHost.inputPinViaKeyEvents(TEST_DEVICE_PIN)
+            assertTrue("Failed to input PIN via key events", pinEntered)
+            Thread.sleep(2000)
+        }
+
+        // 인증 통과 후 드롭다운 대기.
+        // 주의(검증됨 2026-08): 인증 응답 dataset은 프레임워크가 표시하지만 지연이 있고,
+        // 이때 필드를 재클릭하면 떠 있던 드롭다운이 닫혀버린다. 재클릭 금지 — 넉넉히 대기만.
+        Log.d("AUTOFILL_E2E", "Waiting up to 30s for authenticated dataset dropdown...")
+        val dropdownAppeared = testHost.waitForAutofillDropdown(account.username, timeoutMs = 30_000)
+        if (!dropdownAppeared) {
+            // 그래도 안 떴을 때만 필드 재클릭으로 fill 요청 재발화 (최후 수단)
+            helper.dumpViewHierarchy("dropdown_missing_before_reclick")
+            testHost.clickUsernameField()
+        }
+        testHost.selectAutofillSuggestion(account.username)
+        assertTrue("Password should be autofilled after re-wrap and user auth",
+            testHost.verifyPasswordFilled(account.password))
+        helper.dumpViewHierarchy("autofill_after_rewrap_verified")
+        helper.captureScreen("autofill_after_rewrap_verified")
+
+        Log.e("DEBUG", "=== resyncAfterDeviceCredentialAdded: PASS ===")
+
+        // 정리: PIN 제거 (다음 테스트 실행 환경 복원)
+        clearDevicePin(TEST_DEVICE_PIN)
     }
 
-    /**
-     * Debug helper to dump WebView elements
+    /** adb locksettings로 기기 PIN 설정
+     *  - persistent_data_block 서비스가 늦게 준비되는 에뮬레이터에서 set-pin이
+     *    ServiceNotFoundException으로 실패할 수 있으므로 재시도한다 (검증됨 2026-08)
+     *  - 성공 여부를 KeyguardManager.isDeviceSecure로 실제 확인 — 실패 시 테스트 fail
      */
-    private fun dumpWebViewElements(stage: String) {
-        try {
-            // Try to get page title
-            onWebView()
-                .withElement(findElement(Locator.TAG_NAME, "title"))
-                .check(WebViewAssertions.webMatches(
-                    getText(),
-                    allOf(notNullValue())
-                ))
-            Log.e("AUTOFILL_E2E", "[$stage] Page title found")
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "[$stage] Could not get page title: ${e.message}")
+    private fun setDevicePin(pin: String) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val uiAutomation = instrumentation.uiAutomation
+        var output = ""
+        for (attempt in 1..3) {
+            val stream = uiAutomation.executeShellCommand("locksettings set-pin $pin")
+            output = java.io.FileInputStream(stream.fileDescriptor).bufferedReader().readText()
+            stream.close()
+            if (output.contains("Pin set", ignoreCase = true)) {
+                Log.i("AUTOFILL_E2E", "Device PIN set (attempt $attempt): ${output.trim()}")
+                break
+            }
+            Log.w("AUTOFILL_E2E", "set-pin attempt $attempt failed: ${output.trim()}")
+            Thread.sleep(3000)
         }
+        // 실제 잠금화면 설정 여부 확인 (가짜 통과 방지)
+        Thread.sleep(1000)
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        assertTrue(
+            "Device PIN was not actually set (isDeviceSecure=false). locksettings output: ${output.trim()}",
+            keyguardManager.isDeviceSecure
+        )
+        Log.i("AUTOFILL_E2E", "KeyguardManager.isDeviceSecure=true confirmed")
+    }
 
-        // Try to find common elements
-        try {
-            Log.e("AUTOFILL_E2E", "[$stage] Attempting to find common elements")
-        } catch (e: Exception) {
-            Log.w("AUTOFILL_E2E", "[$stage] Could not dump elements: ${e.message}")
+    /** adb locksettings로 기기 PIN 제거 */
+    private fun clearDevicePin(pin: String) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val uiAutomation = instrumentation.uiAutomation
+        for (attempt in 1..3) {
+            val output = uiAutomation.executeShellCommand("locksettings clear --old $pin")
+                .let { pf -> java.io.FileInputStream(pf.fileDescriptor).bufferedReader().readText() }
+            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+            if (!keyguardManager.isDeviceSecure) {
+                Log.i("AUTOFILL_E2E", "Device PIN cleared (attempt $attempt)")
+                return
+            }
+            Log.w("AUTOFILL_E2E", "clear attempt $attempt output: ${output.trim()}")
+            Thread.sleep(3000)
         }
+        Log.w("AUTOFILL_E2E", "Device PIN may still be set after clear attempts")
+    }
+
+    /** KIYO 앱을 포어그라운드로 가져오기 */
+    private fun bringKiyoAppToForeground() {
+        val intent = Intent().apply {
+            setClassName("com.kiyo.app", "com.kiyo.app.MainActivity")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        device.wait(Until.hasObject(By.pkg("com.kiyo.app").depth(0)), 10000)
     }
 }

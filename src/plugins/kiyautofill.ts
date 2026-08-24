@@ -29,6 +29,8 @@ export interface SyncAccountsResult {
   errorCount: number;
   success: boolean;
   authRequired?: boolean;
+  securityDowngrade?: boolean;
+  securityUpgrade?: boolean;
   message?: string;
 }
 
