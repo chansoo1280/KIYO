@@ -32,3 +32,4 @@ playwright-report/
 .history
 screenshots
 coverage
+.hermes/plan_old
