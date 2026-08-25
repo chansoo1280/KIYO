@@ -1,5 +1,6 @@
 package com.kiyo.app.autofill.pageobjects
 
+import android.content.Intent
 import android.util.Log
 import androidx.test.espresso.web.sugar.Web.onWebView
 import androidx.test.espresso.web.webdriver.DriverAtoms.findElement
@@ -159,6 +160,30 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
             helper.captureScreen("autofill_confirm_dialog")
             confirmButton.click()
             Thread.sleep(1000)
+            // Change 클릭 후 CredentialsPickerActivity가 포그라운드에 남아 있으면
+            // MainActivity가 resume되지 않아 "KIYO 자동완성 활성화됨" 텍스트가 렌더링되지 않는다
+            // (검증됨 2026-08-25). back 대신 앱을 명시적으로 포그라운드로 복귀시킨다 —
+            // back press는 Capacitor backButton 핸들러로 들어가 WebView 히스토리가
+            // Settings→Accounts로 이동해버림 (검증됨 2026-08-25 2차).
+            val device2 = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            if (device2.hasObject(By.pkg("com.android.settings").depth(0))) {
+                Log.i("AUTOFILL_E2E", "Picker still in foreground after Change - relaunching KIYO app")
+                val appContext = InstrumentationRegistry.getInstrumentation()
+                    .targetContext.applicationContext
+                // CLEAR_TASK로 재시작해야 WebView가 리로드되며 isAutofillEnabled를 재조회해
+                // UI가 "활성화됨"으로 갱신된다. restart만으로는 React 상태가 stale (검증됨 2026-08-25 3차)
+                appContext.startActivity(
+                    Intent().apply {
+                        setClassName("com.kiyo.app", "com.kiyo.app.MainActivity")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        data = android.net.Uri.parse("kiyo://settings")
+                    },
+                )
+                Thread.sleep(4000)
+                // 재시작 후 Settings 탭으로 이동 (CLEAR_TASK면 홈에서 시작함)
+                Thread.sleep(2000)
+                device2.clickByAriaLabel("Settings", "settings tab after relaunch")
+            }
         } else {
             Log.i("AUTOFILL_E2E", "No confirmation dialog (applied directly)")
         }

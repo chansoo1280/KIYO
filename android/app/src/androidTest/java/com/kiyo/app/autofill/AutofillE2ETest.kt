@@ -316,8 +316,141 @@ class AutofillE2ETest {
 
         Log.e("DEBUG", "=== resyncAfterDeviceCredentialAdded: PASS ===")
 
-        // 정리: PIN 제거 (다음 테스트 실행 환경 복원)
+        // 정리: PIN 제거는 하지 않는다 — step3(process death)에서 auth-required 상태와
+        // 유효한 인증 캐시가 필요하다. PIN 정리는 step4(다운그레이드)가 마지막에 수행한다.
+    }
+
+    /**
+     * 프로세스 종료 후 인증 캐시 유효성 E2E 테스트 (3단계)
+     *
+     * 사전 조건: 2단계까지 실행되어 auth-required 마스터 키로 재래핑된 상태.
+     * (단, 2단계 마지막에 35초 대기로 캐시가 만료됐으므로 본 테스트에서 재인증 후 진행)
+     *
+     * 흐름: 기기 PIN 설정(이미 설정돼 있으면 스킵) → 동기화(재인증) →
+     * 자동완성 서비스 프로세스만 PID 특정 후 kill (am force-stop과 구분) →
+     * testHost 진입 → 프롬프트 없이 fill 성공 검증.
+     * Timing budget: 인증 성공 → kill → fill 완료까지 debug 30초 이내.
+     * 각 단계 타임스탬프를 로그로 남겨 flaky 시 원인 판별 가능하게 함.
+     */
+    @Test
+    fun `step3_autofillAfterProcessDeath_authCacheValid`() {
+        Log.e("DEBUG", "=== step3_autofillAfterProcessDeath: START ===")
+        val t0 = System.currentTimeMillis()
+
+        // 0. 이전 테스트 종료 시 instrumentation이 MainActivity를 finish하므로 먼저 재기동
+        bringKiyoAppToForeground()
+        Thread.sleep(3000)
+        helper.waitForWebViewReady()
+
+        // 1. 잠금화면 확보 (2단계에서 유지됨 — 실제 확인 후 필요 시 설정)
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        if (!km.isDeviceSecure) {
+            setDevicePin(TEST_DEVICE_PIN)
+            Thread.sleep(2000)
+            bringKiyoAppToForeground()
+            Thread.sleep(3000)
+            helper.waitForWebViewReady()
+        }
+        Log.i("AUTOFILL_E2E", "[t=${System.currentTimeMillis() - t0}ms] lockscreen ready")
+
+        // 2. 동기화로 인증 수행 (Keystore 인증 캐시 갱신)
+        settingsPage.navigateToSettings()
+        settingsPage.clickSyncAccountsWithPinAuth(TEST_DEVICE_PIN)
+        assertTrue("KIYO account count should be preserved",
+            helper.waitForText("KIYO 앱"))
+        Log.i("AUTOFILL_E2E", "[t=${System.currentTimeMillis() - t0}ms] sync done (auth cache refreshed)")
+
+        // 3. 자동완성 서비스 프로세스만 종료 (PID 특정 후 kill — am force-stop과 구분)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val pidOutput = instrumentation.uiAutomation.executeShellCommand("pidof com.kiyo.app")
+            .let { pf -> java.io.FileInputStream(pf.fileDescriptor).bufferedReader().readText().trim() }
+        assertTrue("Could not resolve com.kiyo.app pid, got: '$pidOutput'", pidOutput.isNotEmpty())
+        val mainPid = pidOutput.split("\\s+".toRegex()).first()
+        instrumentation.uiAutomation.executeShellCommand("kill $mainPid").close()
+        Log.i("AUTOFILL_E2E", "[t=${System.currentTimeMillis() - t0}ms] killed com.kiyo.app pid=$mainPid")
+        Thread.sleep(2000)
+
+        // 4. KIYO 앱 재기동 (AutofillService는 별도 프로세스일 때 시스템이 재시작함;
+        //    동일 프로세스라면 다음 fill 요청 시 앱 프로세스와 함께 재생성된다)
+        bringKiyoAppToForeground()
+        Thread.sleep(2000)
+
+        // 5. testHost 진입 → 프롬프트 없이 fill (30초 타이밍 예산 내)
+        testHost.launch(account.domain)
+        val dropdownAppeared = testHost.isAutofillDropdownVisible(account.username) ||
+            testHost.waitForAutofillDropdown(account.username, timeoutMs = 15_000)
+        val elapsed = System.currentTimeMillis() - t0
+        Log.i("AUTOFILL_E2E", "[t=${elapsed}ms] fill attempt complete")
+
+        if (!dropdownAppeared) {
+            // 인증 프롬프트 경로로 빠졌다면 캐시가 유효하지 않았다는 뜻 — 실패 원인 캡처
+            helper.dumpViewHierarchy("step3_no_dropdown")
+            helper.captureScreen("step3_no_dropdown")
+        }
+        assertTrue(
+            "Autofill dropdown should appear WITHOUT auth prompt after process death (auth cache must survive)",
+            dropdownAppeared,
+        )
+        testHost.selectAutofillSuggestion(account.username)
+        assertTrue("Password should be autofilled after process death",
+            testHost.verifyPasswordFilled(account.password))
+        assertTrue(
+            "Timing budget exceeded: ${elapsed}ms > 30000ms",
+            elapsed <= 30_000,
+        )
+        helper.dumpViewHierarchy("step3_verified")
+        helper.captureScreen("step3_verified")
+        Log.e("DEBUG", "=== step3_autofillAfterProcessDeath: PASS (${elapsed}ms) ===")
+    }
+
+    /**
+     * 보안 다운그레이드 E2E 테스트 (4단계)
+     *
+     * 흐름: PIN 제거 → 동기화 → reset + rebuild 확인.
+     * 관찰 대상: logcat `Security downgrade detected` + `Resetting autofill security state`
+     * + 재동기화 성공(계정 수 유지).
+     * 다운그레이드 리셋으로 DB가 재구축되므로 이후 fill도 최종 검증한다.
+     */
+    @Test
+    fun `step4_autofillSecurityDowngrade_lockscreenRemoved`() {
+        Log.e("DEBUG", "=== step4_autofillSecurityDowngrade: START ===")
+
+        // 1. 잠금화면 제거 (auth-required 키 vs 잠금화면 없음 = 다운그레이드 상태)
         clearDevicePin(TEST_DEVICE_PIN)
+        Thread.sleep(2000)
+        bringKiyoAppToForeground()
+        Thread.sleep(3000)
+        helper.waitForWebViewReady()
+
+        // 2. 동기화 → 다운그레이드 감지 지점 (reset + rebuild)
+        settingsPage.navigateToSettings()
+        settingsPage.clickSyncAccountsWithPinAuth(TEST_DEVICE_PIN)
+
+        // 3. 관찰: 다운그레이드 로그 (instrumentation이 같은 기기의 logcat을 읽음)
+        Thread.sleep(3000)
+        val logcat = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("logcat -d -t 500")
+            .let { pf -> java.io.FileInputStream(pf.fileDescriptor).bufferedReader().readText() }
+        val sawDowngrade = logcat.contains("Security downgrade detected")
+        val sawReset = logcat.contains("Resetting autofill security state")
+        Log.i("AUTOFILL_E2E", "downgrade log: detected=$sawDowngrade reset=$sawReset")
+        assertTrue("Logcat should record 'Resetting autofill security state' after lockscreen removal + sync", sawReset)
+
+        // 4. 재구축 검증: 계정 수 유지 + 마지막 동기화 갱신
+        assertTrue("KIYO account count should be preserved after downgrade rebuild",
+            helper.waitForText("KIYO 앱"))
+        helper.dumpViewHierarchy("after_downgrade_resync")
+        helper.captureScreen("after_downgrade_resync")
+
+        // 5. 다운그레이드 후 fill 검증 (잠금화면 없음 → auth 없는 키 → 프롬프트 없이 fill)
+        testHost.launch(account.domain)
+        val dropdownAppeared = testHost.isAutofillDropdownVisible(account.username) ||
+            testHost.waitForAutofillDropdown(account.username, timeoutMs = 20_000)
+        assertTrue("Autofill dropdown should appear after downgrade rebuild", dropdownAppeared)
+        testHost.selectAutofillSuggestion(account.username)
+        assertTrue("Password should be autofilled after downgrade rebuild",
+            testHost.verifyPasswordFilled(account.password))
+        Log.e("DEBUG", "=== step4_autofillSecurityDowngrade: PASS ===")
     }
 
     /** adb locksettings로 기기 PIN 설정
