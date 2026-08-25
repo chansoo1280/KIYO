@@ -88,7 +88,7 @@ if (-not $SkipSetup) {
 }
 
 # Build & install APKs (unless skipped)
-$androidDir = Join-Path $PSScriptRoot "android"
+$androidDir = $PSScriptRoot
 if (-not $SkipBuild) {
     Write-Log "Building and installing app + test APKs..."
     Push-Location $androidDir
