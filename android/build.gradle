@@ -23,6 +23,18 @@ allprojects {
         google()
         mavenCentral()
     }
+    // kotlin-stdlib 1.8.22+는 jdk7/jdk8 변형을 흡수했다 — 구형 jdk7/jdk8 아티팩트와
+    // 공존하면 duplicate class 오류가 난다 (androidTest classpath 등 하위 모듈 포함 전역 적용)
+    configurations.all {
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.6.21"))
+                .using(module("org.jetbrains.kotlin:kotlin-stdlib:1.8.22"))
+                .because("kotlin-stdlib 1.8+ includes jdk7/jdk8 variants")
+            substitute(module("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.21"))
+                .using(module("org.jetbrains.kotlin:kotlin-stdlib:1.8.22"))
+                .because("kotlin-stdlib 1.8+ includes jdk7/jdk8 variants")
+        }
+    }
 }
 
 task clean(type: Delete) {
