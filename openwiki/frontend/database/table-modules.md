@@ -1,9 +1,9 @@
 ---
 type: "Reference"
-title: "Home"
+title: "Table modules"
 openwiki_generated: true
 ---
 
 ---
-type: component
+type: overview
 ...(argument truncated)

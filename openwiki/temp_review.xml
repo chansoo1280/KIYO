@@ -1,0 +1,29 @@
+<review status="CHANGES_REQUESTED">
+  <prior_requests>
+    <item id="RQ-01" status="VERIFIED">
+      <evidence>Skeleton updated to include frontend/components/ with specific subsections for Button, AutoLockIndicator, BottomTabs, icons, and dialogs components as requested.</evidence>
+    </item>
+    <item id="RQ-02" status="VERIFIED">
+      <evidence>Skeleton updated to include frontend/hooks/ with documentation for useAutoLock, useFileAuthGuard, useClipboard, and useAndroidBackButton hooks as requested.</evidence>
+    </item>
+    <item id="RQ-03" status="VERIFIED">
+      <evidence>Skeleton updated to include frontend/data-models/ with documentation for builtin-templates and website-presets data models as requested.</evidence>
+    </item>
+    <item id="RQ-04" status="VERIFIED">
+      <evidence>Skeleton updated to include frontend/capacitor-plugins/ with documentation for KiyoAutofill, KiyoSecureKey, and KiyoFile plugins as requested.</evidence>
+    </item>
+    <item id="RQ-05" status="VERIFIED">
+      <evidence>Skeleton updated to include frontend/errors.md covering error handling patterns and FileStorageError as requested.</evidence>
+    </item>
+    <item id="RQ-06" status="VERIFIED">
+      <evidence>Skeleton updated to include frontend/app-structure.md covering entry points, routing, providers, and global state as requested.</evidence>
+    </item>
+  </prior_requests>
+  <new_requests>
+    <item id="RQ-07">
+      <gap>Development data initialization file devAccounts.ts (src/data/devAccounts.ts) lacks explicit documentation in the skeleton despite being used for initializing development/test data in fileStorage.ts</gap>
+      <evidence>src/data/devAccounts.ts exists (1127 bytes) and is imported/used in src/database/fileStorage.ts (lines 26 and 305) for development data initialization. The skeleton includes frontend/database/file-storage.md but its description only covers "Vault file CRUD, encryption pipeline, import/export" without mentioning development data initialization. Other src/data files (builtinTemplates.ts, websitePresets.ts, icons.ts) are documented, creating an inconsistent pattern.</evidence>
+      <required_change>Update the description of frontend/database/file-storage.md to include "development data initialization using devAccounts.ts" alongside its current coverage of "Vault file CRUD, encryption pipeline, import/export."</required_change>
+    </item>
+  </new_requests>
+</review>
