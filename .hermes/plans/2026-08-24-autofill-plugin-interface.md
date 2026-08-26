@@ -1,6 +1,7 @@
 # Plan: Autofill Plugin Interface Clarification (vNext)
 
 **Date:** 2026-08-24 (reviewed 2026-08-25)
+**Status:** ✅ 구현 완료 + 검증 통과 (2026-08-25) — 커밋 `329d800c`
 **Branch:** `feature/autofill-reliability`
 **Related:** STRATEGY.md Track 1 — 자동완성 신뢰도
 **Topic:** Plugin Interface Clarification
@@ -141,10 +142,10 @@ DB 키 소유권(DatabaseKeyManager), Keystore 보호(`kiyo_master_key`), 인증
 
 | Test File | Type | Scenarios to Pass | Status |
 |-----------|------|-------------------|--------|
-| `AutofillSyncManagerTest` | JVM Unit (Robolectric+MockK) | **NEW FILE** - downgrade → reset, auth-required → pendingSync, 인증 성공/취소 재시도 경로, valid key → sync called, securityUpgrade flag, init error handling | ⬜ Not Run |
-| `KiyoAutofillPluginTest` | JVM Unit | 기존 smoke 2개 유지 + AutofillSyncManager 위임 검증 추가 | ⬜ Not Run |
-| `kiyautofill.ts` (TypeScript) | Compile Check (`npm run typecheck`) | TypeScript definitions compile without errors; `AutofillPlatformBridge` interface defined; React API 변경 없음 | ⬜ Not Run |
-| Android Autofill E2E | Instrumented (`npm run test:e2e:android:fast`) | noAuth fill + authRequired 재동기화 두 시나리오 모두 통과 — sync 경로 회귀 없음 확인 | ⬜ Not Run |
+| `AutofillSyncManagerTest` | JVM Unit (Robolectric+MockK) | **NEW FILE** - downgrade → reset, auth-required → pendingSync, 인증 성공/취소 재시도 경로, valid key → sync called, securityUpgrade flag, init error handling | ✅ Pass (2026-08-25, 7/7 green) |
+| `KiyoAutofillPluginTest` | JVM Unit | 기존 smoke 2개 유지 + AutofillSyncManager 위임 검증 추가 | ✅ Pass (2026-08-25, 3/3 green) |
+| `kiyautofill.ts` (TypeScript) | Compile Check (`npm run typecheck`) | TypeScript definitions compile without errors; `AutofillPlatformBridge` interface defined; React API 변경 없음 | ✅ Pass (2026-08-25) |
+| Android Autofill E2E | Instrumented (`npm run test:e2e:android:fast`) | noAuth fill + authRequired 재동기화 두 시나리오 모두 통과 — sync 경로 회귀 없음 확인 | ✅ Pass (2026-08-25, 사용자 확인 완료) |
 
 **Pass Criteria:** All test files in this table must pass (green) for this plan to be complete. E2E는 에뮬레이터 필요 — 실행 불가 시 manual verification 결과를 문서에 기록하고 이유를 명시한다.
 

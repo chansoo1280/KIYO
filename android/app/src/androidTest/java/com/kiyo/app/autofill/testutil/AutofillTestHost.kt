@@ -8,6 +8,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
+import java.io.File
 
 /**
  * 자동완성 테스트 호스트 앱(AutofillTestHostActivity) 제어 래퍼.
@@ -57,17 +58,38 @@ class AutofillTestHost(private val device: UiDevice) {
     /** username 필드 1회 클릭으로 onFillRequest 발화 유도
      *  - CLEAR_TASK 새 인스턴스이므로 초기화 상태가 보장됨 → 포커스 순환(3-클릭) 폴백 불필요
      *  - 3-클릭은 이미 뜬 드롭다운 항목을 오클릭하는 문제가 있어 제거함 (검증됨 2026-08)
+     *  - 단, 일부 상황에서 1회 클릭만으로는 fill request가 발화하지 않을 수 있으므로
+     *    포커스 이동 패턴(username → password → username) 사용
      */
     private fun triggerAutofillRequest() {
         try {
-            val field = device.wait(
+            val usernameField = device.wait(
                 Until.findObject(By.clazz("android.widget.EditText")
                     .hint("example@email.com")
                     .enabled(true)),
                 10000
             ) ?: return
-            field.click()
-            Log.i("AutofillTestHost", "Autofill request triggered via username click")
+            
+            val passwordField = device.wait(
+                Until.findObject(By.clazz("android.widget.EditText")
+                    .hint("비밀번호")
+                    .enabled(true)),
+                5000
+            ) ?: return
+
+            // 1) username 클릭 (포커스 진입)
+            usernameField.click()
+            Thread.sleep(500)
+
+            // 2) password 클릭 (포커스 이탈)
+            passwordField.click()
+            Thread.sleep(500)
+
+            // 3) username 재클릭 (재진입 → 시스템이 onFillRequest 발화)
+            usernameField.click()
+            Thread.sleep(1500)
+            
+            Log.i("AutofillTestHost", "Autofill request triggered via focus cycle (3-click)")
         } catch (e: Exception) {
             Log.w("AutofillTestHost", "triggerAutofillRequest failed: ${e.message}")
         }
@@ -121,10 +143,25 @@ class AutofillTestHost(private val device: UiDevice) {
 
     /** 자동완성 드롭다운에서 특정 계정 선택 */
     fun selectAutofillSuggestion(username: String): UiObject2 {
+        // 드롭다운이 나타날 때까지 대기 (인증 응답 dataset 표시 지연 대응)
+        waitForAutofillDropdown(username, timeoutMs = 30_000)
         val suggestion = device.wait(
             Until.findObject(By.text(username).clazz("android.widget.TextView")),
             15000
         ) ?: throw AssertionError("Autofill dropdown not found for: $username")
+        // Dump before click (디버그 덤프 — 실패해도 본 검증은 계속)
+        val timestamp = System.currentTimeMillis()
+        val fileName = "uiautomator_selectAutofillSuggestion_before_click_$timestamp.xml"
+        val internalFile = File("/data/user/0/com.kiyo/app/cache/$fileName")
+        try {
+            device.dumpWindowHierarchy(internalFile)
+            // optional copy to download
+            val externalPath = "/storage/emulated/0/Download/kiyo_test_$fileName"
+            Runtime.getRuntime().exec("cp ${internalFile.absolutePath} $externalPath").waitFor()
+        } catch (e: Exception) {
+            Log.w("AutofillTestHost", "Failed to dump/copy view hierarchy: ${e.message}")
+        }
+        Log.i("AutofillTestHost", "VIEW_HIERARCHY: $fileName dumped for step: selectAutofillSuggestion_before_click")
         suggestion.click()
         Thread.sleep(500)
         return suggestion
@@ -168,74 +205,23 @@ class AutofillTestHost(private val device: UiDevice) {
 
     // ============ 네이티브 인증 프롬프트 처리 ============
 
-    /** 네이티브 인증 프롬프트(지문/얼굴/PIN/패턴) 대기
-     *  - Keyguard 시스템 다이얼로그
-     *  - BiometricPrompt 다이얼로그
-     *  - 시스템 UI 오버레이
-     */
+    /** 네이티브 인증 프롬프트(지문/얼굴/PIN/패턴) 대기 */
     fun waitForNativeAuthPrompt(timeoutMs: Long = 20000): Boolean {
         val startTime = System.currentTimeMillis()
         while (System.currentTimeMillis() - startTime < timeoutMs) {
-            // Keyguard 호스트 뷰 (PIN/패턴 입력 화면)
             if (device.hasObject(By.clazz("android.app.KeyguardHostView"))) {
-                Log.e("AutofillTestHost", "Native auth prompt detected: KeyguardHostView")
+                Log.i("AutofillTestHost", "Native auth prompt detected: KeyguardHostView")
                 return true
             }
-            // 시스템 UI 인증 다이얼로그 (생체인증 등)
-            if (device.hasObject(By.pkg("com.android.systemui")
-                    .clazz("android.widget.FrameLayout")
-                    .desc("지문")) || device.hasObject(By.pkg("com.android.systemui")
-                    .clazz("android.widget.FrameLayout")
-                    .desc("얼굴")) || device.hasObject(By.pkg("com.android.systemui")
-                    .clazz("android.widget.FrameLayout")
-                    .desc("PIN")) || device.hasObject(By.pkg("com.android.systemui")
-                    .clazz("android.widget.FrameLayout")
-                    .desc("패턴"))) {
-                Log.e("AutofillTestHost", "Native auth prompt detected: SystemUI biometric")
-                return true
-            }
-            // BiometricPrompt 다이얼로그 일반적 패턴
-            if (device.hasObject(By.desc("지문")) || device.hasObject(By.desc("얼굴")) || device.hasObject(By.desc("PIN")) || device.hasObject(By.desc("패턴"))) {
-                Log.e("AutofillTestHost", "Native auth prompt detected: BiometricPrompt")
+            if (device.hasObject(By.desc("지문")) || device.hasObject(By.desc("얼굴")) ||
+                device.hasObject(By.desc("PIN")) || device.hasObject(By.desc("패턴"))) {
+                Log.i("AutofillTestHost", "Native auth prompt detected: BiometricPrompt")
                 return true
             }
             Thread.sleep(300)
         }
         Log.w("AutofillTestHost", "Native auth prompt not detected within ${timeoutMs}ms")
         return false
-    }
-
-    /** 네이티브 인증 프롬프트에서 PIN 입력 (에뮬레이터/테스트용)
-     *  - 실제 디바이스에서는 생체인증 권장
-     *  - 에뮬레이터: adb -e emu finger touch 1 로 생체인증 시뮬레이션 가능
-     */
-    fun inputPinInNativeAuthPrompt(pin: String): Boolean {
-        try {
-            // PIN 입력 필드 찾기 (Keyguard)
-            val pinField = device.wait(
-                Until.findObject(By.clazz("android.widget.EditText").hint("PIN")),
-                5000
-            )
-            if (pinField == null) {
-                // Fallback to desc
-                device.wait(Until.findObject(By.clazz("android.widget.EditText").desc("PIN")), 3000)
-                    ?.setText(pin)
-            } else {
-                pinField.setText(pin)
-            }
-            Thread.sleep(500)
-
-            // 확인/엔터 버튼 클릭
-            val confirmBtn = device.findObject(By.text("확인").clazz("android.widget.Button"))
-                ?: device.findObject(By.desc("확인").clazz("android.widget.Button"))
-                ?: device.findObject(By.clazz("android.widget.Button").clickable(true))
-            confirmBtn?.click()
-            Thread.sleep(1000)
-            return true
-        } catch (e: Exception) {
-            Log.w("AutofillTestHost", "Failed to input PIN in native auth prompt: ${e.message}")
-            return false
-        }
     }
 
     /**

@@ -29,19 +29,25 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
      *  - 최초 실행 시 네이티브 인증 프롬프트 발생 (Keystore 30분 캐시 만료 시)
      *  - 인증 완료 후 동기화 진행
      */
-    fun clickSyncAccounts(): SettingsPage {
-        log("Clicking sync accounts button")
-        // "동기화" 버튼 (비활성화 상태일 수 있음 - syncing 중이면)
-        val clicked = helper.clickByText("동기화", "sync accounts button") ||
-            helper.clickByText("동기화 중...", "sync accounts button (loading)") ||
-            helper.clickByText("Sync", "sync accounts button (EN)")
-        if (!clicked) throw AssertionError("Could not find sync accounts button")
+    fun clickSyncAccounts(): Boolean {
+            log("Clicking sync accounts button")
+            // "동기화" 버튼 (비활성화 상태일 수 있음 - syncing 중이면)
+            val clicked = helper.clickByText("동기화", "sync accounts button") ||
+                    helper.clickByText("동기화 중...", "sync accounts button (loading)") ||
+                    helper.clickByText("Sync", "sync accounts button (EN)")
+            if (!clicked) {
+                log("Could not find sync accounts button")
+                return false
+            }
 
-        // 동기화 완료 대기 (네이티브 인증 프롬프트 처리 포함 최대 60초)
-        waitForSyncCompleteWithNativeAuth()
-        log("Sync accounts completed")
-        return this
-    }
+            // 동기화 완료 대기 (네이티브 인증 프롬프트 처리 포함 최대 60초)
+            if (!waitForSyncCompleteWithNativeAuth()) {
+                log("Sync accounts failed")
+                return false
+            }
+            log("Sync accounts completed")
+            return true
+        }
 
     /** 동기화 완료 대기 (네이티브 인증 프롬프트 처리 포함) */
     fun waitForSyncCompleteWithNativeAuth(timeoutMs: Long = 60000): Boolean {
@@ -49,29 +55,28 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
         val startTime = System.currentTimeMillis()
 
         while (System.currentTimeMillis() - startTime < timeoutMs) {
-            // 1. 동기화 성공 판정: "마지막 동기화" 시간이 갱신됨 ("동기화된 적 없음" 사라짐)
-            //    (showMessage()는 상태에만 저장되고 화면 텍스트가 바뀌지 않으므로
-            //     "동기화 완료"/"자동완성 계정 N개" 같은 텍스트는 화면에 나타나지 않음 - 폴링 제거)
-            if (!helper.waitForText("동기화된 적 없음", 300)) {
-                log("Sync completed - last sync time updated (no 'never synced' text)")
+            // 1. 성공 판정: 화면에 "동기화 완료" 메시지 표시 (AutofillSection showMessage)
+            //    - "자동완성 계정 N개 동기화 완료" / "동기화 완료 (N개 오류)" 모두 커버
+            if (helper.waitForTextContains("동기화 완료", 500)) {
+                log("Sync completed - success message displayed")
                 helper.dumpViewHierarchy("after_sync")
                 helper.captureScreen("after_sync")
                 return true
             }
 
-            // 2. 네이티브 인증 프롬프트 감지 및 처리
-            if (testHost.waitForNativeAuthPrompt(2000)) {
-                log("Native auth prompt detected - waiting for user auth")
-                Thread.sleep(2000)
-                continue
-            }
-
-            // 3. 기타 에러 확인
+            // 2. 실패 판정: 에러 메시지 표시
             if (helper.waitForText("동기화 실패", 500) || helper.waitForText("인증이 취소", 500)) {
                 log("Sync failed or auth cancelled")
                 helper.dumpViewHierarchy("sync_failed")
                 helper.captureScreen("sync_failed")
                 return false
+            }
+
+            // 3. 네이티브 인증 프롬프트 감지 및 처리
+            if (testHost.waitForNativeAuthPrompt(2000)) {
+                log("Native auth prompt detected - waiting for user auth")
+                Thread.sleep(2000)
+                continue
             }
 
             // 4. 동기화 중 상태면 계속 대기
@@ -86,6 +91,28 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
         log("Timeout waiting for sync completion")
         helper.dumpViewHierarchy("sync_timeout")
         helper.captureScreen("sync_timeout")
+        return false
+    }
+
+    /** "마지막 동기화" 시간 텍스트 읽기 */
+    private fun getLastSyncTimeText(): String? {
+        return helper.getTextByXPath("//span[contains(text(), '마지막 동기화')]/following-sibling::span[1]")
+            ?: helper.getTextByXPath("//*[contains(text(), '마지막 동기화')]/following-sibling::*[1]")
+            ?: helper.getTextByXPath("(//span[contains(@class, 'text-xs')])[last()]")
+    }
+
+    /** 마지막 동기화 시간이 변경될 때까지 대기 */
+    private fun waitForLastSyncTimeChanged(beforeText: String?, timeoutMs: Long): Boolean {
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            val current = getLastSyncTimeText()
+            if (current != null && current != beforeText && current != "동기화된 적 없음") {
+                log("Last sync time changed: '$beforeText' -> '$current'")
+                return true
+            }
+            Thread.sleep(500)
+        }
+        log("Last sync time did not change (before='$beforeText', current='${getLastSyncTimeText()}')")
         return false
     }
 
@@ -182,7 +209,7 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
                 Thread.sleep(4000)
                 // 재시작 후 Settings 탭으로 이동 (CLEAR_TASK면 홈에서 시작함)
                 Thread.sleep(2000)
-                device2.clickByAriaLabel("Settings", "settings tab after relaunch")
+                WebViewTestHelper.clickAriaLabelStatic(device2, "Settings", "settings tab after relaunch")
             }
         } else {
             Log.i("AUTOFILL_E2E", "No confirmation dialog (applied directly)")
@@ -206,37 +233,34 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
             helper.clickByText("동기화 중...", "sync accounts button (loading)")
         if (!clicked) throw AssertionError("Could not find sync accounts button")
 
-        // 네이티브 인증 프롬프트(Keystore/BiometricPrompt PIN) 대기 및 입력
+        // BiometricPrompt는 접근성 트리에 노출되지 않아(보안 정책) waitForNativeAuthPrompt로
+        // 감지 불가 (검증됨 2026-08). 화면 상태와 무관하게 키코드 PIN을 전송하는 방식 사용.
+        // 프롬프트 렌더링 대기 후 키코드 입력.
+        Thread.sleep(3000)
+        val entered = testHost.inputPinViaKeyEvents(devicePin)
+        if (!entered) {
+            helper.dumpViewHierarchy("pin_auth_input_failed")
+            helper.captureScreen("pin_auth_input_failed")
+            throw AssertionError("Failed to input PIN via key events")
+        }
+        log("PIN sent via key events, waiting for auth + sync completion")
+
         val startTime = System.currentTimeMillis()
         val timeoutMs = 30000L
         while (System.currentTimeMillis() - startTime < timeoutMs) {
-            if (testHost.waitForNativeAuthPrompt(2000)) {
-                log("Native auth prompt detected - entering device PIN")
-                val entered = testHost.inputPinInNativeAuthPrompt(devicePin)
-                if (!entered) {
-                    helper.dumpViewHierarchy("pin_auth_input_failed")
-                    helper.captureScreen("pin_auth_input_failed")
-                    throw AssertionError("Failed to input PIN in native auth prompt")
+            // 재입력 필요(프롬프트가 아직 떠 있고 인증 안 됨)하면 한 번 더 시도
+            if (!testHost.waitForNativeAuthPrompt(2000)) {
+                // 성공 판정: AuthActivity 종료로 WebView 루트 복귀 + 마지막 동기화 시각 존재
+                if (!helper.waitForText("KIYO 잠금 해제", 500)) {
+                    log("Auth prompt dismissed - sync auth completed")
+                    helper.dumpViewHierarchy("after_sync_with_auth")
+                    helper.captureScreen("after_sync_with_auth")
+                    return this
                 }
-                Thread.sleep(2000)
-                continue  // 프롬프트가 닫혔는지/재요청되는지 계속 확인
+            } else {
+                log("Auth prompt still visible, retrying PIN via key events")
+                testHost.inputPinViaKeyEvents(devicePin)
             }
-
-            // 성공 판정: "동기화된 적 없음" 사라짐 (마지막 동기화 갱신)
-            if (!helper.waitForText("동기화된 적 없음", 500)) {
-                log("Sync completed after PIN auth")
-                helper.dumpViewHierarchy("after_sync_with_auth")
-                helper.captureScreen("after_sync_with_auth")
-                return this
-            }
-
-            // 에러 확인
-            if (helper.waitForText("동기화 실패", 300) || helper.waitForText("인증이 취소", 300)) {
-                helper.dumpViewHierarchy("sync_auth_failed")
-                helper.captureScreen("sync_auth_failed")
-                throw AssertionError("Sync failed after PIN auth")
-            }
-
             Thread.sleep(500)
         }
 

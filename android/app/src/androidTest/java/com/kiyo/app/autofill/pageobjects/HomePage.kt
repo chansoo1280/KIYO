@@ -10,6 +10,39 @@ import java.io.File
 
 class HomePage(helper: WebViewTestHelper) : BasePage(helper) {
 
+    /** 현재 활성 볼트 파일명 읽기 — UIAutomator 화면 실측 (스레드 제약 없음) */
+    fun getActiveVaultFileName(): String? {
+        log("Getting active vault file name...")
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+
+        // 1. 계정 리스트 화면(My accounts): 파일명이 ".json"으로 표시됨
+        if (helper.waitForText("My accounts", 2000)) {
+            log("On accounts list screen, reading vault file name via UIAutomator...")
+            val node = device.wait(Until.findObject(By.textContains(".json")), 5000)
+            val fileName = node?.text?.trim()
+            if (!fileName.isNullOrBlank()) {
+                log("Active vault file name from accounts list: $fileName")
+                return fileName.removeSuffix(".json")
+            }
+            log("Vault file name not found on accounts list (may be encrypted vault with no name display)")
+            return null
+        }
+
+        // 2. 파일 선택 화면(파일을 선택하세요): 목록의 첫 번째 파일명
+        if (helper.waitForText("파일을 선택하세요", 2000) || helper.waitForText("파일 생성", 2000)) {
+            log("On file selection screen, reading first vault file name via UIAutomator...")
+            val node = device.wait(Until.findObject(By.textContains(".json")), 5000)
+            val fileName = node?.text?.trim()
+            if (!fileName.isNullOrBlank()) {
+                log("Active vault file name from file selection: $fileName")
+                return fileName.removeSuffix(".json")
+            }
+        }
+
+        log("No active vault file name found")
+        return null
+    }
+
     /** "파일 생성" 버튼 클릭 -> 볼트 생성 다이얼로그 열기 */
     fun clickCreateVaultButton(): VaultCreateDialog {
         log("Clicking '파일 생성' button")
@@ -65,7 +98,8 @@ class HomePage(helper: WebViewTestHelper) : BasePage(helper) {
         return this
     }
 
-    /** 앱 상태 무관하게 홈 화면(파일 탭)으로 강제 이동 */
+    /** 앱 상태 무관하게 홈 화면(파일 탭)으로 강제 이동.
+     *  볼트가 이미 열려 있으면(계정 리스트 등) 파일 탭이 아니라도 정상 상태이므로 통과시킨다. */
     fun ensureHomeScreen(): HomePage {
         helper.waitForWebViewReady()
         // 파일 선택 화면의 특징적인 텍스트 대기
@@ -73,6 +107,11 @@ class HomePage(helper: WebViewTestHelper) : BasePage(helper) {
                         || helper.waitForText("파일 생성", 10000)
         if (loaded) {
             log("Already on home screen (file selection)")
+            return this
+        }
+        // 볼트가 활성화된 상태(계정 리스트)면 홈 경유 불필요 — 그대로 사용
+        if (helper.waitForText("My accounts", 5000)) {
+            log("Vault already active (accounts list visible) - skip navigation")
             return this
         }
 
