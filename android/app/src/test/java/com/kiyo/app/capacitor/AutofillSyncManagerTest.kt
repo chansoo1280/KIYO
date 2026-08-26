@@ -51,6 +51,8 @@ class AutofillSyncManagerTest {
             ensureRepository = { repository },
             authNavigator = { json -> authLaunches.add(json) },
         )
+        coEvery { DatabaseKeyManager.getKey(any()) } returns javax.crypto.spec.SecretKeySpec(ByteArray(32), "AES")
+        every { DatabaseKeyManager.wasStateReset() } returns false
     }
 
     @After

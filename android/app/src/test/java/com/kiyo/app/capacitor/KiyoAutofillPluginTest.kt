@@ -46,6 +46,9 @@ class KiyoAutofillPluginTest {
             coEvery { com.kiyo.app.security.DatabaseKeyManager.getCurrentAlias(any()) } returns "alias_v1"
             every { com.kiyo.app.security.DatabaseKeyManager.isSecurityDowngrade(any()) } returns false
             every { com.kiyo.app.security.DatabaseKeyManager.wasSecurityUpgraded() } returns false
+            coEvery { com.kiyo.app.security.DatabaseKeyManager.getKey(any()) } returns
+                javax.crypto.spec.SecretKeySpec(ByteArray(32), "AES")
+            every { com.kiyo.app.security.DatabaseKeyManager.wasStateReset() } returns false
 
             val repository = mockk<com.kiyo.app.autofill.repository.AutofillRepository>()
             coEvery { repository.syncAccountsFromReact(any()) } returns android.util.Pair(4, 0)
@@ -53,6 +56,7 @@ class KiyoAutofillPluginTest {
             val manager = AutofillSyncManager(
                 ensureRepository = { repository },
                 authNavigator = { },
+                invalidateRepository = { },
             )
 
             var result: AutofillSyncManager.SyncResult? = null

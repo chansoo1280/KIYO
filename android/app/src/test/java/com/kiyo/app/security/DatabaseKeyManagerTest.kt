@@ -135,7 +135,11 @@ class DatabaseKeyManagerTest {
 
     private fun stubGetOrCreateKey() {
         every { KeystoreManager.getOrCreateKey(any()) } answers {
-            SecretKeySpec(firstArg<String>().toByteArray(), "AES")
+            javax.crypto.spec.SecretKeySpec(firstArg<String>().toByteArray(), "AES")
+        }
+        // createKey: 재래핑 시 새 auth-required 키 생성 경로 (getOrCreateKey와 동일하게 모킹)
+        every { KeystoreManager.createKey(any()) } answers {
+            javax.crypto.spec.SecretKeySpec(firstArg<String>().toByteArray(), "AES")
         }
     }
 
@@ -166,6 +170,10 @@ class DatabaseKeyManagerTest {
 
     private fun stubUpgradeNeeded() {
         every { KeystoreManager.needsSecurityUpgrade(any()) } returns true
+        // 재래핑 경로에서 createKey로 새 auth-required 키를 생성한다
+        every { KeystoreManager.createKey(any()) } answers {
+            javax.crypto.spec.SecretKeySpec(firstArg<String>().toByteArray(), "AES")
+        }
     }
 
     // ---------- 1. nextAlias 규칙 (재래핑 경유 간접 검증) ----------
@@ -247,12 +255,14 @@ class DatabaseKeyManagerTest {
 
         stubHappyDecrypt(plain)
         stubUpgradeNeeded()
-        // 재암호화 실패 → 완전 롤백 후 정상 읽기 흐름 폴백
+        // 재암호화 실패 시 예외가 그대로 전파된다 (삼키면 사용자 인증 요청이 발화하지 않음)
         every { KeystoreManager.encrypt(any(), any()) } throws RuntimeException("keystore boom")
 
-        val key = DatabaseKeyManager.getKey(context)
+        val thrown = runCatching { DatabaseKeyManager.getKey(context) }.exceptionOrNull()
 
-        assertEquals(SecretKeySpec(plain, "AES"), key)
+        // 예외 전파 검증: 재래핑 실패는 호출자(AutofillService/SyncManager)에게 반드시 전달되어야 한다
+        assertTrue("rewrap failure must propagate", thrown is RuntimeException)
+
         // 구 상태 보존 + 업그레이드 플래그 미설정
         assertEquals("kiyo_master_key_1", DatabaseKeyManager.getCurrentAlias(context))
         assertTrue(DatabaseKeyManager.hasKey(context))
