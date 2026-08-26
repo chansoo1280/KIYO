@@ -14,6 +14,7 @@ export const AutofillSection: React.FC = () => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const { accounts } = useAccountStore();
@@ -29,14 +30,9 @@ export const AutofillSection: React.FC = () => {
   const lastSyncTime = sessionLastSyncTime;
   const accountCount = lastAutofillAccountCount ?? 0;
 
-  const showMessage = useCallback(
-    (_message: string) => {
-      // Message handled internally via state if needed
-      void _message;
-      setTimeout(() => {}, 3000);
-    },
-    [],
-  );
+  const showMessage = useCallback((text: string) => {
+    setMessage(text);
+  }, []);
 
   const checkStatus = useCallback(async () => {
     if (Capacitor.getPlatform() !== "android") return;
@@ -312,6 +308,10 @@ export const AutofillSection: React.FC = () => {
         <div className="rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)] dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]">
           {error}
         </div>
+      )}
+
+      {message && (
+        <p className="text-sm font-medium text-[var(--color-accent)]">{message}</p>
       )}
     </div>
   );

@@ -57,21 +57,34 @@ object KeystoreManager : KeystoreProvider {
     }
 
     @Throws(Exception::class)
-    fun getOrCreateKey(alias: String): SecretKey {
+    fun createKey(alias: String): SecretKey = loadKeyStoreEntry(alias) {
+        generateNewKey(keyStore = it, alias = alias)
+    }
+
+    /**
+     * Keystore를 로드하고 [init]으로 키 준비(생성/기존 사용)한 뒤 entry를 반환한다.
+     * getOrCreateKey/createKey의 중복 본문을 통합.
+     *
+     * 주의: auth-required 키가 인증 만료 상태여도 getEntry 자체는 성공한다.
+     * 실제 암/복호화 시점에 UserNotAuthenticatedException이 발생하고,
+     * 호출자(AutofillService)가 인증 프롬프트 경로로 연결한다.
+     */
+    private inline fun loadKeyStoreEntry(
+        alias: String,
+        init: (KeyStore) -> Unit
+    ): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
+        init(keyStore)
+        val entry = keyStore.getEntry(alias, null) as KeyStore.SecretKeyEntry
+        Log.d(TAG, "Master key loaded from Keystore: alias=$alias")
+        return entry.secretKey
+    }
 
+    fun getOrCreateKey(alias: String): SecretKey = loadKeyStoreEntry(alias) { keyStore ->
         if (!keyStore.containsAlias(alias)) {
             generateNewKey(keyStore, alias)
         }
-
-        // auth-required 키가 인증 만료 상태여도 getEntry 자체는 성공한다.
-        // 실제 암/복호화 시점에 UserNotAuthenticatedException이 발생하고,
-        // 호출자(AutofillService)가 인증 프롬프트 경로로 연결한다.
-        val entry = keyStore.getEntry(alias, null) as KeyStore.SecretKeyEntry
-
-        Log.d(TAG, "Master key loaded from Keystore: alias=$alias")
-        return entry.secretKey
     }
 
     /**
@@ -147,7 +160,7 @@ object KeystoreManager : KeystoreProvider {
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(KEY_SIZE)
-
+        Log.d(TAG, "isSecureLockScreenEnabled()=${isSecureLockScreenEnabled()}")
         if (isSecureLockScreenEnabled()) {
             // 보안 잠금화면(PIN/패턴/생체인증)이 있을 때만 인증 요구 키 생성 가능.
             // 없는 상태에서 setUserAuthenticationRequired(true)를 호출하면

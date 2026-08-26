@@ -27,6 +27,8 @@ import kotlinx.coroutines.launch
 class AutofillSyncManager(
     private val ensureRepository: suspend () -> AutofillRepository,
     private val authNavigator: SyncAuthNavigator,
+    /** 보안 리셋 후 기존(무효한 키로 열린) repository를 폐기할 때 호출. */
+    private val invalidateRepository: suspend () -> Unit = {},
 ) {
 
     /**
@@ -63,6 +65,9 @@ class AutofillSyncManager(
         if (DatabaseKeyManager.isSecurityDowngrade(currentAlias)) {
             Log.w(TAG, "Security downgrade detected at sync - resetting security state immediately")
             DatabaseKeyManager.resetAutofillData(context)
+            // 리셋으로 DB 파일과 키가 삭제되었으므로, 예전 키로 열려 있는 캐시된 repository는 폐기한다.
+            // (열린 SQLCipher 커넥션이 죽은 파일을 가리켜 이후 쓰기가 readonly 오류로 실패하는 것을 방지)
+            invalidateRepository()
             Log.w(TAG, "Security state reset completed - proceeding with fresh key")
             // 리셋 후 정상 흐름으로 계속 (새 키 생성됨)
         }
@@ -73,7 +78,19 @@ class AutofillSyncManager(
         // getKey() 내부에서 DB_KEY가 auth-required 키로 자동 재래핑됨 → 사용자에게 안내.
         val securityUpgraded = DatabaseKeyManager.wasSecurityUpgraded()
 
-        val result = repository.syncAccountsFromReact(accountsJson)
+        // Ensure DB_KEY is available (may trigger rewrap if needed).
+        // 이 과정에서 AEADBadTag/KPInvalidated로 상태 리셋이 일어날 수 있고,
+        // 그 경우 기존(예전 키로 열린) repository는 무효하므로 폐기 후 재생성한다.
+        DatabaseKeyManager.getKey(context)
+        val activeRepository = if (DatabaseKeyManager.wasStateReset()) {
+            Log.w(TAG, "State was reset during key acquisition - invalidating cached repository")
+            invalidateRepository()
+            ensureRepository()
+        } else {
+            repository
+        }
+
+        val result = activeRepository.syncAccountsFromReact(accountsJson)
         return SyncResult(
             syncedCount = result.first,
             errorCount = result.second,

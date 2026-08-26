@@ -59,6 +59,12 @@ class KiyoAutofillPlugin : Plugin() {
         syncManager = AutofillSyncManager(
             ensureRepository = { ensureRepositoryInitialized() },
             authNavigator = { accountsJson -> authActivityLauncher.launch(authIntent()) },
+            invalidateRepository = {
+                // 보안 리셋(다운그레이드 등) 후 예전 키로 열린 repository를 닫고 캐시를 비운다.
+                // 다음 ensureRepositoryInitialized() 호출에서 새 키로 재생성된다.
+                autofillRepository?.close()
+                autofillRepository = null
+            },
         )
 
         // Register ActivityResultLauncher for authentication.
@@ -80,8 +86,12 @@ class KiyoAutofillPlugin : Plugin() {
 
     private fun authIntent(): Intent {
         val context = getContext() ?: throw IllegalStateException("Context is null")
-        return Intent(context, Class.forName("com.kiyo.app.MainActivity")).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        // Launch AutofillAuthActivity directly for authentication.
+        // Previously this launched MainActivity which delegated to AutofillAuthActivity,
+        // but the ActivityResultLauncher was waiting for MainActivity's result (which never came).
+        // IMPORTANT: Do NOT use FLAG_ACTIVITY_NEW_TASK here - it breaks ActivityResultLauncher
+        // result delivery because the launched activity goes to a new task.
+        return Intent(context, Class.forName("com.kiyo.app.autofill.auth.AutofillAuthActivity")).apply {
             putExtra("reason", "autofill_auth_required")
         }
     }

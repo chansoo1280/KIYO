@@ -42,10 +42,21 @@ object DatabaseKeyManager {
     @Volatile
     private var securityUpgraded = false
 
+    /** 마지막 getKey()에서 보안 상태 리셋(키+DB 폐기)이 수행됐는지 (1회성) */
+    @Volatile
+    private var stateWasReset = false
+
     /** 업그레이드 수행 여부 확인 후 플래그 소비 (1회성) */
     fun wasSecurityUpgraded(): Boolean {
         val value = securityUpgraded
         securityUpgraded = false
+        return value
+    }
+
+    /** 리셋 수행 여부 확인 후 플래그 소비 (1회성). true면 호출자는 캐시된 repository를 폐기해야 한다. */
+    fun wasStateReset(): Boolean {
+        val value = stateWasReset
+        stateWasReset = false
         return value
     }
 
@@ -100,17 +111,14 @@ object DatabaseKeyManager {
         }
 
         val currentAlias = resolveCurrentAlias(prefs)
-
-        // 보안 업그레이드: 잠금화면이 생겼는데 현재 키는 auth-required가 아닌 경우
+        Log.e("DEBUG", "needsSecurityUpgrade=${KeystoreManager.needsSecurityUpgrade(currentAlias)} currentAlias=$currentAlias")
+        // 보안 업그레이드: 잠금화면이 생겼는데 현재 키는 auth-required가 아닌 경우.
+        // 재래핑 실패는 예외를 삼키지 않고 그대로 전파한다 — UserNotAuthenticatedException이
+        // 여기서 잡히면 fill/sync 경로의 사용자 인증 요청이 발화하지 않게 된다 (검증됨 2026-08).
         if (KeystoreManager.needsSecurityUpgrade(currentAlias)) {
-            try {
-                val rewrapped = rewrapDbKey(context, currentAlias, json)
-                securityUpgraded = true
-                return rewrapped
-            } catch (e: Exception) {
-                Log.e(TAG, "Security upgrade failed, falling back to normal flow: ${e.message}", e)
-                // 실패 시 구 alias + 구 블롭 보존 상태로 정상 읽기 흐름 진행 (완전 롤백)
-            }
+            val rewrapped = rewrapDbKey(context, currentAlias, json)
+            securityUpgraded = true
+            return rewrapped
         }
 
         val masterKey = KeystoreManager.getOrCreateKey(currentAlias)
@@ -126,6 +134,7 @@ object DatabaseKeyManager {
             // 파생 데이터 복구를 시도하지 않는다: 리셋 → 새 wrapping 즉시 커밋 → sync로 재구축.
             Log.w(TAG, "Master key permanently invalidated (PIN/biometric changed). Resetting autofill state")
             resetAutofillData(context)
+            stateWasReset = true
             Log.w(TAG, "Generating fresh DB_KEY after reset (autofill DB will be rebuilt on next sync)")
             generateFreshStateAfterReset(context)
         } catch (e: javax.crypto.AEADBadTagException) {
@@ -133,6 +142,7 @@ object DatabaseKeyManager {
             // 예상치 못한 상태의 최후 복구: 리셋 후 재동기화 (공격적 리셋 지양 원칙상 로그 관찰 필요).
             Log.w(TAG, "DB_KEY decryption failed with AEADBadTagException - master key no longer matches. Resetting autofill state")
             resetAutofillData(context)
+            stateWasReset = true
             Log.w(TAG, "Generating fresh DB_KEY after reset (autofill DB will be rebuilt on next sync)")
             generateFreshStateAfterReset(context)
         } catch (e: Exception) {
@@ -152,7 +162,7 @@ object DatabaseKeyManager {
         val plainBytes = KeystoreManager.decrypt(oldMasterKey, EncryptedKey.fromJson(json))
 
         val newAlias = nextAlias(currentAlias)
-        val newMasterKey = KeystoreManager.getOrCreateKey(newAlias)
+        val newMasterKey = KeystoreManager.createKey(newAlias) // 새 키 생성
         val reEncrypted = KeystoreManager.encrypt(newMasterKey, plainBytes)
 
         context.securityDataStore.edit { preferences ->
