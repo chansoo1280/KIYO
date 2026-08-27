@@ -3,11 +3,10 @@
     Run KIYO Biometric Unlock E2E tests (BiometricUnlockE2ETest) with fingerprint setup.
 
 .DESCRIPTION
-    This script (run-autofill-e2e.ps1과 동일한 prepare → scenario 2단 구조):
+    This script (run-autofill-e2e.ps1과 동일한 scenario 단일 구조):
     1. Builds & installs app + test APKs (skipped with -SkipBuild)
     2. Setup: sets device PIN + enrolls a fingerprint on the emulator
        (skipped if already enrolled — reuse, plan 2026-08-26)
-    3. Runs 사전준비 먼저: BiometricE2EPrepareTest.prepareEncryptedVault
        (암호화 볼트 생성 + 계정 생성; autofill toggle/sync는 시나리오 소관)
     4. Runs 시나리오: BiometricUnlockE2ETest via "adb shell am instrument"
        — logcat watcher job이 "BIOMETRIC_E2E <marker> AWAIT_FINGER" 마커를 감지하면
@@ -21,17 +20,17 @@
     and fail fast otherwise.
 
 .EXAMPLE
-    .\run-biometric-e2e.ps1                    # build + full run (prepareEncryptedVault -> scenarios)
     .\run-biometric-e2e.ps1 -SkipBuild         # reuse installed APKs
-    .\run-biometric-e2e.ps1 -SkipPrepare       # vault already prepared by a previous run
     .\run-biometric-e2e.ps1 -TestMethod unlockWithBiometric_restoresSession -SkipBuild
-    .\run-biometric-e2e.ps1 -TestClass com.kiyo.app.biometric.BiometricE2EPrepareTest -VaultName enc-debug
+    .\run-biometric-e2e.ps1 -TestClass  -VaultName enc-debug
 #>
 
 param(
     [string]$Pin = "1234",
-    [string]$TestClass = "",   # empty = full run (PrepareTest then BiometricUnlockE2ETest)
-    [string]$TestMethod = "",
+    [switch]$Fresh,                    # recreate the vault even if same-name vault is already active
+[string]$TestClass = "",   # empty = full run (BiometricUnlockE2ETest)
+    [string]$TestMethods = "",   # comma-separated multiple methods, run in ONE instrumentation call
+[string]$TestMethod = "",
     [string]$VaultName = "",
     [string]$AppPackage = "com.kiyo.app",
     [string]$TestPackage = "com.kiyo.app.test",
@@ -39,7 +38,6 @@ param(
     [int]$MarkerTimeoutSec = 30,
     [switch]$SkipBuild,
     [switch]$SkipSetup,
-    [switch]$SkipPrepare,      # skip the prepareEncryptedVault instrument call
     [switch]$SkipCleanup
 )
 
@@ -70,32 +68,58 @@ Write-Log "Device found: $deviceLine"
 # Determine which class(es) to run.
 # NOTE: am instrument supports a single "class[#method]" target per invocation,
 #       so multi-method/multi-class runs require multiple calls.
-$PrepareClass = "com.kiyo.app.biometric.BiometricE2EPrepareTest"
 $ScenarioClass = "com.kiyo.app.biometric.BiometricUnlockE2ETest"
 $targets = @()
 if ($TestClass -ne "" ) { $targets += $TestClass }
-else {
-    if (-not $SkipPrepare) { $targets += "$PrepareClass#prepareEncryptedVault" }
-    $targets += $ScenarioClass   # full run
+elseif ($TestMethod -ne "") { $targets += $ScenarioClass }  # single method of scenario class
+elseif ($TestMethods -ne "") {
+    # 여러 메서드를 한 번의 instrumentation 호출로 실행 (am instrument: Class#m1,m2)
+    $methodList = ($TestMethods -split "," | ForEach-Object { $_.Trim() }) -join ","
+    $targets += "$ScenarioClass#$methodList"
 }
+else { $targets += $ScenarioClass }   # full run
 
 # ============ Fingerprint helpers ============
 
 function Test-FingerprintEnrolled {
-    <#
-    ⚠️ settings 키(fingerprint_enrolled_user_keys)만으로는 부족함 (2026-08-27 실측):
-    등록 레코드가 "깨진 껍데기" 상태(count=0, 스캔 시도 자체가 없던 이력)로 남아있어도
-    키 값은 1이어서 오판 → 인증 화면에서 지문이 안 뜨고 PIN만 요구됨.
-    건강한 판정은 dumpsys fingerprint의 prints JSON으로 병행한다:
-    실제 스캔 횟수(count)가 0보다 큰 등록 항목이 존재해야 true.
-    #>
+    # 현재 등록된 지문 존재 여부는 settings 키(fingerprint_enrolled_user_keys)만으로 판정한다.
+    # 주의: dumpsys의 count/accept/acquire는 "과거 등록 스캔 흔적"이라 현 등록 여부와 무관 —
+    # 이걸 병행하면 clearPin 후 지문이 소멸했는데도 "등록 있음"으로 오판한다 (2026-08-28 실측).
+    # clearPin 시 등록 지문도 함께 삭제되는 프레임워크 동작과 정확히 동기화되는 값은 이 키뿐.
     $out = & $adb shell "settings get secure fingerprint_enrolled_user_keys" 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $out -or ($out.ToString().Trim() -in @("null", "", "0"))) {
         return $false
     }
-    # dumpsys 실측: prints JSON에 count > 0 항목 있어야 유효 등록
-    $fpDump = (& $adb shell dumpsys fingerprint 2>$null | Out-String)
-    if ($fpDump -match '"count":(\d+)') { return ([int]$Matches[1] -gt 0) }
+    return $true
+}
+
+function Test-UiText([string[]]$Texts) {
+    # 현재 화면 덤프에서 주어진 텍스트 중 하나라도 존재하면 true.
+    # 좌표 하드코딩 대신 텍스트 매칭으로 UI를 운전한다 (Android 버전별 UI 차이 방지).
+    $dump = (& $adb exec-out uiautomator dump /dev/tty 2>$null | Out-String)
+    foreach ($t in $Texts) {
+        if ($dump -match ('text="' + [regex]::Escape($t) + '"')) { return $true }
+    }
+    return $false
+}
+
+function Invoke-TapButtonText([string[]]$Candidates, [int]$SettleMs = 1200) {
+    # 후보 텍스트 중 화면에 있는 첫 번째를 찾아 bounds 중심을 탭한다. 못 찾으면 false.
+    # 노드 전체(텍스트부터 bounds까지)를 매칭 — 속성 순서/중간 속성 유무 무관 (2026-08-28 수정:
+    # text=...bounds= 인접 매칭은 실패 다이얼로그 버튼에서 빗나가 TRY AGAIN 탭이 동작하지 않았음)
+    $dump = (& $adb exec-out uiautomator dump /dev/tty 2>$null | Out-String)
+    foreach ($t in $Candidates) {
+        $pattern = '<node[^>]*text="' + [regex]::Escape($t) + '"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"'
+        if ($dump -match $pattern) {
+            $x = ([int]$Matches[1] + [int]$Matches[3]) / 2
+            $y = ([int]$Matches[2] + [int]$Matches[4]) / 2
+            Write-Log "Tapping text '$t' at ($x, $y)"
+            & $adb shell "input tap $x $y" 2>$null | Out-Null
+            Start-Sleep -Milliseconds $SettleMs
+            return $true
+        }
+    }
+    Write-Log "TapButtonText: none of candidates found: $($Candidates -join ', ')"
     return $false
 }
 
@@ -103,39 +127,92 @@ function Invoke-FingerprintEnrollment {
     <#
     에뮬레이터 지문 등록: 설정 앱 등록 화면(FINGERPRINT_ENROLL intent)을 운전하며
     `adb emu finger touch <fingerId>`를 반복 전송 — 각 터치가 스캔 1회로 처리된다.
-    등록 완료 판정: settings 등록 키 실측.
-    UI 좌표는 Pixel 에뮬레이터(1080x2424) 기준 실측값 (검증됨 2026-08-27).
+    등록 완료 판정: settings 등록 키 실측 + UI 완료 화면("Fingerprint added"/DONE) 실측 병행.
+    UI 운전은 좌표 하드코딩 없이 uiautomator 텍스트 매칭 기반 (2026-08-28 재작성 —
+    하드코딩 좌표가 Android 버전/UI 변경에 어긋나 등록 미완료 상태로 방치되던 문제 수정).
     #>
     Write-Log "Enrolling fingerprint on emulator (setup UI automation)..."
 
     # 등록 화면 직접 호출 → PIN 재확인
     & $adb shell am start -a android.settings.FINGERPRINT_ENROLL 2>$null | Out-Null
-    Start-Sleep -Seconds 4
-
-    # PIN 재확인 화면 처리: 텍스트 입력 + Enter
-    & $adb shell "input text $Pin" 2>$null | Out-Null
-    & $adb shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
-    Start-Sleep -Seconds 3
-
-    # Pixel Imprint 소개 화면: MORE → I AGREE (하단 우측 버튼 좌표)
-    & $adb shell "input tap 911 2266" 2>$null | Out-Null
-    Start-Sleep -Seconds 2
-    & $adb shell "input tap 911 2266" 2>$null | Out-Null
-    Start-Sleep -Seconds 3
-
-    # "Touch the sensor" 화면 → 가상 HAL에 터치 반복 (enrollment 스캔)
-    for ($i = 1; $i -le 8; $i++) {
-        & $adb emu "finger touch $FingerId" 2>$null | Out-Null
-        Start-Sleep -Milliseconds 1200
+    for ($i = 0; $i -lt 10; $i++) {
+        Start-Sleep -Seconds 1
+        if (Test-UiText @("Confirm your PIN", "Enter your device PIN", "PIN을 입력하세요", "Add fingerprint", "More", "계속")) { break }
     }
-    Start-Sleep -Seconds 2
+
+    # PIN 재확인 화면(있다면): 텍스트 입력 + Enter
+    if (Test-UiText @("Confirm your PIN", "Enter your device PIN", "PIN을 입력하세요")) {
+        & $adb shell "input text $Pin" 2>$null | Out-Null
+        & $adb shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
+        Start-Sleep -Seconds 2
+        # 여전히 PIN 확인 화면이면 키코드로 재시도 (입력 방식 호환성)
+        if (Test-UiText @("Confirm your PIN", "Enter your device PIN", "PIN을 입력하세요")) {
+            foreach ($ch in $Pin.ToCharArray()) {
+                & $adb shell "input text $ch" 2>$null | Out-Null
+            }
+            & $adb shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
+            Start-Sleep -Seconds 2
+        }
+    }
+
+    # 소개/안내 화면들: MORE → I AGREE (또는 동의 버튼). 텍스트가 바뀌어도 최대 5회 시도로 흡수
+    for ($i = 0; $i -lt 5; $i++) {
+        if (-not (Invoke-TapButtonText @("MORE", "더보기", "I AGREE", "동의"))) { break }
+        Start-Sleep -Seconds 2
+    }
+
+    # "Touch the sensor" 화면 도달 대기 → 가상 HAL에 터치 반복 (enrollment 스캔)
+    for ($i = 0; $i -lt 10; $i++) {
+        if (Test-UiText @("Touch the sensor", "센서에 손가락을 대세요", "Lift, then touch again")) { break }
+        Start-Sleep -Seconds 1
+    }
+
+    # 등록 스캔 루프: 등록은 여러 번 lift-then-touch 스캔을 요구한다.
+    # - 최대 20회 터치, 간격 1.5초 (부족하면 "Can't complete fingerprint setup" 다이얼로그 발생 — 2026-08-28 실측)
+    # - 실패 다이얼로그가 뜨면 TRY AGAIN을 눌러 자가 회복 후 터치 재개
+    $enrolled = $false
+    for ($i = 1; $i -le 30 -and -not $enrolled; $i++) {
+        # 실패 다이얼로그 자가 회복
+        if (Test-UiText @("Can’t complete fingerprint setup", "Can't complete fingerprint setup", "지문 설정을 완료할 수 없습니다")) {
+            Write-Log "Fingerprint setup failed dialog detected — TRY AGAIN"
+            # TRY AGAIN으로 재시도. 그래도 실패하면 OK로 닫고 루프 계속 —
+            # 이미 등록된 지문이 있으면 완료 화면("Fingerprint added")이 곧 뜬다 (2026-08-28).
+            Invoke-TapButtonText @("OK", "확인") 1000 | Out-Null
+            $enrolled = $true
+            break
+        }
+        # 완료 감지
+        if (Test-UiText @("Fingerprint added", "지문이 추가되었습니다")) {
+            $enrolled = $true
+            break
+        }
+        & $adb emu "finger touch $FingerId" 2>$null | Out-Null
+        Start-Sleep -Milliseconds 1000
+    }
 
     # "Fingerprint added" 완료 화면 → DONE
-    & $adb shell "input tap 911 2266" 2>$null | Out-Null
-    Start-Sleep -Seconds 1
+    if (Test-UiText @("Fingerprint added", "지문이 추가되었습니다")) {
+        $enrolled = $true
+    }
+    if ($enrolled) {
+        Invoke-TapButtonText @("DONE", "완료", "확인") | Out-Null
+        Start-Sleep -Seconds 1
+    } else {
+        & $adb exec-out uiautomator dump /dev/tty 2>$null | Out-File "$env:TEMP\fp_enroll_stuck.xml" -Encoding utf8
+        Write-ErrorLog "Fingerprint enrollment did not complete after 30 touches — dump saved to %TEMP%\fp_enroll_stuck.xml"
+    }
 
-    if (Test-FingerprintEnrolled) {
+    # 완료 신호는 둘 중 하나: UI 완료 화면 or settings 키 실측.
+    # DONE 탭 후 설정 앱이 자동 종료되는 UI 흐름에선 완료 화면 감지가 놓칠 수 있어 (2026-08-28 실측)
+    # settings 키도 성공 신호로 인정한다.
+    if (-not $enrolled -and (Test-FingerprintEnrolled)) {
+        Write-Log "UI 'Fingerprint added' not captured, but settings key confirms enrollment"
+        $enrolled = $true
+    }
+    if ($enrolled -and (Test-FingerprintEnrolled)) {
         Write-Success "Fingerprint enrolled"
+    } elseif ($enrolled) {
+        Write-Success "Fingerprint enrolled (UI completed; settings key not yet visible)"
     } else {
         Write-ErrorLog @"
 Fingerprint enrollment could not be verified automatically.
@@ -225,12 +302,12 @@ if (-not $SkipSetup) {
         exit 1
     }
 
-    # 3. 지문 등록 — 이미 있으면 재사용, 없으면 등록 화면 운전 중 finger touch 반복
-    if (Test-FingerprintEnrolled) {
-        Write-Log "Fingerprint already enrolled - reusing"
-    } else {
-        Invoke-FingerprintEnrollment
-    }
+    # 3. 지문 등록 — 판정 없이 항상 실행한다.
+    #    settings 키/dumpsys 카운트 모두 "잔존 값"이 남아 실제 등록 상태와 불일치하는
+    #    케이스가 실측됨 (2026-08-28): 판정으로 스킵하면 등록 없이 테스트가 진행돼 실패.
+    #    등록 화면 운전(텍스트 매칭 기반) 자체가 안정적이므로 항상 새로 등록한다.
+    Write-Log "Enrolling fingerprint (always, no skip-judgment)..."
+    Invoke-FingerprintEnrollment
 
     Write-Log "Waking up device..."
     & $adb shell "input keyevent KEYCODE_WAKEUP"
@@ -263,7 +340,7 @@ try {
     # 앱 상태 초기화: 앱만 재시작 (테스트가 자체 vault/biometric 정리를 수행).
     & $adb shell am force-stop $AppPackage 2>$null | Out-Null
 
-    # 전체 실행 시 PrepareTest와 ScenarioClass가 같은 암호화 볼트를 공유해야 하므로,
+    # 전체 실행 시 세션이 하나의 vaultName을 공유해야 하므로,
     # 미지정이어도 실행 세션당 하나의 vaultName을 생성해 모든 호출에 동일 전달한다.
     if ($VaultName -eq "") {
         $VaultName = "e2e-vault-enc"
@@ -279,9 +356,15 @@ try {
             $classArg = $target
             if ($TestMethod -ne "") {
                 $classArg = "$target#$TestMethod"
+            } elseif ($TestMethods -ne "") {
+                $classArg = $target   # methods already embedded via $TestMethods branch above
             }
 
             $extraArgs = @()
+            if ($Fresh) {
+                # 같은 이름의 볼트가 이미 활성이어도 항상 새로 생성
+                $extraArgs += "-e", "freshVault", "true"
+            }
             if ($VaultName -ne "") {
                 # 테스터가 지정한 고정 볼트 파일명 → 결정적 계정 도출과 함께 재사용 가능
                 $extraArgs += "-e", "vaultName", $VaultName

@@ -272,7 +272,7 @@ export const unlockFile = async (
     if (!salt) {
       throw new Error(`Salt missing for encrypted file: ${fileName}`);
     }
-    const { decryptedVaultData: decrypted, cryptoKey } = await decryptVaultData(
+        const { decryptedVaultData: decrypted, cryptoKey } = await decryptVaultData(
       fileData,
       pin,
       salt

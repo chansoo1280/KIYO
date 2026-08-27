@@ -1,4 +1,4 @@
-package com.kiyo.app.testutil
+package com.kiyo.app.e2e.testutil
 
 import android.content.Context
 import android.util.Log
@@ -114,19 +114,5 @@ object TestSecurityInitializer {
         Log.d(TAG, "Clean init complete - Keystore autofill has key: $hasAutofillKeystoreKey, securekey has key: $hasSecureKeystoreKey, success: $success")
 
         return success
-    }
-
-    /**
-     * Check current test environment state (for debugging).
-     */
-    fun logEnvironmentState(context: Context) {
-        Log.d(TAG, "=== Test Environment State ===")
-        Log.d(TAG, "Keystore autofill has master key: ${AUTOFILL_KEY_ALIASES.any { KeystoreManager.hasKey(it) }}")
-        Log.d(TAG, "Keystore securekey has master key: ${SecureKeyManager.hasKey()}")
-        
-        runBlocking(Dispatchers.IO) {
-            val hasDbKey = DatabaseKeyManager.hasKey(context)
-            Log.d(TAG, "DataStore has encrypted DB_KEY: $hasDbKey")
-        }
     }
 }

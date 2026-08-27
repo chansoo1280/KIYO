@@ -13,15 +13,14 @@
     The script only clears leftover PIN before/after as a safety net.
 
     Test classes:
-      - com.kiyo.app.autofill.AutofillE2EPrepareTest  : prepareVault (사전준비, sync 미포함)
       - com.kiyo.app.autofill.AutofillE2ETest         : noAuthFill / authResync / downgradeReset
-    Full run invokes PrepareTest first, then AutofillE2ETest (2 am-instrument calls),
+    Full run invokes AutofillE2ETest (single am-instrument call),
     because am instrument runs one class per invocation.
 
     Vault name: pass -VaultName <name> to reuse a fixed vault across runs
     (deterministic account derived from the vault name). Omitted → the script
     auto-generates ONE vault name per invocation session and passes it to both
-    classes, so prepareVault and scenario runs share the same vault.
+    so scenario runs share the same vault across invocations.
 
 .processDeathFill REMOVED (2026-08-26):
     "명시적 인증 없는 재래핑 후 프로세스 kill 생존"은 현 Keystore 설계에서
@@ -29,15 +28,16 @@
     해당 검증은 authResync의 마지막 단계(kill → auth dataset → PIN → fill)로 통합됨.
 
 .EXAMPLE
-    .\run-autofill-e2e.ps1                                   # full run (prepare -> scenarios)
+    .\run-autofill-e2e.ps1                                     # full run
     .\run-autofill-e2e.ps1 -SkipBuild                        # reuse installed APKs
     .\run-autofill-e2e.ps1 -TestMethod authResync -VaultName debug-vault
-    .\run-autofill-e2e.ps1 -TestClass com.kiyo.app.autofill.AutofillE2EPrepareTest -VaultName debug-vault
+    .\run-autofill-e2e.ps1 -TestClass  -VaultName debug-vault
 #>
 
 param(
     [string]$Pin = "1234",
-    [string]$TestClass = "",   # empty = full run (PrepareTest then AutofillE2ETest)
+    [switch]$Fresh,                    # recreate the vault even if same-name vault is already active
+[string]$TestClass = "",   # empty = full run (AutofillE2ETest)
     [string]$TestMethod = "",
     [string]$VaultName = "",
     [string]$AppPackage = "com.kiyo.app",
@@ -85,11 +85,10 @@ Write-Log "Device found: $deviceLine"
 # Determine which class(es) to run.
 # NOTE: am instrument supports a single "class[#method]" target per invocation,
 #       so multi-method/multi-class runs require multiple calls.
-$PrepareClass = "com.kiyo.app.autofill.AutofillE2EPrepareTest"
 $ScenarioClass = "com.kiyo.app.autofill.AutofillE2ETest"
 $targets = @()
 if ($TestClass -ne "" ) { $targets += $TestClass }
-else { $targets += $PrepareClass; $targets += $ScenarioClass }   # full run
+else { $targets += $ScenarioClass }   # full run
 
 if (-not $SkipSetup) {
     # Safety net: clear any existing PIN (tests manage PIN themselves now)
@@ -126,10 +125,10 @@ if (-not $SkipBuild) {
 
 # Run each target via adb am instrument
 try {
-    # 전체 실행 시 PrepareTest와 ScenarioClass가 같은 볼트를 공유해야 하므로,
+    # 전체 실행 시 세션이 하나의 vaultName을 공유해야 하므로,
     # 미지정이어도 실행 세션당 하나의 vaultName을 생성해 모든 호출에 동일 전달한다.
     if ($VaultName -eq "") {
-        $VaultName = "e2e-vault-plain-{0}" -f (Get-Date -Format 'yyyyMMddHHmmss')
+        $VaultName = "e2e-vault-plain"
         Write-Log "Auto-generated session vault name: $VaultName"
     }
     foreach ($target in $targets) {
@@ -139,6 +138,10 @@ try {
             }
 
             $extraArgs = @()
+            if ($Fresh) {
+                # 같은 이름의 볼트가 이미 활성이어도 항상 새로 생성
+                $extraArgs += "-e", "freshVault", "true"
+            }
             if ($VaultName -ne "") {
                 # 테스터가 지정한 고정 볼트 파일명 → 결정적 계정 도출과 함께 재사용 가능
                 $extraArgs += "-e", "vaultName", $VaultName

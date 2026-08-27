@@ -1,9 +1,12 @@
-package com.kiyo.app.autofill.pageobjects
+package com.kiyo.app.e2e.pageobjects
 
-import com.kiyo.app.autofill.testutil.TestDataFactory
-import com.kiyo.app.autofill.testutil.WebViewTestHelper
+import com.kiyo.app.e2e.testutil.TestDataFactory
+import com.kiyo.app.e2e.testutil.WebViewTestHelper
 
 class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
+
+    /** 모달 컴포넌트 — 단독 화면 판별 대상 아님 */
+    override val markers: List<String> = emptyList()
 
     data class AccountData(
         val title: String = "Test Account",
@@ -22,8 +25,6 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
         if (!loaded) {
             val title = helper.getPageTitle()
             log("AccountEditPage waitForLoad FAILED - page title: $title")
-            helper.dumpViewHierarchy("AccountEditPage_load_failed")
-            helper.captureScreen("AccountEditPage_load_failed")
             throw AssertionError("AccountEdit page did not load. Page title: $title")
         }
         log("AccountEdit page loaded")
@@ -80,8 +81,6 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
         verifyFilledValues(data)
 
         // 저장 직전 화면 상태 캡처 (스크린샷 + UI 계층 덤프)
-        helper.dumpViewHierarchy("before_save")
-        helper.captureScreen("before_save")
 
         log("Account form filled completely")
         return this
@@ -116,16 +115,11 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
 
         if (!saved) {
             // 디버깅: 현재 페이지 덤프
-            helper.dumpViewHierarchy("save_failed")
-            helper.captureScreen("save_failed")
             throw AssertionError("Could not find/save button or submit form")
         }
 
         log("Save triggered, waiting for navigation...")
 
-        // 저장 후 네비게이션 대기 - Account Detail 페이지 또는 Accounts 페이지로 이동할 수 있음
-        Thread.sleep(2000)
-        
         // 현재 페이지 확인
         val currentTitle = helper.getPageTitle()
         log("Current page after save: $currentTitle")
@@ -137,8 +131,6 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
 
         // 디테일 화면 상태 캡처 (저장된 값이 실제로 보이는지 확인용)
         if (isDetailPage) {
-            helper.dumpViewHierarchy("after_save_detail")
-            helper.captureScreen("after_save_detail")
         }
 
         if (isDetailPage) {
@@ -152,16 +144,12 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
                 // goBack()으로 네이티브 백 버튼 누르기
                 helper.goBack()
             }
-            Thread.sleep(3000)  // 네비게이션 및 렌더링 완료 대기 증가
         }
         
         // Accounts 페이지 로드 대기
         log("Waiting for Accounts page...")
         val accountsPage = AccountsPage(helper).waitForLoad()
-        
-        // 저장 후 리스트 렌더링 대기 추가
-        Thread.sleep(2000)
-        log("AccountsPage loaded after save, checking for account...")
+        log("AccountsPage loaded after save")
         
         return accountsPage
     }

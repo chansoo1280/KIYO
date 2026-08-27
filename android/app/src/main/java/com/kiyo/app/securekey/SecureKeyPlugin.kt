@@ -82,6 +82,11 @@ class SecureKeyPlugin : Plugin() {
                     put("errorCode", e.errorCode)
                     put("biometricError", true)
                 })
+            } catch (e: BiometricAuthHelper.BiometricKeyCorruptedException) {
+                Log.e(TAG, "unlockKeyWithBiometric: stored key data corrupted — re-enrollment required")
+                call.reject(e.message ?: "Stored biometric key corrupted", e, JSObject().apply {
+                    put("keyCorrupted", true)
+                })
             } catch (e: Exception) {
                 Log.e(TAG, "unlockKeyWithBiometric failed", e)
                 call.reject("Failed to unlock key: ${e.message}")

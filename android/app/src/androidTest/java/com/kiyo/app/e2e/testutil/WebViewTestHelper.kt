@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill.testutil
+package com.kiyo.app.e2e.testutil
 
 import android.util.Log
 import android.os.Environment
@@ -157,6 +157,30 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
         }
     }
 
+    /**
+     * 현재 화면에 텍스트가 즉시 존재하는지 1회 실측 (대기 없음).
+     * Espresso-Web 실패 시 UIAutomator로도 1회 확인한다.
+     * 페이지 판별(detect/isCurrent) 같은 빈번한 실측은 waitForText의
+     * 타임아웃+5초 폴백 대기 대신 이 메서드를 사용해야 한다 (2026-08-28).
+     */
+    fun isTextPresent(text: String): Boolean {
+        val present = try {
+            onWebView()
+                .withElement(findElement(Locator.XPATH, "//*[contains(text(), '$text')]"))
+                .check(WebViewAssertions.webMatches(getText(), allOf(notNullValue())))
+            true
+        } catch (e: Exception) {
+            false
+        } || try {
+            val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            device.findObjects(By.text(text)).isNotEmpty()
+        } catch (e: Exception) {
+            false
+        }
+        if (present) Log.e(tag, "Found text: $text")
+        return present
+    }
+
     /** 특정 텍스트가 화면에 나타날 때까지 대기 */
     fun waitForText(text: String, timeoutMs: Long = 10000): Boolean {
         val startTime = System.currentTimeMillis()
@@ -234,7 +258,7 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
                     .withElement(findElement(Locator.TAG_NAME, "ion-app"))
                     .check(WebViewAssertions.webMatches(getText(), allOf(notNullValue())))
                 Log.e(tag, "WebView ready (ion-app found)")
-                Thread.sleep(1000) // 추가 렌더링 대기
+                Thread.sleep(1000) // React 마운트 안정화 — 감지 후 즉시 상호작용 실패 방지 (기록된 사례)
                 return true
             } catch (e: Exception) {
                 try {

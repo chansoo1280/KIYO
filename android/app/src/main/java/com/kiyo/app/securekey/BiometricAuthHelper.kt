@@ -14,6 +14,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.KeyStore
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -92,11 +93,22 @@ class BiometricAuthHelper internal constructor(
                 cipher.doFinal(encryptedKey.ciphertext)
             }
             Result.success(Base64.encodeToString(plainKeyBytes, Base64.NO_WRAP))
+        } catch (e: AEADBadTagException) {
+            // 저장된 IV+ciphertext가 현재 Keystore 키와 불일치 (잔여 키 데이터/재등록 사이클 오염).
+            // 사용자가 볼 수 있는 원인을 명확히 전달한다.
+            Log.e(TAG, "Stored biometric key data is corrupted (GCM tag mismatch). Re-enrollment required.", e)
+            Result.failure(BiometricKeyCorruptedException())
         } catch (e: Exception) {
             Log.e(TAG, "unlockKeyWithBiometric failed", e)
             Result.failure(e)
         }
     }
+
+    /**
+     * 저장된 생체인증 키 데이터(IV+ciphertext)가 손상/불일치 상태임을 나타내는 예외.
+     * UI는 이 예외를 받아 "생체인증 재등록 필요" 안내를 해야 한다.
+     */
+    class BiometricKeyCorruptedException : Exception("저장된 생체인증 키가 손상되었습니다. 설정에서 생체인증을 다시 등록해 주세요.")
 
     /**
      * BiometricPrompt를 띄우고 인증 성공 시 block을 실행해 값을 반환받는다 (non-crypto 인증).

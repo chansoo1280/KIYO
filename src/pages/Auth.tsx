@@ -118,9 +118,15 @@ const Auth = () => {
       navigate("/accounts", { replace: true });
     } catch (err) {
       console.error("Biometric login failed:", err instanceof Error ? err.message : String(err), err);
-      // 취소(에러 코드 5 포함)와 실패 모두 PIN 폴백 안내로 통일 — SecureKeyPlugin이
-      // biometricError 플래그를 주지만 message 대소문자가 버전별로 달라 문자열 매칭은 불안정.
-      setError("생체인증에 실패했습니다. PIN으로 로그인해 주세요.");
+      // 저장된 키 데이터 손상(GCM 태그 불일치 등) → 재등록 안내. 나머지(취소 포함)는 PIN 폴백 통일.
+      const anyErr = err as { message?: string; data?: { keyCorrupted?: boolean } };
+      if (anyErr?.data?.keyCorrupted) {
+        setError("저장된 생체인증 키가 손상되었습니다. PIN으로 로그인한 뒤 설정에서 생체인증을 다시 등록해 주세요.");
+      } else {
+        // 취소(에러 코드 5 포함)와 실패 모두 PIN 폴백 안내로 통일 — SecureKeyPlugin이
+        // biometricError 플래그를 주지만 message 대소문자가 버전별로 달라 문자열 매칭은 불안정.
+        setError("생체인증에 실패했습니다. PIN으로 로그인해 주세요.");
+      }
     } finally {
       setIsVerifying(false);
     }

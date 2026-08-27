@@ -1,13 +1,20 @@
-package com.kiyo.app.autofill.pageobjects
+package com.kiyo.app.e2e.pageobjects
 
 import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
-import com.kiyo.app.autofill.testutil.WebViewTestHelper
+import com.kiyo.app.e2e.testutil.WebViewTestHelper
 
 class AccountsPage(helper: WebViewTestHelper) : BasePage(helper) {
+
+    override val markers = listOf(MARKER_TEXT)
+
+    companion object {
+        /** 계정 리스트 화면 마커 (Accounts.tsx 렌더링 텍스트) */
+        const val MARKER_TEXT = "My accounts"
+    }
 
     /** 계정 페이지 로드 대기 (FAB 또는 계정 리스트 표시) */
     fun waitForLoad(): AccountsPage {
@@ -19,8 +26,6 @@ class AccountsPage(helper: WebViewTestHelper) : BasePage(helper) {
             // 디버깅: 현재 페이지 제목 확인
             val title = helper.getPageTitle()
             log("waitForLoad FAILED - page title: $title")
-            helper.dumpViewHierarchy("waitForLoad_failed")
-            helper.captureScreen("waitForLoad_failed")
             throw AssertionError("Accounts page did not load - no FAB or account list found. Page title: $title")
         }
         log("Accounts page loaded")
@@ -44,7 +49,6 @@ class AccountsPage(helper: WebViewTestHelper) : BasePage(helper) {
                 val fabButton = device.wait(Until.findObject(By.desc("Add account").clickable(true)), 5000)
                 if (fabButton != null) {
                     fabButton.click()
-                    Thread.sleep(1000)
                     clicked = true
                     log("FAB clicked via UIAutomator (content-desc)")
                 }
@@ -64,8 +68,6 @@ class AccountsPage(helper: WebViewTestHelper) : BasePage(helper) {
             || helper.waitForText("템플릿 선택", 10000)
         if (!modalLoaded) {
             log("Template picker modal did not appear")
-            helper.dumpViewHierarchy("template_picker_modal_not_appeared")
-            helper.captureScreen("template_picker_modal_not_appeared")
             throw AssertionError("Template picker modal did not appear after FAB click")
         }
         log("Template picker modal appeared")

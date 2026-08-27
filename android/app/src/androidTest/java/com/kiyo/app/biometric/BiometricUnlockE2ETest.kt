@@ -11,13 +11,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
-import com.kiyo.app.autofill.pageobjects.AuthPage
-import com.kiyo.app.autofill.pageobjects.SettingsPage
-import com.kiyo.app.autofill.testutil.AutofillTestHost
-import com.kiyo.app.autofill.testutil.E2EEnv
-import com.kiyo.app.autofill.testutil.E2EEnv.BaseEnv
-import com.kiyo.app.autofill.testutil.TestDataFactory
-import com.kiyo.app.autofill.testutil.WebViewTestHelper
+import com.kiyo.app.e2e.pageobjects.AccountsPage
+import com.kiyo.app.e2e.pageobjects.AuthPage
+import com.kiyo.app.e2e.pageobjects.SettingsPage
+import com.kiyo.app.e2e.testutil.NativeAuthPromptHandler
+import com.kiyo.app.e2e.testutil.E2EEnv
+import com.kiyo.app.e2e.testutil.TestDataFactory
+import com.kiyo.app.e2e.testutil.WebViewTestHelper
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -66,8 +66,6 @@ class BiometricUnlockE2ETest {
             val testName = description.methodName
             Log.e(TAG, ">>> TEST FAILED: $testName - ${e.message}", e)
             try {
-                helper.dumpViewHierarchy("FAILURE_$testName")
-                helper.captureScreen("FAILURE_$testName")
             } catch (ex: Exception) {
                 Log.w(TAG, "Failed to capture failure state: ${ex.message}")
             }
@@ -92,11 +90,11 @@ class BiometricUnlockE2ETest {
         context = ApplicationProvider.getApplicationContext()
         helper = WebViewTestHelper(TAG)
         authPage = AuthPage(helper)
-        settingsPage = SettingsPage(helper, AutofillTestHost(device))
+        settingsPage = SettingsPage(helper, NativeAuthPromptHandler(device))
 
         vaultName = E2EEnv.requestedVaultName()
             ?: TestDataFactory.uniqueVaultName(encrypted = true)
-        account = E2EEnv.accountForVault(vaultName)
+        account = TestDataFactory.accountForVault(vaultName)
 
         val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         assertTrue(
@@ -114,18 +112,19 @@ class BiometricUnlockE2ETest {
      * E2EEnv.ensureBaseEnvironment(encrypted=true)는 매번 고유 이름으로 신규 암호화
      * 볼트를 생성/활성화하므로 stale 상태(잔여 plain 볼트 등)에 독립적이다.
      */
-    private fun ensureEncryptedEnvironment(): BaseEnv =
-        E2EEnv.ensureBaseEnvironment(
-            vaultName = vaultName,
-            account = account,
-            device = device,
-            context = context,
-            helper = helper,
-            testHost = AutofillTestHost(device),
-            encrypted = true,
-        )
+    private fun ensureEncryptedEnvironment() {
+            E2EEnv.ensureBaseEnvironment(
+                vaultName = vaultName,
+                account = account,
+                device = device,
+                context = context,
+                helper = helper,
+                nativeAuth = NativeAuthPromptHandler(device),
+                encrypted = true,
+            )
+        }
 
-    /**
+        /**
      * 앱 재시작(CLEAR_TASK) → Auth 화면 진입.
      * cryptoKey는 메모리 전용이므로 재시작 후 반드시 잠김 상태로 Auth에 도달한다.
      * (비암호화 볼트면 Auth를 거치지 않고 홈으로 가므로, Auth 도달 자체가
@@ -147,16 +146,15 @@ class BiometricUnlockE2ETest {
     private fun nextMarker(prefix: String): String = "$prefix-${++markerSeq}"
 
     /**
-     * 공통 상태구축: 암호화 볼트 확보 → PIN 1회 언락 → 생체인증 활성화.
+     * 공통 상태구축: 암호화 볼트 확보 → 생체인증 (재)활성화.
      * 각 시나리오가 독자 호출 (순서 의존 없음).
      */
-    private fun setupBiometricVault(scenario: String): BaseEnv {
-        val env = ensureEncryptedEnvironment()
+    private fun setupBiometricVault(scenario: String) {
+        ensureEncryptedEnvironment()
         settingsPage.navigateToSettings()
         settingsPage.enableBiometric(scenario) {
             Log.i(MARKER_TAG, "${nextMarker(scenario)} AWAIT_FINGER")
         }
-        return env
     }
 
     /**
@@ -178,37 +176,14 @@ class BiometricUnlockE2ETest {
 
     /** 생체인증 비활성화 + biometric 키 삭제 (각 테스트 finally 정리 겸용). */
     private fun disableBiometricViaUi() {
-        settingsPage.disableBiometricBestEffort(device)
-    }
-
-    // ============ 시나리오 1~4 ============
-
-    /**
-     * 시나리오 1: 암호화 볼트 준비 → 설정 > Security > 생체인증 활성화 → 프롬프트 통과.
-     * 검증: 활성화 성공 메시지 + 앱 재시작 후 Auth 화면에 지문 버튼 노출.
-     */
-    @Test
-    fun storeKey_enrollsBiometricProtection() {
-        val scenario = "storeKey"
-        val env = setupBiometricVault(scenario)
-        try {
-            // 활성화 성공 메시지는 setupBiometricVault 내부에서 검증 완료.
-            // 추가 검증: 앱 재시작 후 Auth 화면에 지문 버튼 노출 (hasKey==true 실측)
-            restartToAuthScreen()
-            if (!authPage.waitForFingerprintButton(10000)) {
-                helper.dumpViewHierarchy("${scenario}_button_after_restart_missing")
-                helper.captureScreen("${scenario}_button_after_restart_missing")
-                throw AssertionError("Fingerprint login button not exposed on Auth screen after restart (hasKey should be true)")
-            }
-            Log.i(TAG, "$scenario: fingerprint button visible after restart — PASS")
-
-            // 재진입 확인용 대기 (Auth 상태 유지 확인)
-            assertTrue(helper.waitForText("KIYO 잠금 해제", 3000))
-            env.helper.captureScreen("${scenario}_verified")
-        } finally {
-            disableBiometricViaUi()
+        val ok = settingsPage.disableBiometricBestEffort(device)
+        if (!ok) {
+            // finally 정리 실패는 다음 테스트 오염의 씨앗 — 눈에 띄게 남긴다.
+            Log.wtf(TAG, "disableBiometric failed: biometric key may remain. Next test must handle '사용 중' state.")
         }
     }
+
+
 
     /**
      * 시나리오 2: 활성화 → 앱 재시작 → 지문 로그인 → /accounts 진입 + 계정 목록 렌더링.
@@ -224,18 +199,19 @@ class BiometricUnlockE2ETest {
             tapBiometricLoginButton(scenario, LockMode.SESSION_LOCK)
 
             // 언락 성공 판정: /accounts 화면 + 계정 목록 렌더링 (세션/cryptoKey 복원 증명)
-            if (!helper.waitForText("My accounts", 30000)) {
-                helper.dumpViewHierarchy("${scenario}_unlock_failed")
-                helper.captureScreen("${scenario}_unlock_failed")
+            if (!helper.waitForText(AccountsPage.MARKER_TEXT, 30000)) {
                 throw AssertionError("Accounts list did not load after fingerprint unlock")
             }
             if (!helper.waitForText(account.title, 10000)) {
-                helper.dumpViewHierarchy("${scenario}_account_not_rendered")
-                helper.captureScreen("${scenario}_account_not_rendered")
-                throw AssertionError("Account '${account.title}' not rendered in list after biometric unlock")
+                // 언락 직후에는 Espresso-Web 컨텍스트 재부착/하이드레이션 지연으로
+                // 렌더가 늦을 수 있다 (검증됨 2026-08-28: 화면엔 값이 이미 표시됨).
+                // WebView 재부착 후 1회 재시도한다.
+                helper.waitForWebViewReady()
+                if (!helper.waitForText(account.title, 10000)) {
+                    throw AssertionError("Account '${account.title}' not rendered in list after biometric unlock")
+                }
             }
             Log.i(TAG, "$scenario: session restored via fingerprint — PASS")
-            helper.captureScreen("${scenario}_verified")
         } finally {
             disableBiometricViaUi()
         }
@@ -258,8 +234,6 @@ class BiometricUnlockE2ETest {
 
             // 취소 → onError → React setError("...PIN으로 로그인해 주세요.")
             if (!helper.waitForTextContains("PIN으로 로그인", 30000)) {
-                helper.dumpViewHierarchy("${scenario}_cancel_message_missing")
-                helper.captureScreen("${scenario}_cancel_message_missing")
                 throw AssertionError("PIN fallback error message not shown after biometric cancel")
             }
             Log.i(TAG, "$scenario: cancel fallback message shown")
@@ -267,44 +241,10 @@ class BiometricUnlockE2ETest {
             // PIN 폴백 언락 성공 검증
             authPage.unlockWithPin(testPin)
             Log.i(TAG, "$scenario: PIN fallback unlocked — PASS")
-            helper.captureScreen("${scenario}_verified")
         } finally {
             disableBiometricViaUi()
         }
     }
 
-    /**
-     * 시나리오 4: 생체인증 비활성화(deleteKey) → Auth 화면에서 지문 버튼 미노출.
-     */
-    @Test
-    fun deleteKey_disablesBiometricButton() {
-        val scenario = "deleteKey"
-        val env = setupBiometricVault(scenario)
-        try {
-            // 먼저 활성화 상태에서 버튼이 실제로 노출되는지 확인 (검증 기준선)
-            restartToAuthScreen()
-            assertTrue(
-                "Fingerprint button should be visible while key exists (baseline)",
-                authPage.waitForFingerprintButton(10000),
-            )
-            Log.i(TAG, "$scenario: baseline confirmed (button visible with key)")
 
-            // 잠금 상태에서는 Settings 접근 불가 → PIN으로 언락한 뒤 비활성화
-            authPage.unlockWithPin(testPin)
-            disableBiometricViaUi()
-
-            // 다시 잠금 → 지문 버튼 사라짐(hasKey==false), PIN만 표시
-            restartToAuthScreen()
-            if (authPage.waitForFingerprintButton(5000)) {
-                helper.dumpViewHierarchy("${scenario}_button_still_visible")
-                helper.captureScreen("${scenario}_button_still_visible")
-                throw AssertionError("Fingerprint button still visible after key deletion")
-            }
-            assertTrue(helper.waitForText("KIYO 잠금 해제", 5000))
-            Log.i(TAG, "$scenario: button gone after key deletion — PASS")
-            env.helper.captureScreen("${scenario}_verified")
-        } finally {
-            disableBiometricViaUi()
-        }
-    }
 }

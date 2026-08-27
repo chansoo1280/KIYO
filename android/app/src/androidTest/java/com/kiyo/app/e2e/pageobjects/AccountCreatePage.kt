@@ -1,9 +1,12 @@
-package com.kiyo.app.autofill.pageobjects
+package com.kiyo.app.e2e.pageobjects
 
-import com.kiyo.app.autofill.testutil.TestDataFactory
-import com.kiyo.app.autofill.testutil.WebViewTestHelper
+import com.kiyo.app.e2e.testutil.TestDataFactory
+import com.kiyo.app.e2e.testutil.WebViewTestHelper
 
 class AccountCreatePage(helper: WebViewTestHelper) : BasePage(helper) {
+
+    /** 모달 컴포넌트 — 단독 화면 판별 대상 아님 */
+    override val markers: List<String> = emptyList()
 
     data class AccountData(
         val title: String = "Test Account",
@@ -33,12 +36,7 @@ class AccountCreatePage(helper: WebViewTestHelper) : BasePage(helper) {
         val accountEditPage = AccountEditPage(helper)
         val loaded = accountEditPage.waitForLoad() != null
         if (!loaded) {
-            log("First waitForLoad failed, retrying with longer wait...")
-            Thread.sleep(3000)
-            val retryLoaded = accountEditPage.waitForLoad() != null
-            if (!retryLoaded) {
-                throw AssertionError("AccountEdit page did not load after template selection")
-            }
+            throw AssertionError("AccountEdit page did not load after template selection")
         }
         log("AccountEdit page loaded successfully")
         return accountEditPage
@@ -100,17 +98,13 @@ class AccountCreatePage(helper: WebViewTestHelper) : BasePage(helper) {
 
             if (!saved) {
                 // 디버깅: 현재 페이지 덤프
-                helper.dumpViewHierarchy("save_failed")
-                helper.captureScreen("save_failed")
                 throw AssertionError("Could not find/save button or submit form")
             }
 
             log("Save triggered, waiting for AccountsPage")
             val accountsPage = AccountsPage(helper).waitForLoad()
 
-            // 저장 후 리스트 렌더링 대기 추가
-            Thread.sleep(2000)
-            log("AccountsPage loaded after save, checking for account...")
+            log("AccountsPage loaded after save")
 
             return accountsPage
         }

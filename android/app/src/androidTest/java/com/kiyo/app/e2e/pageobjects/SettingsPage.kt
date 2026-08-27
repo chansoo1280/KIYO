@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill.pageobjects
+package com.kiyo.app.e2e.pageobjects
 
 import android.content.Intent
 import android.util.Log
@@ -9,11 +9,46 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
-import com.kiyo.app.autofill.testutil.AutofillTestHost
-import com.kiyo.app.autofill.testutil.DeviceOpsHelper
-import com.kiyo.app.autofill.testutil.WebViewTestHelper
+import com.kiyo.app.e2e.testutil.DeviceOpsHelper
+import com.kiyo.app.e2e.testutil.NativeAuthPrompt
+import com.kiyo.app.e2e.testutil.WebViewTestHelper
 
-class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTestHost) : BasePage(helper) {
+class SettingsPage(helper: WebViewTestHelper, private val nativeAuthPrompt: NativeAuthPrompt) : BasePage(helper) {
+
+    override val markers = listOf("자동완성")
+
+    /**
+     * Settings 탭 → 파일변경 "이동" 버튼 → 파일 선택 화면 진입.
+     * Settings 화면 UI 운전이므로 본 페이지가 담당 (구 AppScreenState.navigateToFileSelectionViaSettings — 2026-08-28 이관).
+     * 활성 볼트가 열려 있을 때(계정 리스트 등) 파일 선택 화면으로 가는 정상 UI 경로.
+     * Auth 화면(잠김)에서는 Settings 탭이 없어 실패(false 반환) — 호출자가 폴백 처리.
+     */
+    fun navigateToFileSelection(): Boolean = try {
+        helper.log("Trying file-change navigation: Settings tab > '이동' button")
+        // Settings 화면 진입 (이미 My accounts 등 로그인 상태여야 탭이 존재)
+        if (!helper.clickByAriaLabel("Settings", "settings tab")) {
+            helper.log("Settings tab not found (locked auth screen?)")
+            false
+        } else if (!helper.waitForText("파일변경", 10000)) {
+            helper.log("'파일변경' row not found on Settings")
+            false
+        } else if (!helper.clickByText("이동", "file change button")) {
+            helper.log("'이동' button not found")
+            false
+        } else {
+            val loaded = helper.waitForText(AuthPage.FILE_SELECT_MARKER, 10000) ||
+                helper.waitForText(AuthPage.CREATE_FILE_MARKER, 10000)
+            if (loaded) {
+                helper.log("Reached file selection screen via Settings > '이동'")
+            } else {
+                helper.log("File selection screen did not load from file change")
+            }
+            loaded
+        }
+    } catch (e: Exception) {
+        helper.log("navigateToFileSelection failed: ${e.message}")
+        false
+    }
 
     /** 설정 화면으로 네비게이션 (하단 탭에서 설정 탭 클릭) */
     fun navigateToSettings(): SettingsPage {
@@ -40,21 +75,34 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
 
         // SecuritySection의 생체인증 토글 버튼 ("사용 안 함" = 비활성 상태)
         if (!helper.waitForText("사용 안 함", 8000)) {
-            // 이미 활성 상태("사용 중")면 그대로 사용 — 멱등 보장용 분기
+            // 이미 활성("사용 중")이라도 stale 키 위험(Keystore 등록 무효화)이 있으므로
+            // 비활성화 후 재활성화한다 — 재등록 강제 (2026-08-28).
             if (helper.waitForText("사용 중", 2000)) {
-                log("Biometric already enabled ('사용 중' button)")
-                return
+                log("Biometric already enabled ('사용 중' button) — disabling for re-enrollment")
+                assertTrue(helper.clickByText("사용 중", "biometric disable button"))
+                if (!helper.waitForTextContains("저장된 키가 삭제되었습니다", 10000)) {
+                    throw AssertionError("Existing biometric key delete failed during re-enrollment")
+                }
+                if (!helper.waitForText("사용 안 함", 8000)) {
+                    throw AssertionError("'사용 안 함' button not shown after biometric disable")
+                }
+                log("Stale key deleted, proceeding to re-enable")
+            } else {
+                throw AssertionError("Biometric toggle button not found on Settings > Security")
             }
-            helper.dumpViewHierarchy("${scenario}_biometric_btn_missing")
-            helper.captureScreen("${scenario}_biometric_btn_missing")
-            throw AssertionError("Biometric toggle button not found on Settings > Security")
         }
-        assertTrue(helper.clickByText("사용 안 함", "biometric enable button"))
-
-        // 확인 다이얼로그 → 등록하기
-        if (!helper.waitForText("생체인증 등록", 8000)) {
-            helper.dumpViewHierarchy("${scenario}_setup_dialog_missing")
-            helper.captureScreen("${scenario}_setup_dialog_missing")
+        var dialogShown = false
+        for (attempt in 1..3) {
+            assertTrue(helper.clickByText("사용 안 함", "biometric enable button"))
+            if (helper.waitForText("생체인증 등록", 8000)) {
+                dialogShown = true
+                break
+            }
+            log("Setup dialog not shown (attempt $attempt) — retrying enable click")
+        }
+        if (!dialogShown) {
+            helper.dumpViewHierarchy("biometric_setup_dialog_missing")
+            helper.captureScreen("biometric_setup_dialog_missing")
             throw AssertionError("Biometric setup dialog did not appear")
         }
         assertTrue(helper.clickByText("등록하기", "biometric setup confirm button"))
@@ -66,8 +114,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
 
         // 성공 메시지 확인 (호스트 주입 → onAuthenticationSucceeded → storeKey 성공)
         if (!helper.waitForTextContains("생체인증이 활성화되었습니다", 30000)) {
-            helper.dumpViewHierarchy("${scenario}_enable_failed")
-            helper.captureScreen("${scenario}_enable_failed")
             throw AssertionError("Biometric enable success message not shown (fingerprint injection failed?)")
         }
         log("Biometric enabled successfully")
@@ -81,7 +127,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
     fun disableBiometricBestEffort(device: UiDevice): Boolean {
         return try {
             DeviceOpsHelper.bringAppToForeground(device)
-            Thread.sleep(1500)
             if (!helper.waitForWebViewReady()) return false
             if (!helper.clickByAriaLabel("Settings", "settings tab")) return false
             helper.waitForText("자동완성")
@@ -102,7 +147,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
     private fun assertTrue(condition: Boolean) {
         if (!condition) throw AssertionError("SettingsPage assertion failed")
     }
-
 
     /** 자동완성 섹션의 "동기화" 버튼 클릭
      *  - 최초 실행 시 네이티브 인증 프롬프트 발생 (Keystore 30분 캐시 만료 시)
@@ -138,21 +182,17 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
             //    - "자동완성 계정 N개 동기화 완료" / "동기화 완료 (N개 오류)" 모두 커버
             if (helper.waitForTextContains("동기화 완료", 500)) {
                 log("Sync completed - success message displayed")
-                helper.dumpViewHierarchy("after_sync")
-                helper.captureScreen("after_sync")
                 return true
             }
 
             // 2. 실패 판정: 에러 메시지 표시
             if (helper.waitForText("동기화 실패", 500) || helper.waitForText("인증이 취소", 500)) {
                 log("Sync failed or auth cancelled")
-                helper.dumpViewHierarchy("sync_failed")
-                helper.captureScreen("sync_failed")
                 return false
             }
 
             // 3. 네이티브 인증 프롬프트 감지 및 처리
-            if (testHost.waitForNativeAuthPrompt(2000)) {
+            if (nativeAuthPrompt.waitForNativeAuthPrompt(2000)) {
                 log("Native auth prompt detected - waiting for user auth")
                 Thread.sleep(2000)
                 continue
@@ -164,12 +204,9 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
                 continue
             }
 
-            Thread.sleep(500)
         }
 
         log("Timeout waiting for sync completion")
-        helper.dumpViewHierarchy("sync_timeout")
-        helper.captureScreen("sync_timeout")
         return false
     }
 
@@ -181,19 +218,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
     }
 
     /** 마지막 동기화 시간이 변경될 때까지 대기 */
-    private fun waitForLastSyncTimeChanged(beforeText: String?, timeoutMs: Long): Boolean {
-        val start = System.currentTimeMillis()
-        while (System.currentTimeMillis() - start < timeoutMs) {
-            val current = getLastSyncTimeText()
-            if (current != null && current != beforeText && current != "동기화된 적 없음") {
-                log("Last sync time changed: '$beforeText' -> '$current'")
-                return true
-            }
-            Thread.sleep(500)
-        }
-        log("Last sync time did not change (before='$beforeText', current='${getLastSyncTimeText()}')")
-        return false
-    }
 
     /** "자동완성 사용" 토글(role="switch") 클릭하여 ON
      *  - 설정 화면에 role="switch"가 2개 있음 (다크모드 + 자동완성)
@@ -250,7 +274,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
             kiyoItem.click()
             Log.i("AUTOFILL_E2E", "Selected KIYO in autofill service picker")
         } else {
-            helper.captureScreen("autofill_picker_kiyo_not_found")
             throw AssertionError("KIYO not found in autofill service picker dialog")
         }
 
@@ -265,7 +288,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
             Log.i("AUTOFILL_E2E", "Confirmation dialog detected - clicking Change")
             helper.captureScreen("autofill_confirm_dialog")
             confirmButton.click()
-            Thread.sleep(1000)
             // Change 클릭 후 CredentialsPickerActivity가 포그라운드에 남아 있으면
             // MainActivity가 resume되지 않아 "KIYO 자동완성 활성화됨" 텍스트가 렌더링되지 않는다
             // (검증됨 2026-08-25). back 대신 앱을 명시적으로 포그라운드로 복귀시킨다 —
@@ -285,9 +307,8 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
                         data = android.net.Uri.parse("kiyo://settings")
                     },
                 )
-                Thread.sleep(4000)
+                helper.waitForWebViewReady()
                 // 재시작 후 Settings 탭으로 이동 (CLEAR_TASK면 홈에서 시작함)
-                Thread.sleep(2000)
                 WebViewTestHelper.clickAriaLabelStatic(device2, "Settings", "settings tab after relaunch")
             }
         } else {
@@ -296,7 +317,6 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
 
         // 상태가 "KIYO 자동완성 활성화됨"으로 갱신될 때까지 대기
         if (!helper.waitForText("KIYO 자동완성 활성화됨", 10000)) {
-            helper.captureScreen("autofill_service_status_after_enable")
             throw AssertionError("Autofill service status did not update to enabled")
         }
         log("Autofill service activated")
@@ -316,10 +336,8 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
         // 감지 불가 (검증됨 2026-08). 화면 상태와 무관하게 키코드 PIN을 전송하는 방식 사용.
         // 프롬프트 렌더링 대기 후 키코드 입력.
         Thread.sleep(3000)
-        val entered = testHost.inputPinViaKeyEvents(devicePin)
+        val entered = nativeAuthPrompt.inputPinViaKeyEvents(devicePin)
         if (!entered) {
-            helper.dumpViewHierarchy("pin_auth_input_failed")
-            helper.captureScreen("pin_auth_input_failed")
             throw AssertionError("Failed to input PIN via key events")
         }
         log("PIN sent via key events, waiting for auth + sync completion")
@@ -328,31 +346,20 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
         val timeoutMs = 30000L
         while (System.currentTimeMillis() - startTime < timeoutMs) {
             // 재입력 필요(프롬프트가 아직 떠 있고 인증 안 됨)하면 한 번 더 시도
-            if (!testHost.waitForNativeAuthPrompt(2000)) {
+            if (!nativeAuthPrompt.waitForNativeAuthPrompt(2000)) {
                 // 성공 판정: AuthActivity 종료로 WebView 루트 복귀 + 마지막 동기화 시각 존재
-                if (!helper.waitForText("KIYO 잠금 해제", 500)) {
+                if (!AuthPage.isCurrentVia(helper)) {
                     log("Auth prompt dismissed - sync auth completed")
-                    helper.dumpViewHierarchy("after_sync_with_auth")
-                    helper.captureScreen("after_sync_with_auth")
                     return this
                 }
             } else {
                 log("Auth prompt still visible, retrying PIN via key events")
-                testHost.inputPinViaKeyEvents(devicePin)
+                nativeAuthPrompt.inputPinViaKeyEvents(devicePin)
             }
             Thread.sleep(500)
         }
 
-        helper.dumpViewHierarchy("sync_pin_auth_timeout")
-        helper.captureScreen("sync_pin_auth_timeout")
         throw AssertionError("Timeout waiting for sync completion with PIN auth")
-    }
-
-    /** 자동완성 활성화 토글 상태 확인 */
-    fun isAutofillEnabled(): Boolean {
-        // 토글 스위치 상태 확인 (role="switch", aria-checked)
-        // 구현 필요시 추가
-        return true
     }
 
     /** 자동완성 토글의 aria-checked 상태 확인 (aria-label로 정확히 타겟팅) */

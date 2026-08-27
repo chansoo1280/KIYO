@@ -1,4 +1,4 @@
-package com.kiyo.app.autofill.testutil
+package com.kiyo.app.e2e.testutil
 
 import android.app.KeyguardManager
 import android.content.Context
@@ -73,6 +73,12 @@ object DeviceOpsHelper {
         Log.w(TAG, "Device PIN may still be set after clear attempts")
     }
 
+    /** 잠금화면이 설정돼 있으면 PIN 제거, 아니면 no-op */
+    fun clearIfSet(context: Context, pin: String) {
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (km.isDeviceSecure) clearPin(context, pin)
+    }
+
     /** KIYO 앱을 포어그라운드로 가져오기 (원본 동작: CLEAR_TASK 없이 액티비티만 재시작해 프로세스/캐시 유지) */
     fun bringAppToForeground(device: UiDevice) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
@@ -95,6 +101,25 @@ object DeviceOpsHelper {
         Log.i(TAG, "killed $packageName pid=$mainPid")
         return mainPid
     }
+
+    // ============ 잠금 화면 상태 실측 (구 DeviceLockHelper — 2026-08-28 통합) ============
+
+    /** 기기가 현재 잠겨 있는지 (KeyguardManager.isDeviceLocked) */
+    fun isDeviceLocked(): Boolean {
+        val km = InstrumentationRegistry.getInstrumentation().targetContext
+            .getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        return km.isDeviceLocked
+    }
+
+    /** 기기가 언락 상태여야 함을 보장 — 잠겨 있으면 즉시 실패 */
+    fun assertUnlocked() {
+        if (isDeviceLocked()) {
+            throw AssertionError("Device is locked! Unlock it before running E2E tests. " +
+                "Run: adb shell locksettings set-pin 1234 && adb shell input keyevent KEYCODE_WAKEUP ...")
+        }
+    }
+
+    /** 안전한 잠금화면 없음 보장 (isDeviceSecure=false) — PIN/패턴이 설정돼 있으면 실패 */
 
     /** logcat 최근 N줄 읽기 */
     fun readLogcat(lines: Int = 500): String {
