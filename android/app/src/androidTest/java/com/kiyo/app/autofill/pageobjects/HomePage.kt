@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import com.kiyo.app.autofill.testutil.AppScreenState
 import com.kiyo.app.autofill.testutil.WebViewTestHelper
 import java.io.File
 
@@ -14,6 +15,19 @@ class HomePage(helper: WebViewTestHelper) : BasePage(helper) {
     fun getActiveVaultFileName(): String? {
         log("Getting active vault file name...")
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+
+        // 0. Auth 잠금 화면: "파일 정보" 영역에 파일명 표시됨 (Auth.tsx 파일 정보 카드)
+        if (helper.waitForText("KIYO 잠금 해제", 2000)) {
+            log("On auth screen, reading vault file name from file info card...")
+            val node = device.wait(Until.findObject(By.textContains(".json")), 5000)
+            val fileName = node?.text?.trim()
+            if (!fileName.isNullOrBlank()) {
+                log("Active vault file name from auth screen: $fileName")
+                return fileName.removeSuffix(".json")
+            }
+            log("Vault file name not found on auth screen")
+            return null
+        }
 
         // 1. 계정 리스트 화면(My accounts): 파일명이 ".json"으로 표시됨
         if (helper.waitForText("My accounts", 2000)) {
@@ -117,6 +131,15 @@ class HomePage(helper: WebViewTestHelper) : BasePage(helper) {
 
         // 현재 화면 파악 후 강제 이동
         log("Not on home screen, forcing navigation...")
+
+        // 0. 활성 볼트가 열려 있으면(Settings 접근 가능 상태) 파일변경 "이동" 버튼으로
+        //    파일 선택 화면 진입 (Settings/index.tsx handleFileChange: closeDataFile → "/").
+        //    활성 볼트 존재 시 앱이 cold start에서 파일 선택 화면을 건너뛰므로 이 경로가 유일한
+        //    정상 진입 방법이다 (검증됨 2026-08-27: My accounts에서 Files 탭 클릭은 무시됨).
+        //    Settings 화면 UI 운전이므로 AppScreenState 유틸이 담당 (HomePage 책임 밖).
+        if (AppScreenState.navigateToFileSelectionViaSettings(helper)) {
+            return this
+        }
 
         // 1. UIAutomator로 하단 탭 바에서 Files 탭 직접 클릭 (가장 확실)
         log("Trying UIAutomator to click Files tab...")

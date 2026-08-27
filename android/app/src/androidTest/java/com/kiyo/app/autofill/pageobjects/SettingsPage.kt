@@ -10,6 +10,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.kiyo.app.autofill.testutil.AutofillTestHost
+import com.kiyo.app.autofill.testutil.DeviceOpsHelper
 import com.kiyo.app.autofill.testutil.WebViewTestHelper
 
 class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTestHost) : BasePage(helper) {
@@ -24,6 +25,84 @@ class SettingsPage(helper: WebViewTestHelper, private val testHost: AutofillTest
         log("Settings page loaded, autofill section visible")
         return this
     }
+
+    // ============ 생체인증 섹션 (SecuritySection.tsx) ============
+
+    /**
+     * 생체인증 활성화 (UI 경유 + logcat 마커 프로토콜).
+     * 전제: 로그인된 상태에서 navigateToSettings() 완료.
+     * 프롬프트는 접근성 트리에 노출되지 않으므로(보안 정책) 고정 딜레이 후 onPromptVisible
+     * 콜백 호출 — 호출자가 logcat 마커 출력 등 호스트 협력 동작을 수행.
+     * 성공 메시지("생체인증이 활성화되었습니다")까지 대기해 반환.
+     */
+    fun enableBiometric(scenario: String, onPromptVisible: () -> Unit) {
+        log("Enabling biometric (Settings > Security)")
+
+        // SecuritySection의 생체인증 토글 버튼 ("사용 안 함" = 비활성 상태)
+        if (!helper.waitForText("사용 안 함", 8000)) {
+            // 이미 활성 상태("사용 중")면 그대로 사용 — 멱등 보장용 분기
+            if (helper.waitForText("사용 중", 2000)) {
+                log("Biometric already enabled ('사용 중' button)")
+                return
+            }
+            helper.dumpViewHierarchy("${scenario}_biometric_btn_missing")
+            helper.captureScreen("${scenario}_biometric_btn_missing")
+            throw AssertionError("Biometric toggle button not found on Settings > Security")
+        }
+        assertTrue(helper.clickByText("사용 안 함", "biometric enable button"))
+
+        // 확인 다이얼로그 → 등록하기
+        if (!helper.waitForText("생체인증 등록", 8000)) {
+            helper.dumpViewHierarchy("${scenario}_setup_dialog_missing")
+            helper.captureScreen("${scenario}_setup_dialog_missing")
+            throw AssertionError("Biometric setup dialog did not appear")
+        }
+        assertTrue(helper.clickByText("등록하기", "biometric setup confirm button"))
+
+        // BiometricPrompt 네이티브 창 렌더링 대기 후 콜백 (호스트가 finger touch 주입)
+        log("Waiting for native BiometricPrompt to render...")
+        Thread.sleep(4000)
+        onPromptVisible()
+
+        // 성공 메시지 확인 (호스트 주입 → onAuthenticationSucceeded → storeKey 성공)
+        if (!helper.waitForTextContains("생체인증이 활성화되었습니다", 30000)) {
+            helper.dumpViewHierarchy("${scenario}_enable_failed")
+            helper.captureScreen("${scenario}_enable_failed")
+            throw AssertionError("Biometric enable success message not shown (fingerprint injection failed?)")
+        }
+        log("Biometric enabled successfully")
+    }
+
+    /**
+     * 생체인증 비활성화 + biometric 키 삭제 (deleteKey — Capacitor bridge 경유).
+     * 앱이 백그라운드여도 포그라운드로 복구해 처리. finally 정리용으로 예외를 던지지 않는다.
+     * @return 정상 처리 완료 여부 (이미 비활성 상태면 true)
+     */
+    fun disableBiometricBestEffort(device: UiDevice): Boolean {
+        return try {
+            DeviceOpsHelper.bringAppToForeground(device)
+            Thread.sleep(1500)
+            if (!helper.waitForWebViewReady()) return false
+            if (!helper.clickByAriaLabel("Settings", "settings tab")) return false
+            helper.waitForText("자동완성")
+            if (!helper.waitForText("생체인증 로그인", 5000)) return false
+            if (!helper.clickByText("사용 중", "biometric disable button")) {
+                log("Biometric already disabled (no '사용 중' button)")
+                return true
+            }
+            val deleted = helper.waitForTextContains("저장된 키가 삭제되었습니다", 10000)
+            log("disableBiometric completed (deleted message=$deleted)")
+            deleted
+        } catch (e: Exception) {
+            log("disableBiometric cleanup failed (best effort): ${e.message}")
+            false
+        }
+    }
+
+    private fun assertTrue(condition: Boolean) {
+        if (!condition) throw AssertionError("SettingsPage assertion failed")
+    }
+
 
     /** 자동완성 섹션의 "동기화" 버튼 클릭
      *  - 최초 실행 시 네이티브 인증 프롬프트 발생 (Keystore 30분 캐시 만료 시)

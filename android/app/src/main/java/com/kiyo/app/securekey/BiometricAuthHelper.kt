@@ -3,6 +3,7 @@ package com.kiyo.app.securekey
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.security.keystore.UserNotAuthenticatedException
 import android.util.Base64
 import android.util.Log
 import androidx.biometric.BiometricManager
@@ -46,61 +47,21 @@ class BiometricAuthHelper internal constructor(
             val masterKey = getOrCreateMasterKey()
             val plainKeyBytes = Base64.decode(cryptoKeyBase64, Base64.NO_WRAP)
 
-            // 1. Initialize Cipher in ENCRYPT_MODE - this cipher will be bound to biometric auth
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.ENCRYPT_MODE, masterKey)
-
-            // 2. Create CryptoObject wrapping the cipher
-            val cryptoObject = BiometricPrompt.CryptoObject(cipher)
-
-            // 3. Create biometric prompt
-            val executor = ContextCompat.getMainExecutor(context)
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("생체인증 등록")
-                .setSubtitle("$vaultId 볼트의 암호화 키를 생체인증으로 보호합니다")
-                .setDescription("지문 또는 얼굴 인증으로 키 저장을 확인하세요")
-                .setNegativeButtonText("취소")
-                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                .build()
-
-            val deferred = CompletableDeferred<Unit>()
-            val callback = object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    try {
-                        val authenticatedCipher = result.cryptoObject?.cipher
-                            ?: throw IllegalStateException("CryptoObject is null in authentication result")
-
-                        // 4. Perform actual encryption with the authenticated cipher
-                        val ciphertext = authenticatedCipher.doFinal(plainKeyBytes)
-                        val iv = authenticatedCipher.iv
-
-                        // 5. Save encrypted key to DataStore
-                        saveEncryptedKeyToDataStore(iv, ciphertext)
-
-                        deferred.complete(Unit)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Encryption failed after authentication", e)
-                        deferred.completeExceptionally(e)
-                    }
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    deferred.completeExceptionally(
-                        BiometricAuthException(errorCode, errString.toString())
-                    )
-                }
-
-                override fun onAuthenticationFailed() {
-                    deferred.completeExceptionally(
-                        BiometricAuthException(-1, "Biometric authentication failed")
-                    )
-                }
+            // ⚠️ CryptoObject 경로는 사용하지 않는다 (2026-08-27 실측):
+            // Keystore2에서 cipher.init()이 UserNotAuthenticatedException 없이 성공해도
+            // op handle이 지연/정리되어 BiometricPrompt.authenticate(CryptoObject) 시점에
+            // "Crypto primitive not initialized"로 크래시난다.
+            // → non-crypto 프롬프트로 사용자 인증(키 30분 유효창 오픈) 후 init+doFinal.
+            //   doFinal이 auth-required 키를 강제하므로 보안 등가이다 (유효창 닫히면 UNAE).
+            authenticateWithPrompt(
+                title = "생체인증 등록",
+                subtitle = "$vaultId 볼트의 암호화 키를 생체인증으로 보호합니다",
+            ) {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.ENCRYPT_MODE, masterKey)
+                val ciphertext = cipher.doFinal(plainKeyBytes)
+                saveEncryptedKeyToDataStore(cipher.iv, ciphertext)
             }
-
-            val biometricPrompt = BiometricPrompt(activity, executor, callback)
-            biometricPrompt.authenticate(promptInfo, cryptoObject)
-
-            deferred.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "storeKey failed", e)
@@ -115,70 +76,71 @@ class BiometricAuthHelper internal constructor(
     suspend fun unlockKeyWithBiometric(vaultId: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             val masterKey = getOrCreateMasterKey()
-
+            
             // 1. Read encrypted key from DataStore
             val encryptedKey = readEncryptedKeyFromDataStore()
-            val iv = encryptedKey.iv
-            val ciphertext = encryptedKey.ciphertext
+            val spec = GCMParameterSpec(GCM_TAG_LENGTH * 8, encryptedKey.iv)
 
-            // 2. Initialize Cipher in DECRYPT_MODE with IV - bound to biometric auth
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            val spec = GCMParameterSpec(GCM_TAG_LENGTH * 8, iv)
-            cipher.init(Cipher.DECRYPT_MODE, masterKey, spec)
-
-            // 3. Create CryptoObject wrapping the cipher
-            val cryptoObject = BiometricPrompt.CryptoObject(cipher)
-
-            // 4. Create biometric prompt
-            val executor = ContextCompat.getMainExecutor(context)
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("생체인증으로 로그인")
-                .setSubtitle("$vaultId 볼트 잠금 해제")
-                .setDescription("지문 또는 얼굴 인증으로 로그인하세요")
-                .setNegativeButtonText("취소")
-                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                .build()
-
-            val deferred = CompletableDeferred<String>()
-            val callback = object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    try {
-                        val authenticatedCipher = result.cryptoObject?.cipher
-                            ?: throw IllegalStateException("CryptoObject is null in authentication result")
-
-                        // 5. Perform actual decryption with the authenticated cipher
-                        val plainKeyBytes = authenticatedCipher.doFinal(ciphertext)
-                        val cryptoKeyBase64 = Base64.encodeToString(plainKeyBytes, Base64.NO_WRAP)
-
-                        deferred.complete(cryptoKeyBase64)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Decryption failed after authentication", e)
-                        deferred.completeExceptionally(e)
-                    }
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    deferred.completeExceptionally(
-                        BiometricAuthException(errorCode, errString.toString())
-                    )
-                }
-
-                override fun onAuthenticationFailed() {
-                    deferred.completeExceptionally(
-                        BiometricAuthException(-1, "Biometric authentication failed")
-                    )
-                }
+            // CryptoObject 미사용 (storeKey 주석 참조 — Keystore2 "Crypto primitive not initialized" 크래시).
+            // non-crypto 인증 후 init+doFinal; auth-required 키라 doFinal이 인증을 강제한다.
+            val plainKeyBytes = authenticateWithPrompt(
+                title = "생체인증으로 로그인",
+                subtitle = "$vaultId 볼트 잠금 해제",
+            ) {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.DECRYPT_MODE, masterKey, spec)
+                cipher.doFinal(encryptedKey.ciphertext)
             }
-
-            val biometricPrompt = BiometricPrompt(activity, executor, callback)
-            biometricPrompt.authenticate(promptInfo, cryptoObject)
-
-            val result = deferred.await()
-            Result.success(result)
+            Result.success(Base64.encodeToString(plainKeyBytes, Base64.NO_WRAP))
         } catch (e: Exception) {
             Log.e(TAG, "unlockKeyWithBiometric failed", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * BiometricPrompt를 띄우고 인증 성공 시 block을 실행해 값을 반환받는다 (non-crypto 인증).
+     *
+     * ⚠️ authenticate()는 FragmentManager 트랜잭션을 실행하므로 메인 스레드에서 호출해야 한다.
+     */
+    private suspend fun <T> authenticateWithPrompt(
+        title: String,
+        subtitle: String,
+        block: () -> T,
+    ): T {
+        val executor = ContextCompat.getMainExecutor(context)
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setDescription("지문 또는 얼굴 인증으로 확인하세요")
+            .setNegativeButtonText("취소")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .build()
+
+        val deferred = CompletableDeferred<T>()
+        val callback = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                try {
+                    deferred.complete(block())
+                } catch (e: Exception) {
+                    Log.e(TAG, "Crypto operation failed after authentication", e)
+                    deferred.completeExceptionally(e)
+                }
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                deferred.completeExceptionally(BiometricAuthException(errorCode, errString.toString()))
+            }
+
+            override fun onAuthenticationFailed() {
+                deferred.completeExceptionally(BiometricAuthException(-1, "Biometric authentication failed"))
+            }
+        }
+
+        withContext(Dispatchers.Main) {
+            BiometricPrompt(activity, executor, callback).authenticate(promptInfo)
+        }
+        return deferred.await()
     }
 
     /**
@@ -216,7 +178,7 @@ class BiometricAuthHelper internal constructor(
         try {
             val biometricManager = BiometricManager.from(context)
             val authResult = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-
+            
             when (authResult) {
                 BiometricManager.BIOMETRIC_SUCCESS -> {
                     // Check which biometric type is available
@@ -247,7 +209,7 @@ class BiometricAuthHelper internal constructor(
     private fun getOrCreateMasterKey(): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
-
+        
         if (!keyStore.containsAlias(KEY_ALIAS)) {
             val keyGenerator = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES,
@@ -270,7 +232,7 @@ class BiometricAuthHelper internal constructor(
             keyGenerator.init(spec)
             keyGenerator.generateKey()
         }
-
+        
         val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry
         return entry.secretKey
     }
@@ -290,7 +252,7 @@ class BiometricAuthHelper internal constructor(
         val prefs = context.getSharedPreferences(DATASTORE_NAME, Context.MODE_PRIVATE)
         val jsonString = prefs.getString(ENCRYPTED_KEY_KEY, null)
             ?: throw IllegalStateException("No encrypted key found in DataStore")
-
+        
         val json = JSONObject(jsonString)
         val iv = Base64.decode(json.getString("iv"), Base64.NO_WRAP)
         val ciphertext = Base64.decode(json.getString("ciphertext"), Base64.NO_WRAP)
@@ -305,7 +267,7 @@ data class BiometryAvailability(
 
 class BiometricAuthException(
     val errorCode: Int,
-    message: String
+    override val message: String
 ) : Exception(message)
 
 /**

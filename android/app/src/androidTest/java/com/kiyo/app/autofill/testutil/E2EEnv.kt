@@ -94,7 +94,7 @@ object E2EEnv {
      * - LIST: 계정 리스트 (검증 시나리오 — 볼트 활성 상태에서 시작).
      *   LIST 미발견 시에만 홈(파일 탭) 경유 재시도한다 (볼트 비활성 폴백).
      */
-    fun launchAppAndBind(env: BaseEnv, target: Target): BaseEnv {
+    fun launchAppAndBind(env: BaseEnv, target: Target, encrypted: Boolean = false): BaseEnv {
         with(env) {
             DeviceLockHelper.assertUnlocked()
             val intent = Intent().apply {
@@ -108,26 +108,34 @@ object E2EEnv {
 
             when (target) {
                 Target.FILES -> {
-                    // 활성 볼트가 있으면 앱이 곧바로 계정 리스트("My accounts")로 열린다.
-                    // 이 경우 파일 선택 화면 대기(15s×2 타임아웃)는 순수 낭비이므로
-                    // 짧게 실측해 즉시 통과시킨다.
-                    if (helper.waitForText("My accounts", 3000)) {
-                        Log.i(TAG, "Active vault detected early (accounts list visible)")
-                    } else {
-                        homePage.ensureHomeScreen()
-                    }
+                    // FILES는 "기동 후 화면 실측"까지만 책임진다 — 어떤 화면이든 통과.
+                    // 활성 상태 판별/파일 선택 화면 도달은 ensureBaseEnvironment가
+                    // detectActiveState + navigateToFileSelection으로 수행한다.
+                    // (이전: Auth 화면에서 ensureHomeScreen이 실패하는 문제, 검증됨 2026-08-27)
+                    helper.waitForWebViewReady()
+                    Thread.sleep(2000)
                 }
-                Target.LIST -> ensureAccountsList(env)
+                Target.LIST -> ensureAccountsList(env, encrypted)
             }
             return bind(env)
         }
     }
 
-    /** 계정 리스트 도달 보장: "My accounts" 실측, 없으면 홈 경유 폴백 후 List 탭 클릭 */
-    private fun ensureAccountsList(env: BaseEnv) {
+    /** 계정 리스트 도달 보장.
+     * "My accounts" 실측, 없으면:
+     *  - encrypted=true: 활성 암호화 볼트가 잠겨 Auth 화면에 머무는 상태이므로 PIN으로 언락
+     *    (암호화 볼트 재기동 시 cryptoKey 메모리 소실 → Home.tsx가 /auth로 보냄 — 정상 동작)
+     *  - encrypted=false: 홈 경유 폴백 후 List 탭 클릭
+     */
+    private fun ensureAccountsList(env: BaseEnv, encrypted: Boolean = false) {
         with(env) {
             if (helper.waitForText("My accounts", 10000)) {
                 Log.i(TAG, "Accounts list already active")
+                return
+            }
+            if (encrypted && helper.waitForText("KIYO 잠금 해제", 5000)) {
+                // 암호화 볼트 잠김 상태 → PIN 언락 (Auth.tsx handleVerifyPin)
+                unlockLockedEnv(env)
                 return
             }
             // 볼트 비활성(파일 선택 화면 등) → 홈 경유 후 List 탭으로
@@ -180,10 +188,18 @@ object E2EEnv {
     }
 
     /**
-     * 기본 환경 확보: 지정된 볼트 파일명이 활성 상태인지 화면 실측, 없으면 구축.
-     * - 이미 구축됐으면 화면 실측(활성 볼트 파일명)만으로 판별해 즉시 통과
-     * - 없으면 볼트 생성 → 계정 생성 → autofill toggle ON + 서비스 활성화
+     * 기본 환경 확보: 앱 기동 상태를 화면 실측으로 구분해 처리.
+     *
+     * 앱 기동 시 3가지 상태 (HomePage.ActiveState):
+     *  1. NONE             — 파일 선택 화면 (활성 파일 없음)
+     *  2. PLAIN_ACTIVE     — 계정 리스트 (비암호화 파일 활성)
+     *  3. ENCRYPTED_LOCKED — Auth 잠금 화면 (암호화 파일 활성, cryptoKey 메모리 소실)
+     *
+     * - 목표 볼트가 이미 활성이면(PLAIN_ACTIVE 또는 PIN 언락 가능한 ENCRYPTED_LOCKED) 생성 생략
+     * - 아니면 파일 선택 화면까지 이동(상태별 탈출 경로) 후 신규 생성
+     * - 생성 시: 볼트 생성 → 계정 생성 → autofill toggle ON + 서비스 활성화
      * - sync는 호출자가 수행 (준비에 포함하지 않음)
+     * @param encrypted true면 암호화 볼트 생성, false면 비암호화 볼트 생성 (기본값: false)
      */
     fun ensureBaseEnvironment(
         vaultName: String,
@@ -191,69 +207,146 @@ object E2EEnv {
         device: UiDevice,
         context: Context,
         helper: WebViewTestHelper,
-        testHost: AutofillTestHost
+        testHost: AutofillTestHost,
+        encrypted: Boolean = false
     ): BaseEnv {
-        // 1. FILES 타겟으로 기동 (파일 선택 화면에서 볼트 상태 확인 가능)
-        val env = launchAppAndBind(
-            BaseEnv(
-                vaultName = vaultName,
-                account = account,
-                device = device,
-                context = context,
-                helper = helper,
-                homePage = HomePage(helper),
-                accountsPage = AccountsPage(helper),
-                settingsPage = SettingsPage(helper, testHost),
-                testHost = testHost,
-            ),
-            target = Target.FILES,
+        val env = BaseEnv(
+            vaultName = vaultName,
+            account = account,
+            device = device,
+            context = context,
+            helper = helper,
+            homePage = HomePage(helper),
+            accountsPage = AccountsPage(helper),
+            settingsPage = SettingsPage(helper, testHost),
+            testHost = testHost,
         )
 
-        // 2. 화면 실측: 활성 볼트 파일명 확인
-        val activeVaultName = env.homePage.getActiveVaultFileName()
+        // 1. 기동 + 활성 상태 실측
+        val bound = launchAppAndBind(env, Target.FILES)
+        val state = AppScreenState.detect(bound.helper)
+        val activeVaultName = bound.homePage.getActiveVaultFileName()
+        Log.i(TAG, "App started: state=$state activeVault=$activeVaultName target=$vaultName encrypted=$encrypted")
+
+        // 2. 목표 볼트가 이미 활성이면 생성 생략
         if (activeVaultName == vaultName) {
-            Log.i(TAG, "Vault '$vaultName' already active, skipping creation")
-            // 이미 준비됨 → 계정 리스트가 화면에 있으므로 재기동 없이 바인딩만 갱신
-            return bind(env)
+            when (state) {
+                AppScreenState.State.PLAIN_ACTIVE -> {
+                    Log.i(TAG, "Target vault '$vaultName' already active (plain), skipping creation")
+                    return bind(bound)
+                }
+                AppScreenState.State.ENCRYPTED_LOCKED -> {
+                    if (encrypted) {
+                        Log.i(TAG, "Target vault '$vaultName' already active (encrypted, locked) — unlocking with PIN")
+                        unlockLockedEnv(bound)
+                        return bind(bound)
+                    }
+                    Log.i(TAG, "Target vault '$vaultName' active but plain requested — replacing via file selection")
+                }
+                AppScreenState.State.NONE -> {
+                    // 이름은 같지만 파일 선택 화면 = 실제 활성 아님 (목록 표시误读 등) → 생성 진행
+                    Log.i(TAG, "Vault name matched on file list but no active vault — proceeding to create")
+                }
+            }
         }
 
-        // 3. 없으면 준비 플로우 (prepareVault 로직 인라인)
-        Log.i(TAG, "Vault '$vaultName' not active (found: $activeVaultName), creating...")
+        // 3. 파일 선택 화면까지 이동 (상태별 탈출 경로)
+        navigateToFileSelection(bound, state, activeVaultName)
 
-        // 볼트 생성 (비암호화) + 계정 생성
-        val accounts = env.homePage.clickCreateVaultButton()
-            .createVault(vaultName, encrypted = false)
+        // 4. 신규 볼트 생성 + 계정 생성
+        Log.i(TAG, "Creating vault '$vaultName' (encrypted=$encrypted)...")
+        val accounts = bound.homePage.clickCreateVaultButton()
+            .createVault(vaultName, encrypted = encrypted)
         val accountEditPage = accounts.clickAddAccount()
             .selectDefaultTemplate()
             .fillAccount(
                 com.kiyo.app.autofill.pageobjects.AccountEditPage.AccountData(
-                    title = env.account.title,
-                    websiteUrl = env.account.websiteUrl,
-                    username = env.account.username,
-                    password = env.account.password,
-                    packageName = env.account.packageName,
+                    title = bound.account.title,
+                    websiteUrl = bound.account.websiteUrl,
+                    username = bound.account.username,
+                    password = bound.account.password,
+                    packageName = bound.account.packageName,
                 )
             )
         accountEditPage.save()
 
         // 계정 저장 확인
-        if (!env.helper.waitForText("My accounts", 10000)) {
-            env.helper.dumpViewHierarchy("account_list_not_loaded")
-            env.helper.captureScreen("account_list_not_loaded")
+        if (!helper.waitForText("My accounts", 10000)) {
+            helper.dumpViewHierarchy("account_list_not_loaded")
+            helper.captureScreen("account_list_not_loaded")
             throw AssertionError("Account list did not load after saving account")
         }
-        if (!env.helper.waitForText(env.account.title, 10000)) {
-            env.helper.dumpViewHierarchy("account_not_saved")
-            env.helper.captureScreen("account_not_saved")
-            throw AssertionError("Account title '${env.account.title}' not found in accounts list after save")
+        if (!helper.waitForText(bound.account.title, 10000)) {
+            helper.dumpViewHierarchy("account_not_saved")
+            helper.captureScreen("account_not_saved")
+            throw AssertionError("Account title '${bound.account.title}' not found in accounts list after save")
         }
 
         // 자동완성 사용 토글 ON + 서비스 활성화
-        val settings = SettingsPage(env.helper, env.testHost).navigateToSettings()
+        val settings = SettingsPage(helper, testHost).navigateToSettings()
         settings.enableAutofillToggle()
         settings.activateAutofillService()
 
-        // 4. LIST 화면으로 이동해 반환 (sync는 호출자가)
-        return launchAppAndBind(env, Target.LIST)
+        // 5. LIST 화면으로 이동해 반환 (sync는 호출자가)
+        // encrypted=true: 재기동 시 암호화 볼트가 잠겨 Auth로 가므로 PIN 언락 경로가 필요함을 전달
+        return launchAppAndBind(env, Target.LIST, encrypted)
+    }
+
+    /** 잠긴 암호화 볼트를 PIN으로 언락해 계정 리스트까지 도달 (ENCRYPTED_LOCKED 전제). */
+    private fun unlockLockedEnv(env: BaseEnv) {
+        with(env) {
+            val typed = helper.typeByXPath("//input[@id='pin']", TestDataFactory.TEST_PIN, "auth pin input") ||
+                helper.typeByInputType("password", TestDataFactory.TEST_PIN, "auth pin input fallback")
+            if (!typed) {
+                helper.dumpViewHierarchy("auth_pin_input_missing")
+                helper.captureScreen("auth_pin_input_missing")
+                throw AssertionError("Auth screen shown but PIN input not found")
+            }
+            Thread.sleep(500)
+            if (!helper.clickByText("확인", "auth confirm button")) {
+                throw AssertionError("Could not tap auth confirm button")
+            }
+            if (!helper.waitForText("My accounts", 15000)) {
+                helper.dumpViewHierarchy("pin_unlock_no_accounts")
+                helper.captureScreen("pin_unlock_no_accounts")
+                throw AssertionError("Accounts list did not load after PIN unlock")
+            }
+            Log.i(TAG, "Encrypted vault unlocked with PIN")
+        }
+    }
+
+    /** 활성 상태에 맞는 탈출 경로로 파일 선택 화면까지 이동.
+     *  PLAIN_ACTIVE → Settings > 파일변경 "이동" / ENCRYPTED_LOCKED → Auth 뒤로가기 / NONE → 그대로. */
+    internal fun navigateToFileSelectionForPrepare(
+        env: BaseEnv,
+        state: AppScreenState.State,
+    ) {
+        navigateToFileSelection(env, state, env.homePage.getActiveVaultFileName())
+    }
+
+    /** 활성 상태에 맞는 탈출 경로로 파일 선택 화면까지 이동.
+     *  PLAIN_ACTIVE → Settings > 파일변경 "이동" / ENCRYPTED_LOCKED → Auth 뒤로가기 / NONE → 그대로. */
+    private fun navigateToFileSelection(
+        env: BaseEnv,
+        state: AppScreenState.State,
+        activeVaultName: String?,
+    ) {
+        if (state == AppScreenState.State.NONE) {
+            Log.i(TAG, "Already on file selection screen")
+            return
+        }
+        Log.i(TAG, "Navigating to file selection from state=$state (active=$activeVaultName)")
+        val reached = when (state) {
+            AppScreenState.State.PLAIN_ACTIVE -> AppScreenState.navigateToFileSelectionViaSettings(env.helper)
+            AppScreenState.State.ENCRYPTED_LOCKED -> AppScreenState.escapeAuthToFileSelection(env.helper)
+            AppScreenState.State.NONE -> true
+        }
+        if (!reached) {
+            env.helper.dumpViewHierarchy("file_selection_unreachable")
+            env.helper.captureScreen("file_selection_unreachable")
+            throw AssertionError(
+                "Could not reach file selection screen from state=$state (active='$activeVaultName')"
+            )
+        }
     }
 }
