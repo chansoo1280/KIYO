@@ -179,13 +179,22 @@ fun dumpViewNode(node: AssistStructure.ViewNode, depth: Int = 0) {
 | Naver | `""` (미설정) | main DOM | ~45-50 | ⚠️ 위험 |
 | Reddit | `username` (명시) | **iframe 내부** (depth1) | ~215 | ✅ 안정 (단, iframe traverse 필요) |
 | Google (1단계) | `username webauthn` (명시) | main DOM | ~215 | ✅ 안정 |
-| Google (1단계 hidden) | `""` (의도적 숨김) | main DOM | password: ~130 (또는 hidden으로 0) | ⚠️ split-screen 의존 |
-| Google (2단계) | (미dump) | main DOM | (예상: current-password 명시) | ⏳ 검증 필요 |
+| Google (2단계) | `off` (사전채움) | main DOM | ~10-15 (낮음, OK) | ✅ 자연 제외 |
+| Google (2단계 pw) | `current-password webauthn` (명시) | main DOM | password: ~285 | ✅ 안정 |
 
 **결론**:
-- **Naver**만 위험 (autocomplete 미설정, name만 의존)
+- **Naver**만 위험 (autocomplete 미설정, name만 의존) — 튜닝 필요
 - **Reddit**는 표준 준수 — 단, 로그인 폼이 cross-origin iframe 내부 → KIYO WebView autofill이 iframe까지 traverse하는지 별도 검증 필요
-- **GitHub**는 안정
+- **Google** split-screen 모두 안정 (1단계 username / 2단계 password 둘 다 표준)
+- **GitHub**는 가장 안정
+
+### 📊 위험도 종합 평가
+
+| 순위 | 사이트 | 위험 이유 | 개선 옵션 |
+|------|--------|----------|----------|
+| 🔴 1 | **Naver** | autocomplete 미설정, name="id"/"pw"만 의존 → score 45-110점 | `name="id"` 가중치 ↑, `aria-label` 매칭 추가 |
+| 🟡 2 | **Reddit** | iframe 내부 (depth1) | iframe traverse 검증 (ViewNode dump) |
+| 🟢 3 | **GitHub, Google** | 표준 준수 → KIYO 안정 | 추가 작업 불필요 |
 
 ### Reddit 로그인 — iframe 내부 (`https://www.reddit.com/`)
 
@@ -257,6 +266,30 @@ fun dumpViewNode(node: AssistStructure.ViewNode, depth: Int = 0) {
 - **단, `hidden=true`이면 `isValidInputField`에서 거부** — `FieldScoringRules.isValidInputField`는 leaf+inputType 체크
 - 추정 점수: ~130-135 (hidden 아니면), 또는 0 (hidden이면)
 - 1단계 username이 더 높아서 username은 잘 잡히지만, password는 2단계로 가야 명확
+
+### Google 2단계 password (`/signin/challenge/pwd`)
+
+**핵심 input**:
+
+| 항목 | 값 | KIYO 영향 |
+|------|---|-----------|
+| **Password** | `<input name="Passwd" type="password" autocomplete="current-password webauthn" aria-label="비밀번호 입력">` | ✅ **autocomplete="current-password" → +180** |
+| **Identifier (사전채움)** | `<input name="identifier" id="hiddenEmail" type="email" value="chansoo1280@gmail.com" autocomplete="off">` | ⚠️ 사전채움 → autofill하면 안 됨 (점수 낮음이라 OK) |
+| reCAPTCHA | `<input name="ca" autocomplete="off">` | 안전 (낮은 점수) |
+| Hidden (TrustDevice) | `value="true"` | 토글 |
+| Forms | `[]` (form 없음) | form 무관 traverse 필요 |
+
+**KIYO 추정 score (2단계 password)**: **~285점** (autocomplete 180 + inputType 100 + fallback 5) — **OK**
+
+**🚨 결정적 발견: Password도 표준 준수!**
+- `name="Passwd"` (대문자 P, 비표준)
+- `autocomplete="current-password webauthn"` → KIYO **+180점**
+- 즉 2단계 password는 KIYO가 잘 잡음
+
+**1단계와 2단계의 다른 점**:
+- 1단계 username: `autocomplete="username"`, `type="text"` → username으로 인식
+- 2단계 username: `autocomplete="off"`, `value=이미채워짐`, `type="email"` → username 후보에서 자연스럽게 제외
+- 2단계 password: `autocomplete="current-password"` → password로 인식 (OK)
 
 ---
 
