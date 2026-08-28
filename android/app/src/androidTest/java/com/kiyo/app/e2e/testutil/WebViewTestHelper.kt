@@ -1,5 +1,6 @@
 package com.kiyo.app.e2e.testutil
 
+import android.content.Context
 import android.util.Log
 import android.os.Environment
 import android.view.KeyEvent
@@ -305,17 +306,35 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
         return null
     }
 
-    /** 뷰 계층 덤프 */
+    /**
+     * 뷰 계층 덤프.
+     *
+     * 저장 위치는 `Instrumentation.targetContext.cacheDir`
+     * (`/data/user/0/com.kiyo.app/cache/`). `getContext()`(= test APK cache)는
+     * instrumentation process가 write 가능해도 shell user가 `run-as`로
+     * read할 수 없으므로 artifact 추출 경로가 복잡해진다. `targetContext`는
+     * host에서 `adb exec-out run-as com.kiyo.app cat cache/<file> > out.xml`
+     * 로 직접 추출 가능하다.
+     *
+     * SELinux / UID 노트: instrumentation process는 `com.kiyo.app`의 SELinux
+     * context(`app_data_file`)에서 실행되지 않으므로 `device.dumpWindowHierarchy(File)`이
+     * 직접 file을 만들 수 없다. `FileOutputStream`을 instrumentation thread에서
+     * 직접 만들어 stream을 dump API에 넘기는 우회 패턴을 사용한다.
+     */
     fun dumpViewHierarchy(step: String): String {
         val timestamp = System.currentTimeMillis()
         val fileName = "uiautomator_${step}_$timestamp.xml"
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        val internalFile = File("/data/user/0/com.kiyo.app/cache/$fileName")
-        
-        device.dumpWindowHierarchy(internalFile)
-        Thread.sleep(500)
+        val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
+        val internalFile = File(context.cacheDir, fileName)
 
-        // 텍스트 요약 생성: text/hint가 있는 노드만 추출 (덤프 확인을 adb shell cat 한 번으로 끝내기 위함)
+        Log.e(tag, "DUMP START: ${internalFile.absolutePath}")
+        FileOutputStream(internalFile).use { output ->
+            device.dumpWindowHierarchy(output)
+        }
+        Log.e(tag, "VIEW_HIERARCHY: $fileName dumped (${internalFile.length()} bytes)")
+
+        // 텍스트 요약 생성: text/hint가 있는 노드만 추출 (host cat 한 번으로 끝내기 위함)
         try {
             val summary = buildString {
                 appendLine("packages: " + Regex("package=\"([^\"]+)\"").findAll(internalFile.readText())
@@ -326,46 +345,30 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
                         if (t.isNotBlank()) appendLine("[${m.groupValues[1]}] ${t.take(70)}")
                     }
             }
-            val summaryFile = File("/data/user/0/com.kiyo.app/cache/${fileName.removeSuffix(".xml")}_summary.txt")
+            val summaryFile = File(context.cacheDir, "${fileName.removeSuffix(".xml")}_summary.txt")
             summaryFile.writeText(summary)
-            Runtime.getRuntime().exec("cp ${summaryFile.absolutePath} /storage/emulated/0/Download/kiyo_test_${summaryFile.name}").waitFor()
             Log.e(tag, "VIEW_SUMMARY: ${summaryFile.name} (text nodes only)")
         } catch (e: Exception) {
             Log.w(tag, "Summary generation failed: ${e.message}")
         }
-        
-        // 외부 저장소로 복사
-        val externalPath = "/storage/emulated/0/Download/kiyo_test_$fileName"
-        try {
-            Runtime.getRuntime().exec("cp ${internalFile.absolutePath} $externalPath").waitFor()
-            Log.e(tag, "VIEW_HIERARCHY: $fileName copied to external: $externalPath")
-        } catch (e: Exception) {
-            Log.w(tag, "Failed to copy view hierarchy: ${e.message}")
-        }
-        
-        Log.e(tag, "VIEW_HIERARCHY: $fileName dumped for step: $step (internal: ${internalFile.absolutePath})")
+
         return internalFile.absolutePath
     }
 
-    /** 스크린샷 캡처 */
+    /**
+     * 스크린샷 캡처. dump와 동일하게 `targetContext.cacheDir`에 저장.
+     */
     fun captureScreen(step: String): String {
         val timestamp = System.currentTimeMillis()
         val fileName = "screen_${step}_$timestamp.png"
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        val internalFile = File("/data/user/0/com.kiyo.app/cache/$fileName")
-        
+        val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
+        val internalFile = File(context.cacheDir, fileName)
+
+        Log.e(tag, "SCREENSHOT START: ${internalFile.absolutePath}")
         device.takeScreenshot(internalFile)
-        Thread.sleep(500)
-        
-        val externalPath = "/storage/emulated/0/Download/kiyo_test_$fileName"
-        try {
-            Runtime.getRuntime().exec("cp ${internalFile.absolutePath} $externalPath").waitFor()
-            Log.e(tag, "SCREENSHOT: $fileName copied to external: $externalPath")
-        } catch (e: Exception) {
-            Log.w(tag, "Failed to copy screenshot: ${e.message}")
-        }
-        
-        Log.e(tag, "SCREENSHOT: $fileName captured for step: $step (internal: ${internalFile.absolutePath})")
+        Log.e(tag, "SCREENSHOT: $fileName captured (${internalFile.length()} bytes)")
+
         return internalFile.absolutePath
     }
 

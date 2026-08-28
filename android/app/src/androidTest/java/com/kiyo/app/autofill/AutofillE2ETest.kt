@@ -41,12 +41,19 @@ class AutofillE2ETest {
     val failureWatcher = object : TestWatcher() {
         override fun failed(e: Throwable, description: Description) {
             val testName = description.methodName
-            Log.e("AUTOFILL_E2E_DEBUG", ">>> TEST FAILED: $testName - ${e.message}", e)
+            Log.e("AUTOFILL_E2E_DEBUG", ">>> TEST FAILED: $testName - ${e.message}")
+            // dump/screenshot 분리: 한쪽이 실패해도 다른 쪽은 시도한다.
             try {
-                helper.dumpViewHierarchy("FAILURE_$testName")
-                helper.captureScreen("FAILURE_$testName")
-            } catch (ex: Exception) {
-                Log.w("AUTOFILL_E2E_DEBUG", "Failed to capture failure state: ${ex.message}")
+                val hierarchy = helper.dumpViewHierarchy("FAILURE_$testName")
+                Log.e("AUTOFILL_E2E_DEBUG", ">>> DUMP OK: $hierarchy")
+            } catch (ex: Throwable) {
+                Log.e("AUTOFILL_E2E_DEBUG", ">>> DUMP FAILED: ${ex.message}", ex)
+            }
+            try {
+                val screen = helper.captureScreen("FAILURE_$testName")
+                Log.e("AUTOFILL_E2E_DEBUG", ">>> SCREENSHOT OK: $screen")
+            } catch (ex: Throwable) {
+                Log.e("AUTOFILL_E2E_DEBUG", ">>> SCREENSHOT FAILED: ${ex.message}", ex)
             }
         }
     }
@@ -138,6 +145,7 @@ class AutofillE2ETest {
 
         // ===== 자동완성 검증: testHost 앱에서 실제 자동완성 드롭다운 확인 =====
         env.autofillLogin.launch(env.account.domain)
+        env.autofillLogin.clickUsernameField(env.account.username) // 드롭다운 표시 유발
         env.autofillLogin.selectAutofillSuggestion(env.account.username)
         assertTrue(
             "Password should be autofilled",
@@ -193,6 +201,7 @@ class AutofillE2ETest {
             // 4. 즉시 testHost → fill 검증 (캐시 유효, 인증 없음)
             Log.e("DEBUG", "=== authResync: verifying immediate fill (cache valid) ===")
             env.autofillLogin.launch(env.account.domain)
+            env.autofillLogin.clickUsernameField(env.account.username) // 드롭다운 표시 유발
             env.autofillLogin.selectAutofillSuggestion(env.account.username)
             assertTrue(
                 "Password should be autofilled immediately after re-wrap (cache valid)",
@@ -208,7 +217,7 @@ class AutofillE2ETest {
 
             Log.e("DEBUG", "=== authResync: verifying autofill in test host with auth ===")
             env.autofillLogin.launch(env.account.domain)
-
+            env.autofillLogin.clickUsernameField(env.account.username) // 드롭다운 표시 유발
             if (!env.autofillLogin.isDropdownVisible(env.account.username)) {
                 val authDatasetText = "잠금 해제하여 자동완성을 사용하세요"
                 val authTapped = env.helper.clickByTextContains(authDatasetText, "auth dataset") ||
@@ -226,10 +235,6 @@ class AutofillE2ETest {
             }
 
             Log.d("AUTOFILL_E2E", "Waiting up to 30s for authenticated dataset dropdown...")
-            val dropdownAppeared = env.autofillLogin.waitForDropdown(env.account.username, timeoutMs = 30_000)
-            if (!dropdownAppeared) {
-                env.autofillLogin.clickUsernameField()
-            }
             env.autofillLogin.selectAutofillSuggestion(env.account.username)
             assertTrue(
                 "Password should be autofilled after re-wrap and user auth",
@@ -299,9 +304,7 @@ class AutofillE2ETest {
 
             // 7. 다운그레이드 후 fill 검증 (잠금화면 없음 → auth 없는 키 → 프롬프트 없이 fill)
             env.autofillLogin.launch(env.account.domain)
-            val dropdownAppeared = env.autofillLogin.isDropdownVisible(env.account.username) ||
-                env.autofillLogin.waitForDropdown(env.account.username, timeoutMs = 20_000)
-            assertTrue("Autofill dropdown should appear after downgrade rebuild", dropdownAppeared)
+            env.autofillLogin.clickUsernameField(env.account.username) // 드롭다운 표시 유발
             env.autofillLogin.selectAutofillSuggestion(env.account.username)
             assertTrue(
                 "Password should be autofilled after downgrade rebuild",

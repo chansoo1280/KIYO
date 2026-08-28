@@ -30,8 +30,7 @@ class AutofillLoginPage(private val device: UiDevice) {
      *  - 항상 FLAG_ACTIVITY_CLEAR_TASK로 기존 태스크를 통째로 제거하고
      *    새 인스턴스(onCreate부터)로 시작한다 (조건부 재시작 시 누락되던 상태 초기화 보장)
      *  - 주의: launch 내부에서 필드 값을 선제적으로 클리어하지 않는다.
-     *    field.text = "" 자체가 fill request를 발화시켜 드롭다운이 먼저 뜨고,
-     *    이후 triggerAutofillRequest의 클릭이 드롭다운 항목을 오클릭하는 문제가 있었음 (검증됨 2026-08)
+     *    field.text = "" 자체가 fill request를 발화시켜 드롭다운이 먼저 뜨고
      */
     fun launch(domainHint: String = "example.com"): androidx.test.uiautomator.UiObject2 {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -53,8 +52,6 @@ class AutofillLoginPage(private val device: UiDevice) {
         val appWindow = device.findObject(By.pkg(PACKAGE))
             ?: throw AssertionError("Autofill test host app did not launch: $PACKAGE")
 
-        // 진입 직후 자동완성 요청 유발 (포커스 전환 3-클릭)
-        triggerAutofillRequest()
         return appWindow
     }
 
@@ -64,7 +61,7 @@ class AutofillLoginPage(private val device: UiDevice) {
      *    (최초 포커스만으로는 onFillRequest가 발화하지 않고,
      *     필드 간 포커스 이동 시 시스템이 새 fill request를 발행함)
      */
-    fun clickUsernameField(): androidx.test.uiautomator.UiObject2 {
+    fun clickUsernameField(username: String): androidx.test.uiautomator.UiObject2 {
         val field = device.wait(
             Until.findObject(By.clazz("android.widget.EditText")
                 .hint("example@email.com")
@@ -72,23 +69,17 @@ class AutofillLoginPage(private val device: UiDevice) {
             10000
         ) ?: throw AssertionError("Username field not found")
 
-        // 기존 값 클리어 (클리어 후 fill request가 재발화할 수 있으므로 즉시 재클릭 없음)
-        if (!field.text.isNullOrEmpty()) {
-            field.text = ""
+        field.click()
+
+        val dropdownVisible = isDropdownVisible(username)
+
+        if(!dropdownVisible) {
+            Log.w(TAG, "Autofill dropdown not visible after username click, attempting focus switch...")
+            // 포커스 전환으로 fill request 재발화 시도
+            val passwordField = getPasswordField()
+            passwordField.click() // password로 포커스 이동
+            field.click() // 다시 username으로 포커스 이동
         }
-
-        // 1) username 클릭 (포커스 진입)
-        field.click()
-        Thread.sleep(500)
-
-        // 2) password 클릭 (포커스 이탈)
-        val passwordField = getPasswordField()
-        passwordField.click()
-        Thread.sleep(500)
-
-        // 3) username 재클릭 (재진입 → 시스템이 onFillRequest 발화)
-        field.click()
-        Thread.sleep(1500)
 
         return field
     }
@@ -105,12 +96,10 @@ class AutofillLoginPage(private val device: UiDevice) {
 
     /** 자동완성 드롭다운에서 특정 계정 선택 */
     fun selectAutofillSuggestion(username: String): androidx.test.uiautomator.UiObject2 {
-        // 드롭다운이 나타날 때까지 대기 (인증 응답 dataset 표시 지연 대응)
-        waitForDropdown(username, timeoutMs = 30_000)
         val suggestion = device.wait(
             Until.findObject(By.text(username).clazz("android.widget.TextView")),
             15000
-        ) ?: throw AssertionError("Autofill dropdown not found for: $username")
+        ) ?: throw AssertionError("Autofill suggestion not found for: $username")
         suggestion.click()
         return suggestion
     }
@@ -149,45 +138,5 @@ class AutofillLoginPage(private val device: UiDevice) {
         }
         // 마스킹 안 된 경우 평문 비교
         return text == expectedPassword
-    }
-
-    /** username 필드 1회 클릭으로 onFillRequest 발화 유도
-     *  - CLEAR_TASK 새 인스턴스이므로 초기화 상태가 보장됨 → 포커스 순환(3-클릭) 폴백 불필요
-     *  - 3-클릭은 이미 뜬 드롭다운 항목을 오클릭하는 문제가 있어 제거함 (검증됨 2026-08)
-     *  - 단, 일부 상황에서 1회 클릭만으로는 fill request가 발화하지 않을 수 있으므로
-     *    포커스 이동 패턴(username → password → username) 사용
-     */
-    fun triggerAutofillRequest() {
-        try {
-            val usernameField = device.wait(
-                Until.findObject(By.clazz("android.widget.EditText")
-                    .hint("example@email.com")
-                    .enabled(true)),
-                10000
-            ) ?: return
-
-            val passwordField = device.wait(
-                Until.findObject(By.clazz("android.widget.EditText")
-                    .hint("비밀번호")
-                    .enabled(true)),
-                5000
-            ) ?: return
-
-            // 1) username 클릭 (포커스 진입)
-            usernameField.click()
-            Thread.sleep(500)
-
-            // 2) password 클릭 (포커스 이탈)
-            passwordField.click()
-            Thread.sleep(500)
-
-            // 3) username 재클릭 (재진입 → 시스템이 onFillRequest 발화)
-            usernameField.click()
-            Thread.sleep(1500)
-
-            Log.i(TAG, "Autofill request triggered via focus cycle (3-click)")
-        } catch (e: Exception) {
-            Log.w(TAG, "triggerAutofillRequest failed: ${e.message}")
-        }
     }
 }

@@ -64,12 +64,19 @@ class BiometricUnlockE2ETest {
     val failureWatcher = object : TestWatcher() {
         override fun failed(e: Throwable, description: Description) {
             val testName = description.methodName
-            Log.e(TAG, ">>> TEST FAILED: $testName - ${e.message}", e)
+            Log.e(TAG, ">>> TEST FAILED: $testName - ${e.message}")
+            // See AutofillE2ETest for why dump/screenshot are split.
             try {
-                helper.dumpViewHierarchy("FAILURE_$testName")
-                helper.captureScreen("FAILURE_$testName")
-            } catch (ex: Exception) {
-                Log.w(TAG, "Failed to capture failure state: ${ex.message}")
+                val hierarchy = helper.dumpViewHierarchy("FAILURE_$testName")
+                Log.e(TAG, ">>> DUMP OK: $hierarchy")
+            } catch (ex: Throwable) {
+                Log.e(TAG, ">>> DUMP FAILED: ${ex.message}", ex)
+            }
+            try {
+                val screen = helper.captureScreen("FAILURE_$testName")
+                Log.e(TAG, ">>> SCREENSHOT OK: $screen")
+            } catch (ex: Throwable) {
+                Log.e(TAG, ">>> SCREENSHOT FAILED: ${ex.message}", ex)
             }
         }
     }
