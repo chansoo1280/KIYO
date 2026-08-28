@@ -10,6 +10,8 @@
     "android:build": "npm run build && npx cap sync android && npx cap open android && cd android && gradlew.bat assembleDebug",
     "test:e2e:android": "powershell -ExecutionPolicy Bypass -File android/run-autofill-e2e.ps1",
     "test:e2e:android:fast": "powershell -ExecutionPolicy Bypass -File android/run-autofill-e2e.ps1 -SkipBuild",
+    "test:e2e:biometric": "powershell -ExecutionPolicy Bypass -File android/run-biometric-e2e.ps1",
+    "test:e2e:biometric:fast": "powershell -ExecutionPolicy Bypass -File android/run-biometric-e2e.ps1 -SkipBuild",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
