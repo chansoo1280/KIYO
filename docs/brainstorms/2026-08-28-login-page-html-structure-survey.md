@@ -127,6 +127,61 @@ fun dumpViewNode(node: AssistStructure.ViewNode, depth: Int = 0) {
 
 ---
 
+## 📊 조사 결과 (2026-08-28)
+
+### Naver 로그인 (`https://nid.naver.com/nidlogin.login`)
+
+**dump 출처**: 사용자 Chrome 콘솔에서 `.hermes/scripts/dump-login-page.min.js` 실행
+
+**핵심 발견**:
+
+| 항목 | 값 | KIYO 영향 |
+|------|---|-----------|
+| Form name | `frmNIDLogin`, method=POST, action=`nidlogin.login`, `autocomplete="off"` | form-level autocomplete는 off → 자식 input에 의존 |
+| Username input | `<input type="text" name="id" id="id" class="input_text" aria-label="아이디 또는 전화번호">` | ⚠️ **`autocomplete=""` (비어있음)**, `id="id"`, `name="id"` |
+| Password input | `<input type="password" name="pw" id="pw" class="input_text" aria-label="비밀번호">` | ⚠️ **`autocomplete=""` (비어있음)**, `id="pw"`, `name="pw"` |
+| 기타 visible | `nvlong` (로그인 유지), `ipcheck` (IP 보안) 체크박스 | autofill과 무관 |
+| Hidden inputs | 23개 (CSRF, dynamicKey, wtoken, locale 등) | autofill 후보 아님 (hidden) |
+
+**🚨 Naver는 `autocomplete` 속성을 명시하지 않음 (빈 문자열)**
+
+이는 매우 중요한 발견. KIYO의 현재 `FieldScorer`는:
+- `SCORE_HTML_AUTOCOMPLETE_USERNAME(180)` → **0점** (autocomplete 비어있음)
+- `SCORE_HTML_AUTOCOMPLETE_PASSWORD(180)` → **0점**
+- `SCORE_INPUT_TYPE_TEXT_CLASS(10)` 또는 `SCORE_INPUT_TYPE_PASSWORD(100)` → 텍스트 클래스 기반
+- `SCORE_HTML_NAME_ID_USERNAME(30)` → `name="id"` 매칭 → **30점** (username)
+- `SCORE_HTML_NAME_ID_PASSWORD(30)` → `name="pw"` 매칭 안됨 (password는 "password" 단어 필요) → 0점
+- `SCORE_EDITTEXT_FALLBACK(5)` 또는 `SCORE_EDITTEXT_PASSWORD_FALLBACK(5)` → 5점
+- **추정 username score**: ~50점 (10 + 30 + 5 = 45 or 50)
+- **추정 password score**: ~110점 (100 + 5 = 105)
+
+**리스크**: username score가 50점으로 낮음. 동일 화면에 다른 input이 있으면 username 후보에서 밀릴 수 있음.
+
+**권장 개선 옵션**:
+1. `name="id"` 매칭 가중치 증가 (현재 30 → 50)
+2. Naver 전용 화이트리스트 (사용자 계정 도메인이 `nid.naver.com`이면 `name="id"`, `name="pw"` 신뢰)
+3. autofillHints가 Chrome에서 자동 설정되는지 확인 → 되면 +200으로 충분
+
+### GitHub 로그인 (`https://github.com/login`) — 이전 dump
+
+| 항목 | 값 | KIYO 영향 |
+|------|---|-----------|
+| Username input | `autocomplete="username"`, `id="login_field"`, `name="login"` | ✅ +180 (autocomplete) |
+| Password input | `autocomplete="current-password"`, `id="password"`, `name="password"` | ✅ +180 (autocomplete) |
+
+**GitHub는 표준 준수 → KIYO가 정확히 잡음**
+
+### 비교
+
+| 사이트 | autocomplete 속성 | KIYO 추정 username score | 결과 |
+|--------|------------------|--------------------------|------|
+| GitHub | `username` (명시) | ~215 (200 + autofillHints + 10 + 5) | ✅ 안정 |
+| Naver | `""` (미설정) | ~45-50 (inputType 10 + name="id" 30 + fallback 5) | ⚠️ 위험 |
+
+**결론**: Naver/Kakao/Reddit 같은 한국/주류 사이트들이 `autocomplete` 표준을 안 지키는 경우, KIYO의 score 튜닝이 필요할 수 있음.
+
+---
+
 ## 14개 Preset HTML 패턴 정리 (실제 dump 결과)
 
 ### GitHub login (성공) — `https://github.com/login`
