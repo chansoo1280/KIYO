@@ -178,6 +178,9 @@ fun dumpViewNode(node: AssistStructure.ViewNode, depth: Int = 0) {
 | GitHub | `username` (명시) | main DOM | ~215 | ✅ 안정 |
 | Naver | `""` (미설정) | main DOM | ~45-50 | ⚠️ 위험 |
 | Reddit | `username` (명시) | **iframe 내부** (depth1) | ~215 | ✅ 안정 (단, iframe traverse 필요) |
+| Google (1단계) | `username webauthn` (명시) | main DOM | ~215 | ✅ 안정 |
+| Google (1단계 hidden) | `""` (의도적 숨김) | main DOM | password: ~130 (또는 hidden으로 0) | ⚠️ split-screen 의존 |
+| Google (2단계) | (미dump) | main DOM | (예상: current-password 명시) | ⏳ 검증 필요 |
 
 **결론**:
 - **Naver**만 위험 (autocomplete 미설정, name만 의존)
@@ -210,6 +213,52 @@ fun dumpViewNode(node: AssistStructure.ViewNode, depth: Int = 0) {
 - OTP (`appOtp`, `backupOtp`): `autocomplete="one-time-code"` → -100 → 거의 0점 — **OK** (Phase 2에서 구현한 OTP negative 신호가 작동)
 
 **결론**: Reddit는 KIYO가 잘 잡음. Phase 2 OTP negative 신호도 잘 작동할 것으로 예상.
+
+### Google 로그인 (`https://accounts.google.com/v3/signin/identifier`)
+
+**dump 출처**: v2 (iframe 재귀) — 사용자 Chrome 콘솔, 봇 차단 우회됨 (정상 UA + IP 신뢰)
+
+**핵심 발견**:
+
+| 항목 | 값 | KIYO 영향 |
+|------|---|-----------|
+| **Username (visible)** | `<input name="identifier" id="identifierId" type="text" autocomplete="username webauthn" aria-label="이메일 또는 휴대전화">` | ✅ **autocomplete="username" → +180** |
+| **Hidden password (1단계)** | `<input name="hiddenPassword" type="password" autocomplete="">` | ⚠️ **`autocomplete=""` (비어있음)** — name="hiddenPassword"도 매칭 안됨 |
+| reCAPTCHA | `<input name="ca" autocomplete="off" aria-label="들리거나 표시된 텍스트 입력">` | ⚠️ reCAPTCHA — autofill 위험 |
+| Hidden inputs | `ct`, `usi`, `domain`, `region`, `fidoUserHandle` (5개) | autofill 후보 아님 |
+| Forms | `[]` (form 없음) | `<form>` 없이 input만 노출 |
+| Cross-origin iframe | 1개 (`Blocked a frame`) | Google reCAPTCHA/analytics 추정 |
+
+**🚨 결정적 발견들**:
+
+1. **Google split-screen 패턴**: 1단계는 username만 → 2단계에서 password 페이지로 전환
+   - Username은 `autocomplete="username webauthn"` 명시 → KIYO **잘 잡음** (+180)
+   - Password는 `name="hiddenPassword"` (이상한 이름) + `autocomplete=""` → **KIYO가 잡기 어려움** (의도적 보안)
+
+2. **form 없음**: Google은 `<form>` 없이 input만 노출 (SPA 방식)
+
+3. **reCAPTCHA input** (`name="ca"`, `autocomplete="off"`):
+   - `aria-label="들리거나 표시된 텍스트 입력"` → 한국어 label
+   - KIYO는 aria-label을 보지 않음 (현재 구현) → 일단 username 후보 아님 (TEXT_CLASS + fallback 5점만)
+   - 안전: reCAPTCHA는 username/password 후보보다 점수 낮음
+
+4. **`hiddenPassword` input** (현재 dump에서 보임):
+   - `name="hiddenPassword"` — `FieldScoringRules.passwordKeywords`에는 `password` 포함됨 → +30점 가능
+   - 다만 hidden input이라 `isActualInputField`에서 거부될 가능성 → ViewNode dump로 확인 필요
+   - **핵심**: 2단계 password 페이지(`accounts.google.com/v3/signin/challenge/password`)는 별도 dump 필요
+
+**KIYO 추정 score (1단계 username)**:
+- ~215 (autofillHints 또는 HTML autocomplete + inputType + fallback) — **OK**
+
+**KIYO 추정 score (1단계 password hiddenPassword)**:
+- `type="password"` → +100
+- `name="hiddenPassword"` → password keywords 매칭 → +30
+- `autocomplete=""` → +0
+- **단, `hidden=true`이면 `isValidInputField`에서 거부** — `FieldScoringRules.isValidInputField`는 leaf+inputType 체크
+- 추정 점수: ~130-135 (hidden 아니면), 또는 0 (hidden이면)
+- 1단계 username이 더 높아서 username은 잘 잡히지만, password는 2단계로 가야 명확
+
+---
 
 ---
 
