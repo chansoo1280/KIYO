@@ -138,11 +138,29 @@ class AccountMapper {
     }
 
     /**
-     * Create AutofillAccount from database cursor (parses packageNames JSON)
+     * Create AutofillAccount from database cursor (parses packageNames JSON).
+     *
+     * Identifier selection in guard logs is per-function natural value:
+     * `parseReactAccount` uses `title` (JSON input has no id),
+     * `fromCursor` uses `id` + `domain` (cursor has id, domain is public).
+     * `packageNames` is intentionally excluded from logs — package name leaks
+     * "which app the user uses" which can be more sensitive than the site domain.
+     *
+     * Returns null if the row is corrupt (username or password empty/null).
+     * Callers must handle the null case (filterNotNull for lists, direct propagation
+     * for single-result queries). This mirrors `parseReactAccount` symmetry.
      */
-    fun fromCursor(cursor: Cursor): AutofillAccount {
-        // Password is stored in plaintext since DB is encrypted via SQLCipher
+    fun fromCursor(cursor: Cursor): AutofillAccount? {
+        val id = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_ID))
+        val username = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_USERNAME))
         val password = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PASSWORD))
+        val domain = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_DOMAIN))
+
+        if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
+            val field = if (username.isNullOrEmpty()) "username" else "password"
+            Log.w(TAG, "Skipping corrupt autofill account row id=$id domain=$domain: $field is empty")
+            return null
+        }
 
         // Parse packageNames JSON array
         val packageNamesJson = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PACKAGE_NAMES))
@@ -166,13 +184,13 @@ class AccountMapper {
         }
 
         return AutofillAccount(
-            id = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_ID)),
-            username = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_USERNAME)),
+            id = id,
+            username = username,
             password = password,
             title = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_TITLE)),
             packageNames = packageNames,
             appName = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_APP_NAME)),
-            domain = cursor.getString(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_DOMAIN)),
+            domain = domain,
             createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_CREATED_AT)),
             updatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_UPDATED_AT)),
             favorite = cursor.getInt(cursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_FAVORITE)) == 1

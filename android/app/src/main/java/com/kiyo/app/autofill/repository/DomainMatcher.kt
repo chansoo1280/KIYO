@@ -40,9 +40,9 @@ class DomainMatcher {
             return cursor.use { c ->
                 val accounts = mutableListOf<AutofillAccount>()
                 while (c.moveToNext()) {
-                    val account = AccountMapper().fromCursor(c)
+                    val account = AccountMapper().fromCursor(c) ?: continue
                     val accountDomain = account.domain ?: ""
-                    
+
                     // Check if account's domain matches the normalized domain
                     if (matchesDomain(normalizedDomain, accountDomain)) {
                         accounts.add(account)
@@ -201,7 +201,7 @@ class DomainMatcher {
                 return cursor.use { c ->
                     val accounts = mutableListOf<AutofillAccount>()
                     while (c.moveToNext()) {
-                        val account = AccountMapper().fromCursor(c)
+                        val account = AccountMapper().fromCursor(c) ?: continue
                         // account.packageNames is already a List<String> (parsed from JSON by AccountMapper)
                         val packageList = account.packageNames
                         // Check if any package in the account's packageList is equal to the queried packageName
@@ -235,7 +235,8 @@ class DomainMatcher {
                 return cursor.use { c ->
                     val accounts = mutableListOf<AutofillAccount>()
                     while (c.moveToNext()) {
-                        accounts.add(AccountMapper().fromCursor(c))
+                        val account = AccountMapper().fromCursor(c) ?: continue
+                        accounts.add(account)
                     }
                     accounts
                 }
@@ -305,7 +306,8 @@ class DomainMatcher {
         return cursor.use { c ->
             val accounts = mutableListOf<AutofillAccount>()
             while (c.moveToNext()) {
-                accounts.add(AccountMapper().fromCursor(c))
+                val account = AccountMapper().fromCursor(c) ?: continue
+                accounts.add(account)
             }
             accounts
         }
@@ -329,7 +331,8 @@ class DomainMatcher {
         return cursor.use { c ->
             val accounts = mutableListOf<AutofillAccount>()
             while (c.moveToNext()) {
-                accounts.add(AccountMapper().fromCursor(c))
+                val account = AccountMapper().fromCursor(c) ?: continue
+                accounts.add(account)
             }
             accounts
         }
@@ -352,7 +355,8 @@ class DomainMatcher {
         return cursor.use { c ->
             val accounts = mutableListOf<AutofillAccount>()
             while (c.moveToNext()) {
-                accounts.add(AccountMapper().fromCursor(c))
+                val account = AccountMapper().fromCursor(c) ?: continue
+                accounts.add(account)
             }
             accounts
         }
