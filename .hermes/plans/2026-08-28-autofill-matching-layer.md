@@ -661,28 +661,33 @@ export interface WebsitePreset {
 
 **File:** `src/data/websitePresets.ts`
 
-각 프리셋마다 실제 Android package name(s)을 조사하여 채워야 함. 예시:
+각 프리셋마다 실제 Android package name(s)을 조사하여 채워야 함. **조사 완료된 값 (Play Store 검증 2026-08-28)**:
 
-| id | name | 예상 packageNames (조사 필요) |
-|----|------|-------------------------------|
-| google | Google | `com.google.android.gms`, `com.google.android.googlequicksearchbox`, ... |
-| naver | Naver | `com.nhn.android.search`, `com.naver.android.search`, ... |
-| kakao | Kakao | `com.kakao.talk` |
-| microsoft | Microsoft | `com.microsoft.office.outlook` |
-| apple | Apple | (없음 — iCloud Android app 없음) |
-| github | GitHub | `com.github.android` |
-| discord | Discord | `com.discord` |
-| instagram | Instagram | `com.instagram.android` |
-| facebook | Facebook | `com.facebook.katana` |
-| twitter | X (Twitter) | `com.twitter.android` |
-| netflix | Netflix | `com.netflix.mediaclient` |
-| steam | Steam | `com.valvesoftware.android.steam.community` |
-| amazon | Amazon | `com.amazon.mShop.android.shopping` |
-| dropbox | Dropbox | `com.dropbox.android` |
+| id | name | websiteUrl (검증됨) | packageNames (Play Store URL `?id=` 기준 검증) |
+|----|------|-------------------|------------------------------------------------|
+| google | Google | `https://accounts.google.com` | `com.google.android.googlequicksearchbox` (Google Search 앱)<br>※ Gmail 단독 앱: `com.google.android.gm` |
+| naver | Naver | `https://nid.naver.com` | `com.nhn.android.search` (NAVER 메인 앱) |
+| kakao | Kakao | `https://accounts.kakao.com` | `com.kakao.talk` (KakaoTalk) |
+| microsoft | Microsoft | `https://login.microsoftonline.com` | `com.microsoft.office.outlook` (Microsoft Outlook) |
+| apple | Apple | `https://appleid.apple.com` | **(없음 — Apple은 Android 공식 앱 없음, `packageNames` 필드 생략)** |
+| github | GitHub | `https://github.com/login` | `com.github.android` |
+| discord | Discord | `https://discord.com/login` | `com.discord` |
+| instagram | Instagram | `https://www.instagram.com/accounts/login/` | `com.instagram.android` |
+| facebook | Facebook | `https://www.facebook.com/login` | `com.facebook.katana` |
+| twitter | X (Twitter) | `https://x.com/i/flow/login` | `com.twitter.android` |
+| netflix | Netflix | `https://www.netflix.com/login` | `com.netflix.mediaclient` |
+| steam | Steam | `https://store.steampowered.com/login/` | `com.valvesoftware.android.steam.community` |
+| amazon | Amazon | `https://www.amazon.com/ap/signin` | `com.amazon.mShop.android.shopping` |
+| dropbox | Dropbox | `https://www.dropbox.com/login` | `com.dropbox.android` |
 
 > **검증 의무**: `packageNames`에 나열된 값들은 **실제 Google Play Store에 존재하는 정확한 package name**이어야 함.
 > 존재하지 않는 package name을 등록하면 autofill 매칭이 영구히 실패한다.
 > 조사 방법: `adb shell pm list packages | grep <keyword>` 또는 Google Play Store URL에서 `id=` 추출.
+>
+> **현재 채워야 할 데이터**:
+> - Google은 여러 Google 앱(Gmail, Search, Maps 등) 모두 같은 Google 계정 사용 → 한 프리셋에 1-3개까지만 채우는 게 실용적 (선택)
+> - Apple은 `packageNames` 필드 자체를 생략 (`undefined`) — Android 앱이 없으므로
+> - 나머지 12개는 위 표 값으로 채우기
 
 #### 3. AccountMapper가 `packageNames`를 Android autofill DB로 전달
 
