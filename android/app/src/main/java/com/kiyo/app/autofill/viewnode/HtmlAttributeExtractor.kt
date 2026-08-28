@@ -81,4 +81,19 @@ object HtmlAttributeExtractor {
         }
         return null
     }
+
+    /**
+     * Extract aria-label from WebView/HTML node.
+     * Returns the value of 'aria-label' attribute (e.g., "이메일 또는 전화번호", "Username").
+     */
+    fun getAriaLabel(node: AssistStructure.ViewNode): String? {
+        val htmlInfo = node.htmlInfo ?: return null
+        val attributes = htmlInfo.attributes ?: return null
+        for (attr in attributes) {
+            if (attr.first.lowercase() == "aria-label") {
+                return attr.second
+            }
+        }
+        return null
+    }
 }

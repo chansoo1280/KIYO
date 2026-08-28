@@ -134,7 +134,24 @@ object FieldScorer {
             reasons.add("hint/resourceId contains username keywords")
         }
 
-        // 8. Google accounts.google.com special handling (username screen): +50
+        // 8. aria-label keyword matching (WebView/HTML): +30
+        val ariaLabel = HtmlAttributeExtractor.getAriaLabel(node)?.lowercase() ?: ""
+        if (ariaLabel.isNotEmpty()) {
+            val hasUsernameLabel = FieldScoringRules.usernameKeywords.any { keyword ->
+                ariaLabel.contains(keyword) ||
+                // i18n keywords
+                ariaLabel.contains("아이디") ||  // Korean
+                ariaLabel.contains("이메일") ||  // Korean
+                ariaLabel.contains("ログイン") ||   // Japanese
+                ariaLabel.contains("ユーザ")      // Japanese
+            }
+            if (hasUsernameLabel) {
+                score += FieldScoringRules.SCORE_HTML_NAME_ID_USERNAME  // 30
+                reasons.add("aria-label=username keywords")
+            }
+        }
+
+        // 9. Google accounts.google.com special handling (username screen): +50
         // This is a special case for Google's split username/password screens
         if (ViewNodePredicate.isGoogleFieldCandidate(node)) {
             val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
@@ -155,8 +172,8 @@ object FieldScorer {
             }
         }
 
-        // Skip if score is 0 (no indicators)
-        if (score == 0) return null
+        // Skip if score is below threshold (no meaningful indicators)
+        if (score < FieldScoringRules.MIN_CANDIDATE_SCORE) return null
 
         // Structured logging for candidate details (single-line format for ShadowLog capture)
         logCandidate("Username", autofillId, score, className, htmlAutocomplete, htmlInputType, reasons)
@@ -247,7 +264,7 @@ object FieldScorer {
         val htmlId = HtmlAttributeExtractor.getHtmlId(node)
         if (htmlName != null || htmlId != null) {
             val nameOrId = (htmlName ?: "") + " " + (htmlId ?: "")
-            if (nameOrId.contains("password") || nameOrId.contains("pass") || nameOrId.contains("pwd")) {
+            if (nameOrId.contains("password") || nameOrId.contains("pass") || nameOrId.contains("pwd") || nameOrId.contains("pw")) {
                 score += FieldScoringRules.SCORE_HTML_NAME_ID_PASSWORD
                 reasons.add("htmlName/Id contains password keywords")
             }
@@ -268,7 +285,21 @@ object FieldScorer {
             reasons.add("hint/resourceId contains password keywords")
         }
 
-        // 7. Google accounts.google.com special handling (password screen): +50
+        // 7. aria-label keyword matching (WebView/HTML): +30
+        val ariaLabel = HtmlAttributeExtractor.getAriaLabel(node)?.lowercase() ?: ""
+        if (ariaLabel.isNotEmpty()) {
+            val hasPasswordLabel = FieldScoringRules.passwordKeywords.any { keyword ->
+                ariaLabel.contains(keyword) ||
+                ariaLabel.contains("비밀번호") ||  // Korean
+                ariaLabel.contains("パスワード")   // Japanese
+            }
+            if (hasPasswordLabel) {
+                score += FieldScoringRules.SCORE_HTML_NAME_ID_PASSWORD  // 30
+                reasons.add("aria-label=password keywords")
+            }
+        }
+
+        // 8. Google accounts.google.com special handling (password screen): +50
         if (ViewNodePredicate.isGoogleFieldCandidate(node)) {
             val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
             if (hasPasswordOnScreen) {
@@ -283,8 +314,8 @@ object FieldScorer {
             reasons.add("EditText class with password variation")
         }
 
-        // Skip if score is 0 (no indicators)
-        if (score == 0) return null
+        // Skip if score is below threshold (no meaningful indicators)
+        if (score < FieldScoringRules.MIN_CANDIDATE_SCORE) return null
 
         // Structured logging for candidate details (single-line format for ShadowLog capture)
         logCandidate("Password", autofillId, score, className, htmlAutocomplete, htmlInputType, reasons)

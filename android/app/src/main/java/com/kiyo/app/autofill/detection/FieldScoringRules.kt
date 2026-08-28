@@ -31,7 +31,7 @@ object FieldScoringRules {
     )
 
     val usernameKeywords = listOf("email", "username", "login", "id", "account", "user")
-    val passwordKeywords = listOf("password", "passwd", "pwd")
+    val passwordKeywords = listOf("password", "passwd", "pwd", "pw")
 
     // Score weights
     const val SCORE_AUTOFILL_HINTS_USERNAME = 200
@@ -59,6 +59,15 @@ object FieldScoringRules {
     // OTP / Registration form signals
     const val SCORE_OTP_NEGATIVE = 100
     const val SCORE_REGISTRATION_FORM = 50
+
+    // Minimum score to be considered a valid candidate
+    // Filters out low-confidence signals (e.g., fallback 5pt, inputType 10pt single)
+    // Empirical threshold from 4-site dump analysis (2026-08-28):
+    //   - Naver username: 45pt (with "id" name match)
+    //   - Naver password: 135pt (with inputType PASSWORD)
+    //   - GitHub/Google/Reddit: 215+pt
+    //   - General search bar/comments: 5pt (filtered out)
+    const val MIN_CANDIDATE_SCORE = 20
 
     /**
      * Validate if node is a valid input field.

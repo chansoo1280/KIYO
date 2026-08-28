@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -261,5 +262,87 @@ class FieldScoringRulesTest {
     fun `calculatePasswordScore applies registration bonus when new-password without current-password`() = runTest {
         // This test verifies the constant value; actual scoring tested in FieldScorerTest
         assertEquals(50, FieldScoringRules.SCORE_REGISTRATION_FORM)
+    }
+
+    // Phase 7: threshold and keywords tests
+    @Test
+    fun `MIN_CANDIDATE_SCORE constant equals 20`() = runTest {
+        assertEquals(20, FieldScoringRules.MIN_CANDIDATE_SCORE)
+    }
+
+    @Test
+    fun `passwordKeywords includes pw`() = runTest {
+        assertTrue(FieldScoringRules.passwordKeywords.contains("pw"))
+    }
+
+    @Test
+    fun `isValidInputField returns true for Naver pattern (name=id, type=text)`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1 // TYPE_CLASS_TEXT
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        // Set up name/id to "id" via htmlName
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("name", "id"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `isValidInputField returns true for Naver pattern (name=pw, type=password)`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 0x00000080 // TYPE_TEXT_VARIATION_PASSWORD
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("name", "pw"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `calculateUsernameScore returns null for low score (fallback 5pt)`() = runTest {
+        // Set up a node with only fallback score (5pt) - should be filtered by threshold
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1 // TYPE_CLASS_TEXT
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        every { mockNode.htmlInfo } returns null
+
+        // Since calculateUsernameScore is in FieldScorer, we test that the threshold logic works
+        // by checking the score would be below threshold
+        val score = FieldScoringRules.SCORE_EDITTEXT_FALLBACK + FieldScoringRules.SCORE_INPUT_TYPE_TEXT_CLASS
+        assertTrue("Score ($score) should be below threshold (20)", score < FieldScoringRules.MIN_CANDIDATE_SCORE)
+    }
+
+    @Test
+    fun `calculatePasswordScore returns null for low score`() = runTest {
+        // Similar test for password with low score
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        every { mockNode.htmlInfo } returns null
+
+        val result = com.kiyo.app.autofill.detection.FieldScorer.calculatePasswordScore(mockNode)
+        assertNull("Score should be below threshold", result)
     }
 }

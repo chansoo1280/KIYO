@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -194,5 +195,133 @@ class FieldScorerTest {
 
         assertNotNull(candidate)
         assertTrue(candidate!!.score >= FieldScoringRules.SCORE_HTML_INPUT_TYPE_PASSWORD)
+    }
+
+    // Phase 7: aria-label matching tests
+    @Test
+    fun `calculateUsernameScore applies aria-label=아이디 bonus`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockAutofillId
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        // Mock aria-label with Korean "아이디"
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("aria-label", "아이디 또는 전화번호"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val candidate = FieldScorer.calculateUsernameScore(mockNode)
+
+        assertNotNull(candidate)
+        assertTrue(candidate!!.score >= 30) // aria-label bonus = 30
+    }
+
+    @Test
+    fun `calculateUsernameScore applies aria-label=Username bonus`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockAutofillId
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        // Mock aria-label with English "Username"
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("aria-label", "Username"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val candidate = FieldScorer.calculateUsernameScore(mockNode)
+
+        assertNotNull(candidate)
+        assertTrue(candidate!!.score >= 30) // aria-label bonus = 30
+    }
+
+    @Test
+    fun `calculatePasswordScore applies aria-label=비밀번호 bonus`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 0x00000080 // TYPE_TEXT_VARIATION_PASSWORD
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockAutofillId
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        // Mock aria-label with Korean "비밀번호"
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("aria-label", "비밀번호"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val candidate = FieldScorer.calculatePasswordScore(mockNode)
+
+        assertNotNull(candidate)
+        assertTrue(candidate!!.score >= 30) // aria-label bonus = 30
+    }
+
+    @Test
+    fun `calculatePasswordScore applies name=pw match`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 0x00000080 // TYPE_TEXT_VARIATION_PASSWORD
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockAutofillId
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        // Mock name="pw" via htmlName
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("name", "pw"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val candidate = FieldScorer.calculatePasswordScore(mockNode)
+
+        assertNotNull(candidate)
+        // Should include name/id keyword match (30) + password inputType (100) + fallback (5) = 135
+        assertTrue(candidate!!.score >= 135)
+    }
+
+    // Phase 7: threshold tests
+    @Test
+    fun `calculateUsernameScore returns null when score below threshold`() = runTest {
+        // Set up a node with only fallback score (5pt) - should be filtered by threshold
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1 // TYPE_CLASS_TEXT
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockAutofillId
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        every { mockNode.htmlInfo } returns null
+
+        val candidate = FieldScorer.calculateUsernameScore(mockNode)
+
+        assertNull("Score should be below threshold (5 < 20)", candidate)
+    }
+
+    @Test
+    fun `calculatePasswordScore returns null when score below threshold`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1 // TYPE_CLASS_TEXT (not password)
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockAutofillId
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        every { mockNode.htmlInfo } returns null
+
+        val candidate = FieldScorer.calculatePasswordScore(mockNode)
+
+        assertNull("Score should be below threshold (no password signals)", candidate)
     }
 }
