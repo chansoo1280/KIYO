@@ -14,8 +14,8 @@ import androidx.test.uiautomator.Until
 import com.kiyo.app.e2e.pageobjects.AccountsPage
 import com.kiyo.app.e2e.pageobjects.AuthPage
 import com.kiyo.app.e2e.pageobjects.SettingsPage
-import com.kiyo.app.e2e.testutil.NativeAuthPromptHandler
 import com.kiyo.app.e2e.testutil.E2EEnv
+import com.kiyo.app.e2e.testutil.NativeAuthPromptHandler
 import com.kiyo.app.e2e.testutil.TestDataFactory
 import com.kiyo.app.e2e.testutil.WebViewTestHelper
 import org.junit.Assert.assertTrue
@@ -66,6 +66,8 @@ class BiometricUnlockE2ETest {
             val testName = description.methodName
             Log.e(TAG, ">>> TEST FAILED: $testName - ${e.message}", e)
             try {
+                helper.dumpViewHierarchy("FAILURE_$testName")
+                helper.captureScreen("FAILURE_$testName")
             } catch (ex: Exception) {
                 Log.w(TAG, "Failed to capture failure state: ${ex.message}")
             }
