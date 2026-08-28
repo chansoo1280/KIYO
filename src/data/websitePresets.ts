@@ -12,6 +12,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://accounts.google.com",
     domain: "google.com",
     category: "email",
+    packageNames: ["com.google.android.googlequicksearchbox", "com.google.android.gm"],
   },
   {
     id: "naver",
@@ -20,6 +21,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://nid.naver.com",
     domain: "naver.com",
     category: "email",
+    packageNames: ["com.nhn.android.search"],
   },
   {
     id: "kakao",
@@ -28,6 +30,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://accounts.kakao.com",
     domain: "kakao.com",
     category: "social",
+    packageNames: ["com.kakao.talk"],
   },
   {
     id: "microsoft",
@@ -36,6 +39,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://login.microsoftonline.com",
     domain: "microsoft.com",
     category: "email",
+    packageNames: ["com.microsoft.office.outlook"],
   },
   {
     id: "apple",
@@ -44,6 +48,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://appleid.apple.com",
     domain: "apple.com",
     category: "email",
+    // Apple has no official Android app for iCloud
   },
   {
     id: "github",
@@ -52,6 +57,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://github.com/login",
     domain: "github.com",
     category: "development",
+    packageNames: ["com.github.android"],
   },
   {
     id: "discord",
@@ -60,6 +66,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://discord.com/login",
     domain: "discord.com",
     category: "social",
+    packageNames: ["com.discord"],
   },
   {
     id: "instagram",
@@ -68,6 +75,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://www.instagram.com/accounts/login/",
     domain: "instagram.com",
     category: "social",
+    packageNames: ["com.instagram.android"],
   },
   {
     id: "facebook",
@@ -76,6 +84,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://www.facebook.com/login",
     domain: "facebook.com",
     category: "social",
+    packageNames: ["com.facebook.katana"],
   },
   {
     id: "twitter",
@@ -84,6 +93,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://x.com/i/flow/login",
     domain: "x.com",
     category: "social",
+    packageNames: ["com.twitter.android"],
   },
   {
     id: "netflix",
@@ -92,6 +102,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://www.netflix.com/login",
     domain: "netflix.com",
     category: "entertainment",
+    packageNames: ["com.netflix.mediaclient"],
   },
   {
     id: "steam",
@@ -100,6 +111,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://store.steampowered.com/login/",
     domain: "steampowered.com",
     category: "gaming",
+    packageNames: ["com.valvesoftware.android.steam.community"],
   },
   {
     id: "amazon",
@@ -108,6 +120,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://www.amazon.com/ap/signin",
     domain: "amazon.com",
     category: "shopping",
+    packageNames: ["com.amazon.mShop.android.shopping"],
   },
   {
     id: "dropbox",
@@ -116,6 +129,7 @@ export const websitePresets: WebsitePreset[] = [
     websiteUrl: "https://www.dropbox.com/login",
     domain: "dropbox.com",
     category: "storage",
+    packageNames: ["com.dropbox.android"],
   },
 ];
 
