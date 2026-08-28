@@ -173,12 +173,43 @@ fun dumpViewNode(node: AssistStructure.ViewNode, depth: Int = 0) {
 
 ### 비교
 
-| 사이트 | autocomplete 속성 | KIYO 추정 username score | 결과 |
-|--------|------------------|--------------------------|------|
-| GitHub | `username` (명시) | ~215 (200 + autofillHints + 10 + 5) | ✅ 안정 |
-| Naver | `""` (미설정) | ~45-50 (inputType 10 + name="id" 30 + fallback 5) | ⚠️ 위험 |
+| 사이트 | autocomplete 속성 | 위치 | KIYO 추정 username score | 결과 |
+|--------|------------------|------|--------------------------|------|
+| GitHub | `username` (명시) | main DOM | ~215 | ✅ 안정 |
+| Naver | `""` (미설정) | main DOM | ~45-50 | ⚠️ 위험 |
+| Reddit | `username` (명시) | **iframe 내부** (depth1) | ~215 | ✅ 안정 (단, iframe traverse 필요) |
 
-**결론**: Naver/Kakao/Reddit 같은 한국/주류 사이트들이 `autocomplete` 표준을 안 지키는 경우, KIYO의 score 튜닝이 필요할 수 있음.
+**결론**:
+- **Naver**만 위험 (autocomplete 미설정, name만 의존)
+- **Reddit**는 표준 준수 — 단, 로그인 폼이 cross-origin iframe 내부 → KIYO WebView autofill이 iframe까지 traverse하는지 별도 검증 필요
+- **GitHub**는 안정
+
+### Reddit 로그인 — iframe 내부 (`https://www.reddit.com/`)
+
+**dump 출처**: v2 (iframe 재귀) — Reddit 로그인 모달이 cross-origin iframe 내부
+
+**핵심 발견**:
+
+| 항목 | 값 | KIYO 영향 |
+|------|---|-----------|
+| 검색바 (main) | `<input name="q" placeholder="Reddit 검색">` (`_source: depth0`) | autofill 후보 아님 |
+| **Username (iframe)** | `<input name="username" type="text" autocomplete="username webauthn" required>` (`_source: depth1`) | ✅ **autocomplete="username" → +180** |
+| **Password (iframe)** | `<input name="password" type="password" autocomplete="current-password" required>` (`_source: depth1`) | ✅ **autocomplete="current-password" → +180** |
+| OTP (앱) | `<input name="appOtp" type="tel" autocomplete="one-time-code">` | ⚠️ OTP negative 신호 검증 |
+| OTP (백업) | `<input name="backupOtp" type="text" autocomplete="one-time-code">` | ⚠️ OTP negative 신호 검증 |
+| Cross-origin iframe | 2개 (depth1) — `Blocked a frame` 에러 | Reddit 트래커/광고 — autofill 무관 |
+
+**🚨 결정적 발견: Reddit는 표준 준수!**
+- Username/Password 둘 다 `autocomplete="username"`/`autocomplete="current-password"` 명시
+- `_source: depth1` (iframe 내부) — KIYO autofill이 WebView 내부 iframe을 traverse 한다면 잡힘
+- 단, **cross-origin iframe** (`Blocked a frame`) 2개는 traverse 불가 — 이건 OK (트래커/광고일 가능성)
+
+**KIYO 추정 score**:
+- Username: ~215 (autofillHints 또는 HTML autocomplete + inputType + fallback) — **OK**
+- Password: ~305 (autofillHints 또는 HTML autocomplete + inputType + fallback) — **OK**
+- OTP (`appOtp`, `backupOtp`): `autocomplete="one-time-code"` → -100 → 거의 0점 — **OK** (Phase 2에서 구현한 OTP negative 신호가 작동)
+
+**결론**: Reddit는 KIYO가 잘 잡음. Phase 2 OTP negative 신호도 잘 작동할 것으로 예상.
 
 ---
 
