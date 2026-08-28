@@ -68,17 +68,18 @@ class AutofillLoginPage(private val device: UiDevice) {
                 .enabled(true)),
             10000
         ) ?: throw AssertionError("Username field not found")
-
         field.click()
-
         val dropdownVisible = isDropdownVisible(username)
 
         if(!dropdownVisible) {
-            Log.w(TAG, "Autofill dropdown not visible after username click, attempting focus switch...")
-            // 포커스 전환으로 fill request 재발화 시도
-            val passwordField = getPasswordField()
-            passwordField.click() // password로 포커스 이동
-            field.click() // 다시 username으로 포커스 이동
+            Log.w(TAG, "Autofill dropdown not visible, clicking username field to trigger autofill")
+            field.click()
+            val dropdownVisibleAfterClick = isDropdownVisible(username)
+            if (!dropdownVisibleAfterClick) {
+                Log.e(TAG, "Autofill dropdown still not visible after clicking username field")
+                val passwordField = getPasswordField()
+                passwordField.click() // 포커스 이동
+            }
         }
 
         return field
@@ -106,10 +107,12 @@ class AutofillLoginPage(private val device: UiDevice) {
 
     /** 자동완성 드롭다운 표시 여부 확인 */
     fun isDropdownVisible(username: String): Boolean {
-        return device.wait(
+        val visible = device.wait(
             Until.findObject(By.text(username).clazz("android.widget.TextView")),
             5000
         ) != null
+        Log.i(TAG, "isDropdownVisible('$username'): $visible")
+        return visible
     }
 
     /** 자동완성 드롭다운이 나타날 때까지 대기 (인증 응답 dataset 표시 지연 대응) */

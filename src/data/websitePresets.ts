@@ -40,6 +40,8 @@ export const websitePresets: WebsitePreset[] = [
     domain: "microsoft.com",
     category: "email",
     packageNames: ["com.microsoft.office.outlook"],
+    // Note: Microsoft 아이콘은 저작권 문제로 제외됨 (TRADEMARK ENFORCEMENT)
+    // 도메인 매칭 + packageNames는 유지, 아이콘만 기본 아이콘으로 fallback
   },
   {
     id: "apple",
