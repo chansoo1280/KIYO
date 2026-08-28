@@ -33,10 +33,8 @@ Create new test file `FieldScorerTest.kt` covering all `FieldScorer.kt` changes 
 
 | # | Component | Change | Verification (Test Method) |
 |---|-----------|--------|---------------------------|
-| 1 | `calculateUsernameScore` | Add `htmlAutocomplete=one-time-code` negative signal (OTP) | `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` (score reduced by **SCORE_OTP_NEGATIVE = 100**) |
-| 2 | `calculateUsernameScore` | Add structured logging for candidate details | `calculateUsernameScore logs structured candidate details` (verify via **ShadowLog** capture in test) |
-| 3 | `calculatePasswordScore` | Add `htmlAutocomplete=new-password` registration form signal (simple score adjustment) | `calculatePasswordScore applies registration bonus when new-password present without current-password on screen` |
-| 4 | `calculatePasswordScore` | Add structured logging for candidate details | `calculatePasswordScore logs structured candidate details` (verify via **ShadowLog** capture in test) |
+| 1 | `calculateUsernameScore` | Add structured logging for candidate details | `calculateUsernameScore logs structured candidate details` (verify via **ShadowLog** capture in test) |
+| 2 | `calculatePasswordScore` | Add structured logging for candidate details | `calculatePasswordScore logs structured candidate details` (verify via **ShadowLog** capture in test) |
 
 ---
 
@@ -120,22 +118,7 @@ class FieldScorerTest {
         }
     }
 
-    // Test 1: OTP negative signal
-    @Test
-    fun `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code`() = runTest {
-        // Setup: valid username field + htmlAutocomplete=one-time-code
-        // Verify: score reduced by 100 (SCORE_OTP_NEGATIVE)
-        // HTML autocomplete mock via HtmlAttributeExtractor.getHtmlAutocomplete
-        mockHtmlAutocomplete("one-time-code")
-        every { mockNode.autofillHints } returns arrayOf("username")
-
-        val candidate = FieldScorer.calculateUsernameScore(mockNode)
-
-        assertNotNull(candidate)
-        assertEquals(FieldScoringRules.SCORE_AUTOFILL_HINTS_USERNAME - FieldScoringRules.SCORE_OTP_NEGATIVE, candidate?.score)
-    }
-
-    // Test 2: Username structured logging
+    // Test 1: Username structured logging
     @Test
     fun `calculateUsernameScore logs structured candidate details`() = runTest {
         // Setup: any valid username candidate
@@ -149,23 +132,7 @@ class FieldScorerTest {
         assertStructuredLogContains(autofillId, FieldScoringRules.SCORE_AUTOFILL_HINTS_USERNAME, null)
     }
 
-    // Test 3: new-password registration signal (simple score adjustment)
-    @Test
-    fun `calculatePasswordScore applies registration bonus when new-password without current-password`() = runTest {
-        // Setup: htmlAutocomplete=new-password, no current-password on screen (mock ViewNodeExtractor.hasPasswordFieldOnScreen = false)
-        // Verify: bonus score applied (exact value from FieldScoringRules.SCORE_REGISTRATION_FORM)
-        mockHtmlAutocomplete("new-password")
-        every { mockNode.autofillHints } returns arrayOf("new-password")
-        mockkObject(com.kiyo.app.autofill.viewnode.ViewNodeExtractor)
-        every { com.kiyo.app.autofill.viewnode.ViewNodeExtractor.hasPasswordFieldOnScreen(any()) } returns false
-
-        val candidate = FieldScorer.calculatePasswordScore(mockNode)
-
-        assertNotNull(candidate)
-        assertEquals(FieldScoringRules.SCORE_HTML_AUTOCOMPLETE_PASSWORD + FieldScoringRules.SCORE_REGISTRATION_FORM, candidate?.score)
-    }
-
-    // Test 4: Password structured logging
+    // Test 2: Password structured logging
     @Test
     fun `calculatePasswordScore logs structured candidate details`() = runTest {
         // Setup: any valid password candidate
@@ -217,8 +184,8 @@ class FieldScorerTest {
 
 ## Verification Criteria
 
-- [ ] **Phase 1-2 complete**: `FieldScoringRules.kt` has `SCORE_OTP_NEGATIVE = 100`, tuned constants; `FieldScorer.kt` has OTP/new-password/logging logic
-- [ ] **All 4 plan-specific tests** in `FieldScorerTest.kt` pass (`./gradlew test --tests "*FieldScorerTest*"`)
+- [ ] **Phase 1-2 complete**: `FieldScoringRules.kt` has `SCORE_OTP_NEGATIVE = 100`, `SCORE_REGISTRATION_FORM = 50`, tuned constants; `FieldScorer.kt` has OTP negative, new-password bonus, structured logging logic
+- [ ] **All 2 plan-specific tests** in `FieldScorerTest.kt` pass (`./gradlew test --tests "*FieldScorerTest*"`)
 - [ ] **Additional baseline tests** pass (ensure new file has full coverage)
 - [ ] **Structured logging verified programmatically** via `ShadowLog` (not manual logcat):
   - Log format: `FieldCandidate autofillId=<id> score=<score> reasons=[...] className=<class> htmlAutocomplete=<val>`

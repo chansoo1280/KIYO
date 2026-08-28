@@ -52,8 +52,8 @@ Improve username/password field detection accuracy across common web sites and n
 | 5 | Increase `SCORE_HTML_AUTOCOMPLETE_PASSWORD` from 150 to 180 | HTML autocomplete is more reliable signal than class fallback | `calculatePasswordScore gives +180 for htmlAutocomplete=current-password` |
 | 6 | Decrease `SCORE_EDITTEXT_FALLBACK` from 10 to 5 | Reduce false positives on non-login forms | `calculateUsernameScore gives +5 for EditText fallback (no other signals)` |
 | 7 | Decrease `SCORE_EDITTEXT_PASSWORD_FALLBACK` from 10 to 5 | Reduce false positives on non-login forms | `calculatePasswordScore gives +5 for EditText fallback with password variation` |
-|| 8 | Add `SCORE_OTP_NEGATIVE = 100` | OTP negative signal magnitude | `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` (Phase 4) |
-|| 9 | Add `SCORE_REGISTRATION_FORM = 50` | new-password registration form bonus | `calculatePasswordScore applies registration bonus when new-password without current-password` (Phase 4) |
+| 8 | Add `SCORE_OTP_NEGATIVE = 100` | OTP negative signal magnitude | `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` (Phase 3) |
+| 9 | Add `SCORE_REGISTRATION_FORM = 50` | new-password registration form bonus | `calculatePasswordScore applies registration bonus when new-password without current-password` (Phase 3) |
 
 ---
 
@@ -61,9 +61,9 @@ Improve username/password field detection accuracy across common web sites and n
 
 | # | Component | Change | Reason | Verification |
 |---|-----------|--------|--------|--------------|
-| 1 | `calculateUsernameScore` | Add `htmlAutocomplete=one-time-code` as negative signal (OTP fields) | OTP fields incorrectly matched as username | Phase 4: `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` (score reduced by **SCORE_OTP_NEGATIVE = 100**) |
+| 1 | `calculateUsernameScore` | Add `htmlAutocomplete=one-time-code` as negative signal (OTP fields) | OTP fields incorrectly matched as username | Phase 3: `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` (score reduced by **SCORE_OTP_NEGATIVE = 100**) |
 | 2 | `calculateUsernameScore` | Add structured logging for candidate details | Easier log analysis for tuning | Phase 4: **ShadowLog capture** verifies format `FieldCandidate autofillId=<id> score=<score> reasons=[...] className=<class> htmlAutocomplete=<val>` |
-| 3 | `calculatePasswordScore` | Add `htmlAutocomplete=new-password` registration form detection signal (simple score adjustment) | Distinguish login vs registration | Phase 4: `calculatePasswordScore applies registration bonus when new-password present without current-password` (bonus = **SCORE_REGISTRATION_FORM**) |
+| 3 | `calculatePasswordScore` | Add `htmlAutocomplete=new-password` registration form detection signal (simple score adjustment) | Distinguish login vs registration | Phase 3: `calculatePasswordScore applies registration bonus when new-password present without current-password` (bonus = **SCORE_REGISTRATION_FORM**) |
 | 4 | `calculatePasswordScore` | Add structured logging for candidate details | Easier log analysis for tuning | Phase 4: **ShadowLog capture** verifies same structured format |
 
 ---
@@ -94,20 +94,18 @@ Improve username/password field detection accuracy across common web sites and n
 
 ---
 
-### Phase 4: FieldScorerTest.kt (NEW FILE — 8 tests)
+### Phase 4: FieldScorerTest.kt (NEW FILE — 6 tests)
 
 | Test Method | Maps To Change | Type |
 |-------------|----------------|------|
-| `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` | FieldScorer #1 | Plan-specific |
 | `calculateUsernameScore logs structured candidate details` | FieldScorer #2 | Plan-specific |
-| `calculatePasswordScore applies registration bonus when new-password without current-password` | FieldScorer #3 | Plan-specific |
 | `calculatePasswordScore logs structured candidate details` | FieldScorer #4 | Plan-specific |
 | `calculateUsernameScore returns candidate for autofillHints=username` | Baseline coverage | Baseline |
 | `calculateUsernameScore returns candidate for htmlAutocomplete=username` | Baseline coverage | Baseline |
 | `calculatePasswordScore returns candidate for autofillHints=password` | Baseline coverage | Baseline |
 | `calculatePasswordScore returns candidate for htmlInputType=password` | Baseline coverage | Baseline |
 
-**Total Phase 4: 8 tests** (4 plan-specific + 4 baseline)
+**Total Phase 4: 6 tests** (2 plan-specific logging + 4 baseline)
 
 ---
 
@@ -116,7 +114,7 @@ Improve username/password field detection accuracy across common web sites and n
 ### Unit Tests (Phases 3-4)
 
 - [ ] **Phase 3**: `./gradlew test --tests "*FieldScoringRulesTest*"` — 27 tests pass (18 existing + 9 new)
-- [ ] **Phase 4**: `./gradlew test --tests "*FieldScorerTest*"` — 8 tests pass (4 plan-specific + 4 baseline)
+- [ ] **Phase 4**: `./gradlew test --tests "*FieldScorerTest*"` — 6 tests pass (2 plan-specific + 4 baseline)
 - [ ] **Combined**: `./gradlew test --tests "*FieldScorer*" --tests "*FieldScoringRules*"` — all pass
 
 ### Structured Logging (Phase 4 — Automated)
@@ -138,7 +136,7 @@ Improve username/password field detection accuracy across common web sites and n
 
 | Test File | Type | Scenarios to Pass | Status |
 |-----------|------|-------------------|--------|
-| `FieldScorerTest` | JVM Unit | **NEW FILE** - 8 tests (4 plan-specific: OTP negative, logging×2, new-password; 4 baseline) | ⬜ Not Run |
+| `FieldScorerTest` | JVM Unit | **NEW FILE** - 6 tests (2 plan-specific: logging×2; 4 baseline) | ⬜ Not Run |
 | `FieldScoringRulesTest` | JVM Unit | **Existing 18 tests** + **9 new**: WebView internal nodes (3), score constants (4), OTP negative (1), new-password bonus (1) | ⬜ Not Run |
 
 **Pass Criteria:** All test files in this table must pass (green) for this plan to be complete.

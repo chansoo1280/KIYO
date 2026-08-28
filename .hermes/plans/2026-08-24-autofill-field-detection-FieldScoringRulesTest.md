@@ -9,7 +9,7 @@
 
 ## Goal
 
-Add unit tests to `FieldScoringRulesTest.kt` covering all `FieldScoringRules.kt` changes.
+Add unit tests to `FieldScoringRulesTest.kt` covering all `FieldScoringRules.kt` changes (Phases 1+3).
 
 ---
 
@@ -24,6 +24,8 @@ Add unit tests to `FieldScoringRulesTest.kt` covering all `FieldScoringRules.kt`
 | 5 | Constants | `SCORE_HTML_AUTOCOMPLETE_PASSWORD`: 150 → 180 | `calculatePasswordScore gives +180 for htmlAutocomplete=current-password` |
 | 6 | Constants | `SCORE_EDITTEXT_FALLBACK`: 10 → 5 | `calculateUsernameScore gives +5 for EditText fallback (no other signals)` |
 | 7 | Constants | `SCORE_EDITTEXT_PASSWORD_FALLBACK`: 10 → 5 | `calculatePasswordScore gives +5 for EditText fallback with password variation` |
+| 8 | Constants | Add `SCORE_OTP_NEGATIVE = 100` | `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code` |
+| 9 | Constants | Add `SCORE_REGISTRATION_FORM = 50` | `calculatePasswordScore applies registration bonus when new-password without current-password` |
 
 ---
 
@@ -32,13 +34,14 @@ Add unit tests to `FieldScoringRulesTest.kt` covering all `FieldScoringRules.kt`
 - All tests use existing mockk + Robolectric setup (see `@Before` setup)
 - Tests 1-3 replace the 3 skipped TODO tests at lines 55-62
 - Tests 4-7 are new tests verifying score constant values
-- Helper: use `HtmlAttributeExtractor` mocking for HTML attribute tests (2, 3)
+- Tests 8-9 verify OTP negative signal and new-password registration bonus (require Phase 1 constants)
+- **Helper for WebView HTML tests (2, 3)**: Mock `AssistStructure.HtmlInfo` with `attributes` containing `autocomplete` / `type` pairs (not `HtmlAttributeExtractor` — that's used in `FieldScorer`, not `FieldScoringRules`)
 
 ---
 
 ## Verification Criteria
 
-- [ ] All 7 new/modified tests in `FieldScoringRulesTest.kt` pass
+- [ ] All 9 new/modified tests in `FieldScoringRulesTest.kt` pass
 - [ ] Existing 18 tests still pass (no regression)
 - [ ] Run: `./gradlew test --tests "*FieldScoringRulesTest*"`
 
