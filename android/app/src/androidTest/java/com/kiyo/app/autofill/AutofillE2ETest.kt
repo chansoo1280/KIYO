@@ -43,6 +43,8 @@ class AutofillE2ETest {
             val testName = description.methodName
             Log.e("AUTOFILL_E2E_DEBUG", ">>> TEST FAILED: $testName - ${e.message}", e)
             try {
+                helper.dumpViewHierarchy("FAILURE_$testName")
+                helper.captureScreen("FAILURE_$testName")
             } catch (ex: Exception) {
                 Log.w("AUTOFILL_E2E_DEBUG", "Failed to capture failure state: ${ex.message}")
             }
