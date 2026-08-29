@@ -199,27 +199,95 @@ autosave는 사실상 in-app(단일 디바이스) 신뢰성 경로이고, SAF ba
 | Q4 | SAF 테스트 깊이 (옵션 B) | (a) React 통합만 / (b) + Android JVM (`KiyoFilePlugin`) / (c) + E2E | **✅ (a) React 통합만** (사용자 결정) | Android E2E는 사용자가 직접 실행. JVM 단위는 §3.3 영역 밖. Plan-2는 React 단에 집중 |
 | Q5 | changePin atomicity (옵션 D) — 실제 버그 재현 사례? | (a) 있음 / (b) 없음, 예방적 / (c) 보류 | **✅ (b) 없음, 예방적 — 분석으로 안전함 확인** | `replaceDatabaseData` 단일 트랜잭션 확인 (`db.ts:213-232`). Plan-1 완료. |
 | Q6 | 크로스플랫폼 포맷 (옵션 F) 시점 | (a) 지금 v1 골격 / (b) iOS/Web 데스크톱 결정 후 / (c) 보류 | **✅ (c) 보류** | §3.4 — YAGNI. v2 트리거(KDF 변경, 필드 추가, iOS 확장) 발생 시 후속 brainstorm |
+| Q7 | Plan-2 (SAF picker 취소 분기 회귀 테스트) — 비용 대비 효과? | (a) 그대로 구현 / (b) 보류 | **✅ (b) 보류** | §11 참조 — mock 검증 대상이 5줄 삼항 분기의 메시지 문자열에 한정, 회귀 가치가 낮음. 트리거 기반 재방문. |
 
-**현재 상태:** Q1/Q2/Q3/Q4/Q5/Q6 **모두 결정 완료**. **Plan-1 완료, Plan-2/Plan-6 작성 가능.** **Plan-3는 보류** (Q6, §3.4).
+**현재 상태:** Q1~Q7 **모두 결정 완료**. **Plan-1/Plan-6 완료, Plan-2는 보류(Q7)**, **Plan-3도 보류** (Q6, §3.4).
 
 **진행 순서 (사용자 결정 기반):**
 ```
-Plan-1 (changePin atomicity)       ──┐
-Plan-2 (SAF 백업/복원 회귀 보강)     ├── 동시/순차 진행 가능
-Plan-6 (autosave 안정화 & 동시성)    ──┘
+Plan-1 (changePin atomicity)        ──┐
+Plan-6 (autosave 안정화 & 동시성)    ──┘  ← 1차 둘 다 완료
             ↓
-Plan-5 (SAF 영구 URI 자동 백업) — Plan-2 의존
+Plan-5 (SAF 영구 URI 자동 백업) — 2차 (독자 진행 가능)
             ↓
 Plan-4 (패스프레이즈) — 가장 마지막, 별도 트랙
 
+(보류) Plan-2: §11 참조 — 트리거 기반
 (보류) Plan-3: §3.4 참조
 ```
 
 ## 10. Output
 
 - Problem understood ✅
-- Recommended direction: §2를 **Plan-1 완료, Plan-2/Plan-6 (1차) → Plan-5 (2차) → Plan-4 (3차, 맨 마지막)** + 인라인 STRATEGY 갱신으로 분할. **Plan-3는 보류** (Q6, §3.4)
-- 결정 완료: Q1=(a) Plan-5 포함, Q2=(c) Plan-4는 가장 마지막, Q3=(Plan-6 — 직렬화 큐), Q4=(a) React 통합만, Q5=(b) 없음/안전함, Q6=(c) Plan-3 보류
+- Recommended direction: §2를 **Plan-1/Plan-6 완료, Plan-5 (2차) → Plan-4 (3차, 맨 마지막)** + 인라인 STRATEGY 갱신으로 분할. **Plan-2/Plan-3는 보류** (Q7 §11, Q6 §3.4)
+- 결정 완료: Q1=(a) Plan-5 포함, Q2=(c) Plan-4는 가장 마지막, Q3=(Plan-6 — 직렬화 큐), Q4=(a) React 통합만, Q5=(b) 없음/안전함, Q6=(c) Plan-3 보류, **Q7=(b) Plan-2 보류**
 - 결정 보류: 없음 (모든 Q 해결)
-- Plan 상태: **Plan-1 완료, Plan-2/Plan-6 작성 가능** | **Plan-3 보류**
-- 다음 액션: `ce-plan`으로 **Plan-2 (SAF picker 취소 분기 회귀 테스트)** 또는 **Plan-6 (autosave 안정화 & 동시성)** plan 문서 작성 진입 가능
+- Plan 상태: **Plan-1/Plan-6 완료, Plan-5 미착수, Plan-4 미착수** | **Plan-2/Plan-3 보류**
+- 다음 액션: `ce-plan`으로 **Plan-5 (SAF 영구 URI 자동 백업)** 진입 가능. Plan-2는 트리거 발생 시 재방문 (§11).
+
+---
+
+## 11. Plan-2 Post-hoc Review (보류 결정 근거)
+
+**작성일:** 2026-08-29 (Plan-2 docs-only 커밋 `9278a596` 직후, 사용자 판단 기반)
+
+### 11.1 검토 대상
+`.hermes/plans/2026-08-29-saf-picker-cancellation-test.md` — `exportBackupFile` → `KiyoFile.saveFile`이 `cancelled: true`를 반환할 때 `"User cancelled backup"` 메시지로 `FileStorageError(WRITE_FAILED)`를 던지는지 검증하는 mock 기반 통합 테스트 1~2건.
+
+### 11.2 비용 대비 효과 재평가
+
+**검증 대상 코드 (`fileExport.ts:45-51`):**
+```ts
+if (!result.success) {
+  throw FileStorageError.create(
+    FileStorageErrorCode.WRITE_FAILED,
+    result.cancelled ? "User cancelled backup" : "Failed to save backup file",
+    { operation: "exportBackupFile", fileName: normalizedFileName },
+  );
+}
+```
+
+분기 자체가 **5줄 삼항 연산자**이며, 검증 가치는 다음과 같이 한정됨:
+
+| 회귀 시나리오 | Plan-2 mock 테스트가 잡는가? |
+|---|---|
+| 메시지 문자열 오타/변경 | ✅ (직접 검증) |
+| `WRITE_FAILED` 코드 누락 | ✅ |
+| **`KiyoFile.saveFile`이 `cancelled: true`를 안 보내는 native 회귀** | ❌ (native는 mock 우회) |
+| **SAF `ACTION_CREATE_DOCUMENT` 결과 매핑 오류 (Android Kotlin)** | ❌ (JVM 영역) |
+| 픽커 UX에서 시스템 back / 명시적 취소의 cancelled 분기 정확성 | ❌ (E2E 영역) |
+| SAF URI 권한 만료/거부, storage full, 다른 분기 추가 | ❌ (분기 자체만 검증) |
+| `exportBackupFile`이 `cancelled` 외 새 분기를 추가 | ✅ (메시지 회귀는 잡지만 신규 분기 자체는 검증 대상이 아님) |
+
+즉 **테스트는 React 함수 한 곳의 메시지 문자열 회귀만** 막고, SAF 경로의 본질적 리스크(native `cancelled` 매핑, E2E 흐름)는 커버하지 못함.
+
+### 11.3 기존 SAF 커버리지
+`fileStorage.lifecycle.integration.test.ts` (13건) + `fileStorage.error.integration.test.ts` (9건) + `fileStorage.encryption.integration.test.ts` (5건) + `fileStorage.changePin.integration.test.ts` (7건)이 이미 다음을 검증:
+- SAF round-trip 정상/실패/PIN 불일치/평문·암호화/파일명 정규화
+- `openImportedDataFile` JSON 파싱/salt 검증
+- `exportDataFile` (Capacitor Filesystem) 실패
+- `changePin` invariant
+
+남은 SAF 고유 분기는 **`cancelled` 메시지 한 줄**뿐. "0건 → 1건"의 가치보다 "1건으로 무엇을 보장하나?"가 더 중요한데, 위 표 기준 보장 범위가 좁음.
+
+### 11.4 비용
+- mock 1~2건 + `Capacitor.isNativePlatform` spy + import 추가 + describe 블록 (~30~40줄)
+- 테스트 코드 리뷰 + `npm run test` 회귀 확인
+- 브레인스토밍/플랜 문서 갱신 (이미 비용 소진)
+
+### 11.5 결정
+**보류.** Plan-2 plan 문서(`9278a596`)는 작성되어 있으나 **구현하지 않음**. 코드는 변경 0.
+
+### 11.6 재방문 트리거
+다음 중 **하나라도** 발생 시 Plan-2 또는 동등한 JVM/E2E 테스트로 재방문:
+
+1. `exportBackupFile`이 `cancelled` 외 새 분기(권한 에러, URI 만료, storage full 등)를 추가
+2. `KiyoFile.saveFile` 인터페이스 또는 반환 필드 변경
+3. `android/.../KiyoFilePlugin.kt`의 `ACTION_CREATE_DOCUMENT` → `cancelled` 매핑 로직 변경
+4. SAF UX 변경(Web fallback → native 강제, multi-document 등)
+5. SAF 신뢰성에 대한 새로운 사용자/이슈 보고
+
+이 시점에는 **mock 단독이 아니라 native JVM 단위 또는 React+JVM+ESPRESSO 조합**으로 재설계 (브레인스토밍 §7-B "Plan-2는 진짜 빠진 단일 경로" 전제 자체가 무너질 수 있음).
+
+### 11.7 관련 커밋
+- `9278a596` docs(vault): plan SAF picker cancellation regression test (Plan-2) — plan 문서만, 구현 없음
