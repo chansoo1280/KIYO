@@ -60,6 +60,20 @@ export interface ClearAccountsResult {
   message?: string;
 }
 
+/**
+ * Platform abstraction contract mirroring the native `AutofillPlatformBridge` interface.
+ *
+ * TypeScript-side type definition only — the Native Plugin API contract and existing
+ * React component usage are unchanged. OS-dependent capabilities only; sync policy
+ * (key handling, downgrade/upgrade, auth retry) is native-side (AutofillSyncManager)
+ * and intentionally absent here.
+ */
+export interface AutofillPlatformBridge {
+  isAutofillEnabled(): Promise<AutofillStatus>;
+  openAutofillSettings(): Promise<void>;
+  deliverAccountsForAutofill(options: { accountsJson: string }): Promise<void>;
+}
+
 const KiyoAutofill = registerPlugin<KiyoAutofillPlugin>("KiyoAutofill", {
   web: () => import("./kiyautofill.web").then((m) => new m.KiyoAutofillWeb()),
 });

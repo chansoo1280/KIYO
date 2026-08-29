@@ -31,12 +31,12 @@ object FieldScoringRules {
     )
 
     val usernameKeywords = listOf("email", "username", "login", "id", "account", "user")
-    val passwordKeywords = listOf("password", "passwd", "pwd")
+    val passwordKeywords = listOf("password", "passwd", "pwd", "pw")
 
     // Score weights
     const val SCORE_AUTOFILL_HINTS_USERNAME = 200
     const val SCORE_AUTOFILL_HINTS_USER_EMAIL = 100
-    const val SCORE_HTML_AUTOCOMPLETE_USERNAME = 150
+    const val SCORE_HTML_AUTOCOMPLETE_USERNAME = 180
     const val SCORE_HTML_INPUT_TYPE_EMAIL = 100
     const val SCORE_HTML_INPUT_TYPE_TEXT = 50
     const val SCORE_INPUT_TYPE_EMAIL = 100
@@ -44,17 +44,30 @@ object FieldScoringRules {
     const val SCORE_HTML_NAME_ID_USERNAME = 30
     const val SCORE_HINT_RESOURCE_USERNAME = 30
     const val SCORE_GOOGLE_USERNAME_SCREEN = 50
-    const val SCORE_EDITTEXT_FALLBACK = 10
+    const val SCORE_EDITTEXT_FALLBACK = 5
 
     const val SCORE_AUTOFILL_HINTS_PASSWORD = 200
     const val SCORE_AUTOFILL_HINTS_PASS = 100
-    const val SCORE_HTML_AUTOCOMPLETE_PASSWORD = 150
+    const val SCORE_HTML_AUTOCOMPLETE_PASSWORD = 180
     const val SCORE_HTML_INPUT_TYPE_PASSWORD = 100
     const val SCORE_INPUT_TYPE_PASSWORD = 100
     const val SCORE_HTML_NAME_ID_PASSWORD = 30
     const val SCORE_HINT_RESOURCE_PASSWORD = 30
     const val SCORE_GOOGLE_PASSWORD_SCREEN = 50
-    const val SCORE_EDITTEXT_PASSWORD_FALLBACK = 10
+    const val SCORE_EDITTEXT_PASSWORD_FALLBACK = 5
+
+    // OTP / Registration form signals
+    const val SCORE_OTP_NEGATIVE = 100
+    const val SCORE_REGISTRATION_FORM = 50
+
+    // Minimum score to be considered a valid candidate
+    // Filters out low-confidence signals (e.g., fallback 5pt, inputType 10pt single)
+    // Empirical threshold from 4-site dump analysis (2026-08-28):
+    //   - Naver username: 45pt (with "id" name match)
+    //   - Naver password: 135pt (with inputType PASSWORD)
+    //   - GitHub/Google/Reddit: 215+pt
+    //   - General search bar/comments: 5pt (filtered out)
+    const val MIN_CANDIDATE_SCORE = 20
 
     /**
      * Validate if node is a valid input field.
@@ -72,9 +85,10 @@ object FieldScoringRules {
 
         // Exclude: TextView, View, container classes
         if (excludedClassNames.any { className.contains(it, true) }) {
-            // But allow EditText classes
+            // But allow EditText classes and WebView internal nodes
             val isEditTextClass = editTextClassNames.any { className.contains(it, true) }
-            if (!isEditTextClass) {
+            val isWebView = className.contains("WebView", true)
+            if (!isEditTextClass && !isWebView) {
                 return false
             }
         }
@@ -88,6 +102,34 @@ object FieldScoringRules {
             }
             if (hasUsernameOrPasswordHint) {
                 return true
+            }
+        }
+
+        // Allow WebView internal nodes with HTML autocomplete attributes
+        if (className.contains("WebView", true)) {
+            val htmlInfo = node.htmlInfo
+            if (htmlInfo != null) {
+                val attributes = htmlInfo.attributes
+                if (attributes != null) {
+                    // Check HTML autocomplete attribute
+                    val htmlAutocomplete = attributes.find { it.first.equals("autocomplete", true) }?.second
+                    if (htmlAutocomplete != null) {
+                        val lower = htmlAutocomplete.lowercase()
+                        if (lower.contains("username") || lower.contains("email") ||
+                            lower.contains("current-password") || lower.contains("new-password") ||
+                            lower.contains("password") && !lower.contains("one-time-code")) {
+                            return true
+                        }
+                    }
+                    // Check HTML input type attribute
+                    val htmlInputType = attributes.find { it.first.equals("type", true) }?.second
+                    if (htmlInputType != null) {
+                        val lower = htmlInputType.lowercase()
+                        if (lower == "email" || lower == "password" || lower == "text") {
+                            return true
+                        }
+                    }
+                }
             }
         }
 

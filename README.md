@@ -248,7 +248,10 @@ npm run typecheck
 # 린트
 npm run lint
 
-# 테스트
+# 테스트 (타입체크 + vitest)
+npm run check
+
+# 단위/통합 테스트만 (vitest)
 npm run test
 ```
 
@@ -260,6 +263,27 @@ npm run android:build
 
 # 또는 직접 실행 (디버그 APK 빌드 후 설치)
 npm run android:run
+```
+
+### Android E2E Tests (emulator required)
+
+```bash
+# Autofill E2E
+npm run test:e2e:android                 # 전체 빌드+실행 (noAuthFill + authResync)
+npm run test:e2e:android:fast            # APK 재사용
+
+# Biometric Unlock E2E
+npm run test:e2e:biometric               # 전체 빌드+실행 (지문 등록 포함)
+npm run test:e2e:biometric:fast          # APK 재사용 (지문 재사용)
+```
+
+### React E2E Tests (Playwright)
+
+```bash
+npm run test:e2e           # Playwright E2E tests
+npm run test:e2e:ui        # Playwright UI mode
+npm run test:e2e:headed    # Playwright headed mode
+npm run test:e2e:debug     # Playwright debug mode
 ```
 
 ## Usage

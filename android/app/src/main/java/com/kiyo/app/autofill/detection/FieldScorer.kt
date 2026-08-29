@@ -71,7 +71,11 @@ object FieldScorer {
         // 2. HTML autocomplete=username/email/user/login: +150
         val htmlAutocomplete = HtmlAttributeExtractor.getHtmlAutocomplete(node)
         if (htmlAutocomplete != null) {
-            if (htmlAutocomplete.contains("username") || htmlAutocomplete.contains("email") ||
+            // OTP negative signal: one-time-code fields should not be treated as username
+            if (htmlAutocomplete.contains("one-time-code", true)) {
+                score -= FieldScoringRules.SCORE_OTP_NEGATIVE
+                reasons.add("htmlAutocomplete=one-time-code (OTP negative)")
+            } else if (htmlAutocomplete.contains("username") || htmlAutocomplete.contains("email") ||
                 htmlAutocomplete.contains("user") || htmlAutocomplete.contains("login")) {
                 score += FieldScoringRules.SCORE_HTML_AUTOCOMPLETE_USERNAME
                 reasons.add("htmlAutocomplete=username/email/user/login")
@@ -130,7 +134,24 @@ object FieldScorer {
             reasons.add("hint/resourceId contains username keywords")
         }
 
-        // 8. Google accounts.google.com special handling (username screen): +50
+        // 8. aria-label keyword matching (WebView/HTML): +30
+        val ariaLabel = HtmlAttributeExtractor.getAriaLabel(node)?.lowercase() ?: ""
+        if (ariaLabel.isNotEmpty()) {
+            val hasUsernameLabel = FieldScoringRules.usernameKeywords.any { keyword ->
+                ariaLabel.contains(keyword) ||
+                // i18n keywords
+                ariaLabel.contains("아이디") ||  // Korean
+                ariaLabel.contains("이메일") ||  // Korean
+                ariaLabel.contains("ログイン") ||   // Japanese
+                ariaLabel.contains("ユーザ")      // Japanese
+            }
+            if (hasUsernameLabel) {
+                score += FieldScoringRules.SCORE_HTML_NAME_ID_USERNAME  // 30
+                reasons.add("aria-label=username keywords")
+            }
+        }
+
+        // 9. Google accounts.google.com special handling (username screen): +50
         // This is a special case for Google's split username/password screens
         if (ViewNodePredicate.isGoogleFieldCandidate(node)) {
             val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
@@ -151,12 +172,11 @@ object FieldScorer {
             }
         }
 
-        // Skip if score is 0 (no indicators)
-        if (score == 0) return null
+        // Skip if score is below threshold (no meaningful indicators)
+        if (score < FieldScoringRules.MIN_CANDIDATE_SCORE) return null
 
-        Log.d(TAG, "Username candidate:")
-        Log.d(TAG, "autofillId=$autofillId")
-        Log.d(TAG, "hints=[$autofillHints]")
+        // Structured logging for candidate details (single-line format for ShadowLog capture)
+        logCandidate("Username", autofillId, score, className, htmlAutocomplete, htmlInputType, reasons)
 
         return FieldCandidate(
             autofillId = autofillId,
@@ -207,7 +227,14 @@ object FieldScorer {
         // 2. HTML autocomplete=password/current-password/new-password: +150
         val htmlAutocomplete = HtmlAttributeExtractor.getHtmlAutocomplete(node)
         if (htmlAutocomplete != null) {
-            if (htmlAutocomplete.contains("password") || htmlAutocomplete.contains("pass") ||
+            // new-password registration form bonus (simple score adjustment)
+            if (htmlAutocomplete.contains("new-password", true) && !htmlAutocomplete.contains("current-password", true)) {
+                val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
+                if (!hasPasswordOnScreen) {
+                    score += FieldScoringRules.SCORE_REGISTRATION_FORM
+                    reasons.add("htmlAutocomplete=new-password (registration form)")
+                }
+            } else if (htmlAutocomplete.contains("password") || htmlAutocomplete.contains("pass") ||
                 htmlAutocomplete.contains("current-password") || htmlAutocomplete.contains("new-password")) {
                 score += FieldScoringRules.SCORE_HTML_AUTOCOMPLETE_PASSWORD
                 reasons.add("htmlAutocomplete=password/current-password")
@@ -237,7 +264,7 @@ object FieldScorer {
         val htmlId = HtmlAttributeExtractor.getHtmlId(node)
         if (htmlName != null || htmlId != null) {
             val nameOrId = (htmlName ?: "") + " " + (htmlId ?: "")
-            if (nameOrId.contains("password") || nameOrId.contains("pass") || nameOrId.contains("pwd")) {
+            if (nameOrId.contains("password") || nameOrId.contains("pass") || nameOrId.contains("pwd") || nameOrId.contains("pw")) {
                 score += FieldScoringRules.SCORE_HTML_NAME_ID_PASSWORD
                 reasons.add("htmlName/Id contains password keywords")
             }
@@ -258,7 +285,21 @@ object FieldScorer {
             reasons.add("hint/resourceId contains password keywords")
         }
 
-        // 7. Google accounts.google.com special handling (password screen): +50
+        // 7. aria-label keyword matching (WebView/HTML): +30
+        val ariaLabel = HtmlAttributeExtractor.getAriaLabel(node)?.lowercase() ?: ""
+        if (ariaLabel.isNotEmpty()) {
+            val hasPasswordLabel = FieldScoringRules.passwordKeywords.any { keyword ->
+                ariaLabel.contains(keyword) ||
+                ariaLabel.contains("비밀번호") ||  // Korean
+                ariaLabel.contains("パスワード")   // Japanese
+            }
+            if (hasPasswordLabel) {
+                score += FieldScoringRules.SCORE_HTML_NAME_ID_PASSWORD  // 30
+                reasons.add("aria-label=password keywords")
+            }
+        }
+
+        // 8. Google accounts.google.com special handling (password screen): +50
         if (ViewNodePredicate.isGoogleFieldCandidate(node)) {
             val hasPasswordOnScreen = ViewNodeExtractor.hasPasswordFieldOnScreen(node)
             if (hasPasswordOnScreen) {
@@ -273,12 +314,11 @@ object FieldScorer {
             reasons.add("EditText class with password variation")
         }
 
-        // Skip if score is 0 (no indicators)
-        if (score == 0) return null
+        // Skip if score is below threshold (no meaningful indicators)
+        if (score < FieldScoringRules.MIN_CANDIDATE_SCORE) return null
 
-        Log.d(TAG, "Password candidate:")
-        Log.d(TAG, "autofillId=$autofillId")
-        Log.d(TAG, "hints=[$autofillHints]")
+        // Structured logging for candidate details (single-line format for ShadowLog capture)
+        logCandidate("Password", autofillId, score, className, htmlAutocomplete, htmlInputType, reasons)
 
         return FieldCandidate(
             autofillId = autofillId,
@@ -293,5 +333,24 @@ object FieldScorer {
             webDomain = webDomain,
             reason = reasons.joinToString("; ")
         )
+    }
+
+    /**
+     * Structured logging for field candidates.
+     * Format: FieldCandidate type=<type> autofillId=<id> score=<score> reasons=[...] className=<class> htmlAutocomplete=<val> htmlInputType=<val>
+     */
+    private fun logCandidate(
+        type: String,
+        autofillId: AutofillId,
+        score: Int,
+        className: String,
+        htmlAutocomplete: String?,
+        htmlInputType: String?,
+        reasons: List<String>
+    ) {
+        val autocompleteStr = htmlAutocomplete ?: "none"
+        val inputTypeStr = htmlInputType ?: "none"
+        val reasonsStr = reasons.joinToString(", ")
+        Log.d(TAG, "FieldCandidate type=$type autofillId=$autofillId score=$score reasons=[$reasonsStr] className=$className htmlAutocomplete=$autocompleteStr htmlInputType=$inputTypeStr")
     }
 }

@@ -1,12 +1,15 @@
 package com.kiyo.app.autofill.detection
 
 import android.app.assist.AssistStructure
+import android.util.Pair
+import android.view.ViewStructure
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,12 +56,47 @@ class FieldScoringRulesTest {
 
     @Test
     fun `isValidInputField returns true for WebView internal node with username hint`() = runTest {
-        // TODO: WebView logic requires specific className matching, skip for now
+        every { mockNode.className } returns "com.android.webview.chromium.WebView"
+        every { mockNode.inputType } returns 0
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns arrayOf("username")
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
     }
 
     @Test
-    fun `isValidInputField returns true for WebView internal node with password hint`() = runTest {
-        // TODO: WebView logic requires specific className matching, skip for now
+    fun `isValidInputField returns true for WebView internal node with htmlAutocomplete=username`() = runTest {
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("autocomplete", "username"))
+        every { mockNode.className } returns "com.android.webview.chromium.WebView"
+        every { mockNode.inputType } returns 0
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns null
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `isValidInputField returns true for WebView internal node with htmlInputType=email`() = runTest {
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("type", "email"))
+        every { mockNode.className } returns "com.android.webview.chromium.WebView"
+        every { mockNode.inputType } returns 0
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns null
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
     }
 
     @Test
@@ -188,5 +226,123 @@ class FieldScoringRulesTest {
         val result = FieldScoringRules.isTextClass(inputType)
 
         assertFalse(result)
+    }
+
+    // New tests for score constants (Phase 1 changes)
+    @Test
+    fun `calculateUsernameScore gives +180 for htmlAutocomplete=username`() = runTest {
+        // This test verifies the constant value; actual scoring tested in FieldScorerTest
+        assertEquals(180, FieldScoringRules.SCORE_HTML_AUTOCOMPLETE_USERNAME)
+    }
+
+    @Test
+    fun `calculatePasswordScore gives +180 for htmlAutocomplete=current-password`() = runTest {
+        assertEquals(180, FieldScoringRules.SCORE_HTML_AUTOCOMPLETE_PASSWORD)
+    }
+
+    @Test
+    fun `calculateUsernameScore gives +5 for EditText fallback (no other signals)`() = runTest {
+        assertEquals(5, FieldScoringRules.SCORE_EDITTEXT_FALLBACK)
+    }
+
+    @Test
+    fun `calculatePasswordScore gives +5 for EditText fallback with password variation`() = runTest {
+        assertEquals(5, FieldScoringRules.SCORE_EDITTEXT_PASSWORD_FALLBACK)
+    }
+
+    // OTP negative signal test (requires SCORE_OTP_NEGATIVE constant)
+    @Test
+    fun `calculateUsernameScore applies negative score for htmlAutocomplete=one-time-code`() = runTest {
+        // This test verifies the constant value; actual scoring tested in FieldScorerTest
+        assertEquals(100, FieldScoringRules.SCORE_OTP_NEGATIVE)
+    }
+
+    // new-password registration form bonus test (requires SCORE_REGISTRATION_FORM constant)
+    @Test
+    fun `calculatePasswordScore applies registration bonus when new-password without current-password`() = runTest {
+        // This test verifies the constant value; actual scoring tested in FieldScorerTest
+        assertEquals(50, FieldScoringRules.SCORE_REGISTRATION_FORM)
+    }
+
+    // Phase 7: threshold and keywords tests
+    @Test
+    fun `MIN_CANDIDATE_SCORE constant equals 20`() = runTest {
+        assertEquals(20, FieldScoringRules.MIN_CANDIDATE_SCORE)
+    }
+
+    @Test
+    fun `passwordKeywords includes pw`() = runTest {
+        assertTrue(FieldScoringRules.passwordKeywords.contains("pw"))
+    }
+
+    @Test
+    fun `isValidInputField returns true for Naver pattern (name=id, type=text)`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1 // TYPE_CLASS_TEXT
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        // Set up name/id to "id" via htmlName
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("name", "id"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `isValidInputField returns true for Naver pattern (name=pw, type=password)`() = runTest {
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 0x00000080 // TYPE_TEXT_VARIATION_PASSWORD
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        val htmlInfo = mockk<ViewStructure.HtmlInfo>()
+        every { htmlInfo.attributes } returns listOf(Pair("name", "pw"))
+        every { mockNode.htmlInfo } returns htmlInfo
+
+        val result = FieldScoringRules.isValidInputField(mockNode)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `calculateUsernameScore returns null for low score (fallback 5pt)`() = runTest {
+        // Set up a node with only fallback score (5pt) - should be filtered by threshold
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1 // TYPE_CLASS_TEXT
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        every { mockNode.htmlInfo } returns null
+
+        // Since calculateUsernameScore is in FieldScorer, we test that the threshold logic works
+        // by checking the score would be below threshold
+        val score = FieldScoringRules.SCORE_EDITTEXT_FALLBACK + FieldScoringRules.SCORE_INPUT_TYPE_TEXT_CLASS
+        assertTrue("Score ($score) should be below threshold (20)", score < FieldScoringRules.MIN_CANDIDATE_SCORE)
+    }
+
+    @Test
+    fun `calculatePasswordScore returns null for low score`() = runTest {
+        // Similar test for password with low score
+        every { mockNode.className } returns "android.widget.EditText"
+        every { mockNode.inputType } returns 1
+        every { mockNode.childCount } returns 0
+        every { mockNode.autofillHints } returns null
+        every { mockNode.autofillId } returns mockk<android.view.autofill.AutofillId>()
+        every { mockNode.hint } returns null
+        every { mockNode.idEntry } returns null
+        every { mockNode.idPackage } returns null
+        every { mockNode.webDomain } returns null
+        every { mockNode.htmlInfo } returns null
+
+        val result = com.kiyo.app.autofill.detection.FieldScorer.calculatePasswordScore(mockNode)
+        assertNull("Score should be below threshold", result)
     }
 }

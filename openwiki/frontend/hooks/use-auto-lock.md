@@ -129,9 +129,9 @@ The hook's behavior can be tested by:
 ## Related Documentation
 
 - [AutoLockIndicator component](/openwiki/frontend/components/)
-<!-- openwiki: broken internal link [/openwiki/frontend/state-management.md#session-store] file "/openwiki/frontend/state-management.md" does not exist. Fix the href or restore the target, then delete this comment. -->
+<!-- openwiki: broken internal link [/openwiki/frontend/state-management.md#session-store] heading anchor "session-store" does not exist in "/openwiki/frontend/state-management.md". Fix the href or restore the target, then delete this comment. -->
 - [Session store](/openwiki/frontend/state-management.md#session-store)
-<!-- openwiki: broken internal link [/openwiki/frontend/state-management.md#settings-store] file "/openwiki/frontend/state-management.md" does not exist. Fix the href or restore the target, then delete this comment. -->
+<!-- openwiki: broken internal link [/openwiki/frontend/state-management.md#settings-store] heading anchor "settings-store" does not exist in "/openwiki/frontend/state-management.md". Fix the href or restore the target, then delete this comment. -->
 - [Settings store - autoLockTimeout](/openwiki/frontend/state-management.md#settings-store)
 <!-- openwiki: broken internal link [/openwiki/database/file-storage.md] file "/openwiki/database/file-storage.md" does not exist. Fix the href or restore the target, then delete this comment. -->
 - [File storage - lockDataFile](/openwiki/database/file-storage.md)

@@ -1,11 +1,15 @@
 package com.kiyo.app.autofill.repository
 
+import android.database.Cursor
+import io.mockk.every
+import io.mockk.mockk
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -16,6 +20,30 @@ import org.robolectric.annotation.Config
 class AccountMapperTest {
 
     private val mapper = AccountMapper()
+    private lateinit var mockCursor: Cursor
+
+    @Before
+    fun setup() {
+        mockCursor = mockk(relaxed = true)
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_ID) } returns 0
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_USERNAME) } returns 1
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PASSWORD) } returns 2
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_TITLE) } returns 3
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_PACKAGE_NAMES) } returns 4
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_APP_NAME) } returns 5
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_DOMAIN) } returns 6
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_CREATED_AT) } returns 7
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_UPDATED_AT) } returns 8
+        every { mockCursor.getColumnIndexOrThrow(AutofillDatabaseHelper.COLUMN_FAVORITE) } returns 9
+        every { mockCursor.getLong(0) } returns 1L
+        every { mockCursor.getLong(7) } returns 1000L
+        every { mockCursor.getLong(8) } returns 2000L
+        every { mockCursor.getInt(9) } returns 0
+        every { mockCursor.getString(3) } returns "Test Account"
+        every { mockCursor.getString(4) } returns "[]"
+        every { mockCursor.getString(5) } returns "Test App"
+        every { mockCursor.getString(6) } returns "example.com"
+    }
 
     @Test
     fun `parseReactAccount extracts username and password from fields`() {
@@ -236,5 +264,62 @@ class AccountMapperTest {
 
         val result3 = mapper.extractDomain("invalid-url")
         assertNull(result3)
+    }
+
+    // ===== fromCursor corrupt-row guard =====
+
+    @Test
+    fun `fromCursor returns null when username is null`() {
+        every { mockCursor.getString(1) } returns null
+        every { mockCursor.getString(2) } returns "validPassword"
+
+        val result = mapper.fromCursor(mockCursor)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `fromCursor returns null when username is empty`() {
+        every { mockCursor.getString(1) } returns ""
+        every { mockCursor.getString(2) } returns "validPassword"
+
+        val result = mapper.fromCursor(mockCursor)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `fromCursor returns null when password is empty`() {
+        every { mockCursor.getString(1) } returns "validUser"
+        every { mockCursor.getString(2) } returns ""
+
+        val result = mapper.fromCursor(mockCursor)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `fromCursor returns null when password is null`() {
+        every { mockCursor.getString(1) } returns "validUser"
+        every { mockCursor.getString(2) } returns null
+
+        val result = mapper.fromCursor(mockCursor)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `fromCursor returns account for normal row`() {
+        every { mockCursor.getString(1) } returns "test@example.com"
+        every { mockCursor.getString(2) } returns "secret123"
+
+        val result = mapper.fromCursor(mockCursor)
+
+        assertNotNull(result)
+        assertEquals(1L, result!!.id)
+        assertEquals("test@example.com", result.username)
+        assertEquals("secret123", result.password)
+        assertEquals("Test Account", result.title)
+        assertEquals("example.com", result.domain)
     }
 }
