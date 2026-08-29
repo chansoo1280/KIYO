@@ -13,10 +13,10 @@
 `persistVaultSnapshot` 호출을 **직렬화 큐**로 순차 처리하여 동시 mutation 시 race condition 방지하고, 기존 autosave invariant 테스트를 강화한다.
 
 **완료 기준:**
-- [ ] `src/database/syncQueue.ts` 신규 생성 — 직렬화 큐 구현
-- [ ] `accountStore._persistAccounts`, `templateStore` → `enqueuePersistVaultSnapshot(getParamsFn)`로 연결 변경
-- [ ] `fileStorage.lifecycle.integration.test.ts`에 race/lock→unlock 시나리오 추가
-- [ ] `npm run check` 통과 (기존 272개 + 신규 테스트 모두 통과)
+- [x] `src/database/syncQueue.ts` 신규 생성 — 직렬화 큐 구현
+- [x] `accountStore._persistAccounts`, `templateStore` → `enqueuePersistVaultSnapshot(getParamsFn)`로 연결 변경
+- [x] `fileStorage.lifecycle.integration.test.ts`에 race/lock→unlock 시나리오 추가
+- [x] `npm run check` 통과 (기존 272개 + 신규 테스트 모두 통과)
 
 ---
 
@@ -237,6 +237,21 @@ describe("autosave - concurrency & stability", () => {
 });
 ```
 
+### 6.2 Android E2E (에뮬레이터, `AutosaveE2ETest`)
+
+`android/app/src/androidTest/java/com/kiyo/app/autosave/AutosaveE2ETest.kt` — 자동저장/자동백업 end-to-end 검증. 호스트 스크립트는 `android/run-autosave-e2e.ps1` (2026-08-29 추가, SAF picker 자동화는 비활성 — 사용자가 picker에서 직접 운전).
+
+실행:
+```bash
+npm run test:e2e:autosave       # full build + install + am instrument
+npm run test:e2e:autosave:fast  # 설치된 APK 재사용
+```
+
+단일 메서드:
+```bash
+npm run test:e2e:autosave:fast -- -TestMethod enableAutoBackup_persistsState
+```
+
 ---
 
 ## 7. Risks
@@ -283,6 +298,8 @@ describe("autosave - concurrency & stability", () => {
 - 신규 파일: `src/database/syncQueue.ts`
 - 변경 파일: `src/store/accountStore.ts`, `src/store/templateStore.ts`
 - 테스트 추가: `src/database/fileStorage.lifecycle.integration.test.ts` (4개 시나리오)
+- Android E2E: `android/app/src/androidTest/java/com/kiyo/app/autosave/AutosaveE2ETest.kt`, `android/run-autosave-e2e.ps1`
+- npm 스크립트: `test:e2e:autosave`, `test:e2e:autosave:fast`
 - 검증: `npm run check` 통과
 
 ---
@@ -291,9 +308,12 @@ describe("autosave - concurrency & stability", () => {
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| syncQueue.ts 생성 | ⏳ 대기 | 구현 시작 시 ✅ |
-| accountStore 연결 변경 | ⏳ 대기 | |
-| templateStore 연결 변경 | ⏳ 대기 | |
-| 기존 테스트 회귀 없음 | ⏳ 대기 | 구현 후 `npm run test` |
-| 신규 테스트 4개 추가 | ⏳ 대기 | lifecycle 파일에 추가 |
-| `npm run check` 통과 | ⏳ 대기 | 최종 검증 |
+| syncQueue.ts 생성 | ✅ 완료 | `src/database/syncQueue.ts` |
+| accountStore 연결 변경 | ✅ 완료 | `_persistAccounts` → `enqueuePersistVaultSnapshot` |
+| templateStore 연결 변경 | ✅ 완료 | create/update/delete/clear |
+| 기존 테스트 회귀 없음 | ✅ 완료 | `npm run test` 통과 |
+| 신규 테스트 4개 추가 | ✅ 완료 | lifecycle 파일 describe "autosave - concurrency & stability (Plan-6)" |
+| `npm run check` 통과 | ✅ 완료 | typecheck + vitest |
+| Android E2E: `AutosaveE2ETest` | ✅ 완료 | 자동저장/자동백업 시나리오 |
+| 호스트 스크립트 `run-autosave-e2e.ps1` | ✅ 완료 | SAF picker 자동화 비활성, 사용자 직접 운전 |
+| npm 스크립트 `test:e2e:autosave{,fast}` | ✅ 완료 | package.json 등록 |
