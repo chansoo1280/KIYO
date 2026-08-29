@@ -52,6 +52,7 @@ class AutofillSyncManagerTest {
             authNavigator = { json -> authLaunches.add(json) },
         )
         coEvery { DatabaseKeyManager.getKey(any()) } returns javax.crypto.spec.SecretKeySpec(ByteArray(32), "AES")
+        stubIndexKey()
         every { DatabaseKeyManager.wasStateReset() } returns false
     }
 
@@ -61,7 +62,13 @@ class AutofillSyncManagerTest {
     }
 
     private fun stubSync(synced: Int, errors: Int) {
-        coEvery { repository.syncAccountsFromReact(any()) } returns android.util.Pair(synced, errors)
+        coEvery { repository.syncAndRebuildIndex(any()) } returns android.util.Pair(synced, errors)
+        coEvery { repository.getAllAccounts() } returns emptyList()
+        coEvery { repository.rebuildIndexTable(any()) } returns Unit
+    }
+    
+    private fun stubIndexKey() {
+        coEvery { DatabaseKeyManager.getIndexKey(any()) } returns ByteArray(32)
     }
 
     @Test
@@ -102,7 +109,7 @@ class AutofillSyncManagerTest {
 
     @Test
     fun `sync when auth required propagates UserNotAuthenticatedException`() = runTest {
-        coEvery { repository.syncAccountsFromReact(any()) } throws UserNotAuthenticatedException()
+        coEvery { repository.syncAndRebuildIndex(any()) } throws UserNotAuthenticatedException()
 
         try {
             manager.syncAccountsFromReact(context, "[]")

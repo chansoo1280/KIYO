@@ -99,9 +99,16 @@ class KiyoAutofillPlugin : Plugin() {
     private suspend fun ensureRepositoryInitialized(): AutofillRepository {
         return autofillRepository ?: CoroutineScope(Dispatchers.IO).async {
             val context = getContext() ?: throw IllegalStateException("Context is null")
-            val repository = AutofillRepository.create(context)
+            // [Autofill Matching Layer plan 2026-08-28]
+            // 프로덕션 경로: DB_KEY + INDEX_KEY 모두 주입.
+            // - DB_KEY: auth-required, 재래핑/리셋 가능 (DatabaseKeyManager.getKey)
+            // - INDEX_KEY: non-auth, 즉시 사용 가능 (DatabaseKeyManager.getIndexKey)
+            // 두 키 획득은 독립적이며 순서 무관. INDEX_KEY는 non-auth이므로 인증 프롬프트 발생 안 함.
+            val dbKey = DatabaseKeyManager.getKey(context).encoded
+            val indexKey = DatabaseKeyManager.getIndexKey(context)
+            val repository = AutofillRepository.create(context, dbKey, indexKey)
             autofillRepository = repository
-            Log.d(TAG, "AutofillRepository initialized")
+            Log.d(TAG, "AutofillRepository initialized with index helper")
             repository
         }.await()
     }

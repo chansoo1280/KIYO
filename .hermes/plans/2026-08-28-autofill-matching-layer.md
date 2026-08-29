@@ -96,47 +96,64 @@
 
 ## Changes
 
-### 1. KeystoreManager — 인덱스 키 전용 메서드 추가 (`requireAuth` 파라미터 추가)
+### 1. KeystoreManager — 인덱스 키 전용 메서드 추가 (`requireAuth` 명시 강제 overload)
 
 **File:** `android/app/src/main/java/com/kiyo/app/security/KeystoreManager.kt`
+
+> **시그니처 정책 (확정)**
+> - 기존 `getOrCreateKey(alias: String)` **그대로 유지**. 내부 구현도 변경 없음 (lock-screen 상태 기반 `generateNewKey` 정책 그대로).
+> - **신규 overload** `getOrCreateKey(alias: String, requireAuth: Boolean)` 추가. 이쪽만 `requireAuth` 값을 명시적으로 강제.
+> - `generateNewKey`는 **default parameter**로 `requireAuth: Boolean = true`만 받음. `false`가 명시된 경우에만 non-auth 키 생성 분기로 진입.
+> - Index key는 **오직 신규 overload 경로로만** 생성: `getOrCreateKey(INDEX_KEY_ALIAS, requireAuth = false)`. 기존 1-인자 경로로 인덱스 키가 생성될 일은 없음.
 
 ```kotlin
 object KeystoreManager : KeystoreProvider {
     // ... 기존 코드 ...
 
-    const val INDEX_KEY_ALIAS = "kiyo_index_key"  // 비인증 키
+    const val INDEX_KEY_ALIAS = "kiyo_index_key"  // 비인증 키 (인덱스 DB 전용)
 
-    /** 인덱스용 비인증 키 생성/조회 (사용자 인증 불필요) */
+    /**
+     * 인덱스용 비인증 키 생성/조회 (사용자 인증 불필요).
+     * 항상 requireAuth=false 강제. 기존 1-인자 getOrCreateKey와 무관.
+     */
     fun getOrCreateIndexKey(): SecretKey {
         return getOrCreateKey(INDEX_KEY_ALIAS, requireAuth = false)
     }
 
-    /** 
-     * 주어진 alias로 키 조회/생성. requireAuth로 인증 요구 여부 강제 지정.
-     * - requireAuth=true: 잠금화면 필요 (인증-required 키)
-     * - requireAuth=false: 잠금화면 불필요 (non-auth 키)
+    /**
+     * [신규 overload] 주어진 alias로 키 조회/생성. requireAuth로 인증 요구 여부 명시 강제.
+     * - requireAuth=true: auth-required 키 생성 (잠금화면 필요)
+     * - requireAuth=false: non-auth 키 생성 (잠금화면 무관)
+     *
+     * 기존 1-인자 getOrCreateKey(alias)와 동작이 다르므로 주의:
+     * - 1-인자 버전: 잠금화면이 있으면 auth-required, 없으면 non-auth (자동 결정)
+     * - 2-인자 버전: requireAuth 값 그대로 강제 (잠금화면 무관)
      */
     @Throws(Exception::class)
     fun getOrCreateKey(alias: String, requireAuth: Boolean): SecretKey = loadKeyStoreEntry(alias) { keyStore ->
         if (!keyStore.containsAlias(alias)) {
-            generateNewKey(keyStore, alias, requireAuth)
+            generateNewKey(keyStore, alias, requireAuth = requireAuth)
         }
     }
 
-    // 기존 getOrCreateKey(alias: String) 유지 (하위 호환) — 내부에서 requireAuth 파라미터 버전 호출
+    // 기존 1-인자 getOrCreateKey(alias) — 변경 없음, 자동 결정 정책 그대로.
+    @Throws(Exception::class)
+    fun getOrCreateKey(alias: String): SecretKey = loadKeyStoreEntry(alias) { keyStore ->
+        if (!keyStore.containsAlias(alias)) {
+            generateNewKey(keyStore, alias)  // 기존 generateNewKey는 requireAuth default 사용
+        }
+    }
+
     @Throws(Exception::class)
     override fun getOrCreateKey(): SecretKey {
         return getOrCreateKey(LEGACY_KEY_ALIAS)
     }
 
-    @Throws(Exception::class)
-    fun getOrCreateKey(alias: String): SecretKey {
-        // 기존 동작 유지: 잠금화면 상태에 따라 자동 결정
-        return getOrCreateKey(alias, requireAuth = isSecureLockScreenEnabled())
-    }
-
-    // generateNewKey 시그니처 변경: requireAuth 파라미터 추가
-    private fun generateNewKey(keyStore: KeyStore, alias: String, requireAuth: Boolean) {
+    /**
+     * [변경] requireAuth default parameter 추가. 기본값은 true (기존 동작과 동일).
+     * requireAuth=false가 명시된 경우에만 non-auth 분기 진입.
+     */
+    private fun generateNewKey(keyStore: KeyStore, alias: String, requireAuth: Boolean = true) {
         val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
         val builder = KeyGenParameterSpec.Builder(
             alias,
@@ -147,25 +164,36 @@ object KeystoreManager : KeystoreProvider {
             .setKeySize(KEY_SIZE)
 
         if (requireAuth) {
-            val authValiditySeconds = if (BuildConfig.DEBUG) 30 else 30 * 60
-            builder.setUserAuthenticationRequired(true)
-                .setUserAuthenticationParameters(
-                    authValiditySeconds,
-                    KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
-                )
-            Log.d(TAG, "Master key generated WITH user authentication: alias=$alias, validity=${authValiditySeconds}s")
+            // 잠금화면이 실제로 설정돼 있을 때만 setUserAuthenticationRequired(true) 호출.
+            // (setUserAuthenticationRequired(true)는 Secure lock screen 필수 — 없으면 IllegalStateException)
+            Log.d(TAG, "isSecureLockScreenEnabled()=${isSecureLockScreenEnabled()}")
+            if (isSecureLockScreenEnabled()) {
+                val authValiditySeconds = if (BuildConfig.DEBUG) 30 else 30 * 60
+                builder.setUserAuthenticationRequired(true)
+                    .setUserAuthenticationParameters(
+                        authValiditySeconds,
+                        KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
+                    )
+                Log.d(TAG, "Master key generated WITH user authentication: alias=$alias, validity=${authValiditySeconds}s")
+            } else {
+                Log.w(TAG, "No secure lock screen - generating master key WITHOUT auth requirement: alias=$alias")
+            }
         } else {
-            Log.w(TAG, "Generating key WITHOUT auth requirement: alias=$alias")
+            // requireAuth=false 명시 — 잠금화면 무관하게 non-auth 키 생성.
+            Log.w(TAG, "Explicit non-auth key generation: alias=$alias (caller overrode requireAuth=false)")
         }
 
         keyGenerator.init(builder.build())
         keyGenerator.generateKey()
-        Log.d(TAG, "New key generated: alias=$alias, authRequired=$requireAuth")
+        Log.d(TAG, "New key generated: alias=$alias, requireAuth=$requireAuth")
     }
 }
 ```
 
-> **변경 포인트**: `generateNewKey`에 `requireAuth: Boolean` 추가, `getOrCreateKey(alias, requireAuth)` 오버로드 추가. 기존 `getOrCreateKey(alias)`는 잠금화면 상태 기반 자동 결정 유지.
+> **변경 포인트 요약**
+> - `generateNewKey`에 `requireAuth: Boolean = true` **default parameter** 추가. 기존 1-인자 호출 경로는 `requireAuth=true` 기본값이 적용되어 **기존 동작과 100% 동일**.
+> - `getOrCreateKey(alias, requireAuth)` **신규 overload** 추가. 기존 1-인자 오버로드는 그대로.
+> - `getOrCreateIndexKey()`는 신규 2-인자 오버로드의 유일한 호출자.
 
 ---
 
@@ -294,28 +322,75 @@ class AutofillIndexDatabaseHelper(
 
 ---
 
-### 3. DatabaseKeyManager — INDEX_KEY 제공 메서드만 추가 (ByteArray 반환)
+### 3. DatabaseKeyManager — INDEX_KEY 제공 (AES-GCM 래핑으로 안정성 강화)
 
 **File:** `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt`
+
+> **getIndexKey 정책 (확정)**
+> - Keystore에서 비인증 키(`kiyo_index_master_key`)를 꺼내 **AES-GCM으로 래핑**한 INDEX_KEY를 DataStore(`index_encrypted_key`)에 저장.
+> - 단순 Keystore `.encoded` 직접 반환 시 발생하는 **기기 재부팅 후 `SecretKey.encoded` null 반환 문제** 회피.
+> - `KeystoreManager.getOrCreateKey(INDEX_MASTER_ALIAS, requireAuth = false)` 위임.
+> - **suspend 함수** — Keystore init을 위해 Context 필요. 래핑/언래핑 비용은 낮음 (~1ms).
+> - 메인 DB의 `getKey()`처럼 **재래핑 트리거나 `wasStateReset()` 플래그 없음** — 비인증 키는 무효화 대상 아님.
 
 ```kotlin
 object DatabaseKeyManager {
     // ... 기존 코드 그대로 유지 ...
 
+    private val INDEX_ENCRYPTED_KEY = stringPreferencesKey("index_encrypted_key")
+    private const val INDEX_MASTER_ALIAS = "kiyo_index_master_key"
+
     /**
-     * 인덱스 DB용 INDEX_KEY 획득 (비인증 키, 사용자 인증 불필요)
-     * - 별도 래핑/언래핑/재래핑 로직 없음
-     * - Keystore에서 바로 꺼내서 ByteArray로 반환 (Index 헬퍼가 ByteArray 기대)
+     * 인덱스 DB용 INDEX_KEY 획득 (비인증 Keystore 키로 래핑된 랜덤 키).
+     * - Keystore non-auth 마스터 키(kiyo_index_master_key)로 INDEX_KEY를 AES-GCM 래핑
+     * - 래핑된 블롭은 DataStore에 저장 (별도 preference 키 index_encrypted_key)
+     * - 잠금화면 변경 시에도 재래핑 불필요 (non-auth 마스터 키이므로 무효화되지 않음)
+     * - 사용자 인증 불필요 (non-auth 마스터 키)
      */
     suspend fun getIndexKey(context: Context): ByteArray {
         KeystoreManager.init(context)
-        val secretKey = KeystoreManager.getOrCreateIndexKey()
-        return secretKey.encoded
+        val prefs = context.securityDataStore.data.first()
+        val json = prefs[INDEX_ENCRYPTED_KEY]
+
+        val indexMasterKey = KeystoreManager.getOrCreateKey(INDEX_MASTER_ALIAS, requireAuth = false)
+
+        if (json == null) {
+            Log.d(TAG, "No INDEX_KEY found, generating and storing new key")
+            val newIndexKey = DatabaseKeyGenerator.generate()
+            val encrypted = KeystoreManager.encrypt(indexMasterKey, newIndexKey.encoded)
+            val jsonOut = EncryptedKey.toJson(encrypted)
+            context.securityDataStore.edit { preferences ->
+                preferences[INDEX_ENCRYPTED_KEY] = jsonOut
+            }
+            Log.d(TAG, "New INDEX_KEY generated and stored encrypted (non-auth master)")
+            return newIndexKey.encoded
+        }
+
+        Log.d(TAG, "Reading existing encrypted INDEX_KEY from DataStore")
+        val encrypted = EncryptedKey.fromJson(json)
+        val plainBytes = KeystoreManager.decrypt(indexMasterKey, encrypted)
+        Log.d(TAG, "INDEX_KEY decrypted successfully (${plainBytes.size} bytes)")
+        return plainBytes
     }
 }
 ```
 
-> **중요**: `getIndexKey()`는 단순히 Keystore에서 비인증 키를 꺼내 `.encoded`로 반환할 뿐. 메인 DB의 `getKey()`처럼 DataStore 래핑, 생체인증, 재래핑, `wasStateReset()` 플래그 등 **어떤 복잡한 로직도 없음**. Index 헬퍼가 `ByteArray`를 기대하므로 `SecretKey` 대신 `ByteArray` 반환.
+> **중요**: INDEX_KEY는 Keystore 비인증 마스터 키(`kiyo_index_master_key`)로 보호되어 Keystore 밖으로 유출 불가. Index 헬퍼가 `ByteArray`를 기대하므로 `SecretKey`가 아닌 `ByteArray` 반환.
+>
+> - `kiyo_index_master_key` (non-auth Keystore AES 키) — `userAuthenticationRequired = false`
+> - `INDEX_KEY` (32-byte random) — `kiyo_index_master_key`로 AES-GCM 래핑 → DataStore 저장
+> - 자동 리셋 대상 **아님** — `wasStateReset() == true`로 메인 DB 리셋되어도 INDEX_KEY는 영향 없음
+
+> **AutofillSyncManager.ensureRepository() 흐름 (확정)**:
+> ```
+> ensureRepository()
+>     ├─ DB_KEY 획득:  DatabaseKeyManager.getKey(context)        // auth-required, 재래핑/리셋 가능
+>     ├─ INDEX_KEY:    DatabaseKeyManager.getIndexKey(context)  // non-auth, 래핑/언래핑
+>     └─ Repository:   AutofillRepository.create(context, dbKey, indexKey)
+> ```
+> - **두 키 획득은 독립적**이며 순서 무관.
+> - `wasStateReset() == true`로 메인 DB 리셋이 발생한 경우에도 INDEX_KEY는 **영향 없음** — 비인증 키는 리셋 대상이 아님.
+> - 인덱스 DB 파일이 리셋되는 시점은 `wasStateReset()`이 true일 때 메인 DB 파일과 함께 별도 삭제 (`resetAutofillData()`에서 처리).
 
 ---
 
@@ -323,22 +398,72 @@ object DatabaseKeyManager {
 
 **File:** `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt`
 
+> **생성 경로 정책 (확정)**
+> - 기존 `create(context, dbKey)` **그대로 유지** (테스트/롤백 호환성).
+> - **신규** `create(context, dbKey, indexKey)` 추가. 이 경로가 `AutofillSyncManager`의 정상 경로.
+> - `indexDbHelper`는 **nullable + 기본값 null** 유지. 단, **`null`은 오직 테스트/롤백 경로에서만** 허용. 프로덕션(`SyncManager` → `ensureRepository`)은 항상 `indexKey`를 전달.
+> - 모든 call site에서 `helper.getReadableDatabase()` / `helper.getWritableDatabase()`로 **메서드명 통일** (property-style 사용 금지).
+
 ```kotlin
 class AutofillRepository internal constructor(
     private val context: Context,
-    private val dbHelper: AutofillDatabaseHelper,           // 기존 메인 DB 헬퍼 (변경 없음)
-    private val indexDbHelper: AutofillIndexDatabaseHelper? = null  // 신규: 인덱스 DB 헬퍼 (nullable, 기본 null)
+    private val dbHelper: AutofillDatabaseHelper,                       // 기존 메인 DB 헬퍼 (변경 없음)
+    private val indexDbHelper: AutofillIndexDatabaseHelper? = null      // 신규: 인덱스 DB 헬퍼 (nullable, 프로덕션에서는 항상 non-null)
 ) {
     // ... 기존 모든 메서드 그대로 유지 (insertAccount, upsertAccount, deleteAccount,
     //      findMatchingAccounts, getAllAccounts, syncAccountsFromReact 등) ...
 
+    companion object {
+        private const val TAG = "AutofillRepository"
+
+        /**
+         * [신규] 프로덕션 경로 — DB_KEY + INDEX_KEY 모두 주입.
+         * SyncManager.ensureRepository()가 호출하는 유일한 경로.
+         */
+        @JvmStatic
+        fun create(context: Context, dbKey: ByteArray, indexKey: ByteArray): AutofillRepository {
+            val helper = AutofillDatabaseHelper(context, dbKey)
+            val indexHelper = AutofillIndexDatabaseHelper(context, indexKey)
+            Log.d(TAG, "Repository created with index helper (profiling path)")
+            return AutofillRepository(context, helper, indexHelper)
+        }
+
+        /**
+         * [기존 유지] 테스트/롤백 경로 — 메인 DB만. indexDbHelper=null.
+         * 인덱스 미사용 시 findMatchingAccountIdsByIndex는 emptyList 반환.
+         */
+        @JvmStatic
+        fun create(context: Context, dbKey: ByteArray): AutofillRepository {
+            val helper = AutofillDatabaseHelper(context, dbKey)
+            return AutofillRepository(context, helper)
+        }
+
+        /**
+         * Create AutofillRepository asynchronously.
+         * [변경] 기존 1-key 경로 — 인덱스 없음, 테스트/롤백 전용.
+         */
+        @Deprecated(
+            message = "Use create(context, dbKey, indexKey) for production. Index DB required for suppression flow.",
+            replaceWith = ReplaceWith("create(context, DatabaseKeyManager.getKey(context).encoded, DatabaseKeyManager.getIndexKey(context))")
+        )
+        @JvmStatic
+        suspend fun create(context: Context): AutofillRepository = withContext(Dispatchers.IO) {
+            val encryptionKey = DatabaseKeyManager.getKey(context).encoded
+            val dbHelper = AutofillDatabaseHelper(context, encryptionKey)
+            AutofillRepository(context, dbHelper)
+        }
+    }
+
+    // ... existing AutofillAccount data class unchanged ...
+
     // 신규: 인덱스 전용 메서드들 (메인 DB 로직과 완전 분리)
+    // 모든 call site는 helper.getWritableDatabase() / helper.getReadableDatabase() 사용 (property-style 금지)
 
     /** 인덱스 테이블 동기화 (별도 트랜잭션, 메인 DB와 무관) */
     fun syncIndexTable(accountId: Long, account: AutofillAccount) {
         indexDbHelper?.let { helper ->
             executor.submit {
-                val indexDb = helper.writableDatabase
+                val indexDb = helper.getWritableDatabase()
                 val values = ContentValues().apply {
                     put(AutofillIndexDatabaseHelper.COLUMN_ACCOUNT_ID, accountId)
                     put(AutofillIndexDatabaseHelper.COLUMN_DOMAIN, account.domain ?: "")
@@ -359,7 +484,7 @@ class AutofillRepository internal constructor(
     fun deleteIndexEntry(accountId: Long) {
         indexDbHelper?.let { helper ->
             executor.submit {
-                helper.writableDatabase.delete(
+                helper.getWritableDatabase().delete(
                     AutofillIndexDatabaseHelper.TABLE_INDEX,
                     "account_id = ?",
                     arrayOf(accountId.toString())
@@ -372,7 +497,7 @@ class AutofillRepository internal constructor(
     fun rebuildIndexTable(accounts: List<AutofillAccount>) {
         indexDbHelper?.let { helper ->
             executor.submit {
-                val indexDb = helper.writableDatabase
+                val indexDb = helper.getWritableDatabase()
                 indexDb.beginTransaction()
                 try {
                     indexDb.delete(AutofillIndexDatabaseHelper.TABLE_INDEX, null, null)
@@ -398,44 +523,44 @@ class AutofillRepository internal constructor(
      * - INDEX_KEY만 필요 (비인증 키, 사용자 인증 불필요)
      * - 메인 DB_KEY 불필요
      * - 전체 스캔 후 복호화 → DomainMatcher로 평문 비교
+     * - indexDbHelper=null인 경우 (테스트/롤백 경로) emptyList 반환 → 드롭다운 안 뜨고 인증 프롬프트도 안 뜸
      */
     fun findMatchingAccountIdsByIndex(domain: String?, packageNames: List<String>): List<Long> {
-        return indexDbHelper?.let { helper ->
-            executor.submit {
-                val indexDb = helper.readableDatabase
-                val cursor = indexDb.query(
-                    AutofillIndexDatabaseHelper.TABLE_INDEX,
-                    arrayOf(
-                        AutofillIndexDatabaseHelper.COLUMN_ACCOUNT_ID,
-                        AutofillIndexDatabaseHelper.COLUMN_DOMAIN,
-                        AutofillIndexDatabaseHelper.COLUMN_PACKAGE_NAMES
-                    ),
-                    null, null, null, null, null
-                )
+        val helper = indexDbHelper ?: return emptyList()  // 인덱스 없으면 즉시 종료 (의도된 동작)
+        return executor.submit {
+            val indexDb = helper.getReadableDatabase()
+            val cursor = indexDb.query(
+                AutofillIndexDatabaseHelper.TABLE_INDEX,
+                arrayOf(
+                    AutofillIndexDatabaseHelper.COLUMN_ACCOUNT_ID,
+                    AutofillIndexDatabaseHelper.COLUMN_DOMAIN,
+                    AutofillIndexDatabaseHelper.COLUMN_PACKAGE_NAMES
+                ),
+                null, null, null, null, null
+            )
 
-                val matchingIds = mutableListOf<Long>()
-                cursor.use { c ->
-                    while (c.moveToNext()) {
-                        val accountId = c.getLong(c.getColumnIndexOrThrow(AutofillIndexDatabaseHelper.COLUMN_ACCOUNT_ID))
-                        val storedDomain = c.getString(c.getColumnIndexOrThrow(AutofillIndexDatabaseHelper.COLUMN_DOMAIN))
-                        val storedPkgJson = c.getString(c.getColumnIndexOrThrow(AutofillIndexDatabaseHelper.COLUMN_PACKAGE_NAMES))
+            val matchingIds = mutableListOf<Long>()
+            cursor.use { c ->
+                while (c.moveToNext()) {
+                    val accountId = c.getLong(c.getColumnIndexOrThrow(AutofillIndexDatabaseHelper.COLUMN_ACCOUNT_ID))
+                    val storedDomain = c.getString(c.getColumnIndexOrThrow(AutofillIndexDatabaseHelper.COLUMN_DOMAIN))
+                    val storedPkgJson = c.getString(c.getColumnIndexOrThrow(AutofillIndexDatabaseHelper.COLUMN_PACKAGE_NAMES))
 
-                        if (DomainMatcher.matchesDomain(storedDomain, domain) ||
-                            DomainMatcher.matchesPackage(storedPkgJson, packageNames)) {
-                            matchingIds.add(accountId)
-                        }
+                    if (DomainMatcher.matchesDomain(storedDomain, domain) ||
+                        DomainMatcher.matchesPackage(storedPkgJson, packageNames)) {
+                        matchingIds.add(accountId)
                     }
                 }
-                matchingIds
-            }.get()
-        } ?: emptyList()
+            }
+            matchingIds
+        }.get()
     }
 
     /** 2단계: 매칭된 ID들로 전체 계정 조회 (메인 DB, 기존 로직 그대로 사용) */
     fun getAccountsByIds(ids: List<Long>): List<AutofillAccount> {
         if (ids.isEmpty()) return emptyList()
         return executor.submit {
-            val db = dbHelper.readableDatabase
+            val db = dbHelper.getReadableDatabase()
             val placeholders = ids.map { "?" }.joinToString(",")
             val cursor = db.rawQuery(
                 "SELECT * FROM ${AutofillDatabaseHelper.TABLE_ACCOUNTS} WHERE ${AutofillDatabaseHelper.COLUMN_ID} IN ($placeholders)",
@@ -452,16 +577,27 @@ class AutofillRepository internal constructor(
     }
 
     // close()에 인덱스 헬퍼 close 추가
-    override fun close() {
+    fun close() {
         dbHelper.close()
         indexDbHelper?.close()
         executor.shutdown()
-        // ... 기존 shutdown 로직 ...
+        try {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow()
+            }
+        } catch (e: InterruptedException) {
+            executor.shutdownNow()
+            Thread.currentThread().interrupt()
+        }
     }
 }
 ```
 
-> **핵심**: `indexDbHelper`는 **nullable + 기본값 `null`**로 하위 호환 유지. 메인 DB 로직(`findMatchingAccounts`, `syncAccountsFromReact` 등)은 **일절 변경하지 않음**.
+> **핵심 (확정)**:
+> - **2개** `create()` 오버로드 — `create(context, dbKey, indexKey)`(프로덕션) / `create(context, dbKey)`(테스트/롤백).
+> - 인덱스 메서드 call site는 모두 `helper.getReadableDatabase()` / `helper.getWritableDatabase()`로 **메서드명 통일** (property-style 없음).
+> - `findMatchingAccountIdsByIndex`가 `indexDbHelper=null`이면 **emptyList 반환 → 드롭다운 안 뜸**. 이 경로는 테스트/롤백 의도된 동작.
+> - 메인 DB 로직(`findMatchingAccounts`, `syncAccountsFromReact` 등)은 **일절 변경하지 않음**.
 
 ---
 
@@ -502,16 +638,19 @@ private fun isWildcardMatch(stored: String, query: String): Boolean = stored.sta
 
 **File:** `android/app/src/main/java/com/kiyo/app/autofill/service/AuthRequestHandler.kt`
 
+> **참고**: 현재 코드에서 `AuthRequestHandler.processFillRequest`는 직접 호출되지 않고 있다
+> (`KiyoAutofillService.onFillRequest`가 자체적으로 처리). 이 plan의 2단계 플로우 통합은
+> **KiyoAutofillService.onFillRequest**에 직접 적용한다. `AuthRequestHandler`는 추후 정리 시
+> 같은 2단계 패턴을 따르도록 정렬 (본 plan의 범위 밖).
+
 ```kotlin
+// KiyoAutofillService.onFillRequest 내부 — fill response 생성 직전
 fun handleFillRequest(request: FillRequest, callback: FillCallback) {
     // 1. ViewNode에서 domain/packageNames 추출
     val domain = ViewNodeExtractor.extractDomainFromStructure(request.structure)
     val packageNames = ViewNodeExtractor.extractPackageNames(request.structure)
 
-    // 2. 회원가입 폼 판별 (별도 계획에서 구현, 여기선 인터페이스만 호출)
-    val isRegistrationForm = FormClassifier.isRegistrationForm(request.structure)
-
-    // 3. 1차 필터링: 인덱스 DB에서 매칭 (INDEX_KEY만 필요, 비인증, 메인 DB 안 건드림)
+    // 2. 1차 필터링: 인덱스 DB에서 매칭 (INDEX_KEY만 필요, 비인증, 메인 DB 안 건드림)
     val matchingIds = repository.findMatchingAccountIdsByIndex(domain, packageNames)
 
     if (matchingIds.isEmpty()) {
@@ -520,7 +659,7 @@ fun handleFillRequest(request: FillRequest, callback: FillCallback) {
         return
     }
 
-    // 4. 매칭됨 → 전체 계정 정보 조회 (메인 DB, 기존 로직 그대로, DB_KEY 필요, 인증 프롬프트 발생 가능)
+    // 3. 매칭됨 → 전체 계정 정보 조회 (메인 DB, 기존 로직 그대로, DB_KEY 필요, 인증 프롬프트 발생 가능)
     val fullAccounts = try {
         repository.getAccountsByIds(matchingIds)  // 기존 메인 DB 조회 로직 재사용
     } catch (e: UserNotAuthenticatedException) {
@@ -529,17 +668,18 @@ fun handleFillRequest(request: FillRequest, callback: FillCallback) {
         return
     }
 
-    // 5. 필드 탐지
+    // 4. 필드 탐지
     val usernameId = FieldDetector.findBestFieldCandidate(request.structure, FieldScorer::calculateUsernameScore)
     val passwordId = FieldDetector.findBestFieldCandidate(request.structure, FieldScorer::calculatePasswordScore)
 
-    // 6. 응답 생성 (회원가입 폼 분기는 별도 계획의 FillResponseBuilder가 처리)
-    val response = FillResponseBuilder.createFillResponse(fullAccounts, usernameId, passwordId, isRegistrationForm)
+    // 5. 응답 생성
+    val response = FillResponseBuilder.createFillResponse(fullAccounts, usernameId, passwordId)
     callback.onSuccess(response)
 }
 ```
 
-> **참고**: `FormClassifier`와 `FillResponseBuilder.createFillResponse(isRegistrationForm)`는 별도 계획(`2026-08-28-autofill-registration-suppression.md`)에서 구현됨. 여기서는 호출만 함.
+> **참고**: 회원가입 폼 억제(`isRegistrationForm`)는 별도 계획(`2026-08-28-autofill-registration-suppression.md`)에서
+> 독립적으로 처리된다. 이 plan은 인덱스 1차 필터링에 집중한다.
 
 ---
 
@@ -547,22 +687,34 @@ fun handleFillRequest(request: FillRequest, callback: FillCallback) {
 
 **File:** `android/app/src/main/java/com/kiyo/app/capacitor/AutofillSyncManager.kt`
 
+> **핵심 정책 (확정)**:
+> - **SyncManager가 단일 책임자**. 인덱스 rebuild 호출은 SyncManager에서만, Plugin에서는 호출하지 않음.
+> - rebuild 시점: `syncAccountsFromReact()` 내부, 메인 DB sync **직후** (성공/실패 무관하게 인덱스는 최신 상태 반영).
+> - 매 sync마다 **전체 재구축** — React가 source of truth. `syncedCount == 0`이어도 (사용자가 모든 계정 삭제) 인덱스 비움 보장.
+
 ```kotlin
 // syncAccountsFromReact 내부, repository.syncAccountsFromReact() 호출 후 추가
 suspend fun syncAccountsFromReact(context: Context, accountsJson: String): SyncResult {
     // ... 기존 보안 다운그레이드/업그레이드 감지 로직 ...
-    
+
     val repository = ensureRepository()
     // ... key acquisition, state reset handling ...
-    
+    // ensureRepository()는 Changes #3 정책대로:
+    //   - DB_KEY = DatabaseKeyManager.getKey(context)
+    //   - INDEX_KEY = DatabaseKeyManager.getIndexKey(context)
+    //   - AutofillRepository.create(context, dbKey, indexKey)
+    // (메인 DB 리셋 시 indexDbHelper가 함께 닫히고 새 인스턴스로 교체됨)
+
     val result = activeRepository.syncAccountsFromReact(accountsJson)
-    
-    // 신규: 인덱스 테이블 별도 재구축 (별도 트랜잭션, 별도 DB, INDEX_KEY로 암호화)
-    // 매번 동기화 시 전체 재구축 — React가 source of truth이므로 syncedCount가 0이어도
-    // (사용자가 모든 계정 삭제) 인덱스를 비워야 함.
-    val allAccounts = activeRepository.getAllAccounts()  // sync 후 최신 상태
-    activeRepository.rebuildIndexTable(allAccounts)      // 인덱스 전용 재구축
-    
+
+    // [신규] 인덱스 테이블 별도 재구축 (별도 트랜잭션, 별도 DB, INDEX_KEY로 암호화).
+    // - 메인 DB sync 결과를 그대로 신뢰 — syncedCount/errorCount 무관.
+    // - getAllAccounts()는 메인 DB 최신 상태를 반환 (sync 직후이므로).
+    // - indexDbHelper가 null일 수 있는 경로(테스트/롤백)는 silent skip (의도된 동작).
+    val allAccounts = activeRepository.getAllAccounts()
+    activeRepository.rebuildIndexTable(allAccounts)
+    Log.d(TAG, "Index table rebuilt: ${allAccounts.size} accounts after sync")
+
     return SyncResult(
         syncedCount = result.first,
         errorCount = result.second,
@@ -572,7 +724,10 @@ suspend fun syncAccountsFromReact(context: Context, accountsJson: String): SyncR
 }
 ```
 
-> **핵심**: **Sync 정책은 `AutofillSyncManager`가 단일 책임**. Plugin은 orchestration만. 인덱스 재구축은 **매 sync마다** 수행 (syncedCount와 무관).
+> **단일 책임 원칙 (확정)**:
+> - Plugin은 orchestration만. **`rebuildIndexTable()`을 직접 호출하지 않음** (변경 #8 참조).
+> - 인덱스 정책 결정(rebuild 시점, 전체 vs 증분, 빈 결과 처리 등)은 모두 SyncManager에 집중.
+> - `ensureRepository()`가 인덱스 키까지 책임지고, SyncManager의 `syncAccountsFromReact()`는 sync 결과에 따른 인덱스 rebuild까지 책임진다 — 이 두 책임이 분리되면 안 됨.
 
 ---
 
@@ -665,14 +820,14 @@ fun syncAccountsFromReact(call: PluginCall) {
 
 ## Implementation Order
 
-1. **KeystoreManager 인덱스 키 메서드** (`getOrCreateIndexKey` with `requireAuth = false`)
+1. **KeystoreManager 인덱스 키 메서드** (`getOrCreateIndexKey` + `getOrCreateKey(alias, requireAuth)` overload, `generateNewKey` default parameter)
 2. **AutofillIndexDatabaseHelper 신규** (별도 SQLCipher DB 파일, 스키마, 인덱스 테이블, `ByteArray` 생성자 파라미터)
 3. **DatabaseKeyManager.getIndexKey** 추가 (Keystore 키를 `ByteArray`로 반환, 별도 래핑/재래핑 없음)
-4. **AutofillRepository 확장** — `indexDbHelper` nullable 파라미터 추가, 신규 메서드들 추가 (`syncIndexTable`, `deleteIndexEntry`, `rebuildIndexTable`, `findMatchingAccountIdsByIndex`, `getAccountsByIds`), **기존 메서드 변경 없음**
+4. **AutofillRepository 확장** — `indexDbHelper` nullable 파라미터 추가, `create(context, dbKey, indexKey)` 프로덕션 팩토리 추가, `create(context, dbKey)` 테스트/롤백 팩토리 유지, 신규 메서드들 추가 (`syncIndexTable`, `deleteIndexEntry`, `rebuildIndexTable`, `findMatchingAccountIdsByIndex`, `getAccountsByIds`), **기존 메서드 변경 없음**
 5. **DomainMatcher 평문 매칭 로직** 정제
-6. **AutofillSyncManager에 인덱스 재구축 추가** (`rebuildIndexTable` 호출)
+6. **AutofillSyncManager에 인덱스 재구축 추가** (`ensureRepository()`가 두 키 모두 획득, `rebuildIndexTable`은 sync 직후 1회)
 7. **AuthRequestHandler 플로우 통합** (인덱스 1차 필터링 → 메인 DB 2단계 조회)
-8. **생성자 변경에 따른 호출부 수정** (`KiyoAutofillPlugin`은 SyncManager 위임만, `AuthRequestHandler`는 repository 직접 사용)
+8. **Plugin은 SyncManager 위임만** (`rebuildIndexTable` 직접 호출 금지, `create()` 호출도 SyncManager 경유)
 9. **E2E 테스트 추가** + 수동 검증
 
 ---

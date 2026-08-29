@@ -4,6 +4,7 @@ import android.database.Cursor
 import android.util.Log
 import com.kiyo.app.autofill.repository.AutofillRepository.AutofillAccount
 import net.zetetic.database.sqlcipher.SQLiteDatabase as SQLCipherDatabase
+import org.json.JSONArray
 
 /**
  * Handles domain matching logic for autofill accounts.
@@ -14,110 +15,110 @@ class DomainMatcher {
     private val TAG = "DomainMatcher"
 
     /**
-         * Find matching accounts for autofill based on domain.
-         * Supports exact domain match, subdomain matching (e.g., accounts.google.com -> google.com),
-         * and wildcard subdomain matching (e.g., *.example.com matches api.example.com).
-         */
-        fun findMatchingAccounts(db: SQLCipherDatabase, domain: String?): List<AutofillAccount> {
-            if (domain == null || domain.isEmpty()) {
-                return emptyList()
-            }
+     * Find matching accounts for autofill based on domain.
+     * Supports exact domain match, subdomain matching (e.g., accounts.google.com -> google.com),
+     * and wildcard subdomain matching (e.g., *.example.com matches api.example.com).
+     */
+    fun findMatchingAccounts(db: SQLCipherDatabase, domain: String?): List<AutofillAccount> {
+        if (domain == null || domain.isEmpty()) {
+            return emptyList()
+        }
 
-            // Normalize domain: lowercase, strip protocol, www., port, path
-            val normalizedDomain = normalizeDomain(domain)
+        // Normalize domain: lowercase, strip protocol, www., port, path
+        val normalizedDomain = normalizeDomain(domain)
 
-            // Query all accounts and filter in memory (handles wildcard + parent domain matching)
-            val cursor = db.query(
-                AutofillDatabaseHelper.TABLE_ACCOUNTS,
-                null,
-                null,
-                null,
-                null,
-                null,
-                "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
-            )
+        // Query all accounts and filter in memory (handles wildcard + parent domain matching)
+        val cursor = db.query(
+            AutofillDatabaseHelper.TABLE_ACCOUNTS,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
+        )
 
-            return cursor.use { c ->
-                val accounts = mutableListOf<AutofillAccount>()
-                while (c.moveToNext()) {
-                    val account = AccountMapper().fromCursor(c) ?: continue
-                    val accountDomain = account.domain ?: ""
+        return cursor.use { c ->
+            val accounts = mutableListOf<AutofillAccount>()
+            while (c.moveToNext()) {
+                val account = AccountMapper().fromCursor(c) ?: continue
+                val accountDomain = account.domain ?: ""
 
-                    // Check if account's domain matches the normalized domain
-                    if (matchesDomain(normalizedDomain, accountDomain)) {
-                        accounts.add(account)
-                    }
+                // Check if account's domain matches the normalized domain
+                if (matchesDomainInternal(normalizedDomain, accountDomain)) {
+                    accounts.add(account)
                 }
-                accounts
             }
+            accounts
+        }
+    }
+
+    /**
+     * Checks if a normalized domain matches an account's stored domain pattern.
+     * Supports exact match, wildcard (*.example.com), and parent domain matching.
+     */
+    private fun matchesDomainInternal(normalizedDomain: String, accountDomain: String): Boolean {
+        // Normalize the account's stored domain for comparison
+        val normalizedAccountDomain = normalizeDomain(accountDomain)
+
+        // Exact match
+        if (normalizedAccountDomain == normalizedDomain) {
+            return true
         }
 
-        /**
-         * Checks if a normalized domain matches an account's stored domain pattern.
-         * Supports exact match, wildcard (*.example.com), and parent domain matching.
-         */
-        private fun matchesDomain(normalizedDomain: String, accountDomain: String): Boolean {
-            // Normalize the account's stored domain for comparison
-            val normalizedAccountDomain = normalizeDomain(accountDomain)
-            
-            // Exact match
-            if (normalizedAccountDomain == normalizedDomain) {
-                return true
-            }
-            
-            // Wildcard match: *.example.com matches api.example.com, example.com
-            if (normalizedAccountDomain.startsWith("*.")) {
-                val baseDomain = normalizedAccountDomain.removePrefix("*.")
-                return normalizedDomain == baseDomain || normalizedDomain.endsWith(".$baseDomain")
-            }
-            
-            // Parent domain match: google.com matches accounts.google.com
-            // (but only if account domain is the parent, not the child)
-            val accountParts = normalizedAccountDomain.split(".")
-            val queryParts = normalizedDomain.split(".")
-            
-            if (queryParts.size > accountParts.size && accountParts.size >= 2) {
-                // Check if account domain is a suffix of query domain
-                val querySuffix = queryParts.subList(queryParts.size - accountParts.size, queryParts.size).joinToString(".")
-                return querySuffix == normalizedAccountDomain
-            }
-            
-            return false
+        // Wildcard match: *.example.com matches api.example.com, example.com
+        if (normalizedAccountDomain.startsWith("*.")) {
+            val baseDomain = normalizedAccountDomain.removePrefix("*.")
+            return normalizedDomain == baseDomain || normalizedDomain.endsWith(".$baseDomain")
         }
 
-        /**
-         * Normalizes a domain for matching: converts to lowercase, strips protocol, www. prefix, port, and path.
-         *
-         * @param domain The domain or URL to normalize
-         * @return The normalized domain
-         */
-        private fun normalizeDomain(domain: String): String {
-            var normalized = domain.lowercase()
-            
-            // Strip protocol (http://, https://)
-            normalized = normalized
-                .removePrefix("https://")
-                .removePrefix("http://")
-            
-            // Strip www. prefix
-            if (normalized.startsWith("www.")) {
-                normalized = normalized.substring(4)
-            }
-            
-            // Strip path and query (everything after first /)
-            val slashIndex = normalized.indexOf('/')
-            if (slashIndex != -1) {
-                normalized = normalized.substring(0, slashIndex)
-            }
-            
-            // Strip port (everything after :)
-            val colonIndex = normalized.indexOf(':')
-            if (colonIndex != -1) {
-                normalized = normalized.substring(0, colonIndex)
-            }
-            
-            return normalized
+        // Parent domain match: google.com matches accounts.google.com
+        // (but only if account domain is the parent, not the child)
+        val accountParts = normalizedAccountDomain.split(".")
+        val queryParts = normalizedDomain.split(".")
+
+        if (queryParts.size > accountParts.size && accountParts.size >= 2) {
+            // Check if account domain is a suffix of query domain
+            val querySuffix = queryParts.subList(queryParts.size - accountParts.size, queryParts.size).joinToString(".")
+            return querySuffix == normalizedAccountDomain
         }
+
+        return false
+    }
+
+    /**
+     * Normalizes a domain for matching: converts to lowercase, strips protocol, www. prefix, port, and path.
+     *
+     * @param domain The domain or URL to normalize
+     * @return The normalized domain
+     */
+    private fun normalizeDomain(domain: String): String {
+        var normalized = domain.lowercase()
+
+        // Strip protocol (http://, https://)
+        normalized = normalized
+            .removePrefix("https://")
+            .removePrefix("http://")
+
+        // Strip www. prefix
+        if (normalized.startsWith("www.")) {
+            normalized = normalized.substring(4)
+        }
+
+        // Strip path and query (everything after first /)
+        val slashIndex = normalized.indexOf('/')
+        if (slashIndex != -1) {
+            normalized = normalized.substring(0, slashIndex)
+        }
+
+        // Strip port (everything after :)
+        val colonIndex = normalized.indexOf(':')
+        if (colonIndex != -1) {
+            normalized = normalized.substring(0, colonIndex)
+        }
+
+        return normalized
+    }
 
     /**
      * Find account by username and package name (for Android apps).
@@ -157,137 +158,137 @@ class DomainMatcher {
     }
 
     /**
-         * Find account by username only (for linking packageName to existing web account).
-         * Returns the most recently updated account with this username.
-         */
-        fun findByUsername(db: SQLCipherDatabase, username: String): AutofillAccount? {
-            val cursor = db.query(
-                AutofillDatabaseHelper.TABLE_ACCOUNTS,
-                null,
-                "${AutofillDatabaseHelper.COLUMN_USERNAME} = ?",
-                arrayOf(username),
-                null,
-                null,
-                "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC",
-                "1"
-            )
+     * Find account by username only (for linking packageName to existing web account).
+     * Returns the most recently updated account with this username.
+     */
+    fun findByUsername(db: SQLCipherDatabase, username: String): AutofillAccount? {
+        val cursor = db.query(
+            AutofillDatabaseHelper.TABLE_ACCOUNTS,
+            null,
+            "${AutofillDatabaseHelper.COLUMN_USERNAME} = ?",
+            arrayOf(username),
+            null,
+            null,
+            "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC",
+            "1"
+        )
 
-            return cursor.use { c ->
-                if (c.moveToFirst()) {
-                    AccountMapper().fromCursor(c)
-                } else {
-                    null
+        return cursor.use { c ->
+            if (c.moveToFirst()) {
+                AccountMapper().fromCursor(c)
+            } else {
+                null
+            }
+        }
+    }
+
+    /**
+     * Find all accounts matching a package name (Android app).
+     * Checks package_names JSON array.
+     * Supports exact package name match and prefix match for app families
+     * (e.g., com.example.app matches com.example.app and com.example.app.beta).
+     */
+    fun findByPackageName(db: SQLCipherDatabase, packageName: String): List<AutofillAccount> {
+        val cursor = db.query(
+            AutofillDatabaseHelper.TABLE_ACCOUNTS,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
+        )
+
+        return cursor.use { c ->
+            val accounts = mutableListOf<AutofillAccount>()
+            while (c.moveToNext()) {
+                val account = AccountMapper().fromCursor(c) ?: continue
+                // account.packageNames is already a List<String> (parsed from JSON by AccountMapper)
+                val packageList = account.packageNames
+                // Check if any package in the account's packageList is equal to the queried packageName
+                // or is a prefix of it (with a dot)
+                val matches = packageList.any { accountPackage ->
+                    packageName.equals(accountPackage) || packageName.startsWith("$accountPackage.")
+                }
+                if (matches) {
+                    accounts.add(account)
+                }
+            }
+            accounts
+        }
+    }
+
+    /**
+     * Find all accounts matching a domain (for web autofill).
+     * Exact domain match only (subdomain matching handled by findMatchingAccounts).
+     */
+    fun findByDomain(db: SQLCipherDatabase, domain: String): List<AutofillAccount> {
+        val cursor = db.query(
+            AutofillDatabaseHelper.TABLE_ACCOUNTS,
+            null,
+            "${AutofillDatabaseHelper.COLUMN_DOMAIN} = ?",
+            arrayOf(domain),
+            null,
+            null,
+            "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
+        )
+
+        return cursor.use { c ->
+            val accounts = mutableListOf<AutofillAccount>()
+            while (c.moveToNext()) {
+                val account = AccountMapper().fromCursor(c) ?: continue
+                accounts.add(account)
+            }
+            accounts
+        }
+    }
+
+    /**
+     * Find the best matching account based on domain and package names with scoring.
+     * Returns the account with the highest confidence score.
+     */
+    fun findBestMatch(db: SQLCipherDatabase, domain: String?, packageNames: List<String>?): AutofillAccount? {
+        if (domain == null && (packageNames == null || packageNames.isEmpty())) {
+            return null
+        }
+
+        val candidates = mutableListOf<Pair<AutofillAccount, Int>>()
+
+        // Check web domain matches
+        domain?.let { normalizedDomain ->
+            val domainAccounts = findMatchingAccounts(db, normalizedDomain)
+            for (account in domainAccounts) {
+                // Score: 100 for exact domain match, 50 for wildcard/subdomain match
+                val score = if (account.domain.equals(normalizedDomain, ignoreCase = true)) 100 else 50
+                candidates.add(account to score)
+            }
+        }
+
+        // Check package name matches
+        packageNames?.let { pkgList ->
+            for (packageName in pkgList) {
+                val packageAccounts = findByPackageName(db, packageName)
+                for (account in packageAccounts) {
+                    // Score: 80 for exact package match, 60 for prefix match (app family), 40 for related
+                    val packageNames = account.packageNames
+                    val score = when {
+                        packageNames.contains(packageName) -> 80
+                        packageNames.any { packageName.startsWith("$it.") } -> 60
+                        else -> 40
+                    }
+                    candidates.add(account to score)
                 }
             }
         }
 
-        /**
-             * Find all accounts matching a package name (Android app).
-             * Checks package_names JSON array.
-             * Supports exact package name match and prefix match for app families
-             * (e.g., com.example.app matches com.example.app and com.example.app.beta).
-             */
-            fun findByPackageName(db: SQLCipherDatabase, packageName: String): List<AutofillAccount> {
-                val cursor = db.query(
-                    AutofillDatabaseHelper.TABLE_ACCOUNTS,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
-                )
+        if (candidates.isEmpty()) {
+            return null
+        }
 
-                return cursor.use { c ->
-                    val accounts = mutableListOf<AutofillAccount>()
-                    while (c.moveToNext()) {
-                        val account = AccountMapper().fromCursor(c) ?: continue
-                        // account.packageNames is already a List<String> (parsed from JSON by AccountMapper)
-                        val packageList = account.packageNames
-                        // Check if any package in the account's packageList is equal to the queried packageName
-                        // or is a prefix of it (with a dot)
-                        val matches = packageList.any { accountPackage ->
-                            packageName.equals(accountPackage) || packageName.startsWith("$accountPackage.")
-                        }
-                        if (matches) {
-                            accounts.add(account)
-                        }
-                    }
-                    accounts
-                }
-            }
-
-        /**
-             * Find all accounts matching a domain (for web autofill).
-             * Exact domain match only (subdomain matching handled by findMatchingAccounts).
-             */
-            fun findByDomain(db: SQLCipherDatabase, domain: String): List<AutofillAccount> {
-                val cursor = db.query(
-                    AutofillDatabaseHelper.TABLE_ACCOUNTS,
-                    null,
-                    "${AutofillDatabaseHelper.COLUMN_DOMAIN} = ?",
-                    arrayOf(domain),
-                    null,
-                    null,
-                    "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
-                )
-
-                return cursor.use { c ->
-                    val accounts = mutableListOf<AutofillAccount>()
-                    while (c.moveToNext()) {
-                        val account = AccountMapper().fromCursor(c) ?: continue
-                        accounts.add(account)
-                    }
-                    accounts
-                }
-            }
-
-            /**
-                 * Find the best matching account based on domain and package names with scoring.
-                 * Returns the account with the highest confidence score.
-                 */
-                fun findBestMatch(db: SQLCipherDatabase, domain: String?, packageNames: List<String>?): AutofillAccount? {
-                    if (domain == null && (packageNames == null || packageNames.isEmpty())) {
-                        return null
-                    }
-
-                    val candidates = mutableListOf<Pair<AutofillAccount, Int>>()
-
-                    // Check web domain matches
-                    domain?.let { normalizedDomain ->
-                        val domainAccounts = findMatchingAccounts(db, normalizedDomain)
-                        for (account in domainAccounts) {
-                            // Score: 100 for exact domain match, 50 for wildcard/subdomain match
-                            val score = if (account.domain.equals(normalizedDomain, ignoreCase = true)) 100 else 50
-                            candidates.add(account to score)
-                        }
-                    }
-
-                    // Check package name matches
-                    packageNames?.let { pkgList ->
-                                            for (packageName in pkgList) {
-                                                val packageAccounts = findByPackageName(db, packageName)
-                                                for (account in packageAccounts) {
-                                                    // Score: 80 for exact package match, 60 for prefix match (app family), 40 for related
-                                                    val packageNames = account.packageNames
-                                                    val score = when {
-                                                        packageNames.contains(packageName) -> 80
-                                                        packageNames.any { packageName.startsWith("$it.") } -> 60
-                                                        else -> 40
-                                                    }
-                                                    candidates.add(account to score)
-                                                }
-                                            }
-                                        }
-
-                    if (candidates.isEmpty()) {
-                        return null
-                    }
-
-                    // Return the account with the highest score
-                    // If tie, prefer the one that appeared first (maintains existing order preference)
-                    return candidates.maxByOrNull { it.second }?.first
-                }
+        // Return the account with the highest score
+        // If tie, prefer the one that appeared first (maintains existing order preference)
+        return candidates.maxByOrNull { it.second }?.first
+    }
 
     /**
      * Search accounts by username (partial match).
@@ -324,8 +325,8 @@ class DomainMatcher {
             null,
             null,
             null,
-            null,
-            "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"
+            "${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC",
+            null
         )
 
         return cursor.use { c ->
@@ -360,5 +361,64 @@ class DomainMatcher {
             }
             accounts
         }
+    }
+
+    // ============================================================
+    // [Autofill Matching Layer plan 2026-08-28] — Public API for index matching
+    // 인덱스 DB에서 SQLCipher 복호화된 평문 값으로 매칭.
+    // 기존 비공개 로직(findMatchingAccounts용)은 그대로 유지, 신규 공개 API만 추가.
+    // ============================================================
+
+    /**
+     * 저장된 도메인(stored)과 쿼리 도메인(query)의 매칭 여부.
+     * - exact match, wildcard (*.example.com), subdomain 모두 지원
+     * - 평문 normalize 후 비교
+     */
+    fun matchesDomain(storedDomain: String, queryDomain: String?): Boolean {
+        if (queryDomain.isNullOrBlank()) return false
+        val normalizedStored = normalizeDomainForIndex(storedDomain)
+        val normalizedQuery = normalizeDomainForIndex(queryDomain)
+        if (normalizedStored.isEmpty() || normalizedQuery.isEmpty()) return false
+
+        // exact match
+        if (normalizedStored == normalizedQuery) return true
+        // wildcard: stored="*.example.com" → query="example.com" or "api.example.com"
+        if (normalizedStored.startsWith("*.")) {
+            val base = normalizedStored.removePrefix("*.")
+            return normalizedQuery == base || normalizedQuery.endsWith(".$base")
+        }
+        // subdomain: stored="google.com" → query="accounts.google.com"
+        if (normalizedQuery.endsWith(".$normalizedStored")) return true
+        return false
+    }
+
+    /**
+     * 저장된 packageNames JSON 문자열과 쿼리 패키지 리스트의 매칭 여부.
+     * - exact match 또는 queryPackage의 prefix 매칭 (예: com.example.app → com.example.app.beta)
+     */
+    fun matchesPackage(storedPkgJson: String, queryPackages: List<String>): Boolean {
+        if (queryPackages.isEmpty()) return false
+        val storedPackages = try {
+            val arr = JSONArray(storedPkgJson)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+        if (storedPackages.isEmpty()) return false
+        return queryPackages.any { qpkg ->
+            storedPackages.any { spkg -> spkg == qpkg || qpkg.startsWith("$spkg.") }
+        }
+    }
+
+    /** 인덱스 매칭용 도메인 normalize (기존 normalizeDomain과 유사하지만 plan 명세에 맞춤) */
+    private fun normalizeDomainForIndex(domain: String): String {
+        var n = domain.lowercase().trim()
+        n = n.removePrefix("https://").removePrefix("http://")
+        if (n.startsWith("www.")) n = n.substring(4)
+        val slash = n.indexOf('/')
+        if (slash != -1) n = n.substring(0, slash)
+        val colon = n.indexOf(':')
+        if (colon != -1) n = n.substring(0, colon)
+        return n
     }
 }

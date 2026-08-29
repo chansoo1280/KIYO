@@ -459,14 +459,14 @@ class DomainMatcherTest {
     fun `getAllAccounts queries all accounts ordered by favorite and updatedAt`() = runTest {
         // Given
 
-        every { mockDb.query(eq(AutofillDatabaseHelper.TABLE_ACCOUNTS), any(), any(), any(), any(), any(), any(), eq("${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC")) } returns mockCursor
+        every { mockDb.query(eq(AutofillDatabaseHelper.TABLE_ACCOUNTS), any(), any(), any(), any(), any(), eq("${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"), any()) } returns mockCursor
         every { mockCursor.moveToNext() } returns false
 
         // When
         val result = domainMatcher.getAllAccounts(mockDb)
 
         // Then
-        verify { mockDb.query(eq(AutofillDatabaseHelper.TABLE_ACCOUNTS), any(), any(), any(), any(), any(), any(), eq("${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC")) }
+        verify { mockDb.query(eq(AutofillDatabaseHelper.TABLE_ACCOUNTS), any(), any(), any(), any(), any(), eq("${AutofillDatabaseHelper.COLUMN_FAVORITE} DESC, ${AutofillDatabaseHelper.COLUMN_UPDATED_AT} DESC"), any()) }
         assertTrue(result.isEmpty())
     }
 

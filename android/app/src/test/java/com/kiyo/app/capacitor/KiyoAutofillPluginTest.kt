@@ -48,10 +48,13 @@ class KiyoAutofillPluginTest {
             every { com.kiyo.app.security.DatabaseKeyManager.wasSecurityUpgraded() } returns false
             coEvery { com.kiyo.app.security.DatabaseKeyManager.getKey(any()) } returns
                 javax.crypto.spec.SecretKeySpec(ByteArray(32), "AES")
+            coEvery { com.kiyo.app.security.DatabaseKeyManager.getIndexKey(any()) } returns ByteArray(32)
             every { com.kiyo.app.security.DatabaseKeyManager.wasStateReset() } returns false
 
             val repository = mockk<com.kiyo.app.autofill.repository.AutofillRepository>()
-            coEvery { repository.syncAccountsFromReact(any()) } returns android.util.Pair(4, 0)
+            coEvery { repository.syncAndRebuildIndex(any()) } returns android.util.Pair(4, 0)
+            coEvery { repository.getAllAccounts() } returns emptyList()
+            coEvery { repository.rebuildIndexTable(any()) } returns Unit
 
             val manager = AutofillSyncManager(
                 ensureRepository = { repository },

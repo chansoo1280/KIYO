@@ -90,7 +90,8 @@ class AutofillSyncManager(
             repository
         }
 
-        val result = activeRepository.syncAccountsFromReact(accountsJson)
+        val result = activeRepository.syncAndRebuildIndex(accountsJson)
+
         return SyncResult(
             syncedCount = result.first,
             errorCount = result.second,
@@ -113,7 +114,7 @@ class AutofillSyncManager(
         mainScope.launch {
             try {
                 val repository = ensureRepository()
-                val syncResult = repository.syncAccountsFromReact(accountsJson)
+                val syncResult = repository.syncAndRebuildIndex(accountsJson)
                 onSuccess(
                     SyncResult(syncResult.first, syncResult.second, syncResult.second == 0, securityUpgrade = false)
                 )
