@@ -51,16 +51,21 @@ describe("useAutoLock - Edge Cases", () => {
       autoLockTimeout: "1m",
       biometricEnabled: false,
       autofillEnabled: false,
+      autoBackupEnabled: false,
+      autoBackupUri: null,
       setBiometricEnabled: vi.fn(),
       setTheme: vi.fn(),
       toggleTheme: vi.fn(),
       setFontSize: vi.fn(),
       setAutoLockTimeout: vi.fn(),
       setAutofillEnabled: vi.fn(),
+      setAutoBackupEnabled: vi.fn(),
+      setAutoBackupUri: vi.fn(),
       initializeTheme: vi.fn(),
       initializeFontSize: vi.fn(),
       initializeAutoLockTimeout: vi.fn(),
       initializeAutofillEnabled: vi.fn(),
+      initializeAutoBackup: vi.fn(),
     };
 
     mockSessionState = {

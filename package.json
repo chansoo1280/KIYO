@@ -12,6 +12,8 @@
     "test:e2e:android:fast": "powershell -ExecutionPolicy Bypass -File android/run-autofill-e2e.ps1 -SkipBuild",
     "test:e2e:biometric": "powershell -ExecutionPolicy Bypass -File android/run-biometric-e2e.ps1",
     "test:e2e:biometric:fast": "powershell -ExecutionPolicy Bypass -File android/run-biometric-e2e.ps1 -SkipBuild",
+    "test:e2e:autosave": "powershell -ExecutionPolicy Bypass -File android/run-autosave-e2e.ps1",
+    "test:e2e:autosave:fast": "powershell -ExecutionPolicy Bypass -File android/run-autosave-e2e.ps1 -SkipBuild",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",

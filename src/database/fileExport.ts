@@ -121,10 +121,10 @@ export const importBackupFile = async (): Promise<{
 export const writeBackupToUri = async (
   uri: string,
   data: EncryptedKiyoVaultData | KiyoVaultData
-): Promise<boolean> => {
+): Promise<{ success: boolean; errorCode?: string; errorMessage?: string }> => {
   if (!isNativeFileStorageAvailable()) {
     // Web: no persistent URI support
-    return false;
+    return { success: false, errorCode: "WEB_UNSUPPORTED", errorMessage: "Persistent URI not available on web" };
   }
 
   try {
@@ -132,10 +132,14 @@ export const writeBackupToUri = async (
       uri,
       data: JSON.stringify(data, null, 2),
     });
-    return result.success;
+    return {
+      success: result.success,
+      errorCode: result.errorCode,
+      errorMessage: result.errorMessage,
+    };
   } catch (error) {
     console.error("writeBackupToUri failed", error instanceof Error ? error.message : String(error));
-    return false;
+    return { success: false, errorCode: "EXCEPTION", errorMessage: error instanceof Error ? error.message : String(error) };
   }
 };
 
@@ -153,5 +157,25 @@ export const readBackupFromUri = async (uri: string): Promise<string | null> => 
   } catch (error) {
     console.error("readBackupFromUri failed", error instanceof Error ? error.message : String(error));
     return null;
+  }
+};
+
+/**
+ * Pick backup folder via SAF (for auto-backup setup)
+ */
+export const pickBackupFolder = async (): Promise<{ success: boolean; uri?: string }> => {
+  if (!isNativeFileStorageAvailable()) {
+    return { success: false };
+  }
+
+  try {
+    const result = await KiyoFile.pickBackupFolder();
+    if (result.cancelled) {
+      return { success: false };
+    }
+    return { success: result.success, uri: result.uri };
+  } catch (error) {
+    console.error("pickBackupFolder failed", error instanceof Error ? error.message : String(error));
+    return { success: false };
   }
 };

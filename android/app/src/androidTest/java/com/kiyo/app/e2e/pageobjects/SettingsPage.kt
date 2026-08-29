@@ -362,6 +362,275 @@ class SettingsPage(helper: WebViewTestHelper, private val nativeAuthPrompt: Nati
         throw AssertionError("Timeout waiting for sync completion with PIN auth")
     }
 
+    // ============ 자동 저장(DataSection) ============
+
+    companion object {
+        /** 자동 저장 OFF 상태 텍스트 (DataSection.tsx getAutoBackupStatus) */
+        const val AUTO_BACKUP_OFF_TEXT = "자동 백업: 꺼짐"
+        /** 자동 저장 ON 상태 텍스트 prefix (뒤에 URI 표시) */
+        const val AUTO_BACKUP_ON_TEXT = "자동 백업: 켜짐"
+        /** 자동 저장 토글 OFF 버튼 라벨 */
+        const val AUTO_BACKUP_TOGGLE_OFF = "해제"
+        /** 자동 저장 토글 ON 버튼 라벨 (최초 + 위치 미설정 상태 모두 동일) */
+        const val AUTO_BACKUP_TOGGLE_ON = "켜기"
+        /** 폴더 선택 확인 다이얼로그 헤더 */
+        const val AUTO_BACKUP_DIALOG_TITLE = "자동 백업 폴더 선택"
+        const val AUTO_BACKUP_DIALOG_CONFIRM = "폴더 선택"
+        const val AUTO_BACKUP_DIALOG_CANCEL = "취소"
+        /** 자동 백업 ON 직후 표시되는 success 메시지 (위치 설정 + 첫 백업 완료) */
+        const val AUTO_BACKUP_SUCCESS = "자동 백업 위치가 설정되고 첫 백업이 완료되었습니다."
+        const val AUTO_BACKUP_SUCCESS_URI_ONLY = "자동 백업 위치가 설정되었습니다."
+    }
+
+    /**
+     * 자동 저장(자동 백업) 토글을 ON으로 설정.
+     *
+     * 플로우:
+     *   Settings > Data > "켜기" → 폴더 선택 확인 다이얼로그 → "폴더 선택" → SAF picker →
+     *   instrumentation 내부에서 UiDevice로 사이드 메뉴 → Documents → "Use this folder" 확정.
+     *
+     * onFolderPickerReady: 더 이상 사용하지 않음 (이전 호스트 ps1 watcher 의존 — 제거됨).
+     * 2026-08-29 host-side ps1 watcher가 instrumentation의 UiAutomationService 등록과
+     * 충돌하는 것으로 보임. instrument 내부에서 UiDevice로 picker 운전을 흡수해서 host는
+     * `am instrument`만 실행하면 되도록 단순화.
+     */
+    fun enableAutoBackup(device: UiDevice, onFolderPickerReady: () -> Unit = {}): SettingsPage {
+        log("Enabling auto-backup (Settings > Data > 자동 백업)")
+
+        // 1. 현재 상태 확인 — 이미 켜져 있으면 OFF 시킨 뒤 새로 켠다.
+        //    이전 테스트가 finally에서 disable에 실패했거나 스크립트가 재실행되어
+        //    stale URI가 남아있을 수 있어, 새 폴더 picker를 강제 트리거한다.
+        //    (BiometricUnlockE2ETest.enableBiometric의 stale 키 재등록 패턴과 동일)
+        if (helper.isTextPresent(AUTO_BACKUP_ON_TEXT)) {
+            log("Auto-backup already ON — disabling first to allow fresh folder selection")
+            if (!disableAutoBackupBestEffort()) {
+                helper.dumpViewHierarchy("autosave_disable_for_reenable_failed")
+                helper.captureScreen("autosave_disable_for_reenable_failed")
+                throw AssertionError("Could not disable auto-backup before re-enable")
+            }
+            // 해제 후 상태 텍스트(자동 백업: 꺼짐) + UI 안정화 대기
+            if (!helper.waitForText(AUTO_BACKUP_OFF_TEXT, 5000)) {
+                throw AssertionError(
+                    "Auto-backup did not reach OFF state before re-enable. " +
+                        "Expected '$AUTO_BACKUP_OFF_TEXT'.",
+                )
+            }
+            Thread.sleep(1000)
+            log("Auto-backup reset to OFF, proceeding to re-enable")
+        }
+
+        // 2. "켜기" 버튼 클릭. 토글 disabled 조건(native 미지원/평문 볼트)은 사전에 E2EEnv에서
+        //    encrypted=true로 통과시켰으므로 활성화 상태여야 한다.
+        if (!helper.clickByText(AUTO_BACKUP_TOGGLE_ON, "auto-backup toggle ON button")) {
+            throw AssertionError("Auto-backup toggle button ('${AUTO_BACKUP_TOGGLE_ON}') not clickable")
+        }
+
+        // 3. 폴더 선택 확인 다이얼로그가 떠야 한다 ("자동 백업 폴더 선택")
+        if (!helper.waitForText(AUTO_BACKUP_DIALOG_TITLE, 5000)) {
+            throw AssertionError("Auto-backup folder picker confirm dialog did not appear")
+        }
+        log("Auto-backup folder picker dialog visible")
+
+        // 4. "폴더 선택" 클릭 → SAF OpenDocumentTree activity 실행
+        if (!helper.clickByText(AUTO_BACKUP_DIALOG_CONFIRM, "auto-backup folder select confirm")) {
+            throw AssertionError("Could not click '폴더 선택' on auto-backup dialog")
+        }
+
+        // 5. SAF picker 렌더링 대기 + instrumentation 내부에서 picker 운전
+        //    (호스트 ps1 watcher 제거됨 — 2026-08-29 UiAutomationService 충돌 회피)
+        log("Waiting for native SAF folder picker to render...")
+        if (!driveSafPicker(device)) {
+            helper.dumpViewHierarchy("autosave_saf_picker_drive_failed")
+            helper.captureScreen("autosave_saf_picker_drive_failed")
+            throw AssertionError("SAF folder picker driving failed (Use this folder not tapped)")
+        }
+
+        // 6. 성공 판정 — 토글 ON 메시지(첫 백업 포함 또는 위치만) 중 하나가 떠야 한다.
+        //    - encrypted=true + cryptoKey + salt 모두 있는 상태에서 활성화되므로
+        //      persistVaultSnapshot이 즉시 실행되어 "첫 백업이 완료되었습니다"까지 가는 게 정상.
+        val startTime = System.currentTimeMillis()
+        val timeoutMs = 30000L
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            if (helper.isTextPresent(AUTO_BACKUP_SUCCESS) ||
+                helper.isTextPresent(AUTO_BACKUP_SUCCESS_URI_ONLY)
+            ) {
+                log("Auto-backup success message displayed")
+                break
+            }
+            if (helper.isTextPresent(AUTO_BACKUP_ON_TEXT)) {
+                // success 메시지가 사라졌더라도 상태 텍스트가 ON이면 성공으로 간주
+                log("Auto-backup state text already ON")
+                break
+            }
+            Thread.sleep(500)
+        }
+        if (!helper.isTextPresent(AUTO_BACKUP_ON_TEXT)) {
+            helper.dumpViewHierarchy("autosave_enable_no_on_state")
+            helper.captureScreen("autosave_enable_no_on_state")
+            throw AssertionError(
+                "Auto-backup did not turn ON. Expected '$AUTO_BACKUP_ON_TEXT (...)' state text after SAF picker confirm."
+            )
+        }
+        log("Auto-backup enabled (state=$AUTO_BACKUP_ON_TEXT)")
+        return this
+    }
+
+    /**
+     * SAF OpenDocumentTree picker를 instrumentation 내부에서 자동 운전.
+     *
+     * 플로우:
+     *   1) picker 렌더링 대기 (USE THIS FOLDER / Show roots 마커)
+     *   2) 사이드 메뉴(content-desc="Show roots"/"루트 보기") 탭 → 루트 목록 오픈
+     *   3) "Documents" / "내 문서" 탭
+     *   4) "USE THIS FOLDER" / "이 폴더 사용" / android:id/button1 탭 → picker 닫힘
+     *
+     * UiAutomator2는 native process의 노드도 볼 수 있어 SAF picker 안의 버튼 클릭 가능.
+     * host ps1의 Start-Job watcher 없이 동작 — UiAutomationService 충돌 회피.
+     *
+     * @return picker 운전 성공 여부
+     */
+    private fun driveSafPicker(device: UiDevice): Boolean {
+        // 1) picker 렌더링 대기
+        var pickerReady = false
+        for (i in 0 until 30) {
+            if (device.hasObject(By.text("USE THIS FOLDER")) ||
+                device.hasObject(By.text("Use this folder")) ||
+                device.hasObject(By.text("이 폴더 사용")) ||
+                device.hasObject(By.desc("Show roots")) ||
+                device.hasObject(By.desc("루트 보기"))
+            ) {
+                pickerReady = true
+                log("SAF picker detected (attempt $i)")
+                break
+            }
+            Thread.sleep(500)
+        }
+        if (!pickerReady) {
+            log("SAF picker did not appear within timeout")
+            return false
+        }
+
+        // 2) 사이드 메뉴 열기 (content-desc 기반, 좌표 폴백 포함)
+        var hamburgerOk = false
+        val descCandidates = listOf("Show roots", "루트 보기", "Open navigation drawer", "내비게이션 서랍 열기", "Roots")
+        for (d in descCandidates) {
+            val obj = device.findObject(By.desc(d))
+            if (obj != null) {
+                obj.click()
+                hamburgerOk = true
+                log("Side menu opened via desc='$d'")
+                break
+            }
+        }
+        if (!hamburgerOk) {
+            // 좌표 폴백: 좌측 상단 햄버거 영역
+            log("Side menu not found by desc, trying coordinate (60, 200)")
+            device.click(60, 200)
+        }
+        Thread.sleep(1500)
+        val deviceModels = listOf(
+            "sdk_gphone16k_x86_64"
+        )
+        for (t in deviceModels) {
+            val obj = device.findObject(By.text(t))
+            if (obj != null) {
+                obj.click()
+                log("Tapped '$t' (primary storage / Documents root)")
+                break
+            }
+        }
+        Thread.sleep(1500)
+
+        // 3) Primary storage 진입 — 스톡 DocumentsUI는 `sdk_gphone16k_x86_64` 같은
+        //    primary storage 별칭이 사이드 메뉴의 첫 항목이며, 탭하면 primary 내부로
+        //    들어가서 "USE THIS FOLDER"가 활성화된다. "Documents"는 primary의 하위
+        //    폴더라 그 자체로 picker 루트가 아님. 양쪽 후보를 모두 시도한다.
+        val primaryCandidates = listOf(
+            "Documents", "내 문서", "Documents storage", "Primary storage", "주 저장소", "Internal storage"
+        )
+        for (t in primaryCandidates) {
+            val obj = device.findObject(By.text(t))
+            if (obj != null) {
+                obj.click()
+                log("Tapped '$t' (primary storage / Documents root)")
+                break
+            }
+        }
+        Thread.sleep(1500)
+
+        // 4) "Use this folder" 확정 + 권한 다이얼로그 흡수 (한 루프에서 둘 다 처리)
+        //    SAF OpenDocumentTree는 폴더 선택 확정 시 "Allow kiyo to access folder?" OS 다이얼로그를
+        //    띄운다 — 이게 떠 있으면 USE THIS FOLDER가 가려져 매칭이 안 됨.
+        //    권한 다이얼로그가 뜨면 ALLOW를 처리하고, picker가 닫혔으면 return true.
+        //
+        //    매칭 전략: 1차 UiDevice.findObject(By.text) → 2차 좌표 기반 탭 (안정적 폴백).
+        //    자식 AlertDialog는 별도 window라 findObject가 못 잡는 경우가 있어 좌표 폴백이 핵심.
+        val useThisFolderCenterX = 540
+        val useThisFolderCenterY = 2298
+        val allowCenterX = 879
+        val allowCenterY = 1388
+
+        for (i in 0 until 60) {
+            // 0) 권한 다이얼로그 처리 (최우선) — 텍스트 매칭 + 좌표 폴백
+
+            // 1차: text 매칭
+            for (t in listOf("USE THIS FOLDER", "Use this folder", "이 폴더 사용", "이 폴더선택", "USE")) {
+                val obj = device.findObject(By.text(t))
+                if (obj != null) {
+                    obj.click()
+                    log("Tapped '$t' (Use this folder) by text")
+                    Thread.sleep(1000)
+                    // UiDevice 자식 다이얼로그 못 잡는 케이스 — 좌표 폴백
+                    device.click(allowCenterX, allowCenterY)
+                    log("Tapped ALLOW (access permission dialog) by coordinate ($allowCenterX, $allowCenterY)")
+                    return true
+                }
+            }
+            Thread.sleep(500)
+        }
+        log("'Use this folder' button not found within timeout")
+        return false
+    }
+
+    /**
+     * 자동 저장 토글 OFF (DataSection "해제" 버튼).
+     * URI도 함께 비워지므로(React setAutoBackupUri(null) + setAutoBackupEnabled(false)),
+     * 다음 테스트가 새 폴더로 다시 설정할 수 있는 깨끗한 상태가 된다.
+     * best-effort: 실패해도 예외를 던지지 않고 false 반환 (cleanup 용도).
+     */
+    fun disableAutoBackupBestEffort(): Boolean {
+        return try {
+            // Settings에 머무는 상태가 전제. 호출자가 네비게이션을 보장.
+            if (!helper.isTextPresent(AUTO_BACKUP_TOGGLE_OFF)) {
+                log("Auto-backup already OFF (no '해제' button) — skip disable")
+                return true
+            }
+            if (!helper.clickByText(AUTO_BACKUP_TOGGLE_OFF, "auto-backup disable button")) {
+                log("Could not click '해제' button (maybe toggling)")
+                return false
+            }
+            // 상태 OFF 전환 대기 (메시지 텍스트가 켜져있던 토글이 없어지면 성공)
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < 10000) {
+                if (helper.isTextPresent(AUTO_BACKUP_OFF_TEXT)) {
+                    log("Auto-backup disabled (state=$AUTO_BACKUP_OFF_TEXT)")
+                    return true
+                }
+                // 메시지(첫 백업 완료) 등이 잠시 남아있을 수 있으니 '해제' 버튼이 사라졌는지도 보조 판정
+                if (!helper.isTextPresent(AUTO_BACKUP_TOGGLE_OFF)) {
+                    log("Auto-backup disable button gone — assuming OFF")
+                    return true
+                }
+                Thread.sleep(300)
+            }
+            log("Auto-backup did not turn OFF within timeout")
+            false
+        } catch (e: Exception) {
+            log("disableAutoBackupBestEffort failed: ${e.message}")
+            false
+        }
+    }
+
     /** 자동완성 토글의 aria-checked 상태 확인 (aria-label로 정확히 타겟팅) */
     private fun isAutofillToggleChecked(): Boolean {
         return try {

@@ -13,6 +13,8 @@ import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
 import { isNativeFileStorageAvailable } from "@/database/fileExport";
 import { createEncryptedRecord, createPlaintextRecord } from "@/crypto/recordEncryption";
+import { useSettingsStore } from "@/store/settingsStore";
+import { writeBackupToUri } from "@/database/fileExport";
 
 export interface FileRecord {
   id: typeof ACTIVE_FILE_ID;
@@ -100,9 +102,10 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
       return;
     }
     const data = await getDatabaseSnapshot(activeFileName, cryptoKey ?? undefined);
-    
+
     if (!cryptoKey) {
       await fileTable.upsertFileRecord(activeFileName, data);
+      // 평문 볼트는 자동 백업 안 함
       return;
     }
     const encrypted = await encryptData(data, cryptoKey, salt!);
@@ -114,6 +117,9 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
 
     // Clear any previous sync error on success
     clearSyncError?.();
+
+    // [NEW] 자동 백업: 성공 시에만, 설정 확인 후 비동기 실행
+    tryTriggerAutoBackup({ activeFileName, cryptoKey, salt });
   } catch (error) {
     console.error("persistVaultSnapshot failed:", error instanceof Error ? error.message : String(error), error);
     // Store error in sessionStore for UI to display
@@ -126,6 +132,27 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
     // Don't throw - auto-save should not break the app
   }
 };
+
+async function tryTriggerAutoBackup(params: SyncDatabaseParams) {
+  const { autoBackupEnabled, autoBackupUri } = useSettingsStore.getState();
+  if (!autoBackupEnabled || !autoBackupUri) return;
+  if (!params.cryptoKey || !params.salt) return; // 평문 볼트는 자동 백업 안 함 (정책)
+
+  const data = await getDatabaseSnapshot(params.activeFileName!, params.cryptoKey);
+  const encrypted = await encryptData(data, params.cryptoKey, params.salt!);
+  if (encrypted) {
+    const result = await writeBackupToUri(autoBackupUri, encrypted);
+    if (!result.success) {
+      console.warn("[autoBackup] writeBackupToUri failed:", result.errorCode, result.errorMessage);
+      // 권한 만료 시 자동 OFF + UI 경고
+      if (result.errorCode === "PERMISSION_REVOKED") {
+        await useSettingsStore.getState().setAutoBackupEnabled(false);
+      }
+    } else {
+      console.log("[autoBackup] writeBackupToUri succeeded");
+    }
+  }
+}
 
 // Deprecated alias for backward compatibility
 export const syncDatabaseToFile = persistVaultSnapshot;

@@ -10,16 +10,21 @@ export interface SettingsState {
   autoLockTimeout: AutoLockTimeout;
   biometricEnabled: boolean;
   autofillEnabled: boolean;
+  autoBackupEnabled: boolean;
+  autoBackupUri: string | null;
   setTheme: (theme: "light" | "dark") => Promise<void>;
   toggleTheme: () => Promise<void>;
   setFontSize: (fontSize: FontSize) => Promise<void>;
   setAutoLockTimeout: (timeout: AutoLockTimeout) => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
   setAutofillEnabled: (enabled: boolean) => Promise<void>;
+  setAutoBackupEnabled: (enabled: boolean) => Promise<void>;
+  setAutoBackupUri: (uri: string | null) => Promise<void>;
   initializeTheme: () => Promise<void>;
   initializeFontSize: () => Promise<void>;
   initializeAutoLockTimeout: () => Promise<void>;
   initializeAutofillEnabled: () => Promise<void>;
+  initializeAutoBackup: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -31,6 +36,8 @@ export const useSettingsStore = create<SettingsState>()(
         autoLockTimeout: "none" as AutoLockTimeout,
         biometricEnabled: false,
         autofillEnabled: false,
+        autoBackupEnabled: false,
+        autoBackupUri: null,
 
         setTheme: async (theme: "light" | "dark") => {
           set({ theme });
@@ -77,6 +84,14 @@ export const useSettingsStore = create<SettingsState>()(
           set({ autofillEnabled: enabled });
         },
 
+        setAutoBackupEnabled: async (enabled: boolean) => {
+          set({ autoBackupEnabled: enabled });
+        },
+
+        setAutoBackupUri: async (uri: string | null) => {
+          set({ autoBackupUri: uri });
+        },
+
         initializeTheme: async () => {
           // Theme is loaded from localStorage via zustand persist middleware
           const theme = get().theme;
@@ -113,6 +128,11 @@ export const useSettingsStore = create<SettingsState>()(
           // Autofill enabled is loaded from localStorage via zustand persist middleware
           // No side effects needed, just ensure it's loaded
         },
+
+        initializeAutoBackup: async () => {
+          // Auto backup settings are loaded from localStorage via zustand persist middleware
+          // No side effects needed, just ensure it's loaded
+        },
       }),
       {
         name: "kiyo-settings",
@@ -123,6 +143,8 @@ export const useSettingsStore = create<SettingsState>()(
           autoLockTimeout: state.autoLockTimeout,
           biometricEnabled: state.biometricEnabled,
           autofillEnabled: state.autofillEnabled,
+          autoBackupEnabled: state.autoBackupEnabled,
+          autoBackupUri: state.autoBackupUri,
         }),
       },
     ),

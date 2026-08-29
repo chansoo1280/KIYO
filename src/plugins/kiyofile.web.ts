@@ -5,6 +5,7 @@ import type {
   OpenFileResult,
   WriteToUriResult,
   ReadFromUriResult,
+  PickBackupFolderResult,
 } from "@/plugins/kiyofile";
 
 export class KiyoFileWeb extends WebPlugin implements KiyoFilePlugin {
@@ -62,6 +63,14 @@ export class KiyoFileWeb extends WebPlugin implements KiyoFilePlugin {
     return {
       success: false,
       data: "",
+    };
+  }
+
+  async pickBackupFolder(): Promise<PickBackupFolderResult> {
+    console.warn("KiyoFile: pickBackupFolder not available on web");
+    return {
+      success: false,
+      cancelled: false,
     };
   }
 }
