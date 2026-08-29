@@ -252,19 +252,21 @@ Android System → onFillRequest(FillRequest)
 | `KeystoreManagerTest.kt` (NEW) | `needsSecurityUpgrade` (lockscreen added), key lifecycle |
 | `AutofillE2ETest.kt` (NEW tests) | `autofillAfterProcessDeath_authCacheValid`, `autofillSecurityDowngrade_lockscreenRemoved` |
 
-### 5. Plugin Interface Clarification
+### 5. Plugin Interface Clarification — ✅ 완료 (별도 plan `2026-08-24-autofill-plugin-interface.md`로 이행, 커밋 `329d800c`)
 
-| File | Component | Change | Reason |
+> 이 섹션은 별도 plan으로 분리되어 구현 + 검증 완료. 자세한 책임 경계(Bridge=OS 능력, SyncManager=정책, Service=fill 처리)는 `2026-08-24-autofill-plugin-interface.md` 참조.
+
+| File | Component | Change | Status |
 |------|-----------|--------|--------|
-| `KiyoAutofillPlugin.kt` | `syncAccountsFromReact` | Extract sync logic to `AutofillSyncManager` class | Single responsibility; testable without Capacitor |
-| `KiyoAutofillPlugin.kt` | New interface | Define `AutofillPlatformBridge` interface for platform abstraction | Enable iOS Password AutoFill plugin with same React API |
-| `kiyautofill.ts` | Types | Add `AutofillPlatformBridge` type definition | Shared contract between platforms |
+| `KiyoAutofillPlugin.kt` | `syncAccountsFromReact` | Extract sync logic to `AutofillSyncManager` class | ✅ Done — `AutofillSyncManagerTest` 7/7 green |
+| `KiyoAutofillPlugin.kt` | New interface | Define `AutofillPlatformBridge` interface for platform abstraction | ✅ Done — `AutofillPlatformBridge.kt` + `AndroidAutofillPlatformBridge` |
+| `kiyautofill.ts` | Types | Add `AutofillPlatformBridge` type definition | ✅ Done — `npm run typecheck` passes |
 
-### 6. FillResponseBuilder — SaveInfo (Optional, Low Priority)
+### 6. FillResponseBuilder — SaveInfo — ⏸️ 의도적 보류 (후속 plan 예정)
 
-| File | Component | Change | Reason |
+| File | Component | Change | Status |
 |------|-----------|--------|--------|
-| `FillResponseBuilder.kt` | `createFillResponse` | Implement SaveInfo for system save dialog (currently TODO) | Proper Android Autofill UX; currently suppressed for E2E |
+| `FillResponseBuilder.kt` | `createFillResponse` | Implement SaveInfo for system save dialog (currently TODO) | ⏸️ Deferred — E2E 시 system save dialog 회피 목적. 후속 plan에서 별도 진행 예정 |
 
 ---
 
@@ -290,12 +292,12 @@ Android System → onFillRequest(FillRequest)
 
 | Test | Target | Scenario |
 |------|--------|----------|
-| `AutofillE2ETest` | `autofillEnableSyncAndFill_unencryptedVault_noAuth` | Existing — baseline |
-| `AutofillE2ETest` | `resyncAfterDeviceCredentialAdded_authRequired` | Existing — baseline |
-| `AutofillE2ETest` | **NEW** `autofillAfterProcessDeath_authCacheValid` | Kill service process, immediate fill → should use cached auth (no prompt) |
-| `AutofillE2ETest` | **NEW** `autofillSecurityDowngrade_lockscreenRemoved` | Add PIN → sync → remove PIN → sync → should reset + rebuild |
-| `AutofillE2ETest` | **NEW** `autofillMultiplePackageNames` | Account with packageNames=[com.app, com.app.beta] → fill works for both |
-| `AutofillE2ETest` | **NEW** `autofillWildcardSubdomain` | Account domain=*.example.com → fill works for api.example.com, app.example.com |
+| `AutofillE2ETest` | `noAuthFill` | Existing — baseline ✅ |
+| `AutofillE2ETest` | `authResync` | Existing — baseline ✅ |
+| `AutofillE2ETest` | `downgradeReset` | Existing — `autofillSecurityDowngrade_lockscreenRemoved` 충족 ✅ |
+| `AutofillE2ETest` | **NEW** `autofillAfterProcessDeath_authCacheValid` | Kill service process, immediate fill → should use cached auth (no prompt) | ⏸️ Deferred — 후속 plan에서 추가 예정 |
+| `AutofillE2ETest` | **NEW** `autofillMultiplePackageNames` | Account with packageNames=[com.app, com.app.beta] → fill works for both | ⏸️ Deferred — JVM 단위 테스트(`DomainMatcherTest`)로 검증 완료 |
+| `AutofillE2ETest` | **NEW** `autofillWildcardSubdomain` | Account domain=*.example.com → fill works for api.example.com, app.example.com | ⏸️ Deferred — JVM 단위 테스트(`DomainMatcherTest`)로 검증 완료 |
 
 ### E2E Manual Verification
 

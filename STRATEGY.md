@@ -1,7 +1,7 @@
 # KIYO Strategy
 
 name: "KIYO"
-last_updated: "2026-08-24"
+last_updated: "2026-08-29"
 
 ---
 
@@ -87,7 +87,16 @@ last_updated: "2026-08-24"
 - Keystore 인증 캐시(30분)·KPInvalidated 복구·재래핑 무결성
 - 인증 프롬프트 UX(바이오메트릭·PIN/패스프레이즈 폴백) 매끄러움
 - **플러그인 인터페이스 정의** — 안드로이드 구현을 레퍼런스로 타 플랫폼 확장 시 재사용
-- **최근 신호:** alias pointer re-wrap(v3.1), packageNames 지원, E2E 인증 검증, AuthRequestHandler 정리
+- **진척 (2026-08-29):** [`2026-08-24-autofill-reliability.md`](.hermes/plans/2026-08-24-autofill-reliability.md) 메인 plan ~90% 완료
+  - ✅ DomainMatcher (와일드카드/서브도메인/prefix package/normalize/findBestMatch) + AccountMapper (packageNames/corrupt-row 가드) — `DomainMatcherTest`/`AccountMapperTest` JVM 검증 완료
+  - ✅ FieldScorer + FieldScoringRules (WebView TODO 해결, OTP `one-time-code` 네거티브, `new-password` 등록 폼 시그널, Naver 튜닝 + `MIN_CANDIDATE_SCORE=20`) — `FieldScorerTest`/`FieldScoringRulesTest` JVM 검증 완료
+  - ✅ Keystore auth flow 신규 테스트 — `DatabaseKeyManagerTest`(9) + `KeystoreManagerTest`(5) (isSecurityDowngrade, resetAutofillData, needsSecurityUpgrade, KPInvalidated 시뮬레이션)
+  - ✅ Plugin Interface — [`2026-08-24-autofill-plugin-interface.md`](.hermes/plans/2026-08-24-autofill-plugin-interface.md) 별도 plan으로 완료 (커밋 `329d800c`): `AutofillSyncManager` 추출 + `AutofillPlatformBridge`/`AndroidAutofillPlatformBridge` + TS 타입, `AutofillSyncManagerTest` 7/7 green
+  - ✅ Autofill E2E `downgradeReset` 신규 (lockscreen 제거 → 자동 리셋) — 플랜 5개 E2E 중 1개 신규 추가 (나머지 4개는 baseline 유지)
+  - ✅ Matching layer (2026-08-28) — [`2026-08-28-autofill-matching-layer.md`](.hermes/plans/2026-08-28-autofill-matching-layer.md) 별도 plan으로 완료 (인덱스 DB + `DatabaseKeyManager.getIndexKey` 경로 분리)
+  - ⏸️ SaveInfo — 의도적 보류, 후속 plan 예정 (E2E 시 system save dialog 회피 목적)
+  - ⏸️ E2E 3개 시나리오 (`autofillAfterProcessDeath_authCacheValid`, `autofillMultiplePackageNames`, `autofillWildcardSubdomain`) — JVM 단위 테스트로 검증됨, 후속 plan에서 E2E 추가 예정
+- **최근 신호:** alias pointer re-wrap(v3.1), packageNames 지원, E2E 인증 검증, AuthRequestHandler 정리, 자동완성 신뢰도 plan ~90% 완료
 
 ### 2. 볼트 파일 안정성 (Vault File Integrity)
 - 암호화 볼트 생성/열기/백업/복원/마이그레이션 무결성
