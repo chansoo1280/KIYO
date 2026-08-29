@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { templateTable } from "@/database/templateTable";
-import { syncDatabaseToFile } from "@/database/db";
+import { enqueuePersistVaultSnapshot } from "@/database/syncQueue";
 import type { Template } from "@/models/template";
 import { useSessionStore } from "@/store/sessionStore";
 
@@ -42,10 +42,13 @@ export const useTemplateStore = create<TemplateState>()(
         set((state) => ({
           templates: [...state.templates, newTemplate].sort((a, b) => a.sortOrder - b.sortOrder),
         }));
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
+        await enqueuePersistVaultSnapshot(() => {
+          const s = useSessionStore.getState();
+          return {
+            activeFileName: s.activeFileName,
+            cryptoKey: s.cryptoKey,
+            salt: s.salt,
+          };
         });
         return newTemplate;
       },
@@ -61,10 +64,13 @@ export const useTemplateStore = create<TemplateState>()(
               .map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t))
               .sort((a, b) => a.sortOrder - b.sortOrder),
           }));
-          await syncDatabaseToFile({
-            activeFileName: sessionState.activeFileName,
-            cryptoKey: sessionState.cryptoKey,
-            salt: sessionState.salt,
+          await enqueuePersistVaultSnapshot(() => {
+            const s = useSessionStore.getState();
+            return {
+              activeFileName: s.activeFileName,
+              cryptoKey: s.cryptoKey,
+              salt: s.salt,
+            };
           });
         }
       },
@@ -75,11 +81,13 @@ export const useTemplateStore = create<TemplateState>()(
           templates: state.templates.filter((t) => t.id !== id),
         }));
 
-        const sessionState = useSessionStore.getState();
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
+        await enqueuePersistVaultSnapshot(() => {
+          const s = useSessionStore.getState();
+          return {
+            activeFileName: s.activeFileName,
+            cryptoKey: s.cryptoKey,
+            salt: s.salt,
+          };
         });
       },
 
@@ -87,11 +95,13 @@ export const useTemplateStore = create<TemplateState>()(
         await templateTable.clear();
         set({ templates: [], initialized: false });
 
-        const sessionState = useSessionStore.getState();
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
+        await enqueuePersistVaultSnapshot(() => {
+          const s = useSessionStore.getState();
+          return {
+            activeFileName: s.activeFileName,
+            cryptoKey: s.cryptoKey,
+            salt: s.salt,
+          };
         });
       },
 

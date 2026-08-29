@@ -2,8 +2,8 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Account } from "@/models/account";
 import {
-  syncDatabaseToFile,
-} from "@/database/db";
+  enqueuePersistVaultSnapshot,
+} from "@/database/syncQueue";
 import { accountTable } from "@/database/accountTable";
 import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
@@ -35,13 +35,15 @@ export const useAccountStore = create<AccountState>()(
 
       // Private: persist current accounts to File only (autofill sync is manual)
       _persistAccounts: async () => {
-        const sessionState = useSessionStore.getState();
-        await syncDatabaseToFile({
-          activeFileName: sessionState.activeFileName,
-          cryptoKey: sessionState.cryptoKey,
-          salt: sessionState.salt,
-          clearSyncError: sessionState.clearSyncError,
-          setSyncError: sessionState.setSyncError,
+        await enqueuePersistVaultSnapshot(() => {
+          const sessionState = useSessionStore.getState();
+          return {
+            activeFileName: sessionState.activeFileName,
+            cryptoKey: sessionState.cryptoKey,
+            salt: sessionState.salt,
+            clearSyncError: sessionState.clearSyncError,
+            setSyncError: sessionState.setSyncError,
+          };
         });
       },
 

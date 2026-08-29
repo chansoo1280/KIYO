@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Filesystem } from "@capacitor/filesystem";
+import { Capacitor } from "@capacitor/core";
+import { KiyoFile } from "@/plugins/kiyofile";
 import { openImportedDataFile, exportDataFile } from "@/database/fileStorage";
+import { exportBackupFile } from "@/database/fileExport";
 import { FileStorageError, FileStorageErrorCode, isFileStorageError } from "@/errors/FileStorageError";
 import { createTestEncryptedFile } from "@/test/fixtures/databaseFixtures";
 import type { KiyoVaultData } from "@/models/vault";
 import type { Account, Metadata } from "@/models/account";
 import type { Template } from "@/models/template";
+
+// Mock KiyoFile plugin for SAF tests
+vi.mock("@/plugins/kiyofile", () => ({
+  KiyoFile: {
+    saveFile: vi.fn(),
+    openFile: vi.fn(),
+    writeToUri: vi.fn(),
+    readFromUri: vi.fn(),
+  },
+}));
 
 describe("fileStorage - error handling", () => {
 
@@ -74,4 +87,64 @@ describe("fileStorage - error handling", () => {
     });
   });
 
+  describe("exportBackupFile - SAF picker cancellation", () => {
+    const createValidKiyoFile = (overrides: Partial<KiyoVaultData> = {}): KiyoVaultData => ({
+      version: 1,
+      fileName: "test.json",
+      updatedAt: Date.now(),
+      accounts: [] as Account[],
+      templates: [] as Template[],
+      metadata: [] as Metadata[],
+      ...overrides,
+    });
+
+    const validFile = createValidKiyoFile();
+    const fileName = "test-backup.json";
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      // SAF 경로 강제 (Android 네이티브 환경으로 설정)
+      vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      vi.resetAllMocks();
+    });
+
+    it("사용자가 SAF picker에서 취소 → 'User cancelled backup' 에러", async () => {
+      // Arrange: KiyoFile.saveFile mock → cancelled: true
+      vi.mocked(KiyoFile.saveFile).mockResolvedValueOnce({
+        success: false,
+        cancelled: true,
+        uri: "",
+      });
+
+      // Act & Assert
+      await expect(exportBackupFile(fileName, validFile)).rejects.toMatchObject({
+        code: FileStorageErrorCode.WRITE_FAILED,
+        message: "User cancelled backup",
+      });
+
+      // 호출 검증
+      expect(KiyoFile.saveFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileName: expect.stringContaining(".json"),
+          mimeType: "application/json",
+        })
+      );
+    });
+
+    it("SAF picker 실패 (cancelled: false) → 'Failed to save backup file' 에러", async () => {
+      vi.mocked(KiyoFile.saveFile).mockResolvedValueOnce({
+        success: false,
+        cancelled: false,
+        uri: "",
+      });
+
+      await expect(exportBackupFile(fileName, validFile)).rejects.toMatchObject({
+        code: FileStorageErrorCode.WRITE_FAILED,
+        message: "Failed to save backup file",
+      });
+    });
+  });
 });
