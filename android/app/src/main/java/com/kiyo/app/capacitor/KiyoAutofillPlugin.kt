@@ -34,7 +34,10 @@ class KiyoAutofillPlugin : Plugin() {
     }
 
     private var autofillRepository: AutofillRepository? = null
-    
+
+    // Policy layer for sync (extracted from syncAccountsFromReact)
+    private lateinit var syncManager: AutofillSyncManager
+
     // Track pending sync call for auto-retry after authentication
     private var pendingSyncCall: PluginCall? = null
     private var pendingSyncAccountsJson: String? = null
@@ -51,9 +54,28 @@ class KiyoAutofillPlugin : Plugin() {
         super.load()
         // Repository is lazily initialized on first use via ensureRepositoryInitialized()
         // This ensures proper initialization timing without blocking load()
-        
-        // Register ActivityResultLauncher for authentication
-        val activity = getActivity() ?: return
+
+        // Policy layer: sync decisions live in AutofillSyncManager (testable without Capacitor)
+        syncManager = AutofillSyncManager(
+            ensureRepository = { ensureRepositoryInitialized() },
+            authNavigator = { accountsJson -> authActivityLauncher.launch(authIntent()) },
+            invalidateRepository = {
+                // 보안 리셋(다운그레이드 등) 후 예전 키로 열린 repository를 닫고 캐시를 비운다.
+                // 다음 ensureRepositoryInitialized() 호출에서 새 키로 재생성된다.
+                autofillRepository?.close()
+                autofillRepository = null
+            },
+        )
+
+        // Register ActivityResultLauncher for authentication.
+        // Guarded so JVM unit tests (no Capacitor bridge) can call load() without crashing;
+        // in production a bridge/activity is always present.
+        val activity = try {
+            getActivity()
+        } catch (e: Exception) {
+            Log.w(TAG, "No Capacitor activity at load() - skipping auth launcher registration", e)
+            null
+        } ?: return
         val fragmentActivity = activity as FragmentActivity
         authActivityLauncher = fragmentActivity.registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -62,12 +84,31 @@ class KiyoAutofillPlugin : Plugin() {
         }
     }
 
+    private fun authIntent(): Intent {
+        val context = getContext() ?: throw IllegalStateException("Context is null")
+        // Launch AutofillAuthActivity directly for authentication.
+        // Previously this launched MainActivity which delegated to AutofillAuthActivity,
+        // but the ActivityResultLauncher was waiting for MainActivity's result (which never came).
+        // IMPORTANT: Do NOT use FLAG_ACTIVITY_NEW_TASK here - it breaks ActivityResultLauncher
+        // result delivery because the launched activity goes to a new task.
+        return Intent(context, Class.forName("com.kiyo.app.autofill.auth.AutofillAuthActivity")).apply {
+            putExtra("reason", "autofill_auth_required")
+        }
+    }
+
     private suspend fun ensureRepositoryInitialized(): AutofillRepository {
         return autofillRepository ?: CoroutineScope(Dispatchers.IO).async {
             val context = getContext() ?: throw IllegalStateException("Context is null")
-            val repository = AutofillRepository.create(context)
+            // [Autofill Matching Layer plan 2026-08-28]
+            // 프로덕션 경로: DB_KEY + INDEX_KEY 모두 주입.
+            // - DB_KEY: auth-required, 재래핑/리셋 가능 (DatabaseKeyManager.getKey)
+            // - INDEX_KEY: non-auth, 즉시 사용 가능 (DatabaseKeyManager.getIndexKey)
+            // 두 키 획득은 독립적이며 순서 무관. INDEX_KEY는 non-auth이므로 인증 프롬프트 발생 안 함.
+            val dbKey = DatabaseKeyManager.getKey(context).encoded
+            val indexKey = DatabaseKeyManager.getIndexKey(context)
+            val repository = AutofillRepository.create(context, dbKey, indexKey)
             autofillRepository = repository
-            Log.d(TAG, "AutofillRepository initialized")
+            Log.d(TAG, "AutofillRepository initialized with index helper")
             repository
         }.await()
     }
@@ -411,32 +452,15 @@ class KiyoAutofillPlugin : Plugin() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val context = getContext() ?: return@launch call.reject("Context is null")
-
-                // 보안 다운그레이드 감지: 잠금화면 제거로 auth-required 키가 무효화된 상태.
-                // 계정 원본 데이터는 React 앱(IndexedDB)에 그대로 남아 있으므로 즉시 리셋 후 재동기화한다.
-                // (리셋 대상은 자동완성 전용 DB뿐 — 사용자 데이터 소실 아님)
-                val currentAliasForDowngradeCheck = DatabaseKeyManager.getCurrentAlias(context)
-                if (DatabaseKeyManager.isSecurityDowngrade(currentAliasForDowngradeCheck)) {
-                    Log.w(TAG, "Security downgrade detected at sync - resetting security state immediately")
-                    DatabaseKeyManager.resetAutofillData(context)
-                    Log.w(TAG, "Security state reset completed - proceeding with fresh key")
-                    // 리셋 후 정상 흐름으로 계속 (새 키 생성됨)
-                }
-
-                val repository = ensureRepositoryInitialized()
-
                 val accountsJson = call.getString("accountsJson") ?: return@launch call.reject("No accounts JSON provided")
 
-                // 보안 업그레이드 감지: 잠금화면이 새로 설정되어 기존 키가 auth-required가 아닌 경우.
-                // getKey() 내부에서 DB_KEY가 auth-required 키로 자동 재래핑됨 → 사용자에게 안내.
-                val securityUpgraded = DatabaseKeyManager.wasSecurityUpgraded()
-
-                val result = repository.syncAccountsFromReact(accountsJson)
+                // Policy decisions (downgrade reset, upgrade flag, repository init) live in AutofillSyncManager
+                val result = syncManager.syncAccountsFromReact(context, accountsJson)
                 call.resolve(JSObject().apply {
-                    put("syncedCount", result.first)
-                    put("errorCount", result.second)
-                    put("success", result.second == 0)
-                    if (securityUpgraded) {
+                    put("syncedCount", result.syncedCount)
+                    put("errorCount", result.errorCount)
+                    put("success", result.success)
+                    if (result.securityUpgrade) {
                         put("securityUpgrade", true)
                         put("message", "기기 잠금 화면이 설정되어 자동완성 보안 키를 강화했습니다. 이제 동기화 시 기기 인증을 요구할 수 있습니다.")
                     }
@@ -446,14 +470,9 @@ class KiyoAutofillPlugin : Plugin() {
                 Log.d(TAG, "User authentication required for sync - storing pending sync")
                 pendingSyncCall = call
                 pendingSyncAccountsJson = call.getString("accountsJson")
-                
+
                 // Open auth activity and track result
-                val context = getContext() ?: return@launch call.reject("Context is null")
-                val intent = Intent(context, Class.forName("com.kiyo.app.MainActivity")).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    putExtra("reason", "autofill_auth_required")
-                }
-                authActivityLauncher.launch(intent)
+                authActivityLauncher.launch(authIntent())
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing accounts from React", e)
                 call.reject("Failed to sync accounts: ${e.message}")
@@ -535,31 +554,26 @@ class KiyoAutofillPlugin : Plugin() {
         pendingSyncAccountsJson = null
 
         if (result.resultCode == Activity.RESULT_OK) {
-            // Authentication succeeded - retry sync
+            // Authentication succeeded - retry sync via policy layer
             Log.d(TAG, "Authentication succeeded - retrying sync")
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val repository = ensureRepositoryInitialized()
-                    val accountsJsonStr = accountsJson ?: return@launch
-                    val syncResult = repository.syncAccountsFromReact(accountsJsonStr)
+            syncManager.handleAuthResult(
+                resultCode = result.resultCode,
+                accountsJson = accountsJson,
+                onSuccess = { syncResult ->
                     call.resolve(JSObject().apply {
-                        put("syncedCount", syncResult.first)
-                        put("errorCount", syncResult.second)
-                        put("success", syncResult.second == 0)
+                        put("syncedCount", syncResult.syncedCount)
+                        put("errorCount", syncResult.errorCount)
+                        put("success", syncResult.success)
                     })
-                } catch (e: android.security.keystore.UserNotAuthenticatedException) {
-                    // Still needs auth (shouldn't happen right after successful auth, but handle it)
-                    Log.d(TAG, "Still needs auth after authentication attempt")
+                },
+                onCancel = {
                     call.resolve(JSObject().apply {
                         put("authRequired", true)
                         put("success", false)
                         put("message", "Authentication required to access autofill database")
                     })
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error retrying sync after auth", e)
-                    call.reject("Failed to sync accounts: ${e.message}")
                 }
-            }
+            )
         } else {
             // Authentication failed or cancelled
             Log.d(TAG, "Authentication failed or cancelled - resultCode: ${result.resultCode}")

@@ -7,12 +7,14 @@ import com.getcapacitor.BridgeActivity;
 import com.kiyo.app.capacitor.KiyoAutofillPlugin;
 import com.kiyo.app.capacitor.KiyoFilePlugin;
 import com.kiyo.app.autofill.auth.AutofillAuthActivity;
+import com.kiyo.app.securekey.SecureKeyPlugin;
 
 public class MainActivity extends BridgeActivity {
 
     public MainActivity() {
         registerPlugin(KiyoAutofillPlugin.class);
         registerPlugin(KiyoFilePlugin.class);
+        registerPlugin(SecureKeyPlugin.class);
     }
 
     @Override

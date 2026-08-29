@@ -15,28 +15,30 @@ object IconResourceMapper {
 
     // 웹사이트 프리셋 아이콘 매핑
     private val websiteIconMap = mapOf(
-        "google.com" to R.drawable.ic_google,
-        "accounts.google.com" to R.drawable.ic_google,
-        "microsoft.com" to R.drawable.ic_microsoft,
-        "accounts.microsoft.com" to R.drawable.ic_microsoft,
-        "login.microsoftonline.com" to R.drawable.ic_microsoft,
-        "apple.com" to R.drawable.ic_apple,
-        "appleid.apple.com" to R.drawable.ic_apple,
-        "naver.com" to R.drawable.ic_naver,
-        "id.naver.com" to R.drawable.ic_naver,
+        "google.com" to R.drawable.google,
+        "accounts.google.com" to R.drawable.google,
+        "microsoft.com" to R.drawable.ic_default_site,
+        "accounts.microsoft.com" to R.drawable.ic_default_site,
+        "login.microsoftonline.com" to R.drawable.ic_default_site,
+        "apple.com" to R.drawable.apple,
+        "appleid.apple.com" to R.drawable.apple,
+        "naver.com" to R.drawable.naver,
+        "id.naver.com" to R.drawable.naver,
         "kakao.com" to R.drawable.ic_kakao,
         "accounts.kakao.com" to R.drawable.ic_kakao,
         "auth.kakao.com" to R.drawable.ic_kakao,
-        "github.com" to R.drawable.ic_github,
-        "facebook.com" to R.drawable.ic_facebook,
+        "github.com" to R.drawable.github,
+        "facebook.com" to R.drawable.facebook,
         "twitter.com" to R.drawable.ic_twitter,
         "x.com" to R.drawable.ic_twitter,
-        "instagram.com" to R.drawable.ic_instagram,
-        "amazon.com" to R.drawable.ic_amazon,
-        "netflix.com" to R.drawable.ic_netflix,
-        "discord.com" to R.drawable.ic_discord,
-        "dropbox.com" to R.drawable.ic_dropbox,
-        "steam.com" to R.drawable.ic_steam
+        "instagram.com" to R.drawable.instagram,
+        "amazon.com" to R.drawable.amazon,
+        "netflix.com" to R.drawable.netflix,
+        "discord.com" to R.drawable.discord,
+        "dropbox.com" to R.drawable.dropbox,
+        "steam.com" to R.drawable.steam
+        // Note: Microsoft 아이콘은 저작권 문제로 제외됨 (TRADEMARK ENFORCEMENT)
+        // 도메인 매칭은 유지하되 기본 아이콘(ic_default_site)으로 fallback
     )
 
     /**

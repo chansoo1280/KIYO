@@ -33,7 +33,9 @@ object DatabaseKeyManager {
     private val TAG = "DatabaseKeyManager"
     private val DB_ENCRYPTED_KEY = stringPreferencesKey("db_encrypted_key")
     private val CURRENT_ALIAS = stringPreferencesKey("current_master_key_alias")
+    private val INDEX_ENCRYPTED_KEY = stringPreferencesKey("index_encrypted_key")
     private const val AUTO_FILL_DB_NAME = "kiyo_autofill.db"
+    private const val INDEX_MASTER_ALIAS = "kiyo_index_master_key"
 
     /** 인덱스 alias 접두사 (`kiyo_master_key_1`, `kiyo_master_key_2`, ...) */
     private const val INDEXED_ALIAS_PREFIX = "kiyo_master_key_"
@@ -42,10 +44,21 @@ object DatabaseKeyManager {
     @Volatile
     private var securityUpgraded = false
 
+    /** 마지막 getKey()에서 보안 상태 리셋(키+DB 폐기)이 수행됐는지 (1회성) */
+    @Volatile
+    private var stateWasReset = false
+
     /** 업그레이드 수행 여부 확인 후 플래그 소비 (1회성) */
     fun wasSecurityUpgraded(): Boolean {
         val value = securityUpgraded
         securityUpgraded = false
+        return value
+    }
+
+    /** 리셋 수행 여부 확인 후 플래그 소비 (1회성). true면 호출자는 캐시된 repository를 폐기해야 한다. */
+    fun wasStateReset(): Boolean {
+        val value = stateWasReset
+        stateWasReset = false
         return value
     }
 
@@ -100,17 +113,14 @@ object DatabaseKeyManager {
         }
 
         val currentAlias = resolveCurrentAlias(prefs)
-
-        // 보안 업그레이드: 잠금화면이 생겼는데 현재 키는 auth-required가 아닌 경우
+        Log.e("DEBUG", "needsSecurityUpgrade=${KeystoreManager.needsSecurityUpgrade(currentAlias)} currentAlias=$currentAlias")
+        // 보안 업그레이드: 잠금화면이 생겼는데 현재 키는 auth-required가 아닌 경우.
+        // 재래핑 실패는 예외를 삼키지 않고 그대로 전파한다 — UserNotAuthenticatedException이
+        // 여기서 잡히면 fill/sync 경로의 사용자 인증 요청이 발화하지 않게 된다 (검증됨 2026-08).
         if (KeystoreManager.needsSecurityUpgrade(currentAlias)) {
-            try {
-                val rewrapped = rewrapDbKey(context, currentAlias, json)
-                securityUpgraded = true
-                return rewrapped
-            } catch (e: Exception) {
-                Log.e(TAG, "Security upgrade failed, falling back to normal flow: ${e.message}", e)
-                // 실패 시 구 alias + 구 블롭 보존 상태로 정상 읽기 흐름 진행 (완전 롤백)
-            }
+            val rewrapped = rewrapDbKey(context, currentAlias, json)
+            securityUpgraded = true
+            return rewrapped
         }
 
         val masterKey = KeystoreManager.getOrCreateKey(currentAlias)
@@ -126,6 +136,7 @@ object DatabaseKeyManager {
             // 파생 데이터 복구를 시도하지 않는다: 리셋 → 새 wrapping 즉시 커밋 → sync로 재구축.
             Log.w(TAG, "Master key permanently invalidated (PIN/biometric changed). Resetting autofill state")
             resetAutofillData(context)
+            stateWasReset = true
             Log.w(TAG, "Generating fresh DB_KEY after reset (autofill DB will be rebuilt on next sync)")
             generateFreshStateAfterReset(context)
         } catch (e: javax.crypto.AEADBadTagException) {
@@ -133,6 +144,7 @@ object DatabaseKeyManager {
             // 예상치 못한 상태의 최후 복구: 리셋 후 재동기화 (공격적 리셋 지양 원칙상 로그 관찰 필요).
             Log.w(TAG, "DB_KEY decryption failed with AEADBadTagException - master key no longer matches. Resetting autofill state")
             resetAutofillData(context)
+            stateWasReset = true
             Log.w(TAG, "Generating fresh DB_KEY after reset (autofill DB will be rebuilt on next sync)")
             generateFreshStateAfterReset(context)
         } catch (e: Exception) {
@@ -145,6 +157,9 @@ object DatabaseKeyManager {
      * 원자적 재래핑: 현재 alias 키로 복호화 → 다음 인덱스 alias로 새 auth-required 키 생성 →
      * 재암호화 → (새 블롭 + 새 alias 포인터) 동시 커밋 → 커밋 성공 후 구 alias 삭제.
      * 중간 실패 시 구 alias + 구 블롭 + 구 포인터 모두 보존.
+     * 
+     * [중요] 신규 auth-required 키 사용 시 UserNotAuthenticatedException 발생하면
+     * DataStore 커밋하지 않고 중단 → 구 키 유지 → 호출자가 인증 프롬프트 경로로 연결.
      */
     private suspend fun rewrapDbKey(context: Context, currentAlias: String, json: String): SecretKey {
         Log.w(TAG, "Security upgrade needed: re-wrapping DB_KEY ($currentAlias → next index)")
@@ -152,8 +167,17 @@ object DatabaseKeyManager {
         val plainBytes = KeystoreManager.decrypt(oldMasterKey, EncryptedKey.fromJson(json))
 
         val newAlias = nextAlias(currentAlias)
-        val newMasterKey = KeystoreManager.getOrCreateKey(newAlias)
-        val reEncrypted = KeystoreManager.encrypt(newMasterKey, plainBytes)
+        val newMasterKey = KeystoreManager.createKey(newAlias) // 새 키 생성
+
+        // 신규 키로 재암호화 시도 — auth cache 없으면 UserNotAuthenticatedException 발생
+        val reEncrypted = try {
+            KeystoreManager.encrypt(newMasterKey, plainBytes)
+        } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+            // 신규 키 auth cache 없음 → 재래핑 중단, 구 키 유지
+            Log.w(TAG, "New master key requires authentication (cache not primed), aborting rewrap. Old alias preserved: $currentAlias")
+            // 신규 생성된 키는 그대로 두되(나중에 정리), DataStore는 건드리지 않음
+            throw e
+        }
 
         context.securityDataStore.edit { preferences ->
             preferences[DB_ENCRYPTED_KEY] = EncryptedKey.toJson(reEncrypted)
@@ -271,6 +295,41 @@ object DatabaseKeyManager {
             Log.w(TAG, "Downgrade check failed: ${e.message}")
             false
         }
+    }
+
+    /**
+     * [Autofill Matching Layer plan 2026-08-28]
+     * 인덱스 DB용 INDEX_KEY 획득 (비인증 Keystore 키로 래핑된 랜덤 키).
+     * - Keystore non-auth 마스터 키(kiyo_index_master_key)로 INDEX_KEY를 래핑/언래핑
+     * - 래핑된 블롭은 DataStore에 저장 (별도 preference 키)
+     * - 잠금화면 변경 시에도 재래핑 불필요 (non-auth 키이므로 무효화되지 않음)
+     * - 사용자 인증 불필요 (non-auth 마스터 키)
+     */
+    suspend fun getIndexKey(context: Context): ByteArray {
+        KeystoreManager.init(context)
+        val prefs = context.securityDataStore.data.first()
+        val json = prefs[INDEX_ENCRYPTED_KEY]
+
+        val indexMasterAlias = INDEX_MASTER_ALIAS
+        val indexMasterKey = KeystoreManager.getOrCreateKey(indexMasterAlias, requireAuth = false)
+
+        if (json == null) {
+            Log.d(TAG, "No INDEX_KEY found, generating and storing new key")
+            val newIndexKey = DatabaseKeyGenerator.generate()
+            val encrypted = KeystoreManager.encrypt(indexMasterKey, newIndexKey.encoded)
+            val jsonOut = EncryptedKey.toJson(encrypted)
+            context.securityDataStore.edit { preferences ->
+                preferences[INDEX_ENCRYPTED_KEY] = jsonOut
+            }
+            Log.d(TAG, "New INDEX_KEY generated and stored encrypted (non-auth master)")
+            return newIndexKey.encoded
+        }
+
+        Log.d(TAG, "Reading existing encrypted INDEX_KEY from DataStore")
+        val encrypted = EncryptedKey.fromJson(json)
+        val plainBytes = KeystoreManager.decrypt(indexMasterKey, encrypted)
+        Log.d(TAG, "INDEX_KEY decrypted successfully (${plainBytes.size} bytes)")
+        return plainBytes
     }
 
     /** 현재 마스터 키 alias 조회 (다운그레이드 체크 등 외부 호출용) */

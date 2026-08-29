@@ -106,16 +106,33 @@ const AccountEdit = () => {
     string | null
   >(null);
   const [websiteSelectorOpen, setWebsiteSelectorOpen] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<
+    import("@/models/websitePreset").WebsitePreset | null
+  >(null);
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
   const handleWebsiteSelect = useCallback(
     (preset: import("@/models/websitePreset").WebsitePreset) => {
+      // Always overwrite with preset values (URL, domain, packageNames)
       setWebsiteUrl(preset.websiteUrl);
       setDomain(preset.domain);
+      if (preset.packageNames && preset.packageNames.length > 0) {
+        setPackageName(preset.packageNames.join(", "));
+      } else {
+        setPackageName("");
+      }
+      setSelectedPreset(preset);
     },
     [],
   );
+
+  const handleClearSelection = useCallback(() => {
+    setWebsiteUrl("");
+    setDomain("");
+    setPackageName("");
+    setSelectedPreset(null);
+  }, []);
 
   const handleTagInput = useCallback((value: string) => {
     const parsed = value
@@ -236,6 +253,8 @@ const AccountEdit = () => {
           onWebsiteUrlChange={setWebsiteUrl}
           domain={domain}
           onWebsiteSelectorClick={() => setWebsiteSelectorOpen(true)}
+          selectedPreset={selectedPreset}
+          onClearSelection={handleClearSelection}
           tagInput={tagInput}
           onTagInputChange={handleTagInput}
           packageName={packageName}
@@ -246,6 +265,8 @@ const AccountEdit = () => {
           open={websiteSelectorOpen}
           onClose={() => setWebsiteSelectorOpen(false)}
           onSelect={handleWebsiteSelect}
+          onClear={handleClearSelection}
+          currentPreset={selectedPreset}
           currentTitle={title}
           currentWebsiteUrl={websiteUrl}
         />

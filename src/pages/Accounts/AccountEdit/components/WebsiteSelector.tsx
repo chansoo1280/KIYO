@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { FormDialog } from "@/components/dialogs/FormDialog";
+import PresetIcon from "@/components/PresetIcon";
 import type { WebsitePreset } from "@/models/websitePreset";
 import { searchPresets, getPresetsByCategory } from "@/data/websitePresets";
 
@@ -7,6 +8,8 @@ interface WebsiteSelectorProps {
   open: boolean;
   onClose: () => void;
   onSelect: (preset: WebsitePreset) => void;
+  onClear: () => void; // Called when user closes dialog without selecting a preset (or toggles off the current one)
+  currentPreset?: WebsitePreset | null; // Currently selected preset (for toggle-off behavior)
   currentTitle?: string;
   currentWebsiteUrl?: string;
 }
@@ -15,11 +18,19 @@ const WebsiteSelector = ({
   open,
   onClose,
   onSelect,
+  onClear,
+  currentPreset = null,
   currentTitle = "",
   currentWebsiteUrl = "",
 }: WebsiteSelectorProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState<WebsitePreset | null>(null);
+  // Initialize from currentPreset so editing an existing account shows the right selection
+  const [selectedPreset, setSelectedPreset] = useState<WebsitePreset | null>(currentPreset);
+
+  // Sync internal state when currentPreset changes (e.g., parent clears selection)
+  useEffect(() => {
+    setSelectedPreset(currentPreset);
+  }, [currentPreset]);
 
   const presetsByCategory = useMemo(() => getPresetsByCategory(), []);
 
@@ -46,7 +57,8 @@ const WebsiteSelector = ({
   }, []);
 
   const handlePresetSelect = useCallback((preset: WebsitePreset) => {
-    setSelectedPreset(preset);
+    // Toggle: clicking the already-selected preset deselects it
+    setSelectedPreset((current) => (current?.id === preset.id ? null : preset));
   }, []);
 
   const handleApplyRecommendation = useCallback(
@@ -67,13 +79,26 @@ const WebsiteSelector = ({
     [],
   );
 
+  // Close without selecting — propagate the clear intent so the parent can wipe fields
+  const handleCloseWithoutSelect = useCallback(() => {
+    // If user had a selection in this session (or a pre-existing currentPreset) but didn't confirm,
+    // treat close as a clear so the parent doesn't keep stale URL/domain/packageNames.
+    if (currentPreset) {
+      onClear();
+    }
+  }, [currentPreset, onClear]);
+
   const handleConfirm = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
     if (selectedPreset) {
       await onSelect(selectedPreset);
       onClose();
+    } else {
+      // No selection → clear pre-existing fields
+      onClear();
+      onClose();
     }
-  }, [selectedPreset, onSelect, onClose]);
+  }, [selectedPreset, onSelect, onClear, onClose]);
 
   // Category labels
   const categoryLabels: Record<string, string> = {
@@ -92,10 +117,14 @@ const WebsiteSelector = ({
       open={open}
       title="사이트 선택"
       description="자주 사용하는 사이트를 선택하면 URL과 도메인이 자동으로 입력됩니다."
-      onClose={onClose}
+      onClose={() => {
+        handleCloseWithoutSelect();
+        onClose();
+      }}
       onSubmit={handleConfirm}
       submitLabel="선택 완료"
-      disabled={!selectedPreset && !recommendation.preset}
+      // Always allow submit so the user can press "선택 완료" to clear the selection
+      disabled={false}
     >
       <div className="space-y-6 max-h-[60vh] overflow-y-auto">
         {/* Search Input */}
@@ -138,9 +167,12 @@ const WebsiteSelector = ({
             </p>
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[var(--color-text-h)] truncate">{recommendation.preset.name}</p>
-                  <p className="mt-1 text-sm text-[var(--color-text-muted)] truncate">{recommendation.preset.domain}</p>
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <PresetIcon preset={recommendation.preset} size={32} className="flex-shrink-0 mt-1" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[var(--color-text-h)] truncate">{recommendation.preset.name}</p>
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)] truncate">{recommendation.preset.domain}</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -168,7 +200,8 @@ const WebsiteSelector = ({
                   onClick={() => handleSearchResultSelect(preset, onSelect, onClose)}
                   className="w-full text-left rounded-2xl border p-3 transition-all border-[var(--color-border)] bg-[var(--color-code-bg)] hover:bg-[var(--color-border)]"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <PresetIcon preset={preset} size={28} className="flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[var(--color-text-h)] truncate">{preset.name}</p>
                       <p className="mt-1 text-sm text-[var(--color-text-muted)] truncate">{preset.domain}</p>
@@ -214,7 +247,8 @@ const WebsiteSelector = ({
                             : "border-[var(--color-border)] bg-[var(--color-code-bg)] hover:bg-[var(--color-border)]"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <PresetIcon preset={preset} size={28} className="flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-[var(--color-text-h)] truncate">{preset.name}</p>
                             <p className="mt-1 text-sm text-[var(--color-text-muted)] truncate">{preset.domain}</p>

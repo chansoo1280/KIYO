@@ -117,10 +117,11 @@ class AutofillAuthActivity : AppCompatActivity() {
                  * Here the user has authenticated, so Keystore DB_KEY access should be available.
                  */
                 val dbKey = DatabaseKeyManager.getKey(this@AutofillAuthActivity).encoded
+                val indexKey = DatabaseKeyManager.getIndexKey(this@AutofillAuthActivity)
 
-                Log.d(TAG, "DB_KEY obtained after authentication")
+                Log.d(TAG, "DB_KEY and INDEX_KEY obtained after authentication")
 
-                val repository = AutofillRepository.create(this@AutofillAuthActivity, dbKey)
+                val repository = AutofillRepository.create(this@AutofillAuthActivity, dbKey, indexKey)
 
                 /*
                  * Get AssistStructure from the authentication Intent.
@@ -185,16 +186,15 @@ class AutofillAuthActivity : AppCompatActivity() {
 
                 Log.d(TAG, "Authenticated lookup: domain='$domain', packages=$packageNames")
 
-                // Look up matching accounts
-                val accounts = if (domain.isNotEmpty()) {
-                    repository.findMatchingAccounts(domain)
+                // [Autofill Matching Layer plan 2026-08-28] 1차 필터링: 인덱스 DB (INDEX_KEY, non-auth)
+                val matchingIds = repository.findMatchingAccountIdsByIndex(domain, packageNames)
+                Log.d(TAG, "Index matched ${matchingIds.size} account IDs")
+
+                val accounts: List<AutofillRepository.AutofillAccount> = if (matchingIds.isNotEmpty()) {
+                    // 2단계: 매칭된 ID로 메인 DB 조회 (DB_KEY 필요)
+                    repository.getAccountsByIds(matchingIds)
                 } else {
-                    val result = mutableListOf<AutofillRepository.AutofillAccount>()
-                    for (pkg in packageNames) {
-                        result.addAll(repository.findByPackageName(pkg))
-                        if (result.isNotEmpty()) break
-                    }
-                    result
+                    emptyList()
                 }
 
                 Log.d(TAG, "Authenticated lookup found ${accounts.size} accounts")

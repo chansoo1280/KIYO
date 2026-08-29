@@ -31,6 +31,8 @@ object KeystoreManager : KeystoreProvider {
     private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     /** 레거시(무인덱스) alias — 기존 기기 마이그레이션에서 첫 current_alias로 사용 */
     const val LEGACY_KEY_ALIAS = "kiyo_master_key"
+    /** 인덱스 DB 전용 비인증 Keystore 키 alias */
+    const val INDEX_KEY_ALIAS = "kiyo_index_key"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val KEY_SIZE = 256
     private const val GCM_IV_LENGTH = 12
@@ -57,21 +59,61 @@ object KeystoreManager : KeystoreProvider {
     }
 
     @Throws(Exception::class)
-    fun getOrCreateKey(alias: String): SecretKey {
+    fun createKey(alias: String): SecretKey = loadKeyStoreEntry(alias) {
+        generateNewKey(keyStore = it, alias = alias)
+    }
+
+    /**
+     * Keystore를 로드하고 [init]으로 키 준비(생성/기존 사용)한 뒤 entry를 반환한다.
+     * getOrCreateKey/createKey의 중복 본문을 통합.
+     *
+     * 주의: auth-required 키가 인증 만료 상태여도 getEntry 자체는 성공한다.
+     * 실제 암/복호화 시점에 UserNotAuthenticatedException이 발생하고,
+     * 호출자(AutofillService)가 인증 프롬프트 경로로 연결한다.
+     */
+    private inline fun loadKeyStoreEntry(
+        alias: String,
+        init: (KeyStore) -> Unit
+    ): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
+        init(keyStore)
+        val entry = keyStore.getEntry(alias, null) as KeyStore.SecretKeyEntry
+        Log.d(TAG, "Master key loaded from Keystore: alias=$alias")
+        return entry.secretKey
+    }
 
+    fun getOrCreateKey(alias: String): SecretKey = loadKeyStoreEntry(alias) { keyStore ->
         if (!keyStore.containsAlias(alias)) {
             generateNewKey(keyStore, alias)
         }
+    }
 
-        // auth-required 키가 인증 만료 상태여도 getEntry 자체는 성공한다.
-        // 실제 암/복호화 시점에 UserNotAuthenticatedException이 발생하고,
-        // 호출자(AutofillService)가 인증 프롬프트 경로로 연결한다.
-        val entry = keyStore.getEntry(alias, null) as KeyStore.SecretKeyEntry
+    /**
+     * [Autofill Matching Layer plan 2026-08-28]
+     * requireAuth 값을 명시적으로 강제하는 overload.
+     * - requireAuth=true: 잠금화면이 있으면 auth-required 키, 없으면 non-auth (기존 generateNewKey 정책)
+     * - requireAuth=false: 잠금화면 무관하게 무조건 non-auth 키 생성
+     *
+     * 기존 1-인자 getOrCreateKey(alias)와의 차이:
+     * - 1-인자: 잠금화면 기반 자동 결정 (generateNewKey가 내부에서 분기)
+     * - 2-인자: requireAuth=false 명시 시 잠금화면 무관 non-auth 강제
+     */
+    @Throws(Exception::class)
+    fun getOrCreateKey(alias: String, requireAuth: Boolean): SecretKey = loadKeyStoreEntry(alias) { keyStore ->
+        if (!keyStore.containsAlias(alias)) {
+            generateNewKey(keyStore, alias, requireAuth = requireAuth)
+        }
+    }
 
-        Log.d(TAG, "Master key loaded from Keystore: alias=$alias")
-        return entry.secretKey
+    /**
+     * [Autofill Matching Layer plan 2026-08-28]
+     * 인덱스 DB 전용 비인증 키. requireAuth=false 강제.
+     * - 비인증 키이지만 Keystore TEE 밖으로 유출 불가
+     * - 인덱스 DB에 자격증명 없음(domain, packageNames만 보호)
+     */
+    fun getOrCreateIndexKey(): SecretKey {
+        return getOrCreateKey(INDEX_KEY_ALIAS, requireAuth = false)
     }
 
     /**
@@ -137,8 +179,15 @@ object KeystoreManager : KeystoreProvider {
     /**
      * Generate a new key under the given alias.
      * auth-required 여부는 현재 잠금화면 상태(isSecureLockScreenEnabled)로 판정.
+     *
+     * [Autofill Matching Layer plan 2026-08-28]
+     * requireAuth default parameter 추가:
+     * - requireAuth=true (기본값, 기존 동작과 동일): 잠금화면이 있으면 auth-required,
+     *   없으면 non-auth (기존 generateNewKey 정책 그대로).
+     * - requireAuth=false: 잠금화면 무관하게 무조건 non-auth 키 생성.
+     *   이 경로는 INDEX_KEY 생성 전용이며, 일반 마스터 키 경로에서는 절대 호출되지 않음.
      */
-    private fun generateNewKey(keyStore: KeyStore, alias: String) {
+    private fun generateNewKey(keyStore: KeyStore, alias: String, requireAuth: Boolean = true) {
         val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
         val builder = KeyGenParameterSpec.Builder(
             alias,
@@ -147,16 +196,20 @@ object KeystoreManager : KeystoreProvider {
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(KEY_SIZE)
-
-        if (isSecureLockScreenEnabled()) {
+        Log.d(TAG, "isSecureLockScreenEnabled()=${isSecureLockScreenEnabled()}, requireAuth=$requireAuth")
+        
+        val lockScreenEnabled = isSecureLockScreenEnabled()
+        val shouldRequireAuth = requireAuth && lockScreenEnabled
+        
+        if (shouldRequireAuth) {
             // 보안 잠금화면(PIN/패턴/생체인증)이 있을 때만 인증 요구 키 생성 가능.
             // 없는 상태에서 setUserAuthenticationRequired(true)를 호출하면
             // IllegalStateException: "Secure lock screen must be enabled..." 발생.
             //
-            // 디버그 빌드에서는 인증 유효시간을 30초로 단축해
-            // "인증 캐시 만료 → fill 시 프롬프트" 경로를 빠르게 재현/검증할 수 있게 한다.
+            // 디버그 빌드에서는 인증 유효시간을 300초(5분)로 늘려
+            // 테스트 플로우(sync → 대기 → fill)에서 캐시 만료 방지.
             // 릴리스 빌드는 항상 30분 (프로덕션 보안 속성 불변).
-            val authValiditySeconds = if (BuildConfig.DEBUG) 30 else 30 * 60
+            val authValiditySeconds = if (BuildConfig.DEBUG) 300 else 30 * 60
             builder.setUserAuthenticationRequired(true)
                 .setUserAuthenticationParameters(
                     authValiditySeconds,
@@ -164,12 +217,20 @@ object KeystoreManager : KeystoreProvider {
                 )
             Log.d(TAG, "Master key generated WITH user authentication: alias=$alias, validity=${authValiditySeconds}s${if (BuildConfig.DEBUG) " (debug short)" else ""}")
         } else {
-            Log.w(TAG, "No secure lock screen - generating master key WITHOUT auth requirement: alias=$alias")
+            // requireAuth=false 명시 — 잠금화면 무관 non-auth 키 (INDEX_KEY 전용).
+            // 또는 requireAuth=true지만 잠금화면이 없는 경우 — 기존 동작 유지 (fallback to non-auth).
+            // setUserAuthenticationRequired(true)를 호출하지 않으므로
+            // 잠금화면 부재 상태에서도 IllegalStateException 없이 생성 가능.
+            if (requireAuth && !lockScreenEnabled) {
+                Log.w(TAG, "requireAuth=true but no secure lock screen - falling back to non-auth key: alias=$alias")
+            } else {
+                Log.w(TAG, "Generating non-auth key (explicit requireAuth=false): alias=$alias")
+            }
         }
 
         keyGenerator.init(builder.build())
         keyGenerator.generateKey()
-        Log.d(TAG, "New master key generated: alias=$alias")
+        Log.d(TAG, "New master key generated: alias=$alias, requireAuth=$requireAuth, lockScreenEnabled=$lockScreenEnabled")
     }
 
     /**

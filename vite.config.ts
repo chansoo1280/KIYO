@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import svgr from "vite-plugin-svgr";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
@@ -8,7 +9,13 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    // Treat *.svg?react imports as React components
+    // svgr() with default settings: SVG inherits viewBox, accepts width/height props
+    svgr(),
+    tailwindcss(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

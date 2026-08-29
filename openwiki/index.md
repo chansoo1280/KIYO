@@ -11,6 +11,7 @@ okf_version: "0.1"
 
 - [android](android/)
 - [architecture](architecture/)
+- [data-models](data-models/)
 - [errors](errors/)
 - [frontend](frontend/)
 - [models](models/)

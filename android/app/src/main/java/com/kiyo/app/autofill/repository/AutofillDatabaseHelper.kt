@@ -8,6 +8,11 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase
  * SQLCipher-based database helper for Android Autofill Service.
  * Uses AES-256 encryption via SQLCipher.
  * Database key is provided externally (from DatabaseKeyManager).
+ *
+ * 메모: SQLCipher 4.6.1에서 `cipher_memory_security` PRAGMA는 런타임에 효과 없음
+ * (SQLCipher Issue #48 — 빌드 시점에 고정). mlock ENOMEM 에러는 SQLCipher 공식
+ * "DB itself works normally" 비-치명적 경고이므로 무시. SQLiteDatabaseHook 사용
+ * 시 preKey/postKey JNI critical section 재진입이 데드락을 유발하므로 hook 미사용.
  */
 class AutofillDatabaseHelper(
     private val context: Context,
@@ -37,16 +42,12 @@ class AutofillDatabaseHelper(
 
     private var database: SQLiteDatabase? = null
 
-    /**
-     * Get readable database (opens with encryption key if not already open)
-     */
+    /** Get readable database (opens with encryption key if not already open) */
     fun getReadableDatabase(): SQLiteDatabase {
         return getDatabase(SQLiteDatabase.OPEN_READONLY)
     }
 
-    /**
-     * Get writable database (opens with encryption key if not already open)
-     */
+    /** Get writable database (opens with encryption key if not already open) */
     fun getWritableDatabase(): SQLiteDatabase {
         return getDatabase(SQLiteDatabase.OPEN_READWRITE)
     }
@@ -60,6 +61,7 @@ class AutofillDatabaseHelper(
         val dbFile = context.getDatabasePath(DATABASE_NAME)
         dbFile.parentFile?.mkdirs()
 
+        // 4-인자 시그니처 (hook 없음) — SQLCipher Issue #48 회피
         val newDb = SQLiteDatabase.openOrCreateDatabase(
             dbFile,
             encryptionKey,
@@ -70,13 +72,10 @@ class AutofillDatabaseHelper(
         database = newDb
 
         val cursor = newDb.rawQuery("PRAGMA user_version", null)
-
         var version = 0
-
         if (cursor.moveToFirst()) {
             version = cursor.getInt(0)
         }
-
         cursor.close()
 
         when {
@@ -95,17 +94,13 @@ class AutofillDatabaseHelper(
         return newDb
     }
 
-    /**
-     * Close the database
-     */
+    /** Close the database */
     fun close() {
         database?.close()
         database = null
     }
 
-    /**
-     * Create database schema
-     */
+    /** Create database schema */
     private fun onCreate(db: SQLiteDatabase) {
         val createTableSql = """
             CREATE TABLE $TABLE_ACCOUNTS (
@@ -133,9 +128,7 @@ class AutofillDatabaseHelper(
         Log.d(TAG, "Autofill database created successfully (encrypted with SQLCipher)")
     }
 
-    /**
-     * Upgrade database schema
-     */
+    /** Upgrade database schema */
     private fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         Log.w(TAG, "Upgrading database from version $oldVersion to $newVersion")
 
@@ -148,9 +141,7 @@ class AutofillDatabaseHelper(
         }
     }
 
-    /**
-     * Downgrade database (drop and recreate)
-     */
+    /** Downgrade database (drop and recreate) */
     fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         Log.w(TAG, "Downgrading database from version $oldVersion to $newVersion")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_ACCOUNTS")

@@ -70,9 +70,6 @@ export const TemplateFieldEditor = ({
               isDuplicateLabel ? "border-[var(--color-error)]" : "border-[var(--color-border)]"
             }`}
           />
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {field.type}
-          </span>
         </div>
         <button
           type="button"
@@ -80,7 +77,9 @@ export const TemplateFieldEditor = ({
           className="p-2 rounded-xl bg-[var(--color-error)]/10 text-[var(--color-error)] hover:bg-[var(--color-error)]/20 dark:bg-[var(--color-error)]/20 dark:hover:bg-[var(--color-error)]/30"
           aria-label="필드 삭제"
         >
-          ✕
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
 

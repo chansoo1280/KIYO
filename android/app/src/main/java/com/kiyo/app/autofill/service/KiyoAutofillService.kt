@@ -76,15 +76,6 @@ class KiyoAutofillService : AutofillService() {
         Log.d(TAG, "AutofillService destroyed")
     }
 
-    /**
-     * 요청 단위 repository 획득: 매번 현재 상태를 다시 읽는다 (캐시 없음).
-     * UserNotAuthenticatedException이 발생하면 호출자 catch에서 인증 프롬프트 경로로 연결된다.
-     */
-    private suspend fun openRepository(): AutofillRepository {
-        val dbKey = DatabaseKeyManager.getKey(this@KiyoAutofillService)
-        return AutofillRepository.create(this@KiyoAutofillService, dbKey.encoded)
-    }
-
     private fun openKiyoApp() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -93,8 +84,12 @@ class KiyoAutofillService : AutofillService() {
         startActivity(intent)
     }
 
-    /**
+    /**<|reserved_token_163698|>
      * Fill request handler - finds username/password fields and returns matching accounts
+     * 
+     * Two-stage matching:
+     * 1. Index DB (non-auth key) - fast filtering, no auth prompt
+     * 2. Main DB (auth-required key) - only if index has matches
      */
     override fun onFillRequest(
         request: FillRequest,
@@ -107,7 +102,8 @@ class KiyoAutofillService : AutofillService() {
             // Declare variables outside try block so they're accessible in catch
             var usernameId: AutofillId? = null
             var passwordId: AutofillId? = null
-            var repo: AutofillRepository? = null
+            var indexRepo: AutofillRepository? = null
+            var mainRepo: AutofillRepository? = null
 
             try {
                 // First, detect fields from the structure (needs to be done before potential auth)
@@ -182,25 +178,48 @@ class KiyoAutofillService : AutofillService() {
 
                 // Get domain from structure for account matching
                 val domain = ViewNodeExtractor.extractDomainFromStructure(rootViewNode)
-                Log.d(TAG, "Extracted domain: $domain, packages: $packageNames")
+                Log.d(TAG, "Extracted domain: '$domain', packages: $packageNames")
 
-                // Obtain a fresh repository for this request (may trigger auth)
-                repo = openRepository()
+                // ===== STAGE 1: Index DB only (non-auth key, never triggers auth) =====
+                val indexKey = DatabaseKeyManager.getIndexKey(this@KiyoAutofillService)
+                indexRepo = AutofillRepository.createForIndexOnly(this@KiyoAutofillService, indexKey)
 
-                // Get matching accounts using repository
-                val accounts = if (domain.isNotEmpty()) {
-                    repo.findMatchingAccounts(domain)
-                } else if (packageNames.isNotEmpty()) {
-                    // For native apps without webDomain, match by package name
-                    val accountsByPackage = mutableListOf<AutofillRepository.AutofillAccount>()
-                    for (pkg in packageNames) {
-                        accountsByPackage.addAll(repo.findByPackageName(pkg))
-                        if (accountsByPackage.isNotEmpty()) break
-                    }
-                    accountsByPackage
-                } else {
-                    emptyList()
+                // 1차 필터링: 인덱스 DB에서 매칭 (인증 불필요, 즉시 반환)
+                val matchingIds = indexRepo.findMatchingAccountIdsByIndex(domain, packageNames)
+                Log.d(TAG, "Index matched ${matchingIds.size} account IDs")
+
+                // 매칭 없으면 즉시 종료 — 인증 프롬프트도 안 뜸
+                if (matchingIds.isEmpty()) {
+                    Log.d(TAG, "No index match - returning empty response without auth")
+                    handler.post { callback.onSuccess(null) }
+                    return@launch
                 }
+
+                // ===== STAGE 2: Main DB (auth-required key) =====
+                // 매칭 있으면 메인 DB 키 획득 시도
+                val dbKey = try {
+                    DatabaseKeyManager.getKey(this@KiyoAutofillService).encoded
+                } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                    // 인증 필요 → 인증 응답 반환
+                    Log.d(TAG, "User authentication required for DB_KEY access")
+                    Log.d(TAG, "AuthResponse with usernameId=${usernameId != null}, passwordId=${passwordId != null}")
+                    if (usernameId == null && passwordId == null) {
+                        Log.d(TAG, "No fields for auth response")
+                        handler.post { callback.onSuccess(null) }
+                    } else {
+                        val response = FillResponseBuilder.createAuthResponse(
+                            this@KiyoAutofillService,
+                            usernameId,
+                            passwordId
+                        )
+                        handler.post { callback.onSuccess(response) }
+                    }
+                    return@launch
+                }
+
+                // 메인 DB에서 전체 계정 조회
+                mainRepo = AutofillRepository.create(this@KiyoAutofillService, dbKey, indexKey)
+                val accounts = mainRepo.getAccountsByIds(matchingIds)
                 Log.d(TAG, "Found ${accounts.size} matching accounts for domain: '$domain', packages: $packageNames")
 
                 if (accounts.isEmpty()) {
@@ -217,11 +236,9 @@ class KiyoAutofillService : AutofillService() {
                 handler.post { callback.onSuccess(response) }
 
             } catch (e: android.security.keystore.UserNotAuthenticatedException) {
-                // Authentication required -> request auth
-                Log.d(TAG, "User authentication required for DB_KEY access")
-                Log.d(TAG, "AuthResponse with usernameId=${usernameId != null}, passwordId=${passwordId != null}")
+                // Should not reach here (handled above), but safety net
+                Log.d(TAG, "User authentication required for DB_KEY access (fallback)")
                 if (usernameId == null && passwordId == null) {
-                    Log.d(TAG, "No fields for auth response")
                     handler.post { callback.onSuccess(null) }
                 } else {
                     val response = FillResponseBuilder.createAuthResponse(
@@ -235,11 +252,16 @@ class KiyoAutofillService : AutofillService() {
                 Log.e(TAG, "Error in onFillRequest", e)
                 handler.post { callback.onSuccess(null) }
             } finally {
-                // 요청 단위 수명: 반드시 닫는다 (stale DB 핸들이 다음 요청으로 넘어가지 않음)
+                // 요청 단위 수명: 반드시 닫는다
                 try {
-                    repo?.close()
+                    indexRepo?.close()
                 } catch (e: Exception) {
-                    Log.w(TAG, "Error closing repository", e)
+                    Log.w(TAG, "Error closing index repository", e)
+                }
+                try {
+                    mainRepo?.close()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error closing main repository", e)
                 }
             }
         }
@@ -259,8 +281,19 @@ class KiyoAutofillService : AutofillService() {
         CoroutineScope(Dispatchers.IO).launch {
             var repo: AutofillRepository? = null
             try {
-                // Obtain a fresh repository for this request (may trigger auth)
-                repo = openRepository()
+                // Obtain main DB key for save request (may trigger auth)
+                val dbKey = try {
+                    DatabaseKeyManager.getKey(this@KiyoAutofillService).encoded
+                } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+                    Log.d(TAG, "Save request needs auth")
+                    // SaveCallback does not support auth UI; complete silently.
+                    handler.post { callback.onSuccess() }
+                    return@launch
+                }
+
+                // Index key not needed for save (index only rebuilt on full sync)
+                val indexKey = DatabaseKeyManager.getIndexKey(this@KiyoAutofillService)
+                repo = AutofillRepository.create(this@KiyoAutofillService, dbKey, indexKey)
 
                 // Use fillContexts API (API 26+)
                 val fillContexts = request.fillContexts

@@ -1,4 +1,6 @@
 import { processWebsiteUrl } from "@/utils/urlUtils";
+import type { WebsitePreset } from "@/models/websitePreset";
+import PresetIcon from "@/components/PresetIcon";
 
 interface AccountTitleSectionProps {
   title: string;
@@ -7,6 +9,8 @@ interface AccountTitleSectionProps {
   onWebsiteUrlChange: (url: string) => void;
   domain: string;
   onWebsiteSelectorClick: () => void;
+  selectedPreset: WebsitePreset | null;
+  onClearSelection: () => void;
   tagInput: string;
   onTagInputChange: (value: string) => void;
   packageName: string;
@@ -20,6 +24,8 @@ export function AccountTitleSection({
   onWebsiteUrlChange,
   domain,
   onWebsiteSelectorClick,
+  selectedPreset,
+  onClearSelection,
   tagInput,
   onTagInputChange,
   packageName,
@@ -49,26 +55,7 @@ export function AccountTitleSection({
           className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           data-field-value="true"
         />
-        {domain && (
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            자동완성 도메인: <code className="text-[var(--color-accent)]">{domain}</code>
-          </p>
-        )}
       </label>
-
-      {/* Website Selector Button */}
-      <div className="mt-3">
-        <button
-          type="button"
-          onClick={onWebsiteSelectorClick}
-          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)] transition-colors flex items-center justify-between"
-        >
-          <span>🌐 자주 쓰는 사이트에서 선택</span>
-          <svg className="w-5 h-5 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
 
       <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
         안드로이드 패키지명 (자동완성용)
@@ -83,6 +70,46 @@ export function AccountTitleSection({
           쉼표(,)로 구분하여 여러 개 입력 가능
         </p>
       </label>
+
+      {/* Website Selector Button — placed below packageName so auto-fill is visible */}
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={onWebsiteSelectorClick}
+          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)] transition-colors flex items-center justify-between"
+        >
+          <span>🌐 자주 쓰는 사이트에서 선택</span>
+          <svg className="w-5 h-5 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        {selectedPreset && (
+          <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 px-3 py-2">
+            <PresetIcon preset={selectedPreset} size={20} className="flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[var(--color-text-h)] truncate">
+                {selectedPreset.name}
+              </p>
+              {domain && (
+                <p className="text-xs text-[var(--color-text-muted)] truncate">
+                  <code className="text-[var(--color-accent)]">{domain}</code>
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClearSelection}
+              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)] transition-colors"
+              aria-label="선택 취소"
+              title="선택 취소"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
 
       <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
         태그
