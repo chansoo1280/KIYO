@@ -1,7 +1,7 @@
 # KIYO Strategy
 
 name: "KIYO"
-last_updated: "2026-08-29"
+last_updated: "2026-08-30"
 
 ---
 
@@ -105,7 +105,14 @@ last_updated: "2026-08-29"
 - **파일 자동 저장(autosave) 지원** — 계정/템플릿 변경 시 즉시 암호화 저장, 수동 저장 불필요
 - **볼트 암호화 강화: 숫자 PIN(6자리) → 텍스트 패스프레이즈 지원** — PBKDF2 100k 유지, 엔트로피 실시간 측정·표시(zxcvbn 등), 최소 강도 가이드라인 적용
 - **크로스플랫폼 볼트 파일 포맷 표준화** — 플랫폼 간 내보내기/가져오기 호환성
-- **최근 신호:** sync flow 리팩터 + SAF 백업/복원, changePin 파이프라인 순서 수정, fileStorage pipeline 리팩터
+- **진척 (2026-08-30):** 6개 요구사항 중 4개 완료, 1개 보류 (Q6 §3.4), 1개 후속 결정 보류
+  - ✅ Plan-1 — `changePin` atomicity — [`2026-08-29-changePin-atomicity.md`](.hermes/plans/2026-08-29-changePin-atomicity.md): `replaceDatabaseData`(`db.ts:213-232`)가 단일 Dexie 트랜잭션으로 원자적 처리 확인 → **강화 불필요**, 코드 변경 0, 기존 7개 invariant 테스트로 충분
+  - ✅ Plan-4 — PIN 정책 완화 + zxcvbn strength meter — [`2026-08-30-pin-policy-relaxation.md`](docs/plans/2026-08-30-pin-policy-relaxation.md): 4~20자 mixed 허용 + zxcvbn 실시간 강도 표시 + secure context 가드 + FormDialog 에러 통합 (커밋 `ba4928a0`)
+  - ✅ Plan-5 — SAF 영구 URI 자동 백업 — [`2026-08-30-saf-persistent-uri-auto-backup.md`](docs/plans/2026-08-30-saf-persistent-uri-auto-backup.md): Settings "자동 백업 위치" 토글 + `ACTION_OPEN_DOCUMENT_TREE` 폴더 선택 + `takePersistableUriPermission` 영구 권한 + `persistVaultSnapshot` 성공 시 동일 스냅샷 URI 미러링 (커밋 `058e6369`)
+  - ✅ Plan-6 — autosave 안정화 & 동시성 — [`2026-08-29-autosave-stability-concurrency.md`](.hermes/plans/2026-08-29-autosave-stability-concurrency.md): `src/database/syncQueue.ts` 직렬화 큐 신규 + `accountStore`/`templateStore` → `enqueuePersistVaultSnapshot(getParamsFn)` 연결 + race/lock→unlock/연속 mutation 시나리오 4건 추가 + Android `AutosaveE2ETest` + 호스트 스크립트 `run-autosave-e2e.ps1` (커밋 `179368fc`)
+  - ⏸️ Plan-3 — 크로스플랫폼 볼트 파일 포맷 표준화 — **보류** (brainstorm §3.4 Q6): v2 트리거(KDF 변경, 레코드 필드 추가, iOS/Web 확장 결정) 발생 시 별도 brainstorm. 현 v1 hardcoding은 안전
+  - ❓ Plan-2 — SAF picker 취소 분기 회귀 테스트 — **보류** (brainstorm §11 Q7): 5줄 삼항 분기의 메시지 문자열 검증 가치가 좁고 native/E2E 회귀는 커버 못함. 재방문 트리거 기반 (brainstorm §11.6)
+- **최근 신호:** sync flow 리팩터 + SAF 백업/복원, changePin 파이프라인 순서 수정, fileStorage pipeline 리팩터, autosave 직렬화 큐, PIN 정책 완화, SAF 영구 URI 자동 백업
 
 ### 3. UX·접근성·인터랙션 품질 (UX & Accessibility)
 - 로딩 상태/스켈레톤 UI — 암호화/복호화·동기화·파일 I/O 중 시각적 피드백
@@ -113,6 +120,7 @@ last_updated: "2026-08-29"
 - 키보드 네비게이션/포커스 순서 — 웹·데스크톱 확장 대비, 스크린리더 대응
 - 에러 토스트/인라인 에러 — 네이티브/브리지 에러를 사용자 언어로 매핑
 - 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
+- **후속 후보 — Plan-7: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm §12](docs/brainstorms/2026-08-29-vault-file-integrity.md)) — 3단계 (폴더 선택 → 파일 이름 → 암호 입력) 라우트 기반 흐름으로 모바일 키보드 가시성·뒤로가기 모호함·"되돌리기 어려운 결정" 가시성 개선. §2 볼트 무결성과 분리된 UX 개선 항목이며, Plan-4 (패스프레이즈) 도입 시 Step 3가 자연스럽게 통합됨
 - **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
 
 ### 4. 세션·자동잠금 보안 (Session & Auto-lock Security)
