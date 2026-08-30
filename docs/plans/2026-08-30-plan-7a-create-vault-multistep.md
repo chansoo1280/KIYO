@@ -388,8 +388,46 @@ src/pages/CreateVault/steps/PinStep.test.tsx      # 단위 테스트
 - `FileCreateDialog` 완전 제거 (2차 PR)
 - **`FileOpenDialog` (Home의 "파일 선택")** — Plan-7a 범위 밖, 별도 plan (D4-b 결정). 현재 모달 그대로 유지
 - Plan-7b (폴더 선택 + 자동 백업 통합)
-- 비암호화 볼트 신규 생성 UI
 - 자동 종료/잠금/세션 만료 등 다른 흐름
+
+---
+
+# 구현 노트 (1차 PR 머지 후 발견/수정 사항)
+
+## "비밀번호 없이 만들기" 버튼 추가 (Plan-7a 1차 PR e878f85b, plan 문서 외)
+
+- **위치:** `src/pages/CreateVault/steps/PinStep.tsx:78-87`, `src/pages/CreateVault/index.tsx:48-61` (`handleSkip`)
+- **행위:** Step 2에서 PIN 입력 대신 텍스트 링크 클릭 → `createDataFile(name)` (PIN 인자 없음) → 평문 JSON 저장 → `/accounts`
+- **plan 문서 vs 구현 차이:**
+  - plan §"비-목표"는 "비암호화 볼트 신규 생성 UI"라고 명시했으나, 1차 PR 구현은 우회 경로(별도 버튼)를 만들어 비암호화 흐름을 유지
+  - 사용자 의견 또는 UX 결정으로 추정 — 정확한 의도는 plan에 기록되지 않음
+- **Android E2E 영향:** `CreateVaultPage.createVault(encrypted = false)`는 `비밀번호 없이 만들기` 버튼 클릭으로 매핑. `AutofillE2ETest.kt:84`의 `uniqueVaultName(encrypted = false)` 경로도 동일하게 동작.
+- **Plan-7a 2차 PR에서 결정 필요:** (a) "비밀번호 없이 만들기" 유지, (b) Plan-7a 1차 PR의 의도(비암호화 신규 제거)에 맞춰 버튼 제거
+
+## Android E2E 갱신 (Plan-7a 후속, 2026-08-30)
+
+1차 PR 머지 후 `FileCreateDialog` 기반 Android E2E(`VaultCreateDialog.kt`)는 다음 이유로 모두 깨짐:
+- input id: `vault-name-input` → `vault-name` (suffix 사라짐)
+- 암호화 체크박스(`파일 암호화 사용`) 완전 제거
+- PIN placeholder: `6자리 PIN` → `4~20자 PIN` (Plan-4 정책)
+- `<form>` wrapper 제거 + `type="submit"` 버튼 미사용
+- "취소" 버튼 → 헤더 "홈으로" 버튼 (aria-label)
+
+**갱신 결과:**
+- `VaultCreateDialog.kt` → `CreateVaultPage.kt`로 파일명/클래스명 변경 (pageobject 의미 일치)
+- 페이지 기반 2단계 흐름: Step 1 입력 → "다음" → Step 2 PIN/skip → "생성"/"비밀번호 없이 만들기" → `/accounts`
+- `data-testid` 기반 셀렉터 (React E2E와 동일 전략)
+- `HomePage.kt`: `clickCreateVaultButton(): CreateVaultPage` 반환 타입 갱신
+- `TestDataFactory.kt`: `.json 자동 부여` 출처 코멘트 갱신 (FileCreateDialog → CreateVaultPage)
+
+**E2E 본 실행:** 사용자 직접 (`run-autofill-e2e.ps1`, `run-autosave-e2e.ps1`, `run-biometric-e2e.ps1`).
+
+**완료 (2026-08-30):**
+- `VaultCreateDialog.kt` → `CreateVaultPage.kt` rename + 페이지 기반 재작성
+- `HomePage.kt` `clickCreateVaultButton(): CreateVaultPage` 반환 타입 갱신
+- `TestDataFactory.kt` 코멘트 갱신
+- 빌드 검증: `npm run check` 383/383 통과, `:app:compileDebugAndroidTestKotlin` 성공, `:app:installDebugAndroidTest` 성공
+- 사용자 E2E 직접 실행: `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 (2026-08-30)
 
 ---
 
@@ -506,6 +544,7 @@ Plan-7a 1차 PR 롤백:
 - [ ] `npm run build` 통과
 - [ ] 수동 verification 7개 항목 통과
 - [ ] Android `npx cap sync android` 후 빌드 OK (UI 변경만, native 영향 0)
+- [ ] Android E2E (`run-autofill-e2e.ps1`, `run-autosave-e2e.ps1`, `run-biometric-e2e.ps1`) 전부 통과 (Plan-7a-android-e2e 갱신)
 
 **완료 시점이 아닌 plan 작성 시점에 확인 불가한 항목:** 위 [ ] 항목들. 이 plan은 **다른 plan과 동일하게** ce-work가 실제 구현/검증.
 
@@ -519,6 +558,6 @@ Plan-7a 1차 PR 롤백:
 - **Plan-A2:** 초기 진입 Skeleton
 - **Plan-B:** `Button.loading`
 - **a11y audit:** axe-core CI + 키보드 Playwright
-- **Plan-7a-android-e2e:** Android autofill E2E (`test:e2e:android`)의 vault 생성 setup이 `FileCreateDialog` → `/create-vault`로 전환됨에 따라 깨질 가능성. `noAuthFill`/`authResync` 등의 setup 단계를 페이지 기반으로 갱신. 별도 작업.
+- **Plan-7a-android-e2e:** Android autofill E2E (`test:e2e:android`)의 vault 생성 setup이 `FileCreateDialog` → `/create-vault`로 전환됨에 따라 깨질 가능성. `noAuthFill`/`authResync` 등의 setup 단계를 페이지 기반으로 갱신. 별도 작업. **완료 (2026-08-30): `CreateVaultPage.kt`로 페이지 기반 갱신 + `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 확인.**
 
 각 plan이 진행되면 Plan-7a 호출처는 cross-plan 통합으로 갱신 (특히 `mapError` import 교체).
