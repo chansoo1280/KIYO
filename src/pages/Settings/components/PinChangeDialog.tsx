@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FormDialog } from "@/components/dialogs/FormDialog";
 import { fileTable } from "@/database/fileTable";
 import { verifyPin } from "@/crypto/encryption";
+import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 
 interface PinChangeDialogProps {
   open: boolean;
@@ -39,12 +40,8 @@ export const PinChangeDialog = ({
       throw new Error("새 PIN을 입력하세요.");
     }
 
-    if (newPin.length < 4 || newPin.length > 6) {
-      throw new Error("PIN은 4~6자리 숫자여야 합니다.");
-    }
-
-    if (!/^\d+$/.test(newPin)) {
-      throw new Error("PIN은 숫자만 입력 가능합니다.");
+    if (newPin.length < 4 || newPin.length > 20) {
+      throw new Error("PIN은 4~20자로 입력해 주세요.");
     }
 
     if (newPin !== confirmPin) {
@@ -117,12 +114,13 @@ export const PinChangeDialog = ({
             className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
             placeholder={
               isEncrypted
-                ? "새 PIN 입력 (4~6자리 숫자)"
-                : "PIN 입력 (4~6자리 숫자)"
+                ? "새 PIN 입력 (4~20자)"
+                : "PIN 입력 (4~20자)"
             }
-            maxLength={6}
+            maxLength={20}
             autoFocus={!isEncrypted}
           />
+          <PinStrengthMeter pin={newPin} className="mt-2" />
         </div>
 
         <div>
@@ -139,7 +137,7 @@ export const PinChangeDialog = ({
             onChange={(e) => setConfirmPin(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
             placeholder={isEncrypted ? "새 PIN 재입력" : "PIN 재입력"}
-            maxLength={6}
+            maxLength={20}
           />
         </div>
       </div>

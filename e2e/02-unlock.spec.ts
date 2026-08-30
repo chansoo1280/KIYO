@@ -116,8 +116,8 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
     // 2. PIN 입력하지 않고 확인 버튼 클릭
     await page.getByRole('button', { name: '확인' }).click();
 
-    // 3. 에러 메시지 표시 확인
-    await expect(page.locator('[role="alert"]').filter({ hasText: '핀번호를 입력하세요' })).toBeVisible({ timeout: 5000 });
+    // 3. 에러 메시지 표시 확인 (Plan-4: "PIN은 4자 이상 입력해주세요.")
+    await expect(page.locator('[role="alert"]').filter({ hasText: 'PIN은 4자 이상 입력해주세요.' })).toBeVisible({ timeout: 5000 });
 
     // 4. 여전히 인증 페이지에 머물러 있어야 함
     await expect(page).toHaveURL(/\/auth/);

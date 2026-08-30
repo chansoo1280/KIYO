@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { FormDialog } from "./FormDialog";
+import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
+import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 
 interface FileCreateDialogProps {
   open: boolean;
@@ -30,7 +32,8 @@ const FileCreateDialog = ({
   const [encrypted, setEncrypted] = useState(true);
   const [pin, setPin] = useState("");
 
-  const confirmDisabled = !fileName.trim() || (encrypted && !pin);
+  const confirmDisabled =
+    !fileName.trim() || (encrypted && pin.length < MIN_PIN_LENGTH);
 
   const handleClose = () => {
     setFileName(defaultValue.replace(".json", ""));
@@ -45,8 +48,8 @@ const FileCreateDialog = ({
       throw new Error("파일 이름을 입력해주세요.");
     }
 
-    if (encrypted && !pin) {
-      throw new Error("PIN 번호를 입력해주세요.");
+    if (encrypted && pin.length < MIN_PIN_LENGTH) {
+      throw new Error(`PIN은 ${MIN_PIN_LENGTH}자 이상 입력해주세요.`);
     }
 
     await onConfirm({
@@ -105,13 +108,14 @@ const FileCreateDialog = ({
 
           <input
             type="password"
-            inputMode="numeric"
-            maxLength={6}
+            inputMode="text"
+            maxLength={20}
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            placeholder="6자리 PIN"
+            placeholder="4~20자 PIN"
             className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
+          <PinStrengthMeter pin={pin} className="mt-2" />
         </div>
       )}
     </FormDialog>

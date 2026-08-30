@@ -39,8 +39,8 @@ STRATEGY §2(볼트 파일 안정성)는 6개 요구사항으로 구성되며, �
 | 암호화 볼트 생성/열기/백업/복원/마이그레이션 무결성 | ✅ 구현 + 일부 테스트 | SAF 백업/복원의 자동 회귀 테스트 부재 |
 | PIN/패스프레이즈 변경 시 데이터 손실 0, salt 재사용 방지 | ✅ invariant 테스트됨 | fault-injection 부재 |
 | SAF 기반 파일 선택·복원 신뢰도 | ✅ 구현 | JVM/E2E 회귀 테스트 부재 |
-| **파일 자동 저장(autosave)** | ⚠️ **부분 구현 — 의미 변경됨** | 외부 파일(Documents) 자동 export는 의도적으로 제거됨. IndexedDB `files` 테이블 upsert만 잔존. 결정: `e8385826` (`.hermes/plan_old/separate-internal-autosave-from-external-backup.md`) |
-| **숫자 PIN(6자리) → 텍스트 패스프레이즈 + zxcvbn** | ❌ **미구현** | 가장 큰 사용자 모델 변경 |
+|| **파일 자동 저장(autosave)** | ✅ **구현 + 안정화 완료** (Plan-5/6) | 외부 `/Documents` 자동 export는 의도적으로 제거됨(`e8385826`). IndexedDB `files` upsert + SAF 영구 URI 미러링(`058e6369`) + syncQueue 직렬화(`179368fc`)로 동작. STRATEGY 원문 autosave의 "외부 백업" 의미는 Plan-5의 `takePersistableUriPermission` 기반 자동 백업으로 복원됨. |
+| **숫자 PIN(6자리) → 텍스트 패스프레이즈 + zxcvbn** | ✅ **구현 + 안정화 완료** (Plan-4) | PIN 정책 완화(4~20자, 문자/특수문자 자유) + zxcvbn 기반 강도 표시 + secure context 가드 + FormDialog 에러 표시. 커밋 대기. Plan: `docs/plans/2026-08-30-pin-policy-relaxation.md` (완료). 후속: 텍스트 패스프레이즈 별도 입력 모델은 Plan-4 범위 밖 |
 | **크로스플랫폼 볼트 파일 포맷 표준화** | ⚠️ 부분 충족 (v1 포맷 존재) | iOS/Web 데스크톱 확장 시 본격 작업 |
 
 ### 3.3 autosave 의미 변경 (중요)
@@ -186,7 +186,7 @@ autosave는 사실상 in-app(단일 디바이스) 신뢰성 경로이고, SAF ba
 | 1 | **Plan-2: SAF picker 취소 분기 회귀 테스트** | B | `KiyoFile.saveFile` mock으로 `cancelled: true` 반환 시 `exportBackupFile`이 "User cancelled backup" 던지는 시나리오 1건 (`fileStorage.error.integration.test.ts`에 추가). **기존 12개 시나리오 회귀 안 깨는 범위**, **Android E2E 영역은 Plan-2 범위 밖**, **`writeBackupToUri` 테스트는 Plan-5로 이관** | 소 |
 | 1 | **Plan-6: autosave 안정화 & 동시성** | A + E | **(1)** 기존 `fileStorage.lifecycle.integration.test.ts`에 race/lock→unlock 시나리오 추가, (2) `src/database/syncQueue.ts` 직렬화 큐 구현 (`enqueuePersistVaultSnapshot(getParamsFn)`), `accountStore`/`templateStore` 연결 변경, 에러 시 `resolve()`로 다음 작업 진행, 세션 최신값 getter로 읽기, (3) 연속 mutation 시 마지막 스냅샷 일관성 검증 | 중 |
 | 2 | **Plan-5: SAF 영구 URI 자동 백업** | A2 | Settings에 "자동 백업 위치" 토글 → `takePersistableUriPermission` → `persistVaultSnapshot` 성공 시 URI 추가 저장. **Plan-2 의존** | 중~대 |
-| 3 | **Plan-4: 패스프레이즈 도입** | C | zxcvbn + 입력 모델 + 마이그레이션 가드. **가장 마지막, 별도 트랙** | **대** |
+| 3 | ~~**Plan-4: 패스프라이즈 도입**~~ | C | ~~zxcvbn + 입력 모델 + 마이그레이션 가드. **가장 마지막, 별도 트랙**~~ **완료** — `docs/plans/2026-08-30-pin-policy-relaxation.md`. PIN 정책 완화 + zxcvbn 강도 표시 + secure context 가드 + FormDialog 에러 표시 통합 | ~~**대**~~ 완료 |
 | (인라인) | G | STRATEGY.md §2 진행 상태 갱신 | trivial |
 
 ## 9. Open Questions (사용자 결정 필요)
@@ -201,16 +201,16 @@ autosave는 사실상 in-app(단일 디바이스) 신뢰성 경로이고, SAF ba
 | Q6 | 크로스플랫폼 포맷 (옵션 F) 시점 | (a) 지금 v1 골격 / (b) iOS/Web 데스크톱 결정 후 / (c) 보류 | **✅ (c) 보류** | §3.4 — YAGNI. v2 트리거(KDF 변경, 필드 추가, iOS 확장) 발생 시 후속 brainstorm |
 | Q7 | Plan-2 (SAF picker 취소 분기 회귀 테스트) — 비용 대비 효과? | (a) 그대로 구현 / (b) 보류 | **✅ (b) 보류** | §11 참조 — mock 검증 대상이 5줄 삼항 분기의 메시지 문자열에 한정, 회귀 가치가 낮음. 트리거 기반 재방문. |
 
-**현재 상태:** Q1~Q7 **모두 결정 완료**. **Plan-1/Plan-6 완료, Plan-2는 보류(Q7)**, **Plan-3도 보류** (Q6, §3.4).
+**현재 상태:** Q1~Q7 **모두 결정 완료**. **Plan-1/Plan-4/Plan-5/Plan-6 완료** (Plan-4 커밋 대기), **Plan-2/Plan-3는 보류** (Q7 §11, Q6 §3.4). Plan-7 (다단계 페이지화)는 별도 brainstorm 진행 예정.
 
 **진행 순서 (사용자 결정 기반):**
 ```
-Plan-1 (changePin atomicity)        ──┐
-Plan-6 (autosave 안정화 & 동시성)    ──┘  ← 1차 둘 다 완료
+Plan-1 (changePin atomicity)         ──┐
+Plan-6 (autosave 안정화 & 동시성)     ─┤
+Plan-5 (SAF 영구 URI 자동 백업)        ─┘  ← 1·2차 모두 완료 (커밋 058e6369, a9ad2b73)
             ↓
-Plan-5 (SAF 영구 URI 자동 백업) — 2차 (독자 진행 가능)
-            ↓
-Plan-4 (패스프레이즈) — 가장 마지막, 별도 트랙
+Plan-4 (PIN 정책 완화 + zxcvbn) — 3차, 완료 (구현+검증 완료, 커밋 대기)
+                                   `docs/plans/2026-08-30-pin-policy-relaxation.md`
 
 (보류) Plan-2: §11 참조 — 트리거 기반
 (보류) Plan-3: §3.4 참조
@@ -219,11 +219,11 @@ Plan-4 (패스프레이즈) — 가장 마지막, 별도 트랙
 ## 10. Output
 
 - Problem understood ✅
-- Recommended direction: §2를 **Plan-1/Plan-6 완료, Plan-5 (2차) → Plan-4 (3차, 맨 마지막)** + 인라인 STRATEGY 갱신으로 분할. **Plan-2/Plan-3는 보류** (Q7 §11, Q6 §3.4)
+- Recommended direction: §2를 **Plan-1/Plan-5/Plan-6 완료, Plan-4 (3차, 유일한 미착수)** + 인라인 STRATEGY 갱신으로 분할. **Plan-2/Plan-3는 보류** (Q7 §11, Q6 §3.4)
 - 결정 완료: Q1=(a) Plan-5 포함, Q2=(c) Plan-4는 가장 마지막, Q3=(Plan-6 — 직렬화 큐), Q4=(a) React 통합만, Q5=(b) 없음/안전함, Q6=(c) Plan-3 보류, **Q7=(b) Plan-2 보류**
 - 결정 보류: 없음 (모든 Q 해결)
-- Plan 상태: **Plan-1/Plan-6 완료, Plan-5 미착수, Plan-4 미착수** | **Plan-2/Plan-3 보류**
-- 다음 액션: `ce-plan`으로 **Plan-5 (SAF 영구 URI 자동 백업)** 진입 가능. Plan-2는 트리거 발생 시 재방문 (§11).
+- Plan 상태: **Plan-1/Plan-4/Plan-5/Plan-6 완료** (커밋 `179368fc`, `058e6369`, `a9ad2b73`, +Plan-4 미커밋) | **Plan-4 커밋 대기** | **Plan-2/Plan-3 보류**
+- 다음 액션: Plan-4 커밋 결정 (사용자). Plan-2는 트리거 발생 시 재방문 (§11).
 
 ---
 
@@ -291,3 +291,68 @@ if (!result.success) {
 
 ### 11.7 관련 커밋
 - `9278a596` docs(vault): plan SAF picker cancellation regression test (Plan-2) — plan 문서만, 구현 없음
+
+---
+
+## 12. Plan-7 후보 — 파일 생성 모달을 다단계 페이지로 분리 (신규)
+
+- Date: 2026-08-29 (기존 brainstorm 메모로 추가)
+- 출처: 사용자 직접 요청 — "현재 모달로 되어있는 파일 생성을 따로 페이지로 만들기. 폴더선택 → 파일이름작성 → 암호입력 순서"
+- 이 섹션은 **브레인스토밍 메모**일 뿐, Plan-7 자체는 별도 brainstorm을 다시 열어서 확정.
+
+### 12.1 문제 (왜 분리하나)
+
+- 현재 파일 생성은 단일 모달 안에서 폴더 선택 / 파일명 / PIN을 한 화면에 처리 (코드 위치는 별도 brainstorm에서 확인 필요).
+- 한 화면 3입력 → **모바일 키보드가 모든 필드를 가리며 가시성 저하**, 입력 검증 메시지가 충돌, "뒤로 가기" 의미가 모호(모달 닫기 vs 입력 되돌리기).
+- vault 생성은 **되돌리기 어려운 결정**(파일 위치/이름/PIN)이라 사용자 흐름이 한 단계씩 명확해야 함.
+
+### 12.2 제안 흐름 (안)
+
+3단계 페이지. `React Router` 기반 단방향 진행 + 단계 표시(stepper).
+
+| Step | 화면 | 입력 | 다음 버튼 활성화 조건 |
+|---|---|---|---|
+| 1 | **폴더 선택** | SAF folder picker (or web fallback) | URI 확정 |
+| 2 | **파일 이름 작성** | `.json` 확장자 자동/검증, 중복 검사 | 비어있지 않고 형식 유효 |
+| 3 | **암호 입력** | PIN (기존) 또는 패스프레이즈 (Plan-4 도입 시) | 정책 충족 + 확인 입력 일치 |
+
+- 각 단계에서 **Back** 가능, 마지막 단계 **Create** 호출.
+- 실패 시 마지막 유효 단계로 머무르며 에러 표시 (예: 폴더 권한 만료 → Step 1로 자동 점프).
+
+### 12.3 영향 범위 (후속 brainstorm에서 확정)
+
+- 신규 라우트: `src/pages/CreateVault/...` (Step 1/2/3 컴포넌트 + stepper)
+- 기존 모달 호출처에서 `<CreateVaultModal>` → `<Link to="/create-vault">` 변경
+- 라우터: `src/App.tsx` 또는 라우터 정의 파일에 `/create-vault` 추가
+- 상태: `useCreateVaultStore` (Zustand) — `{ folderUri, fileName, password, step }` — 세션 한정, **절대 persist 안 함**(password는 메모리 only)
+- i18n 키 신규
+- 기존 `createEncryptedVault` 파이프라인(`src/database/fileStorage.ts`)은 변경 없음 — 페이지에서 마지막에 호출
+
+### 12.4 의존성
+
+- **Plan-4(패스프레이즈) 선행이면 이상적** — Step 3의 "암호 입력"이 패스프레이즈 strength UI로 자연스럽게 들어감. 단, Plan-4 지연 시에도 **PIN 그대로** 진행 가능하도록 단계 3 컴포넌트는 **인증 입력 어댑터**로 추상화.
+- 기존 SAF picker(`KiyoFilePlugin`), `createEncryptedVault` 그대로 사용.
+
+### 12.5 리스크 (대략)
+
+| 리스크 | 완화 |
+|---|---|
+| 단계별 state 유실 (뒤로 갔다가 앞으로 오면 입력값 사라짐) | store에 유지 + 의도적 reset만 빈 상태 |
+| Step 1에서 선택한 URI가 Step 2 진행 중에 만료 가능 | Step 3 진입 직전 URI 재검증, 실패 시 Step 1로 점프 |
+| Plan-4 (패스프레이즈) 지연 시 Plan-7이 PIN UX로 굳어버림 | Step 3 컴포넌트를 인증 어댑터로 추상화 |
+| 라우터 추가 → 기존 E2E navigation 영향 | stepper `data-testid` + pageobject 추가, 기존 E2E 점검 |
+
+### 12.6 결정 필요 (다음 brainstorm)
+
+- Q1. 진입점: 기존 모달 호출처에서 어떻게 트리거? (별도 라우트 vs Settings 메뉴 안의 sub-route)
+- Q2. 단계 진행: 라우트 단계 (`/create-vault/folder|name|password`) vs 단일 라우트 + store step. (장단점 — 라우트 단계는 deep-link 가능, store step은 페이지 간 전환 애니메이션 단순)
+- Q3. 기존 모달 **완전 제거** vs **deprecated로 잔존**(일부 환경 fallback) — KIYO 컨벤션상 "한 가지 길" 선호 → 완전 제거 안
+- Q4. Plan-4(패스프레이즈)와 묶을지 / 분리할지
+- Q5. E2E: pageobject 추가 + Android instrumentation 추가 범위
+
+### 12.7 다음 액션
+- 위 Q1~Q5 결정 + 코드베이스 인스펙션(현재 모달 위치, 라우터 구조, 호출처 목록) → 별도 brainstorm 문서 또는 `ce-plan` 직접 진입.
+
+### 12.8 메모
+- 이 섹션은 **메모 단계**이며, §3.2 매핑표 / §9 진행 순서 / §10 Plan 상태에는 반영하지 않음. Plan-7로 공식 채택 시 별도 brainstorm에서 통합.
+- 기존 §1~§11(STRATEGY §2 통합)에 대한 변경 없음.

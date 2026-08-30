@@ -275,5 +275,53 @@ describe("fileStorage - changePin 전체 invariant", () => {
 
       await verifyDataIntegrity(restored, accounts, expectedTemplates, metadata);
     });
+
+    // Plan-4 §7.3: PIN 정책 완화 후 changePin 양방향 검증
+    it("Plan-4 §7.3-① 숫자 PIN(4자리) → 영문+특수문자 PIN(12자) changePin → 새 PIN으로 unlock", async () => {
+      // 1. 4자리 숫자 PIN으로 암호화 파일 생성
+      await createDataFile("plan4-mixed-forward.json", "1234");
+      await populateTestData();
+
+      // 2. 영문+숫자+특수문자 12자 PIN으로 변경
+      const newMixedPin = "MyVault2024!";
+      await changePin(newMixedPin);
+      await new Promise(r => setTimeout(r, 10));
+
+      // 3. 세션 클리어 후 새 PIN으로 unlock
+      await lockDataFile();
+      const unlocked = await unlockFile("plan4-mixed-forward.json", newMixedPin);
+
+      // 4. 데이터 무결성 확인
+      const accounts = createTestAccounts(2);
+      const templates = createTestTemplates(2);
+      const metadata = getDefaultMetadata();
+      const expectedTemplates = [...templates, ...getBuiltinTemplates()];
+
+      await verifyDataIntegrity(unlocked, accounts, expectedTemplates, metadata);
+    });
+
+    it("Plan-4 §7.3-② 영문+특수문자 PIN(12자) → 숫자 PIN(6자리) changePin → 새 PIN으로 unlock", async () => {
+      // 1. 영문+숫자+특수문자 12자 PIN으로 암호화 파일 생성
+      const startPin = "MyVault2024!";
+      await createDataFile("plan4-mixed-backward.json", startPin);
+      await populateTestData();
+
+      // 2. 6자리 숫자 PIN으로 변경
+      const newNumericPin = "987654";
+      await changePin(newNumericPin);
+      await new Promise(r => setTimeout(r, 10));
+
+      // 3. 세션 클리어 후 새 PIN으로 unlock
+      await lockDataFile();
+      const unlocked = await unlockFile("plan4-mixed-backward.json", newNumericPin);
+
+      // 4. 데이터 무결성 확인
+      const accounts = createTestAccounts(2);
+      const templates = createTestTemplates(2);
+      const metadata = getDefaultMetadata();
+      const expectedTemplates = [...templates, ...getBuiltinTemplates()];
+
+      await verifyDataIntegrity(unlocked, accounts, expectedTemplates, metadata);
+    });
   });
 });

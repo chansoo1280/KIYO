@@ -217,6 +217,42 @@ describe("encryption (KIYO encryption.ts)", () => {
     });
   });
 
+  describe("Plan-4 §7.3: PIN 정책 완화 후 crypto 경로 회귀 검증", () => {
+    it("① 20자 영문+특수문자 PIN → createCryptoKey 정상", async () => {
+      const longMixedPin = "Abc123!@#xyz789QWERTY"; // 20자, 영문+숫자+특수문자
+      const result = await createCryptoKey(longMixedPin);
+
+      expect(result).toEqual({
+        key: expect.anything(),
+        salt: expect.any(Uint8Array),
+      });
+      expect(result.salt).toHaveLength(16);
+      expect(result.key).toBeInstanceOf(CryptoKey);
+      expect(result.key.type).toBe("secret");
+      expect(result.key.algorithm.name).toBe("AES-GCM");
+    });
+
+    it("② 20자 영문+특수문자 PIN + 동일 salt 재호출 → 같은 CryptoKey", async () => {
+      const longMixedPin = "Abc123!@#xyz789QWERTY";
+      const salt = new Uint8Array(16).fill(11);
+      const result1 = await createCryptoKey(longMixedPin, salt);
+      const result2 = await createCryptoKey(longMixedPin, salt);
+
+      const exported1 = await crypto.subtle.exportKey("raw", result1.key);
+      const exported2 = await crypto.subtle.exportKey("raw", result2.key);
+      expect(new Uint8Array(exported1)).toEqual(new Uint8Array(exported2));
+    });
+
+    it("③ 영문+특수문자 PIN round-trip (encrypt → decrypt 성공)", async () => {
+      const mixedPin = "MyVault2024!"; // 12자, 영문+숫자+특수문자
+      const { key: derivedKey, salt: derivedSalt } = await createCryptoKey(mixedPin);
+      const encrypted = await encryptData(mockKiyoFile, derivedKey, derivedSalt);
+      const decrypted = await decryptData(encrypted, derivedKey);
+
+      expect(decrypted).toEqual(mockKiyoFile);
+    });
+  });
+
   describe("decryptData error handling", () => {
     it("should throw on wrong key", async () => {
       const encrypted = await encryptData(mockKiyoFile, key, salt);

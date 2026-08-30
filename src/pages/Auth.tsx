@@ -9,6 +9,8 @@ import {
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
+import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
+import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -52,8 +54,8 @@ const Auth = () => {
   };
 
   const handleVerifyPin = async () => {
-    if (!pin.trim()) {
-      setError("핀번호를 입력하세요");
+    if (pin.length < MIN_PIN_LENGTH) {
+      setError(`PIN은 ${MIN_PIN_LENGTH}자 이상 입력해주세요.`);
       return;
     }
 
@@ -224,11 +226,12 @@ const Auth = () => {
                 onChange={(e) => handlePinChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
                 className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
-                placeholder="4자리 핀번호"
-                maxLength={6}
+                placeholder="4~20자 PIN"
+                maxLength={20}
                 autoFocus
                 disabled={isVerifying}
               />
+              <PinStrengthMeter pin={pin} />
             </div>
             <button
               type="button"

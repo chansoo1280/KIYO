@@ -1,3 +1,5 @@
+import { assertCryptoAvailable } from "@/crypto/crypto.utils";
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -39,6 +41,7 @@ export const encryptRecord = async <T>(
   data: T,
   key: CryptoKey,
 ): Promise<{ encryptedData: Uint8Array; iv: Uint8Array }> => {
+  assertCryptoAvailable();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plaintext = encoder.encode(JSON.stringify(data));
 
@@ -62,6 +65,8 @@ export const decryptRecord = async <T>(
   iv: Uint8Array,
   key: CryptoKey,
 ): Promise<T> => {
+  assertCryptoAvailable();
+
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: new Uint8Array(iv) },
     key,

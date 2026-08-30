@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
+import {
+  toBase64,
+  fromBase64,
+  isCryptoAvailable,
+  assertCryptoAvailable,
+  CryptoUnavailableError,
+} from "@/crypto/crypto.utils";
 
 describe("crypto.utils", () => {
   describe("toBase64", () => {
@@ -39,6 +45,24 @@ describe("crypto.utils", () => {
       const base64 = "AP+AQA==";
       const result = fromBase64(base64);
       expect(result).toEqual(new Uint8Array([0, 255, 128, 64]));
+    });
+  });
+
+  describe("Web Crypto API 가용성 가드", () => {
+    it("isCryptoAvailable: jsdom 환경에서 true 반환 (Web Crypto API 지원)", () => {
+      expect(isCryptoAvailable()).toBe(true);
+    });
+
+    it("assertCryptoAvailable: jsdom 환경에서 throw 안 함", () => {
+      expect(() => assertCryptoAvailable()).not.toThrow();
+    });
+
+    it("CryptoUnavailableError: code/name/message 필드 확인", () => {
+      const err = new CryptoUnavailableError("test message");
+      expect(err.code).toBe("CRYPTO_UNAVAILABLE");
+      expect(err.name).toBe("CryptoUnavailableError");
+      expect(err.message).toBe("test message");
+      expect(err).toBeInstanceOf(Error);
     });
   });
 
