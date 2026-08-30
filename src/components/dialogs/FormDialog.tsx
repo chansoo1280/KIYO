@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { BaseDialog } from "./BaseDialog";
 import type { ReactNode } from "react";
 import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 
 interface FormDialogProps {
   open: boolean;
@@ -82,22 +83,21 @@ export const FormDialog = ({
         )}
 
         <div className="mt-6 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={handleClose}
             disabled={isLoading}
-            className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-code-bg)] disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
+            label={cancelLabel}
+          />
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            loading={isLoading}
             disabled={disabled || isLoading}
-            className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-accent)]/80 disabled:opacity-50"
-          >
-            {isLoading ? "처리 중..." : submitLabel}
-          </button>
+            label={isLoading ? "처리 중..." : submitLabel}
+          />
         </div>
       </form>
     </BaseDialog>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BaseDialog } from "./BaseDialog";
+import Button from "@/components/Button";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -26,10 +27,6 @@ export const ConfirmDialog = ({
   isLoading = false,
   error = null,
 }: ConfirmDialogProps) => {
-  const confirmClassName = variant === "danger"
-    ? "rounded-md border border-[var(--color-accent)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] shadow-sm hover:bg-[var(--color-accent)]/10 dark:border-[var(--color-accent)] dark:bg-[var(--color-bg)]/80 dark:text-[var(--color-accent)] dark:hover:bg-[var(--color-accent)]/20"
-    : "rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--color-accent)]/80 dark:bg-[var(--color-accent)]/80";
-
   return (
     <BaseDialog
       open={open}
@@ -50,22 +47,21 @@ export const ConfirmDialog = ({
       )}
 
       <div className="mt-6 flex justify-end gap-2">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onClose}
           disabled={isLoading}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm disabled:opacity-50"
-        >
-          {cancelLabel}
-        </button>
-        <button
+          label={cancelLabel}
+        />
+        <Button
           type="button"
+          variant={variant}
+          loading={isLoading}
           onClick={onConfirm}
           disabled={isLoading}
-          className={`${confirmClassName} disabled:opacity-50`}
-        >
-          {isLoading ? "처리 중..." : confirmLabel}
-        </button>
+          label={isLoading ? "처리 중..." : confirmLabel}
+        />
       </div>
     </BaseDialog>
   );
