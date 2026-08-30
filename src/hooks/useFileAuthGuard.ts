@@ -22,18 +22,21 @@ export function useFileAuthGuard(options: {
 
     const checkFileAndNavigate = async () => {
       try {
-        const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+        const sessionActiveFileName = useSessionStore.getState().activeFileName;
         const { cryptoKey } = useSessionStore.getState();
 
         if (!mounted) return;
 
-        if (!activeFileName) {
+        if (!sessionActiveFileName) {
           onNoFile?.();
           if (!skipRedirect) {
             navigate("/", { replace: true });
           }
           return;
-        } else if (encrypted && !cryptoKey) {
+        }
+        const { encrypted } = await fileTable.getFileInfo(sessionActiveFileName);
+        if (!mounted) return; // unmount 후 결과 도착 시 onLocked/onNavigate 방지
+        if (encrypted && !cryptoKey) {
           onLocked?.();
           if (!skipRedirect) {
             navigate("/auth", { replace: true });
@@ -41,7 +44,7 @@ export function useFileAuthGuard(options: {
           return;
         }
       } catch (error) {
-        console.error("useFileAuthGuard: getActiveFileInfo failed:", error instanceof Error ? error.message : String(error), error);
+        console.error("useFileAuthGuard: getFileInfo failed:", error instanceof Error ? error.message : String(error), error);
         // Error is handled gracefully - don't redirect
       }
     };

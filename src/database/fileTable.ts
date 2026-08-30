@@ -4,9 +4,7 @@ import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { KiyoVaultData } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { FileRecord } from "@/database/db";
-
-export const ACTIVE_FILE_ID = "active" as const;
-
+import { normalizeDataFileName } from "@/database/fileExport";
 
 export type ActiveFileInfo =
   | { encrypted: true; fileData: EncryptedKiyoVaultData; salt: Uint8Array; activeFileName: string }
@@ -17,16 +15,17 @@ export type ActiveFileInfo =
 export const parseFileData = (json: string): KiyoVaultData | EncryptedKiyoVaultData => {
   return JSON.parse(json);
 }
+
 export const fileTable = {
   /**
-   * Update salt and updatedAt fields only (partial update)
+   * Update salt and updatedAt fields only (partial update) for a specific fileName
    */
   async updateFileRecord(fileName: string, salt?: Uint8Array): Promise<void> {
     const saltBase64 = salt ? toBase64(salt) : undefined;
     const now = Date.now();
     const updatedCount = await db.files
       .where("id")
-      .equals(ACTIVE_FILE_ID)
+      .equals(fileName)
       .modify({
         fileName,
         salt: saltBase64,
@@ -34,24 +33,24 @@ export const fileTable = {
       });
     if (updatedCount === 0) {
       console.warn(
-        `updateFileRecord: No existing file record found for "${ACTIVE_FILE_ID}", skipping update (salt-only mode)`,
+        `updateFileRecord: No existing file record found for "${fileName}", skipping update (salt-only mode)`,
       );
     }
   },
 
   /**
-   * Get active file record from files table (returns raw FileRecord)
+   * Get a single file record by fileName (fileName is the primary key in v14)
    */
-  async getActiveFileRecord(): Promise<FileRecord | null> {
-    const record = await db.files.get(ACTIVE_FILE_ID);
+  async getFileRecord(fileName: string): Promise<FileRecord | null> {
+    const record = await db.files.get(fileName);
     return record ?? null;
   },
 
   /**
-   * Get active file info with parsed data
+   * Get parsed file info (encrypted/plain, salt, fileData) for a specific fileName
    */
-  async getActiveFileInfo(): Promise<ActiveFileInfo> {
-    const fileRecord = await db.files.get(ACTIVE_FILE_ID);
+  async getFileInfo(fileName: string): Promise<ActiveFileInfo> {
+    const fileRecord = await db.files.get(fileName);
     if (!fileRecord) {
       return {
         activeFileName: null,
@@ -79,8 +78,9 @@ export const fileTable = {
   },
 
   /**
-   * Upsert file data (encrypted or plain) to files table
-   * Determines encryption status from the data itself (EncryptedKiyoFile has encrypted: true)
+   * Upsert file data (encrypted or plain) to files table.
+   * In v14, the primary key is fileName itself, so each unique fileName
+   * maps to a distinct row. createdAt is preserved on update.
    */
   async upsertFileRecord(
     fileName: string,
@@ -89,34 +89,55 @@ export const fileTable = {
     const now = Date.now();
 
     const isEncrypted = isEncryptedKiyoVaultData(fileData);
+    const existing = await db.files.get(fileName);
     const fileDataRecord: FileRecord = {
-      id: ACTIVE_FILE_ID,
+      id: fileName,
       fileName,
       fileData: JSON.stringify(fileData),
       encrypted: isEncrypted,
       salt: isEncrypted && "salt" in fileData ? fileData.salt : undefined,
-      createdAt: now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
     await db.files.put(fileDataRecord);
   },
 
   /**
-     * Get all file names from files table
-     */
+   * Get all file names from files table
+   */
     async getAllFileNames(): Promise<string[]> {
       const files = await db.files.toArray();
       return files.map((f) => f.fileName);
     },
 
-    /**
-     * Get file record by fileName
-     */
+  /**
+   * Get all file records (used by Home file list)
+   */
+  async getAllFiles(): Promise<FileRecord[]> {
+    return await db.files.toArray();
+  },
 
   /**
-   * Delete active file record from files table
+   * Resolve a desired fileName to a unique name in the files table.
+   * If the name already exists, appends (1), (2), ... before .json.
    */
-  async deleteFileRecord(): Promise<void> {
-    await db.files.where("id").equals(ACTIVE_FILE_ID).delete();
+  async resolveFileName(desired: string): Promise<string> {
+    const normalized = normalizeDataFileName(desired);
+    const all = await db.files.toArray();
+    const existing = new Set(all.map((r) => r.id));
+    if (!existing.has(normalized)) return normalized;
+    const base = normalized.replace(/\.json$/, "");
+    for (let i = 1; ; i++) {
+      const candidate = `${base}(${i}).json`;
+      if (!existing.has(candidate)) return candidate;
+    }
+  },
+
+  /**
+   * Delete a file record by fileName. Caller is responsible for active state;
+   * we do not gate deletes on the row being active.
+   */
+  async deleteFileRecord(fileName: string): Promise<void> {
+    await db.files.where("id").equals(fileName).delete();
   },
 };

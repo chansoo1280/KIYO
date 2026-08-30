@@ -101,8 +101,9 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
       expect(created.id).toBeDefined();
       expect(created.name).toBe(testTemplate.name);
 
-      // 키 없이 조회하면 에러 던짐 (templateTable은 throw)
-      await expect(templateTable.getAll()).rejects.toThrow("CryptoKey is required");
+      // multi-vault: 키 없이 조회하면 encrypted record는 silent skip (이전 vault row 등)
+      const withoutKey = await templateTable.getAll();
+      expect(withoutKey).toEqual([]);
 
       // 키로 조회하면 정상 복호화
       const withKey = await templateTable.getAll(testKey);
@@ -118,12 +119,14 @@ describe("templateTable - 템플릿 암호화 CRUD", () => {
       expect(byId!.fields).toEqual(testTemplate.fields);
     });
 
-    it("잘못된 키로 복호화 시도 시 에러 던짐", async () => {
+    it("잘못된 키로 복호화 시도 시 silent skip (multi-vault 정책)", async () => {
           const testTemplate = createTestTemplates(1)[0];
           await templateTable.create(testTemplate, testKey);
 
       const wrongKeyResult = await createCryptoKey("wrong-pin");
-      await expect(templateTable.getAll(wrongKeyResult.key)).rejects.toThrow();
+      // 잘못된 키로 decrypt 실패해도 row 단위로 skip — 다른 vault row가 있을 수 있음
+      const result = await templateTable.getAll(wrongKeyResult.key);
+      expect(result).toEqual([]);
     });
 
     it("키 없이 getById 호출 시 undefined 반환", async () => {

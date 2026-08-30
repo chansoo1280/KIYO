@@ -116,5 +116,10 @@ if (import.meta.env.DEV) {
         hasSalt: !!state.salt,
       };
     },
+    getFiles: async () => {
+      const { fileTable } = await import("@/database/fileTable");
+      const all = await fileTable.getAllFiles();
+      return all.map((f) => ({ fileName: f.fileName, id: f.id, encrypted: f.encrypted }));
+    },
   };
 }

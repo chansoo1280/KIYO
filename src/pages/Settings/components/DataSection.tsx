@@ -3,7 +3,6 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useNavigate } from "react-router-dom";
 import { backupDataFile, openImportedDataFile, isKiyoFile } from "@/database/fileStorage";
-import { fileTable } from "@/database/fileTable";
 import { pickBackupFolder } from "@/database/fileExport";
 import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
@@ -32,7 +31,10 @@ export function DataSection() {
     encrypted: boolean;
     pin: string;
   }) => {
-    const { activeFileName: currentActiveFileName } = await fileTable.getActiveFileInfo();
+    const currentActiveFileName = useSessionStore.getState().activeFileName;
+    if (!currentActiveFileName) {
+      throw new Error("활성 데이터 파일이 없습니다.");
+    }
     const exists = currentActiveFileName === backupFileName;
     if (exists) {
       const overwrite = window.confirm(

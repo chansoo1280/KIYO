@@ -49,14 +49,19 @@ export const useAccountStore = create<AccountState>()(
 
       loadAccounts: async () => {
         set({ isLoading: true });
-        const sessionState = useSessionStore.getState();
-        const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
+        try {
+          const sessionState = useSessionStore.getState();
+          const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
 
-        set({
-          accounts,
-          initialized: true,
-          isLoading: false,
-        });
+          set({
+            accounts,
+            initialized: true,
+            isLoading: false,
+          });
+        } catch (error) {
+          console.error("Failed to load accounts:", error instanceof Error ? error.message : String(error));
+          set({ isLoading: false });
+        }
       },
 
       addAccount: async (account) => {

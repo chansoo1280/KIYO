@@ -255,11 +255,17 @@ describe("fileStorage Encryption Integration Tests", () => {
 
       verifyDataIntegrity(imported, accounts, expectedTemplates, metadata);
 
-      // 세션이 업데이트되었는지 확인
+      // multi-vault: import는 새 row 추가 + active 전환. 이전 vault 보존되므로
+      // 새 active fileName은 (1) suffix가 붙는다.
       const sessionState = useSessionStore.getState();
-      expect(sessionState.activeFileName).toBe("encrypted-restore.json");
+      expect(sessionState.activeFileName).toBe("encrypted-restore(1).json");
       expect(sessionState.cryptoKey).not.toBeNull();
       expect(sessionState.salt).not.toBeNull();
+
+      // 이전 vault 행도 보존됨
+      const allFiles = await (await import("@/database/fileTable")).fileTable.getAllFiles();
+      const fileNames = allFiles.map((f) => f.fileName).sort();
+      expect(fileNames).toEqual(["encrypted-restore(1).json", "encrypted-restore.json"]);
     });
 
     it("잘못된 PIN이면 복원하지 않는다 (원본 데이터 보존)", async () => {

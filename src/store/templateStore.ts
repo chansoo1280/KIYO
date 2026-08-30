@@ -31,7 +31,10 @@ export const useTemplateStore = create<TemplateState>()(
           const dbTemplates = await templateTable.getAll(sessionState.cryptoKey ?? undefined);
           set({ templates: dbTemplates, isLoading: false, initialized: true });
         } catch (error) {
-          console.error("Failed to load templates:", error instanceof Error ? error.message : String(error), error);
+          // multi-vault: reload 직후 또는 lock 상태에서 encrypted records가 있고
+          // cryptoKey가 없는 경우 throw. 사용자 영향 0 (unlock 후 initializeStores로
+          // 정상 로드). 콘솔 노이즈만 남김.
+          console.error("Failed to load templates:", error instanceof Error ? error.message : String(error));
           set({ isLoading: false });
         }
       },

@@ -13,7 +13,7 @@ import type { EncryptedKiyoVaultData } from "@/models/vault";
 // Mock dependencies BEFORE importing the hook
 vi.mock("@/database/fileTable", () => ({
   fileTable: {
-    getActiveFileInfo: vi.fn(),
+    getFileInfo: vi.fn(),
   },
 }));
 
@@ -56,25 +56,25 @@ const createMockSessionState = (overrides: Partial<SessionState> = {}): SessionS
 });
 
 // Helper to create a complete ActiveFileInfo mock
+// fileName은 fileTable.getFileInfo(fileName) 인자로 전달되므로
+// mockResolvedValue 시 caller가 어떤 fileName을 넘기든 같은 결과 반환
 const createMockActiveFileInfo = (overrides: Partial<ActiveFileInfo>): ActiveFileInfo => {
   if (overrides.encrypted === true) {
-    // For encrypted, we need all required fields
     return {
       encrypted: true,
-      fileData: { 
-        encrypted: true, 
-        ciphertext: "ciphertext", 
-        iv: "iv", 
-        salt: "salt", 
-        algorithm: "AES-GCM", 
-        version: 1 
+      fileData: {
+        encrypted: true,
+        ciphertext: "ciphertext",
+        iv: "iv",
+        salt: "salt",
+        algorithm: "AES-GCM",
+        version: 1,
       } as EncryptedKiyoVaultData,
       salt: new Uint8Array(),
       activeFileName: "test.json",
       ...overrides,
     } as ActiveFileInfo;
   }
-  // For non-encrypted
   return {
     encrypted: false,
     fileData: null,
@@ -84,7 +84,7 @@ const createMockActiveFileInfo = (overrides: Partial<ActiveFileInfo>): ActiveFil
   } as ActiveFileInfo;
 };
 
-describe("useFileAuthGuard - Session/Auth Boundaries", () => {
+describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
   let mockOnNoFile: () => void;
   let mockOnLocked: () => void;
 
@@ -95,7 +95,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     mockOnNoFile = vi.fn<() => void>();
     mockOnLocked = vi.fn<() => void>();
 
-    // Reset the mock store state with complete SessionState
+    // Reset the mock store state — activeFileName null (no active vault)
     mockUseSessionStore.getState.mockReturnValue(createMockSessionState());
   });
 
@@ -104,16 +104,15 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     vi.resetModules();
   });
 
-  it("활성 파일이 없으면 onNoFile 콜백 호출 및 홈으로 리다이렉트", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: null, encrypted: false })
-    );
+  it("sessionStore에 active가 없으면 onNoFile 콜백 호출 및 홈으로 리다이렉트", async () => {
+    mockUseSessionStore.getState.mockReturnValue(createMockSessionState({ activeFileName: null }));
+    // getFileInfo는 호출되지 않음 (activeFileName null이면 early return)
 
     renderHook(() =>
       useFileAuthGuard({
         onNoFile: mockOnNoFile,
         skipRedirect: false,
-      })
+      }),
     );
 
     await act(async () => {
@@ -124,16 +123,14 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
-  it("활성 파일이 없는데 skipRedirect=true면 리다이렉트 안 함", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: null, encrypted: false })
-    );
+  it("sessionStore에 active가 없는데 skipRedirect=true면 리다이렉트 안 함", async () => {
+    mockUseSessionStore.getState.mockReturnValue(createMockSessionState({ activeFileName: null }));
 
     renderHook(() =>
       useFileAuthGuard({
         onNoFile: mockOnNoFile,
         skipRedirect: true,
-      })
+      }),
     );
 
     await act(async () => {
@@ -144,20 +141,19 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("암호화된 파일이지만 cryptoKey가 없으면 onLocked 콜백 호출 및 /auth로 리다이렉트", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true })
-    );
-
+  it("active가 encrypted이지만 cryptoKey가 없으면 onLocked 콜백 호출 및 /auth로 리다이렉트", async () => {
     mockUseSessionStore.getState.mockReturnValue(
-      createMockSessionState({ cryptoKey: null, activeFileName: "test.json" })
+      createMockSessionState({ cryptoKey: null, activeFileName: "test.json" }),
+    );
+    mockFileTable.getFileInfo.mockResolvedValue(
+      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true }),
     );
 
     renderHook(() =>
       useFileAuthGuard({
         onLocked: mockOnLocked,
         skipRedirect: false,
-      })
+      }),
     );
 
     await act(async () => {
@@ -166,22 +162,22 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
 
     expect(mockOnLocked).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith("/auth", { replace: true });
+    expect(mockFileTable.getFileInfo).toHaveBeenCalledWith("test.json");
   });
 
-  it("암호화된 파일이지만 cryptoKey가 없는데 skipRedirect=true면 리다이렉트 안 함", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true })
-    );
-
+  it("active가 encrypted이지만 cryptoKey가 없는데 skipRedirect=true면 리다이렉트 안 함", async () => {
     mockUseSessionStore.getState.mockReturnValue(
-      createMockSessionState({ cryptoKey: null, activeFileName: "test.json" })
+      createMockSessionState({ cryptoKey: null, activeFileName: "test.json" }),
+    );
+    mockFileTable.getFileInfo.mockResolvedValue(
+      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true }),
     );
 
     renderHook(() =>
       useFileAuthGuard({
         onLocked: mockOnLocked,
         skipRedirect: true,
-      })
+      }),
     );
 
     await act(async () => {
@@ -192,13 +188,12 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("암호화되지 않은 파일이고 cryptoKey가 없어도 통과 (리다이렉트 없음)", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: "plain.json", encrypted: false })
-    );
-
+  it("active가 plaintext이고 cryptoKey가 없어도 통과 (리다이렉트 없음)", async () => {
     mockUseSessionStore.getState.mockReturnValue(
-      createMockSessionState({ cryptoKey: null, activeFileName: "plain.json" })
+      createMockSessionState({ cryptoKey: null, activeFileName: "plain.json" }),
+    );
+    mockFileTable.getFileInfo.mockResolvedValue(
+      createMockActiveFileInfo({ activeFileName: "plain.json", encrypted: false }),
     );
 
     renderHook(() =>
@@ -206,7 +201,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
         onLocked: mockOnLocked,
         onNoFile: mockOnNoFile,
         skipRedirect: false,
-      })
+      }),
     );
 
     await act(async () => {
@@ -218,15 +213,14 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("암호화된 파일에 유효한 cryptoKey가 있으면 통과", async () => {
+  it("active가 encrypted이고 cryptoKey가 있으면 통과", async () => {
     const mockCryptoKey = {} as CryptoKey;
 
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: "encrypted.json", encrypted: true })
-    );
-
     mockUseSessionStore.getState.mockReturnValue(
-      createMockSessionState({ cryptoKey: mockCryptoKey, activeFileName: "encrypted.json" })
+      createMockSessionState({ cryptoKey: mockCryptoKey, activeFileName: "encrypted.json" }),
+    );
+    mockFileTable.getFileInfo.mockResolvedValue(
+      createMockActiveFileInfo({ activeFileName: "encrypted.json", encrypted: true }),
     );
 
     renderHook(() =>
@@ -234,7 +228,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
         onLocked: mockOnLocked,
         onNoFile: mockOnNoFile,
         skipRedirect: false,
-      })
+      }),
     );
 
     await act(async () => {
@@ -247,19 +241,18 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
   });
 
   it("언마운트 시 mounted 플래그로 정리됨", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true })
-    );
-
     mockUseSessionStore.getState.mockReturnValue(
-      createMockSessionState({ cryptoKey: null, activeFileName: "test.json" })
+      createMockSessionState({ cryptoKey: null, activeFileName: "test.json" }),
+    );
+    mockFileTable.getFileInfo.mockResolvedValue(
+      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true }),
     );
 
     const { unmount } = renderHook(() =>
       useFileAuthGuard({
         onLocked: mockOnLocked,
         skipRedirect: false,
-      })
+      }),
     );
 
     unmount();
@@ -272,19 +265,19 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("getActiveFileInfo 에러 시에도 에러 던지지 않음", async () => {
-    mockFileTable.getActiveFileInfo.mockRejectedValue(new Error("DB Error"));
-
-    mockUseSessionStore.getState.mockReturnValue(createMockSessionState());
+  it("getFileInfo 에러 시에도 에러 던지지 않음", async () => {
+    mockUseSessionStore.getState.mockReturnValue(
+      createMockSessionState({ activeFileName: "test.json" }),
+    );
+    mockFileTable.getFileInfo.mockRejectedValue(new Error("DB Error"));
 
     renderHook(() =>
       useFileAuthGuard({
         onNoFile: mockOnNoFile,
         skipRedirect: false,
-      })
+      }),
     );
 
-    // The effect will throw but we handle it gracefully
     await act(async () => {
       await vi.runAllTimersAsync();
     });
@@ -293,9 +286,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
   });
 
   it("옵션 없이 기본값으로 동작 (skipRedirect=false)", async () => {
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: null, encrypted: false })
-    );
+    mockUseSessionStore.getState.mockReturnValue(createMockSessionState({ activeFileName: null }));
 
     renderHook(() => useFileAuthGuard({}));
 
@@ -308,18 +299,15 @@ describe("useFileAuthGuard - Session/Auth Boundaries", () => {
 
   it("sessionStore의 cryptoKey getter가 getState()로 직접 접근함", async () => {
     const getStateMock = vi.fn().mockReturnValue(
-      createMockSessionState({ cryptoKey: {} as CryptoKey, activeFileName: "test.json" })
+      createMockSessionState({ cryptoKey: {} as CryptoKey, activeFileName: "test.json" }),
     );
 
     mockUseSessionStore.getState = getStateMock;
-
-    mockFileTable.getActiveFileInfo.mockResolvedValue(
-      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true })
+    mockFileTable.getFileInfo.mockResolvedValue(
+      createMockActiveFileInfo({ activeFileName: "test.json", encrypted: true }),
     );
 
-    renderHook(() =>
-      useFileAuthGuard({ skipRedirect: false })
-    );
+    renderHook(() => useFileAuthGuard({ skipRedirect: false }));
 
     await act(async () => {
       await vi.runAllTimersAsync();

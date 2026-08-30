@@ -21,29 +21,40 @@ async function checkStoresReset(page: import('@playwright/test').Page) {
 
 async function expectStoresReset(page: import('@playwright/test').Page, context: string) {
   const { accountStore, templateStore, sessionStore } = await checkStoresReset(page);
-  
-  // 세션 스토어는 clearSession + deleteFileRecord 후 초기화되어야 함
+
+  // 세션 스토어는 clearSession 후 초기화되어야 함 (multi-vault: db.files는 보존)
   expect(sessionStore, `${context}: sessionStore should be reset`).toEqual({
     activeFileName: null,
     hasCryptoKey: false,
     hasSalt: false,
   });
-  
-  // 계정 스토어는 clearAccounts가 호출되지 않았지만, 새 볼트 생성 시 loadAccounts가 다시 호출되므로
-  // 여기서는 initialized가 false여야 함 (loadAccounts가 아직 안 불렸으므로)
+
   if (accountStore) {
     expect(accountStore.initialized, `${context}: accountStore.initialized should be false`).toBe(false);
     expect(accountStore.accountsCount, `${context}: accountStore.accountsCount should be 0`).toBe(0);
   }
-  
-  // 템플릿 스토어도 마찬가지
+
   if (templateStore) {
     expect(templateStore.initialized, `${context}: templateStore.initialized should be false`).toBe(false);
     expect(templateStore.templatesCount, `${context}: templateStore.templatesCount should be 0`).toBe(0);
   }
 }
 
-test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)', () => {
+// 헬퍼: db.files의 모든 row 조회 (fileName만)
+async function getDbFiles(page: import('@playwright/test').Page): Promise<{ fileName: string; id: string }[]> {
+  return await page.evaluate(async () => {
+    // @ts-expect-error - accessing debug window property
+    return await window.__KIYO_DEBUG__?.getFiles?.() ?? [];
+  });
+}
+
+async function expectDbFilesContain(page: import('@playwright/test').Page, names: string[]) {
+  const files = await getDbFiles(page);
+  const fileNames = files.map((f) => f.fileName).sort();
+  expect(fileNames).toEqual([...names].sort());
+}
+
+test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
@@ -83,22 +94,26 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await expect(backButton).toBeVisible({ timeout: 5000 });
       await backButton.click();
 
-      // 4. Home 페이지(/)로 이동하고 파일 선택 상태(selectFile) 진입 확인
-      // URL은 / 이고, 파일 생성/선택 다이얼로그 중 하나가 열려 있어야 함
+      // 4. Home 페이지(/)로 이동 — 이전 vault는 db.files에 보존되어 리스트에 보임
       await page.waitForURL('/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
-      // "파일을 선택하세요" 텍스트가 보여야 함 (Home 페이지)
+      // "파일을 선택하세요" 텍스트 (Home 페이지)
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
 
-      // 파일 생성 버튼이 보여야 함
+      // 파일 생성 버튼
       await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 5000 });
+
+      // multi-vault: db.files에 이전 vault 행 보존
+      await expectDbFilesContain(page, ['test-back-to-home.json']);
+
+      // multi-vault: Home 리스트에 이전 vault 표시
+      await expect(page.getByTestId('file-list-item')).toHaveCount(1);
+      await expect(page.getByText('test-back-to-home.json')).toBeVisible();
 
       // 5. 스토어들이 제대로 초기화되었는지 검증
       await expectStoresReset(page, 'Auth - 첫 화면으로 돌아가기 후');
     });
-
-    
   });
 
   test.describe('Settings 페이지 - "파일변경" 버튼', () => {
@@ -120,28 +135,29 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await page.waitForURL('**/accounts', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
 
-      // 2. Settings 페이지로 이동 (BottomTabs의 ⚙️ 버튼)
+      // 2. Settings 페이지로 이동
       await page.getByRole('button', { name: 'Settings' }).click();
       await page.waitForURL('**/settings', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
-      // 3. "파일변경" 버튼 찾기 및 클릭
+      // 3. "파일변경" 버튼 클릭
       const fileChangeRow = page.locator('text=파일변경').locator('..');
       await expect(fileChangeRow.locator('button:has-text("이동")')).toBeVisible({ timeout: 5000 });
       await fileChangeRow.locator('button:has-text("이동")').click();
 
-      // 4. Home 페이지(/)로 이동하고 파일 선택 상태 진입 확인
+      // 4. Home 페이지로 이동
       await page.waitForURL('/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
-      // "파일을 선택하세요" 텍스트가 보여야 함
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
-
-      // 파일 생성/파일 선택 버튼들이 보여야 함
       await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 5000 });
-      await expect(page.getByRole('button', { name: '파일 선택' })).toBeVisible({ timeout: 5000 });
 
-      // 5. 스토어들이 제대로 초기화되었는지 검증
+      // multi-vault: 이전 vault 행 보존 + 리스트 표시
+      await expectDbFilesContain(page, ['test-settings-file-change.json']);
+      await expect(page.getByTestId('file-list-item')).toHaveCount(1);
+      await expect(page.getByText('test-settings-file-change.json')).toBeVisible();
+
+      // 5. 스토어 초기화 검증
       await expectStoresReset(page, 'Settings - 파일변경 후 (암호화 볼트)');
     });
 
@@ -165,30 +181,33 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await page.waitForURL('**/accounts', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
 
-      // 2. Settings 페이지로 이동
+      // 2. Settings → 파일변경
       await page.getByRole('button', { name: 'Settings' }).click();
       await page.waitForURL('**/settings', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
-      // 3. "파일변경" 버튼 클릭
       const fileChangeRow = page.locator('text=파일변경').locator('..');
       await expect(fileChangeRow.locator('button:has-text("이동")')).toBeVisible({ timeout: 5000 });
       await fileChangeRow.locator('button:has-text("이동")').click();
 
-      // 4. Home 페이지로 이동 및 파일 선택 화면 확인
+      // 3. Home으로 이동
       await page.waitForURL('/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
       await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 5000 });
 
-      // 5. 스토어들이 제대로 초기화되었는지 검증
+      // multi-vault: 이전 vault 행 보존
+      await expectDbFilesContain(page, ['test-unencrypted-file-change.json']);
+      await expect(page.getByTestId('file-list-item')).toHaveCount(1);
+
+      // 4. 스토어 초기화
       await expectStoresReset(page, 'Settings - 파일변경 후 (비암호화 볼트)');
     });
   });
 
-  test.describe('closeDataFile 호출 후 세션 상태 초기화 검증', () => {
-    test('Auth에서 "첫 화면으로 돌아가기" 후 다시 볼트 생성 시 정상 동작', async ({ page }) => {
+  test.describe('closeDataFile 호출 후 multi-vault lifecycle', () => {
+    test('Auth에서 "첫 화면으로 돌아가기" 후 다시 볼트 생성 시 정상 동작 + 이전 vault 보존', async ({ page }) => {
       // 1. 첫 번째 볼트 생성 및 언락
       await page.getByRole('button', { name: '파일 생성' }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -211,10 +230,14 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await page.waitForURL('/', { timeout: 5000 });
       await expect(page.getByText('파일을 선택하세요')).toBeVisible({ timeout: 5000 });
 
-      // 3. 스토어들이 제대로 초기화되었는지 검증 (두 번째 볼트 생성 전)
+      // 3. multi-vault: 이전 vault 행 보존 확인
+      await expectDbFilesContain(page, ['vault-one.json']);
+      await expect(page.getByTestId('file-list-item')).toHaveCount(1);
+
+      // 4. 스토어 초기화 검증
       await expectStoresReset(page, 'Auth - 첫 화면으로 돌아가기 후 (두 번째 볼트 생성 전)');
 
-      // 4. 두 번째 볼트 생성 (세션이 초기화되어야 정상 생성됨)
+      // 5. 두 번째 볼트 생성 (다른 이름)
       await page.getByRole('button', { name: '파일 생성' }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
@@ -224,13 +247,16 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await pinInput2.fill(TEST_PIN);
       await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
 
-      // 4. 정상적으로 /accounts 이동 확인
+      // 정상적으로 /accounts 이동
       await page.waitForURL('**/accounts', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
       await expect(page.locator('section.min-h-svh')).toBeVisible({ timeout: 5000 });
+
+      // 6. multi-vault: db.files에 두 row 보존
+      await expectDbFilesContain(page, ['vault-one.json', 'vault-two.json']);
     });
 
-    test('Settings에서 "파일변경" 후 다시 볼트 생성 시 정상 동작', async ({ page }) => {
+    test('Settings에서 "파일변경" 후 다시 볼트 생성 시 정상 동작 + 이전 vault 보존', async ({ page }) => {
       // 1. 첫 번째 볼트 생성
       await page.getByRole('button', { name: '파일 생성' }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -255,10 +281,14 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await page.waitForURL('/', { timeout: 5000 });
       await expect(page.getByText('파일을 선택하세요')).toBeVisible({ timeout: 5000 });
 
-      // 3. 스토어들이 제대로 초기화되었는지 검증 (두 번째 볼트 생성 전)
+      // 3. multi-vault: 이전 vault 행 보존 확인
+      await expectDbFilesContain(page, ['vault-settings-one.json']);
+      await expect(page.getByTestId('file-list-item')).toHaveCount(1);
+
+      // 4. 스토어 초기화 검증
       await expectStoresReset(page, 'Settings - 파일변경 후 (두 번째 볼트 생성 전)');
 
-      // 4. 두 번째 볼트 생성
+      // 5. 두 번째 볼트 생성
       await page.getByRole('button', { name: '파일 생성' }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
@@ -268,10 +298,72 @@ test.describe('closeDataFile (세션 초기화 및 파일 선택 화면 이동)'
       await pinInput2.fill(TEST_PIN);
       await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
 
-      // 4. 정상적으로 /accounts 이동 확인
+      // 정상적으로 /accounts 이동
       await page.waitForURL('**/accounts', { timeout: 10000 });
       await page.waitForLoadState('networkidle');
       await expect(page.locator('section.min-h-svh')).toBeVisible({ timeout: 5000 });
+
+      // 6. multi-vault: 두 row 보존
+      await expectDbFilesContain(page, ['vault-settings-one.json', 'vault-settings-two.json']);
+    });
+  });
+
+  test.describe('같은 이름 재시도 → (1) suffix 부여 (multi-vault 핵심)', () => {
+    test('vault-one 생성 → close → 같은 이름으로 재시도 → vault-one(1).json 생성', async ({ page }) => {
+      // 1. vault-one 생성
+      await page.getByRole('button', { name: '파일 생성' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+
+      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
+      await fileNameInput.fill('vault-one');
+      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
+      await pinInput.fill(TEST_PIN);
+      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
+
+      await page.waitForURL('**/accounts', { timeout: 10000 });
+      await page.waitForLoadState('networkidle');
+
+      // 2. 새로고침 → /auth → "첫 화면으로 돌아가기"
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForURL('**/auth', { timeout: 10000 });
+
+      await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
+      await page.waitForURL('/', { timeout: 5000 });
+
+      // 3. Home에 vault-one.json 1개 보임
+      await expect(page.getByText('vault-one.json')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('file-list-item')).toHaveCount(1);
+      await expectDbFilesContain(page, ['vault-one.json']);
+
+      // 4. 같은 이름 vault-one으로 다시 생성 시도
+      await page.getByRole('button', { name: '파일 생성' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+
+      const fileNameInput2 = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
+      await fileNameInput2.fill('vault-one');
+      const pinInput2 = page.getByRole('dialog').locator('input[type="password"]').first();
+      await pinInput2.fill(TEST_PIN);
+      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
+
+      // 5. /accounts 이동 (suffix 적용되어 생성됨)
+      await page.waitForURL('**/accounts', { timeout: 10000 });
+      await page.waitForLoadState('networkidle');
+
+      // 6. db.files에 vault-one.json + vault-one(1).json 두 row 보존
+      await expectDbFilesContain(page, ['vault-one(1).json', 'vault-one.json']);
+
+      // 7. 다시 close → Home에서 두 row 리스트에 보임
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForURL('**/auth', { timeout: 10000 });
+
+      await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
+      await page.waitForURL('/', { timeout: 5000 });
+
+      await expect(page.getByText('vault-one.json')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText('vault-one(1).json')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('file-list-item')).toHaveCount(2);
     });
   });
 });

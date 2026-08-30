@@ -8,7 +8,7 @@ import type {
   FileMetadata,
 } from "@/models/account";
 import { isFileStorageError } from "@/errors/FileStorageError";
-import { fileTable, ACTIVE_FILE_ID } from "@/database/fileTable";
+import { fileTable } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
 import { isNativeFileStorageAvailable } from "@/database/fileExport";
@@ -17,7 +17,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { writeBackupToUri } from "@/database/fileExport";
 
 export interface FileRecord {
-  id: typeof ACTIVE_FILE_ID;
+  id: string; // PK = fileName (v14)
   fileName: string;
   fileData: string; // JSON string of KiyoVaultData (encrypted or plain)
   encrypted: boolean;
@@ -31,10 +31,11 @@ export class KiyoDatabase extends Dexie {
   templates!: EntityTable<TemplateRecord, "id">;
   settings!: Table<AppSettings, number>;
   metadata!: Table<FileMetadata, number>;
-  files!: Table<FileRecord, typeof ACTIVE_FILE_ID>;
+  files!: Table<FileRecord, string>;
 
   constructor() {
     super("kiyo-db");
+    // v13: schema as-is (clear upgrade) — preserved for users upgrading from v12
     this.version(13)
       .stores({
         accounts:
@@ -50,6 +51,33 @@ export class KiyoDatabase extends Dexie {
         // v12: files 테이블 키를 ++id에서 고정 "active"로 변경
         // 기존 레코드 삭제 후 새로 생성 (볼트 파일로 복원 가능하므로 데이터 손실 없음)
         transaction.table("files").clear();
+      });
+
+    // v14: PK is now fileName (string) instead of the "active" literal.
+    // Migrate the v13 row by rewriting its id to its fileName — data loss 0.
+    this.version(14)
+      .stores({
+        accounts:
+          "++id, createdAt, updatedAt",
+        templates:
+          "++id, createdAt, updatedAt",
+        settings:
+          "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
+        metadata: "id, version, createdAt",
+        files: "id, fileName, createdAt, updatedAt",
+      })
+      .upgrade(async (transaction) => {
+        // v13 row 1개(id="active")를 fileName PK로 승계 — 데이터 손실 0.
+        // Dexie 4의 put은 PK가 변경되면 새 row로 처리될 수 있으므로
+        // delete + put 패턴으로 안전하게 승계.
+        const rows = await transaction.table("files").toArray();
+        for (const row of rows) {
+          if (row.id === "active" && row.fileName) {
+            const newId = row.fileName;
+            await transaction.table("files").delete("active");
+            await transaction.table("files").put({ ...row, id: newId });
+          }
+        }
       });
   }
 }
@@ -154,9 +182,6 @@ async function tryTriggerAutoBackup(params: SyncDatabaseParams) {
   }
 }
 
-// Deprecated alias for backward compatibility
-export const syncDatabaseToFile = persistVaultSnapshot;
-
 type ReplaceDatabaseDataParams =
   | {
       data: KiyoVaultData;
@@ -247,7 +272,8 @@ export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Pr
       await db.accounts.clear();
       await db.templates.clear();
       await db.metadata.clear();
-      await db.files.clear();
+      // files는 clear하지 않음 — multi-vault 모델에서 이전 vault row 보존.
+      // active fileName 1개만 upsert하여 새 vault로 갈아탄다.
 
       // 이미 완성된 레코드 바로 bulkPut
       await db.accounts.bulkPut(accountRecords);

@@ -23,8 +23,13 @@ const Auth = () => {
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      if (!activeFileName || !encrypted) {
+      const activeFileName = useSessionStore.getState().activeFileName;
+      if (!activeFileName) {
+        navigate("/", { replace: true });
+        return;
+      }
+      const { encrypted } = await fileTable.getFileInfo(activeFileName);
+      if (!encrypted) {
         navigate("/", { replace: true });
         return;
       }
@@ -105,7 +110,7 @@ const Auth = () => {
       const cryptoKeyBase64 = result.key;
 
       // Get the salt from the file
-      const { salt } = await fileTable.getActiveFileInfo();
+      const { salt } = await fileTable.getFileInfo(useSessionStore.getState().activeFileName!);
       if (!salt) {
         throw new Error("Salt not found for encrypted file");
       }

@@ -19,6 +19,8 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 
 **업데이트 (2026-08-30):** Multi-Vault brainstorm [`2026-08-30-multi-vault-support.md`](2026-08-30-multi-vault-support.md) 가 별도 brainstorm으로 열렸고, **Track 3 진입 전 Multi-Vault가 최우선**으로 재배치됨 (§3.3, §8.1 갱신). 본 brainstorm은 §3의 UX 항목에 집중하고, Home UI 변경점은 Multi-Vault 결과에 의존.
 
+**업데이트 (2026-08-30, 후속):** Multi-Vault plan [`2026-08-30-multi-vault-support.md`](../plans/2026-08-30-multi-vault-support.md) **완료**. Dexie v14 migration + `ACTIVE_FILE_ID` 제거 + `resolveFileName` suffix + Home 파일 리스트 UI + 21 파일/334 테스트 통과. Post-Implementation Dead Code Cleanup으로 62줄 정리 (syncAutofillToken 주석, importDataFile 주석, syncDatabaseToFile 별칭, changePin 중복 가드). Track 3의 §3.3 / §8.1 의존성이 해소되어 **Plan-7 활성화 가능**.
+
 ## 2. Goal
 
 1. **Track 3의 진척 매트릭스** — ✅ / ⚠️ / ❌ / ❓로 코드 상태 매핑 (커밋 로그 + 실제 컴포넌트 인스펙션 기반)
@@ -80,7 +82,7 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | "다크/라이트 테마 시스템 설정 연동" | `initializeTheme` | 시스템 감지 로직 확인 필요, FOUC 가드 미확인 | ⚠️ |
 | "테마 전환 시 깜빡임 없음" | 없음 | 검증 안 됨 | ❓ |
 | "Plan-7 (다단계 페이지)" | 없음 | 메모 단계 | ❌ |
-| **README "다중 데이터 파일 — 여러 암호화된 볼트 생성/가져오기/백업/복원"** | schema는 multi-row 가능 | `ACTIVE_FILE_ID` 단일 id 강제 + 모든 함수가 덮어쓰기 | **❌ 미지원** — Multi-Vault brainstorm [`2026-08-30-multi-vault-support.md`](2026-08-30-multi-vault-support.md) 결과로 해소 예정 |
+| **README "다중 데이터 파일 — 여러 암호화된 볼트 생성/가져오기/백업/복원"** | multi-row + Dexie v14 + Home 리스트 UI | — | **✅ 완료** (2026-08-30) — [Multi-Vault plan](../plans/2026-08-30-multi-vault-support.md) 결과 |
 
 **중요 시그널:** STRATEGY §3의 "최근 신호"는 "Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재" — **AutoLockIndicator 외에는 상태 표시 컴포넌트가 없다.** 이 한 줄이 §3의 5개 카테고리 중 어느 것도 본격 착수되지 않았음을 강하게 시사한다.
 
@@ -241,8 +243,8 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 
 ```
 Track 3: UX·접근성·인터랙션 품질
-└─ [선행] Multi-Vault Support (§2 후속, 별도 brainstorm — Home UI 전제)
-   ├─ Plan-7: 파일 생성 다단계 페이지 (/create-vault Step 1·2·3)
+└─ ✅ Multi-Vault Support (2026-08-30 완료 — [plan](../plans/2026-08-30-multi-vault-support.md))
+   ├─ Plan-7: 파일 생성 다단계 페이지 (/create-vault Step 1·2·3) — 활성화 가능
    ├─ Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync)
    ├─ Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit, FormDialog async)
    ├─ Plan-D: 테마 FOUC 가드 + 시스템 연동 강화
@@ -278,23 +280,23 @@ Track 3: UX·접근성·인터랙션 품질
 |---|---|---|
 | Q1 | Plan-A 토스트: 직접 구현 (b) | 📋 권장 (사용자 확정 대기) |
 | Q2 | Plan-B FormDialog 에러: 둘 다 (c) | 📋 권장 (사용자 확정 대기) |
-| Q3 | Plan-7 라우트: 단일 + store (b) | 📋 권장 (사용자 확정 대기) — **Multi-Vault 결과 의존** |
-| Q4 | Plan-7 FileCreateDialog: 완전 제거 (a) | 📋 권장 (사용자 확정 대기) — **Multi-Vault 결과 의존** |
+| Q3 | Plan-7 라우트: 단일 + store (b) | 📋 권장 (사용자 확정 대기) |
+| Q4 | Plan-7 FileCreateDialog: 완전 제거 (a) | 📋 권장 (사용자 확정 대기) |
 | Q5 | a11y: 부산물 흡수 (b) + 후속 audit plan | 📋 권장 (사용자 확정 대기) |
 | Q6 | Plan-D FOUC: 실측 우선 (a) | 📋 권장 (사용자 확정 대기) |
 | Q7 | Plan-A Skeleton: 초기 진입 (a) | 📋 권장 (사용자 확정 대기) |
 | Q8 | Plan-7 PIN: Plan-4 그대로 (a) | 📋 권장 (사용자 확정 대기) |
-| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ 확정 2026-08-30 (Multi-Vault brainstorm) |
+| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ Multi-Vault 완료 2026-08-30, 나머지 순서 확정 |
 
-**진행 순서 (2026-08-30 확정):**
-1. **Multi-Vault Support** ([`2026-08-30-multi-vault-support.md`](../2026-08-30-multi-vault-support.md)) — Track 3 진입 전 선행, 모든 Q의 전제
-2. **Plan-7** (다단계 페이지) — Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기
+**진행 순서 (2026-08-30 갱신):**
+1. **✅ Multi-Vault Support** ([plan](../plans/2026-08-30-multi-vault-support.md)) — 완료 (21 파일/334 테스트, Post-Implementation Dead Code Cleanup 62줄 정리)
+2. **Plan-7** (다단계 페이지) — 이제 활성화 가능. Q3/Q4 확정 대기
 3. **Plan-A** (공통 UI 인프라) — Plan-7의 단계 전환 피드백, Plan-B의 에러 기반
 4. **Plan-B** (버튼/폼 일관성) — Plan-A 위에서 동작
 5. **Plan-D** (테마 FOUC 가드) — 독립, Q6 실측 후 작업
 6. **a11y 부산물 흡수** — Plan-A/B/D 진행 중 자연 보강 + 후속 audit plan
 
-> Track 3의 Q1~Q8은 Multi-Vault 완료 후 활성화됨. 현재 단계에서는 Q 확정 작업은 보류.
+> Multi-Vault 완료로 Track 3의 Q1~Q8 활성화됨. Plan-7 Q3/Q4는 Multi-Vault 결과 반영해 사용자 확정 가능.
 
 ## 11. Risks
 
@@ -307,19 +309,19 @@ Track 3: UX·접근성·인터랙션 품질
 | Track 1(autofill)/Track 2(vault) 진행 중 회귀 | Plan-A/B는 React UI 한정, autofill native 경로와 격리됨. Plan-7 라우트 추가는 `/create-vault` 신규라 기존 라우트 미영향 |
 | "단순화/이전과 같게" 사용자 신호 (메모) | 각 plan 시작 전 작업 범위 재확인, 첫 plan에서 검증된 패턴을 후속에 복제 |
 | 6개 항목 동시 착수 시 산만 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** 순서 엄수, a11y는 흡수 |
-| **Multi-Vault 결과에 Track 3 전체 의존** | Multi-Vault 완료 전 Track 3 plan-A/B/7 작업 비효율. **순서 엄수** |
-| **Multi-Vault E2E 회귀 위험** | Home의 "파일 생성" 버튼은 `FileCreateDialog` 그대로 — Multi-Vault는 다이얼로그 UI 변경 0, E2E 회귀 0 (Q8 사용자 확정) |
+| ~~Multi-Vault 결과에 Track 3 전체 의존~~ | ✅ 해소 (2026-08-30 Multi-Vault 완료). 이제 Plan-7 활성화 가능 |
+| Multi-Vault E2E 회귀 위험 | Home의 "파일 생성" 버튼은 `FileCreateDialog` 그대로 — Multi-Vault는 다이얼로그 UI 변경 0, E2E 회귀 0 (Q8 사용자 확정) |
 
 ## 12. Next Action
 
-**Track 3는 Multi-Vault 후속 (2026-08-30 확정).** 본 brainstorm의 Q1~Q8은 보류 상태.
+**Track 3의 Multi-Vault 선행 의존성 해소 (2026-08-30).** 본 brainstorm의 Q1~Q8은 사용자 확정 대기 상태.
 
-1. **즉시:** [`2026-08-30-multi-vault-support.md`](../2026-08-30-multi-vault-support.md) 기반으로 `ce-plan` 개설 → `docs/plans/2026-08-30-multi-vault-support.md`
-2. **Multi-Vault 완료 후:** 본 brainstorm §9 Q1~Q8 사용자 확정 (Plan-7 Q3/Q4는 Multi-Vault 결과 반영해 재평가)
+1. **✅ Multi-Vault 완료:** [plan](../plans/2026-08-30-multi-vault-support.md) — Dexie v14 + Home 파일 리스트 UI + 21 파일/334 테스트 + Dead Code Cleanup 62줄
+2. **즉시 가능:** 본 brainstorm §9 Q1~Q8 사용자 확정 (Plan-7 Q3/Q4는 Multi-Vault 결과 반영)
 3. **첫 plan 선택:** Plan-7 (Multi-Vault와 가장 강하게 결합된 §3 항목)
 4. **그 후:** Plan-A → Plan-B → Plan-D 순서로 진행
 
-**본 brainstorm의 ce-plan 직접 개설은 보류.** Multi-Vault가 먼저 선행되어야 Track 3 plan의 Q 확정과 범위 산정이 의미를 가짐.
+**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** 이제 Plan-7의 `ce-plan` 작성이 다음 자연스러운 단계.
 
 ---
 
@@ -336,7 +338,7 @@ Track 3: UX·접근성·인터랙션 품질
 
 ## 부록 B. STRATEGY §3 업데이트 제안 (Multi-Vault 후속 결정 반영)
 
-본 brainstorm은 **Multi-Vault brainstorm(2026-08-30) 후속**으로 갱신됨. STRATEGY.md §3은 Multi-Vault + 본 brainstorm 양쪽 완료 후 갱신.
+본 brainstorm은 **Multi-Vault brainstorm(2026-08-30) 후속**으로 갱신됨. STRATEGY.md §3은 Multi-Vault + 본 brainstorm 양쪽 완료 후 갱신. **Multi-Vault는 2026-08-30 완료**, 본 brainstorm의 STRATEGY diff는 §3의 Track 3 진행 상태를 반영.
 
 ```diff
  ### 3. UX·접근성·인터랙션 품질 (UX & Accessibility)
@@ -346,14 +348,14 @@ Track 3: UX·접근성·인터랙션 품질
 +- 에러 토스트/인라인 에러 — 네이티브/브리지 에러를 사용자 언어로 매핑
 +- 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
 +- **후속 후보 — Plan-7: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm §12](docs/brainstorms/2026-08-29-vault-file-integrity.md)) — 3단계 (폴더 선택 → 파일 이름 → 암호 입력) 라우트 기반 흐름으로 모바일 키보드 가시성·뒤로가기 모호함·"되돌리기 어려운 결정" 가시성 개선. §2 볼트 무결성과 분리된 UX 개선 항목이며, Plan-4 (패스프레이즈) 도입 시 Step 3가 자연스럽게 통합됨
-+- **진척 (2026-08-30):** 6개 항목 중 0개 완료, 4개 부분 구현 (a11y/에러/테마/중복제출), 2개 미구현 (로딩/Plan-7)
-+  - 🔒 [선행] Multi-Vault Support — [brainstorm](docs/brainstorms/2026-08-30-multi-vault-support.md), §2 후속, Home 파일 리스트 UI 전제
-+  - 📋 Plan-7: 다단계 페이지 — §8.1 (Multi-Vault 결과 의존)
++- **진척 (2026-08-30 갱신):** 6개 항목 중 0개 완료, 4개 부분 구현 (a11y/에러/테마/중복제출), 2개 미구현 (로딩/Plan-7). **선행 의존성 해소**: Multi-Vault Support ✅ 완료 (2026-08-30) — [plan](../plans/2026-08-30-multi-vault-support.md)
++  - ✅ Multi-Vault Support — 완료, Post-Implementation Dead Code Cleanup 62줄 정리. Home 파일 리스트 UI 전제 해소
++  - 📋 Plan-7: 다단계 페이지 — §8.1 (이제 활성화 가능, 사용자 확정 대기)
 +  - 📋 Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync) — §8.1 Q1
 +  - 📋 Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit) — §8.1 Q2
 +  - 📋 Plan-D: 테마 FOUC 가드 — §8.1, Q6 실측 후 작업
 +  - 📋 a11y: Plan-A/B/D 부산물 흡수 + 후속 a11y audit plan (Q5)
  - **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
-+ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — Multi-Vault 선행 대기
-+ - **진행 순서 (2026-08-30 확정):** Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D
++ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — **Multi-Vault 선행 완료 (2026-08-30), Q1~Q8 사용자 확정 대기**
++ - **진행 순서 (2026-08-30 갱신):** ~~Multi-Vault~~ → Plan-7 → Plan-A → Plan-B → Plan-D (Multi-Vault ✅)
 ```

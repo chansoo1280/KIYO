@@ -9,6 +9,7 @@ interface PinChangeDialogProps {
   onClose: () => void;
   onConfirm: (newPin: string) => Promise<void>;
   isEncrypted?: boolean;
+  fileName: string;
 }
 
 export const PinChangeDialog = ({
@@ -16,6 +17,7 @@ export const PinChangeDialog = ({
   onClose,
   onConfirm,
   isEncrypted = true,
+  fileName,
 }: PinChangeDialogProps) => {
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -53,7 +55,7 @@ export const PinChangeDialog = ({
       throw new Error("현재 PIN과 다른 PIN을 입력하세요.");
     }
 
-    const { fileData } = await fileTable.getActiveFileInfo();
+    const { fileData } = await fileTable.getFileInfo(fileName);
     if (!fileData) {
       throw new Error("활성 데이터 파일이 없습니다.");
     }

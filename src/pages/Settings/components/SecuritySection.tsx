@@ -36,20 +36,21 @@ export function SecuritySection() {
   }, [isEncrypted, setAutoLockTimeout]);
 
   const handlePinChange = useCallback(async (newPin: string) => {
-    const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+    const activeFileName = useSessionStore.getState().activeFileName;
     if (!activeFileName) {
       throw new Error("활성 데이터 파일이 없습니다.");
     }
 
+    const { encrypted } = await fileTable.getFileInfo(activeFileName);
     if (encrypted) {
       if (!cryptoKey) {
         throw new Error("암호화 키 정보가 없습니다.");
       }
-      await changePin(newPin);
+      await changePin(activeFileName, newPin);
     } else {
-      await changePin(newPin);
+      await changePin(activeFileName, newPin);
     }
-    const { encrypted: newEncrypted } = await fileTable.getActiveFileInfo();
+    const { encrypted: newEncrypted } = await fileTable.getFileInfo(activeFileName);
     return newEncrypted;
   }, [cryptoKey]);
 
@@ -87,7 +88,7 @@ export function SecuritySection() {
       setShowBiometricSetupDialog(true);
     } else {
       // Disable biometric - delete stored key
-      const { activeFileName } = await fileTable.getActiveFileInfo();
+      const activeFileName = useSessionStore.getState().activeFileName;
       if (activeFileName) {
         try {
           await SecureKey.deleteKey({ vaultId: activeFileName });
@@ -108,7 +109,7 @@ export function SecuritySection() {
       return;
     }
 
-    const { activeFileName } = await fileTable.getActiveFileInfo();
+    const activeFileName = useSessionStore.getState().activeFileName;
     if (!activeFileName) {
       setSecurityMessage("파일 정보가 없습니다.");
       setShowBiometricSetupDialog(false);
@@ -202,6 +203,7 @@ export function SecuritySection() {
         onClose={() => setShowPinChangeDialog(false)}
         onConfirm={handlePinChangeConfirm}
         isEncrypted={isEncrypted}
+        fileName={useSessionStore.getState().activeFileName ?? ""}
       />
 
       {showBiometricSetupDialog && (
