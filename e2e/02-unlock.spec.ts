@@ -53,7 +53,7 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
     await page.getByRole('button', { name: '확인' }).click();
 
     // 3. 에러 메시지 표시 확인
-    await expect(page.locator('[role="alert"]').filter({ hasText: 'PIN 불일치' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[role="alert"]').filter({ hasText: 'PIN 번호가 올바르지 않습니다.' })).toBeVisible({ timeout: 5000 });
 
     // 4. 여전히 인증 페이지(/auth)에 머물러 있어야 함
     await expect(page).toHaveURL(/\/auth/);
