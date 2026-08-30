@@ -139,35 +139,66 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 
 ## 7. Options (Track 3 분할 후보)
 
-### A. 로딩/스켈레톤/에러 토스트 통합 인프라 (Plan-A)
+### A1. Plan-A1: 에러 가시화
 
-**포함:**
-- `<Spinner>` / `<Skeleton>` 공통 컴포넌트
-- `<Toast>` / `<Snackbar>` (성공/에러/경고 variant)
-- `setSyncError` → 토스트 자동 표시
-- 비동기 작업의 in-flight 상태 hook (`useAsync` 같은 wrapper)
+**포함 (Q1 확정):**
+- `mapError(err: unknown): string` — 네이티브/IndexedDB/일반 에러 → 한국어 매핑
+- 호출처 6곳 수동 try/catch (`AccountEdit` 저장 2건, `AccountDetail` 삭제 1건, `loadAccounts`/`loadTemplates` 초기, `syncToAutofill`)
+- `setSyncError` → `<SyncErrorBanner>` 페이지 상단 표시
 - i18n 키 분리
 
-**장점:** 다른 모든 plan이 의존하는 **기반 인프라**. 한 번 만들면 §3 나머지 항목이 모두 활용.
-**단점:** 인프라 자체로는 사용자가 체감하기 어려움 (눈에 보이는 변화 적음).
-**복잡도:** 중. Toast 위치/타이밍/queueing/dismiss 인터랙션 결정 필요.
+**범위 밖 (Q1 확정):**
+- Toast / Snackbar / 공통 hook (`useAsync`, `useFormError` 등) — **포함하지 않음**
+- Spinner / Skeleton — **A2에서 다룸**
+
+**장점:** 실패 UI가 모두 가시화됨, 토스트 의존성 0, "한 가지 길" (수동 try/catch + 매핑 함수) 유지. Plan-7/Plan-B의 공통 전제.
+**단점:** 호출처 마이그레이션 6곳 수동 — `mapError` 누락 시 fallback이 `error.message` 그대로 노출.
+**복잡도:** 소. 새 hook 0, 새 컴포넌트 1~2개 (`SyncErrorBanner`), 매핑 함수 + 호출처 패치.
 **보안:** 영향 없음.
-**테스팅:** Toast/Skeleton 단위 테스트 + Playwright E2E.
-**마이그레이션:** `setSyncError` 호출처를 토스트로 교체하는 작업 동반.
+**테스팅:** `mapError` 단위 테스트 + `SyncErrorBanner` 렌더 테스트 + 호출처 6곳 통합 테스트 (실패 시뮬레이션).
+**마이그레이션:** `setSyncError` 호출처를 인라인/SyncErrorBanner로 교체. 기존 `FormDialog`의 `data-testid="form-dialog-error"` 패턴은 유지.
 
-### B. 중복 제출/버튼 일관성 (Plan-B)
+### A2. Plan-A2: 초기 진입 Skeleton
 
-**포함:**
-- `Button` 컴포넌트에 `loading` prop 추가, in-flight 시 자동 disabled
-- 폼 submit wrapper: `useFormSubmit` hook (throw → 에러 표시 통합)
-- `FormDialog`/`ConfirmDialog`에서 일관된 비동기 처리
+**포함 (Q7 확정):**
+- `<Spinner>` / `<Skeleton>` 공통 컴포넌트
+- `loadAccounts` / `loadTemplates` 첫 진입 시 Skeleton 표시 (`Accounts`/`Templates` 페이지)
+- `AccountDetail` 첫 진입 시 (해당 account 로드)
+- `role="status"` + `aria-busy="true"` (a11y 자연 보강)
 
-**장점:** 사용자 체감이 큼 ("왜 또 누르지?" → "한 번만 누르면 됨").
-**단점:** Plan-A(토스트)와 결합 시 시너지, 단독으로는 에러 표시가 alert로 한정.
-**복잡도:** 소. 기존 Button/FormDialog 수정 중심.
+**범위 밖 (Q7 확정):**
+- 자동 저장 중 (`persistVaultSnapshot`) — **포함 안 함**
+- sync 중 (`syncToAutofill`) — **A1의 SyncErrorBanner로 충분**
+
+**장점:** 첫 페이지 로드 시 빈 화면 → Skeleton → 콘텐츠로 자연스러운 전환. 시각적 피드백.
+**단점:** 로딩이 매우 짧으면 Skeleton이 깜빡임 — throttle 가능하면 그 자리에서 표시 안 함.
+**복잡도:** 소. 공통 컴포넌트 2개 + 3개 페이지 적용.
 **보안:** 영향 없음.
-**테스팅:** Button 단위 테스트(loading 상태) + 폼 submit 통합 테스트.
-**마이그레이션:** 모든 dialog 호출처에서 async/await 패턴 점검.
+**테스팅:** Skeleton 렌더 테스트 (accounts.length === 0 && isLoading 시 표시) + Playwright E2E.
+**마이그레이션:** 기존 `isLoading` prop 활용, 새 추상화 없음.
+
+**A1/A2 분리 근거:**
+- **A1이 모든 plan의 전제** — Plan-7/Plan-B가 `mapError` 활용
+- **A2는 독립 가능** — Skeleton은 다른 plan과 결합도 약함, 단독 plan으로 검증된 패턴 만들기 좋음
+- **A1을 먼저 해야 A2에서 Skeleton 내부 에러도 매핑 가능**
+
+### B. Plan-B: 버튼/폼 일관성
+
+**포함 (Q2 확정 반영):**
+- `Button` 컴포넌트에 `loading` prop 추가, in-flight 시 자동 `disabled` + `aria-busy="true"`
+- `FormDialog`/`ConfirmDialog`의 submit 핸들러가 `loading` 상태 관리
+- 호출자는 FormDialog 변경 없음 — **throw 유지** (Q1의 수동 try/catch 패턴과 일관)
+
+**범위 밖 (Q2 확정):**
+- `useFormSubmit` 같은 wrapper hook — **포함하지 않음**
+- FormDialog의 `onError` callback 패턴 — **포함하지 않음**
+
+**장점:** 사용자 체감 큼 ("왜 또 누르지?" → "한 번만 누르면 됨"). Plan-A의 매핑 함수와 자연 결합.
+**단점:** 단독으로는 Plan-A(에러 매핑) 없이는 에러 표시가 alert 한정.
+**복잡도:** 소. 기존 Button/FormDialog 수정 중심, 호출처 변경 0.
+**보안:** 영향 없음.
+**테스팅:** Button 단위 테스트(loading 상태) + FormDialog 통합 테스트(in-flight 시 disabled).
+**마이그레이션:** 없음 (호출자 API 변경 없음).
 
 ### C. 키보드/포커스/a11y (Plan-C)
 
@@ -201,22 +232,47 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 **테스팅:** Playwright reload 시 깜빡임 시각 검증 + theme persistence.
 **마이그레이션:** 기존 `initializeTheme` 호출자 영향 점검.
 
-### E. Plan-7: 파일 생성 다단계 페이지 (Plan-7)
+### E. Plan-7a: 파일 생성 다단계 페이지 (UI 흐름)
 
-**포함:**
-- 신규 라우트 `/create-vault/step-{1|2|3}` 또는 단일 `/create-vault` + Zustand `useCreateVaultStore`
-- Step 1: SAF folder picker (web fallback 포함)
-- Step 2: 파일명 + `.json` 검증 + 중복 검사
-- Step 3: PIN 입력 (zxcvbn, Plan-4 산출물 활용)
-- Stepper UI (1·2·3 진행 표시)
-- 기존 `FileCreateDialog` 호출처에서 `<Link to="/create-vault">`로 변경
+**포함 (Q3/Q4/Q8 확정 + 2026-08-30 Plan-7a/b 분리 결정 반영):**
+- 신규 라우트 `/create-vault` 1개 (Q3-b: nested route 아님)
+- `useCreateVaultStore` (Zustand): `step: 1 | 2`, `fileName`, `pin`
+- **Step 순서 (Plan-7a 확정):** 2단계
+  - Step 1: 파일 이름 + `.json` 검증 + 중복 검사
+  - Step 2: PIN 입력 (zxcvbn, Plan-4 산출물 활용, **Q8: Plan-4 정책 그대로 4~20자 mixed**)
+- **Stepper UI (Q3-b-2-B 확정):** Progress bar + 단계 라벨 (`●─────●─────○` 형태, 2단계)
+- 기존 `FileCreateDialog` 호출처는 `<Link to="/create-vault">`로 마이그레이션
+  - `Home.tsx` "파일 생성" 버튼
+  - **`DataSection.tsx` "백업 파일 저장"은 별도 처리** (Q4-a: FileCreateDialog 완전 제거 시점에 분리된 백업 다이얼로그 또는 별도 페이지로 결정)
+- **Q4-a: `FileCreateDialog`는 호출처 100% 마이그레이션 후 완전 제거** (deprecated 잔존 X)
 
-**장점:** "되돌리기 어려운 결정"의 가시성 ↑, 모바일 키보드 가림 해결, Plan-4 자연 통합.
+**범위 밖 (Plan-7a):**
+- **폴더 선택 Step / SAF URI 저장 / 자동 백업 활성화** — **Plan-7b로 분리** (별도 plan)
+- **암호화 체크박스** — Plan-7a에서는 모든 새 파일을 암호화로 가정 (Plan-4 정책 따라감), 체크박스 제거 단순화. 비암호화 파일은 기존 v1 데이터 마이그레이션 시나리오만
+
+**장점:** "되돌리기 어려운 결정"의 가시성 ↑, 모바일 키보드 가림 해결, Plan-4 자연 통합, 단일 라우트로 deep-link 부담 없음.
 **단점:** 라우터 추가 → Playwright E2E navigation 영향. 모달 → 페이지 마이그레이션 작업.
-**복잡도:** 중~대. 3단계 컴포넌트 + stepper + store + router + i18n.
+**복잡도:** 중. 2단계 컴포넌트 + stepper + store + router + i18n.
 **보안:** 영향 없음 (입력값만 페이지화, crypto 경로 동일).
-**테스팅:** Playwright E2E (3단계 시나리오) + Android instrumentation (folder picker native 경로).
-**마이그레이션:** `FileCreateDialog` 호출처 모두 점검. 기존 모달은 deprecated 또는 완전 제거 (Q 결정).
+**테스팅:** Playwright E2E (2단계 시나리오) + 단위 테스트 (`useCreateVaultStore`).
+**마이그레이션:** `FileCreateDialog` 호출처 1개 (`Home.tsx`) + DataSection 백업은 Plan-7a와 별도.
+
+### E-b. Plan-7b: 폴더 선택 + 자동 백업 통합 (후속, 별도 brainstorm 예정)
+
+**계획 (Plan-7a 완료 후 별도 brainstorm):**
+- Plan-7a의 Step 3 (또는 별도 라우트) — SAF `pickBackupFolder`로 폴더 선택
+- `files` 테이블에 `autoBackupUri?: string` 필드 추가 (Dexie v15 migration)
+- 변경 시 `writeBackupToUri`로 자동 백업 (`useAutoLock` 또는 `persistVaultSnapshot` 직후)
+- 폴더 안 선택 시 → DB만 (Plan-7a 동작 유지)
+- `Settings > 자동 백업` 항목에서 URI 변경/해제 가능
+
+**범위 (예상):**
+- 새 라우트 또는 Plan-7a의 Step 3 추가
+- Dexie schema migration (v15)
+- `useAutoBackup` hook (변경 감지 → `writeBackupToUri`)
+- Settings UI 추가
+
+**상태:** brainstorm 미작성. **STRATEGY §2 (vault integrity) 후속**으로 분류, Plan-7a 완료 + 사용자 결정 후 진행.
 
 ## 8. Recommended Direction
 
@@ -227,29 +283,51 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | 순서 | Plan | 근거 | 예상 복잡도 |
 |---|---|---|---|
 | **0** | **[Multi-Vault Support](../2026-08-30-multi-vault-support.md) (§2 후속)** | Home 파일 리스트 UI 가능하게 함. STRATEGY Boundary #4 ("멀티 볼트는 로컬 파일 단위로만") 격차 해소. **Track 3 모든 plan의 전제** | 중~대 |
-| 1 | **Plan-7: 다단계 페이지** | Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기 가능. Plan-4(패스프레이즈, 완료)와 자연 통합 | 중~대 |
-| 2 | **Plan-A: 로딩/에러 토스트 인프라** | Plan-7의 단계 전환 피드백, Plan-B의 에러 표시 기반 | 중 |
-| 3 | **Plan-B: 중복 제출/버튼 일관성** | Plan-A 위에서 동작, 사용자 체감 큼. 기존 Button/FormDialog 수정 중심 | 소 |
-| 4 | **Plan-D: 테마 FOUC 가드** | 독립, 실측 후 작업 | 소 |
-| 5 | **a11y 부산물 흡수** | Plan-A/B/D 진행 중 role/aria/focus 자연 보강 + 후속 a11y audit plan | 대 |
+| 1 | **Plan-7a: 다단계 페이지** (이름 → PIN, Progress bar + 라벨, 2단계) | Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기 가능. Plan-4(패스프레이즈, 완료)와 자연 통합 | 중 |
+| **후속** | **Plan-7b: 폴더 선택 + 자동 백업 통합** (별도 brainstorm, STRATEGY §2 분류) | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook. Plan-7a 완료 + 사용자 결정 후 진행 | 대 |
+| 2 | **Plan-A1: 에러 가시화** (`mapError()` + 호출처 6곳 try/catch + `SyncErrorBanner`) | Plan-7a/Plan-B의 공통 전제. 토스트 없음 (Q1) | 소 |
+| 3 | **Plan-A2: 초기 진입 Skeleton** (Spinner/Skeleton + 3개 페이지 적용) | A1과 독립 가능, 단독 plan으로 검증된 패턴 만들기 좋음 (Q7) | 소 |
+| 4 | **Plan-B: 버튼/폼 일관성** (Button.loading, FormDialog throw 유지) | A1의 `mapError` 활용, 사용자 체감 큼. 호출자 API 변경 0 (Q2) | 소 |
+| 5 | **Plan-D: 테마 FOUC 가드** | 독립, Q6 실측 후 작업 | 소 |
+| 6 | **a11y audit (별도 plan)** | axe-core CI + 키보드 Playwright + remediation. Plan-A/B/D 완료 후 또는 트리거 발생 시 (Q5) | 대 |
 
 **근거 갱신:**
-- **Multi-Vault가 0순위인 이유:** Plan-7의 "기존 파일 선택 / 새로 만들기" 분기(§12.2 Step 1)는 1개 파일 모델에선 의미가 없음. Multi-Vault가 먼저 와야 Plan-7의 v1이 의미를 가짐. 또한 Home UI 자체가 "파일 1개 표시 → 파일 N개 리스트"로 바뀌어야 사용자가 multi-vault를 체감.
-- **Plan-7을 1순위(Track 3 내)로 둔 이유:** 사용자가 STRATEGY §3에 직접 후보로 명시. Plan-A 없이 진행하면 "단계 전환 시 피드백이 alert"로 품질 저하.
-- **Plan-A를 2순위로:** Plan-7과 Plan-B 모두 의존. 먼저 만들어야 후속이 "alert 띄우기"로 끝나지 않음.
-- **Plan-C(a11y)를 5순위로:** 모든 plan의 부산물로 흡수하는 게 효율적. 단독 plan으로 묶으면 누락 위험.
+- **Multi-Vault가 0순위인 이유:** Plan-7a의 "기존 파일 선택 / 새로 만들기" 분기는 1개 파일 모델에선 의미가 없음. Multi-Vault가 먼저 와야 Plan-7a의 v1이 의미를 가짐. 또한 Home UI 자체가 "파일 1개 표시 → 파일 N개 리스트"로 바뀌어야 사용자가 multi-vault를 체감.
+- **Plan-7a을 1순위(Track 3 내)로 둔 이유:** 사용자가 STRATEGY §3에 직접 후보로 명시. A1(에러 가시화) 없이 진행하면 "단계 전환 시 피드백이 alert"로 품질 저하.
+- **Plan-7b를 후속으로 분리 (2026-08-30 결정):** 폴더 선택 + 자동 백업은 STRATEGY §2(vault integrity) 영역, Plan-7a(UI 흐름)와 결합 약함. 별도 brainstorm으로 충분한 설계 필요.
+- **Plan-A1을 2순위로 (Q1 확정):** 토스트/`useAsync` 제외, 단순 매핑 함수 + 호출처 try/catch. Plan-7a/Plan-B가 의존하는 `mapError()`만 제공하면 충분.
+- **Plan-A2를 3순위로 (Q7 확정, A1과 분리):** Skeleton은 다른 plan과 결합 약함, 단독 검증된 패턴으로 만들기 좋음. A1 후속이 아닌 독립 — 순서는 3이지만 plan 시작 시점은 Plan-B와 병행 가능.
+- **a11y를 별도 plan(Q5-a)으로 분리:** 각 plan에 a11y 자연 보강 + 별도 audit plan에서 axe-core violations 0 / 키보드 시나리오 통과를 명시적 게이트로.
 
 ### 8.2 권장 분할
 
 ```
 Track 3: UX·접근성·인터랙션 품질
 └─ ✅ Multi-Vault Support (2026-08-30 완료 — [plan](../plans/2026-08-30-multi-vault-support.md))
-   ├─ Plan-7: 파일 생성 다단계 페이지 (/create-vault Step 1·2·3) — 활성화 가능
-   ├─ Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync)
-   ├─ Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit, FormDialog async)
+   ├─ Plan-7a: 파일 생성 다단계 페이지 (/create-vault 단일 라우트, 2단계)
+   │       Step 1: 이름 → Step 2: PIN
+   │       Stepper: Progress bar + 단계 라벨 (●─────●) [2단계]
+   │       FileCreateDialog: Home.tsx 마이그레이션 후 완전 제거
+   │       DataSection 백업은 Plan-7a와 별도
+   ├─ Plan-A1: 에러 가시화
+   │       mapError() + 호출처 6곳 수동 try/catch + SyncErrorBanner
+   │       ❌ 토스트 / useAsync / useFormError (포함 안 함)
+   ├─ Plan-A2: 초기 진입 Skeleton
+   │       Spinner/Skeleton + Accounts/Templates/AccountDetail 첫 진입
+   │       ❌ 자동 저장/persistVaultSnapshot (포함 안 함)
+   ├─ Plan-B: 버튼/폼 일관성
+   │       Button.loading + FormDialog/ConfirmDialog throw 유지
+   │       ❌ useFormSubmit wrapper (포함 안 함)
    ├─ Plan-D: 테마 FOUC 가드 + 시스템 연동 강화
-   └─ (점진 흡수) a11y — Plan-A/B/D 진행 중 role/aria/focus 자연 보강
-       별도 plan은 "누락 점검" 또는 "특정 영역 a11y audit" 트리거 시에만
+   │       Playwright FOUC 실측 → 발생 시 작업, 아니면 cancel
+   └─ a11y audit (별도 plan) — Plan-A/B/D 완료 후 또는 트리거 시
+          axe-core CI + 키보드 Playwright + remediation
+          (각 plan에 a11y 자연 보강은 계속 진행)
+
+후속 (STRATEGY §2 분류):
+└─ Plan-7b: 폴더 선택 + 자동 백업 통합 (별도 brainstorm 예정)
+       SAF pickBackupFolder + autoBackupUri + useAutoBackup hook
+       Dexie v15 migration + Settings UI
 ```
 
 ### 8.3 Plan-7 흡수 결정
@@ -278,63 +356,71 @@ Track 3: UX·접근성·인터랙션 품질
 
 | # | 결정 | 상태 |
 |---|---|---|
-| Q1 | Plan-A 토스트: 직접 구현 (b) | 📋 권장 (사용자 확정 대기) |
-| Q2 | Plan-B FormDialog 에러: 둘 다 (c) | 📋 권장 (사용자 확정 대기) |
-| Q3 | Plan-7 라우트: 단일 + store (b) | 📋 권장 (사용자 확정 대기) |
-| Q4 | Plan-7 FileCreateDialog: 완전 제거 (a) | 📋 권장 (사용자 확정 대기) |
-| Q5 | a11y: 부산물 흡수 (b) + 후속 audit plan | 📋 권장 (사용자 확정 대기) |
-| Q6 | Plan-D FOUC: 실측 우선 (a) | 📋 권장 (사용자 확정 대기) |
-| Q7 | Plan-A Skeleton: 초기 진입 (a) | 📋 권장 (사용자 확정 대기) |
-| Q8 | Plan-7 PIN: Plan-4 그대로 (a) | 📋 권장 (사용자 확정 대기) |
+| Q1 | Plan-A 에러 표시: **인라인만** (수동 try/catch + `mapError()` 매핑 함수). 토스트/Snackbar/공통 hook 없음. `setSyncError`는 페이지 상단 배너로 가시화 | ✅ 확정 |
+| Q2 | Plan-B FormDialog 에러: **throw 유지** (Q1-b와 일관, 호출자가 try/catch) | ✅ 확정 |
+| Q3 | Plan-7 라우트: **단일 라우트** `/create-vault` + `useCreateVaultStore.step`. Stepper는 **Progress bar + 단계 라벨** (`●─────●─────○` 형태) | ✅ 확정 |
+| Q3-추가 | Plan-7 Step 순서: **1. 이름 → 2. PIN → 3. 폴더 (선택, 건너뛰기 가능)** | ✅ 확정 |
+| Q4 | Plan-7 `FileCreateDialog`: **완전 제거** (호출처 100% 마이그레이션 후) | ✅ 확정 |
+| Q5 | a11y: **별도 plan** (axe-core CI + 키보드 시나리오 + remediation). Plan-A/B/D 완료 후 또는 트리거 발생 시 | ✅ 확정 |
+| Q6 | Plan-D FOUC: **Playwright 실측 우선** (reload 시 frame capture → 발생 시 작업, 아니면 cancel) | ✅ 확정 |
+| Q7 | Plan-A Skeleton: **초기 진입만** (`loadAccounts`/`loadTemplates` 첫 페이지 로드) | ✅ 확정 |
+| Q8 | Plan-7 PIN 정책: **Plan-4 그대로** (4~20자 mixed, 변경 없음) | ✅ 확정 |
 | §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ Multi-Vault 완료 2026-08-30, 나머지 순서 확정 |
 
 **진행 순서 (2026-08-30 갱신):**
 1. **✅ Multi-Vault Support** ([plan](../plans/2026-08-30-multi-vault-support.md)) — 완료 (21 파일/334 테스트, Post-Implementation Dead Code Cleanup 62줄 정리)
-2. **Plan-7** (다단계 페이지) — 이제 활성화 가능. Q3/Q4 확정 대기
-3. **Plan-A** (공통 UI 인프라) — Plan-7의 단계 전환 피드백, Plan-B의 에러 기반
-4. **Plan-B** (버튼/폼 일관성) — Plan-A 위에서 동작
-5. **Plan-D** (테마 FOUC 가드) — 독립, Q6 실측 후 작업
-6. **a11y 부산물 흡수** — Plan-A/B/D 진행 중 자연 보강 + 후속 audit plan
+2. **Plan-7a** (다단계 페이지, 2단계) — Q3/Q4/Q8 확정. `ce-plan` 작성 가능
+3. **Plan-A1** (에러 가시화) — Q1 확정. `mapError()` + 호출처 6곳 try/catch + `SyncErrorBanner`. 모든 후속 plan의 전제
+4. **Plan-A2** (초기 진입 Skeleton) — Q7 확정. Spinner/Skeleton + Accounts/Templates/AccountDetail 첫 진입. Plan-B와 병행 가능
+5. **Plan-B** (버튼/폼 일관성) — Q2 확정. `Button.loading` + FormDialog throw 유지. A1의 `mapError` 활용
+6. **Plan-D** (테마 FOUC 가드) — Q6 실측 후 작업
+7. **a11y audit plan** (별도) — Q5 확정. axe-core CI + 키보드 시나리오 + remediation. Plan-A/B/D 완료 후 또는 트리거 시
+8. **후속 — Plan-7b** (폴더 선택 + 자동 백업 통합) — STRATEGY §2 분류, 별도 brainstorm 예정. Plan-7a 완료 + 사용자 결정 후 진행
 
-> Multi-Vault 완료로 Track 3의 Q1~Q8 활성화됨. Plan-7 Q3/Q4는 Multi-Vault 결과 반영해 사용자 확정 가능.
+> Q1~Q8 모두 확정됨. 다음 자연스러운 단계는 **Plan-7의 `ce-plan` 작성**.
 
 ## 11. Risks
 
 | 리스크 | 완화 |
 |---|---|
-| Plan-A 토스트를 잘못 만들면 모든 plan에 영향 (alert → 토스트 마이그레이션 강제) | 첫 plan을 Plan-A로 격리, 마이그레이션 매핑표 작성 |
-| Plan-7 라우트 추정이 Playwright E2E navigation 깨뜨림 | stepper `data-testid` 일관성 + pageobject 추가, 기존 E2E smoke 먼저 |
-| Plan-C a11y를 흡수하다 보면 누락 발생 | 각 plan 완료 시 `axe-core` 단일 페이지 scan 결과를 체크리스트화 |
-| Plan-D FOUC가 실측에서 안 나타나면 작업 무의미 | Q6 실측 우선 결정, 발생 안 하면 Plan-D cancel |
-| Track 1(autofill)/Track 2(vault) 진행 중 회귀 | Plan-A/B는 React UI 한정, autofill native 경로와 격리됨. Plan-7 라우트 추가는 `/create-vault` 신규라 기존 라우트 미영향 |
+| ~~Plan-A 토스트를 잘못 만들면 모든 plan에 영향~~ | ✅ 해소 (Q1: 인라인만, 토스트 없음). Plan-A1은 `mapError()` + 수동 try/catch + SyncErrorBanner로 한정, 마이그레이션 매핑표 불필요 |
+| Plan-7a 라우트 추정이 Playwright E2E navigation 깨뜨림 | stepper `data-testid` 일관성 + pageobject 추가, 기존 E2E smoke 먼저. 단일 라우트(`/create-vault`)라 deep-link 테스트 부담 0 (Q3-b). 기존 `01-create-vault.spec.ts`는 **전면 재작성** (브레인스톰 "E2E 회귀 0" 가정이 틀림 — 모달→페이지 전환은 E2E 표면 자체가 바뀜) |
+| a11y 누락 | Q5-a로 별도 plan 분리. 각 plan은 a11y 자연 보강(role/aria/focus), 별도 audit plan에서 axe-core violations 0 / 키보드 시나리오 통과를 명시적 게이트로 |
+| Plan-D FOUC가 실측에서 안 나타나면 작업 무의미 | Q6 실측 우선 결정, 발생 안 하면 Plan-D cancel 또는 시스템 연동 live 갱신만 |
+| Track 1(autofill)/Track 2(vault) 진행 중 회귀 | Plan-A1/A2/B는 React UI 한정, autofill native 경로와 격리됨. Plan-7a 라우트 추가는 `/create-vault` 신규라 기존 라우트 미영향 |
 | "단순화/이전과 같게" 사용자 신호 (메모) | 각 plan 시작 전 작업 범위 재확인, 첫 plan에서 검증된 패턴을 후속에 복제 |
-| 6개 항목 동시 착수 시 산만 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** 순서 엄수, a11y는 흡수 |
+| 7개 항목 동시 착수 시 산만 | **Multi-Vault → Plan-7 → Plan-A1 → Plan-A2 → Plan-B → Plan-D** 순서 엄수, a11y는 별도 plan (Q5-a). Plan-A2는 Plan-B와 병행 시작 가능 |
 | ~~Multi-Vault 결과에 Track 3 전체 의존~~ | ✅ 해소 (2026-08-30 Multi-Vault 완료). 이제 Plan-7 활성화 가능 |
-| Multi-Vault E2E 회귀 위험 | Home의 "파일 생성" 버튼은 `FileCreateDialog` 그대로 — Multi-Vault는 다이얼로그 UI 변경 0, E2E 회귀 0 (Q8 사용자 확정) |
+| ~~Multi-Vault E2E 회귀 위험~~ | ✅ 해소 (Q4-a: `FileCreateDialog` 완전 제거 시점 = 호출처 100% 마이그레이션 후). 마이그레이션은 점진, 회귀 0 |
+| Plan-7a Step 3 폴더 "건너뛰기" 시 기본 저장 위치 결정 | ✅ 해소 (2026-08-30: Plan-7a는 2단계, Step 3 폴더 선택은 Plan-7b로 분리). Plan-7a는 DB만 저장 (현재 `createDataFile` 동작 유지) |
+| Plan-A2 Skeleton 깜빡임 (로딩이 짧으면) | throttle 또는 `isLoading && accounts.length === 0` 같은 조건부 렌더. accounts.length > 0이면 Skeleton 표시 안 함 |
 
 ## 12. Next Action
 
-**Track 3의 Multi-Vault 선행 의존성 해소 (2026-08-30).** 본 brainstorm의 Q1~Q8은 사용자 확정 대기 상태.
+**Track 3의 Q1~Q8 모두 확정 (2026-08-30).** Multi-Vault 선행 의존성도 해소됨.
 
 1. **✅ Multi-Vault 완료:** [plan](../plans/2026-08-30-multi-vault-support.md) — Dexie v14 + Home 파일 리스트 UI + 21 파일/334 테스트 + Dead Code Cleanup 62줄
-2. **즉시 가능:** 본 brainstorm §9 Q1~Q8 사용자 확정 (Plan-7 Q3/Q4는 Multi-Vault 결과 반영)
-3. **첫 plan 선택:** Plan-7 (Multi-Vault와 가장 강하게 결합된 §3 항목)
-4. **그 후:** Plan-A → Plan-B → Plan-D 순서로 진행
+2. **✅ Q1~Q8 확정** (2026-08-30): 인라인 에러 / throw 유지 / 단일 라우트 + Progress bar / Step 순서 (이름→PIN, 2026-08-30 Plan-7a로 2단계 축소) / FileCreateDialog 완전 제거 / a11y 별도 plan / FOUC 실측 / 초기 진입 Skeleton / PIN Plan-4 그대로
+3. **Plan-A 분리 확정 (2026-08-30):** Plan-A1 (에러 가시화) / Plan-A2 (Skeleton) — A1이 모든 plan의 전제, A2는 Plan-B와 병행 가능
+4. **Plan-7a/7b 분리 확정 (2026-08-30):** Plan-7a는 2단계(UI 흐름만), Plan-7b는 폴더 선택 + 자동 백업 통합(STRATEGY §2 후속, 별도 brainstorm)
+5. **다음 단계:** **Plan-7a의 `ce-plan` 작성** (`docs/plans/2026-08-30-plan-7a-create-vault-multistep.md`). Multi-Vault와 가장 강하게 결합, 첫 plan으로 검증된 패턴을 후속 Plan-A1/B에 복제
+6. **그 후:** Plan-A1 → Plan-A2 (Plan-B와 병행 가능) → Plan-B → Plan-D → a11y audit plan → Plan-7b (별도 brainstorm 후)
 
-**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** 이제 Plan-7의 `ce-plan` 작성이 다음 자연스러운 단계.
+**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** §7 Options / §8.1/8.2 / §10 Current Decision State / §11 Risks 모두 확정 내용 반영 (Plan-A1/A2 분리, Plan-7a/7b 분리, E2E 회귀 0 가정 철회 포함). STRATEGY.md 갱신은 별도 작업 (부록 B diff 적용).
 
 ---
 
-## 부록 A. §3 카테고리 ↔ Plan 매핑 (최종)
+## 부록 A. §3 카테고리 ↔ Plan 매핑 (최종, Q1~Q8 + Plan-A 분리 확정 반영)
 
 | §3 원문 | 흡수 plan | 비고 |
 |---|---|---|
-| 로딩 상태/스켈레톤 UI | Plan-A | Spinner/Skeleton + 초기 진입 UX |
-| 더블클릭/중복 제출 방지 | Plan-B | Button.loading + useFormSubmit |
-| 키보드 네비게이션/포커스/스크린리더 | Plan-C(흡수) | 모든 plan에 role/aria/focus 자연 보강 + 후속 a11y audit plan 별도 |
-| 에러 토스트/인라인 에러 | Plan-A + Plan-B | Plan-A: Toast 인프라, Plan-B: FormDialog 에러 통합 |
-| 다크/라이트 테마 + 깜빡임 | Plan-D | FOUC 실측 후 작업 |
-| Plan-7: 파일 생성 다단계 | Plan-7 | §12 메모 공식 흡수 |
+| 로딩 상태/스켈레톤 UI | **Plan-A2** | Spinner/Skeleton + 초기 진입 UX (`loadAccounts`/`loadTemplates`/`AccountDetail`). 토스트는 **포함 안 함** (Q1) |
+| 더블클릭/중복 제출 방지 | Plan-B | `Button.loading` + `FormDialog` throw 유지. `useFormSubmit` wrapper **포함 안 함** (Q2) |
+| 키보드 네비게이션/포커스/스크린리더 | **별도 plan (Q5-a)** | axe-core CI + 키보드 Playwright + remediation. 각 plan에 a11y 자연 보강은 계속 |
+| 에러 토스트/인라인 에러 | **Plan-A1** | `mapError()` + 인라인 + `SyncErrorBanner`. **토스트는 포함 안 함** (Q1) |
+| 다크/라이트 테마 + 깜빡임 | Plan-D | FOUC Playwright 실측 후 작업 (Q6) |
+| Plan-7a: 파일 생성 다단계 | **Plan-7a** | 단일 라우트 + Progress bar + Step 순서 (이름→PIN, 2단계) + `FileCreateDialog` 완전 제거 (Q3/Q4/Q8). 폴더 선택 Step은 **Plan-7b로 분리** (2026-08-30 결정) |
+| (후속) Plan-7b: 폴더 선택 + 자동 백업 | **Plan-7b** (별도 brainstorm, STRATEGY §2 분류) | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15 |
 
 ## 부록 B. STRATEGY §3 업데이트 제안 (Multi-Vault 후속 결정 반영)
 

@@ -120,8 +120,18 @@ last_updated: "2026-08-30"
 - 키보드 네비게이션/포커스 순서 — 웹·데스크톱 확장 대비, 스크린리더 대응
 - 에러 토스트/인라인 에러 — 네이티브/브리지 에러를 사용자 언어로 매핑
 - 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
-- **후속 후보 — Plan-7: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm §12](docs/brainstorms/2026-08-29-vault-file-integrity.md)) — 3단계 (폴더 선택 → 파일 이름 → 암호 입력) 라우트 기반 흐름으로 모바일 키보드 가시성·뒤로가기 모호함·"되돌리기 어려운 결정" 가시성 개선. §2 볼트 무결성과 분리된 UX 개선 항목이며, Plan-4 (패스프레이즈) 도입 시 Step 3가 자연스럽게 통합됨
-- **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
+- **후속 후보 — Plan-7a: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm](docs/brainstorms/2026-08-30-track3-ux-accessibility.md) §7 E, [plan](docs/plans/2026-08-30-plan-7a-create-vault-multistep.md)) — 2단계 (이름 → PIN) 단일 라우트(`/create-vault`) 흐름. Progress bar + 단계 라벨 Stepper. **Plan-7a/7b 분리 결정 (2026-08-30)**: 폴더 선택 + 자동 백업 통합은 **Plan-7b로 분리** (STRATEGY §2 후속, 별도 brainstorm). 모든 새 파일은 암호화 (체크박스 제거, Plan-4 정책 통일)
+- **진척 (2026-08-30):**
+  - ✅ Multi-Vault Support — 완료, Home 파일 리스트 UI + Dexie v14 + 21 파일/334 테스트
+  - 📋 **Plan-7a** — 다단계 페이지 (2단계), [plan](docs/plans/2026-08-30-plan-7a-create-vault-multistep.md) 작성 완료. 구현 대기
+  - 📋 Plan-A1: 에러 가시화 (`mapError()` + 호출처 6곳 try/catch + `SyncErrorBanner`). 토스트 없음 (Q1)
+  - 📋 Plan-A2: 초기 진입 Skeleton (3개 페이지)
+  - 📋 Plan-B: 버튼/폼 일관성 (`Button.loading`, FormDialog throw 유지)
+  - 📋 Plan-D: 테마 FOUC 가드 (Playwright 실측 후 작업)
+  - 📋 a11y audit: 별도 plan (axe-core CI + 키보드 Playwright)
+  - 📋 Plan-7b: 폴더 선택 + 자동 백업 통합 (STRATEGY §2 후속, 별도 brainstorm)
+  - 진행 순서: Plan-7a → Plan-A1 → Plan-A2 → Plan-B → Plan-D → a11y audit → Plan-7b
+- **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재, `FileCreateDialog`가 `Home.tsx` (생성) + `DataSection.tsx` (백업) 양쪽에서 사용 — Q4-a "완전 제거"는 호출처 100% 마이그레이션 후 (Plan-7a 1차 PR 잔존, 2차 PR에서 제거)
 
 ### 4. 세션·자동잠금 보안 (Session & Auto-lock Security)
 - 자동잠금 4단계(none/1m/10m/30m) + 활동 감지 리셋
