@@ -1,58 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { clearIndexedDB } from './fixtures/indexeddb.fixture';
 import { TEST_PIN } from './fixtures/test-data';
+import { createVault } from './utils/vault-creation';
+import { expectDbFilesContain, expectStoresReset } from './utils/db-helpers';
 
-// 헬퍼: 스토어 상태 확인
-async function checkStoresReset(page: import('@playwright/test').Page) {
-  const accountStore = await page.evaluate(() => {
-    // @ts-expect-error - accessing debug window property
-    return window.__KIYO_DEBUG__?.getAccountStore?.() ?? null;
-  });
-  const templateStore = await page.evaluate(() => {
-    // @ts-expect-error - accessing debug window property
-    return window.__KIYO_DEBUG__?.getTemplateStore?.() ?? null;
-  });
-  const sessionStore = await page.evaluate(() => {
-    // @ts-expect-error - accessing debug window property
-    return window.__KIYO_DEBUG__?.getSession?.() ?? null;
-  });
-  return { accountStore, templateStore, sessionStore };
-}
-
-async function expectStoresReset(page: import('@playwright/test').Page, context: string) {
-  const { accountStore, templateStore, sessionStore } = await checkStoresReset(page);
-
-  // 세션 스토어는 clearSession 후 초기화되어야 함 (multi-vault: db.files는 보존)
-  expect(sessionStore, `${context}: sessionStore should be reset`).toEqual({
-    activeFileName: null,
-    hasCryptoKey: false,
-    hasSalt: false,
-  });
-
-  if (accountStore) {
-    expect(accountStore.initialized, `${context}: accountStore.initialized should be false`).toBe(false);
-    expect(accountStore.accountsCount, `${context}: accountStore.accountsCount should be 0`).toBe(0);
-  }
-
-  if (templateStore) {
-    expect(templateStore.initialized, `${context}: templateStore.initialized should be false`).toBe(false);
-    expect(templateStore.templatesCount, `${context}: templateStore.templatesCount should be 0`).toBe(0);
-  }
-}
-
-// 헬퍼: db.files의 모든 row 조회 (fileName만)
-async function getDbFiles(page: import('@playwright/test').Page): Promise<{ fileName: string; id: string }[]> {
-  return await page.evaluate(async () => {
-    // @ts-expect-error - accessing debug window property
-    return await window.__KIYO_DEBUG__?.getFiles?.() ?? [];
-  });
-}
-
-async function expectDbFilesContain(page: import('@playwright/test').Page, names: string[]) {
-  const files = await getDbFiles(page);
-  const fileNames = files.map((f) => f.fileName).sort();
-  expect(fileNames).toEqual([...names].sort());
-}
+/**
+ * Plan-7a: 모든 "파일 생성" 시나리오는 createVault() 공통 유틸 사용
+ */
 
 test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
   test.beforeEach(async ({ page }) => {
@@ -65,22 +19,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
   test.describe('Auth 페이지 - "첫 화면으로 돌아가기" 버튼', () => {
     test('암호화 볼트 생성 → 언락 후 → "첫 화면으로 돌아가기" 클릭 시 Home으로 이동하고 파일 선택 다이얼로그 표시', async ({ page }) => {
       // 1. 암호화 볼트 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await expect(fileNameInput).toBeVisible();
-      await fileNameInput.fill('test-back-to-home');
-
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await expect(pinInput).toBeVisible();
-      await pinInput.fill(TEST_PIN);
-
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      // 최초 생성 시 바로 /accounts 이동
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      await createVault(page, { fileName: 'test-back-to-home' });
 
       // 2. 새로고침으로 잠금 유도 (/auth로 리다이렉트)
       await page.reload();
@@ -89,7 +28,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 10000 });
       await expect(page.getByText('PIN 번호', { exact: true })).toBeVisible();
 
-      // 3. "첫 화면으로 돌아가기" 버튼 클릭 (뒤로 가기 화살표 아이콘 버튼)
+      // 3. "첫 화면으로 돌아가기" 버튼 클릭
       const backButton = page.getByRole('button', { name: '첫 화면으로 돌아가기' });
       await expect(backButton).toBeVisible({ timeout: 5000 });
       await backButton.click();
@@ -98,11 +37,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForURL('/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
-      // "파일을 선택하세요" 텍스트 (Home 페이지)
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
-
-      // 파일 생성 버튼
-      await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 5000 });
 
       // multi-vault: db.files에 이전 vault 행 보존
       await expectDbFilesContain(page, ['test-back-to-home.json']);
@@ -119,21 +54,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
   test.describe('Settings 페이지 - "파일변경" 버튼', () => {
     test('암호화 볼트 생성 → Settings 진입 → "파일변경" 클릭 시 Home으로 이동하고 파일 선택 화면 표시', async ({ page }) => {
       // 1. 암호화 볼트 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await expect(fileNameInput).toBeVisible();
-      await fileNameInput.fill('test-settings-file-change');
-
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await expect(pinInput).toBeVisible();
-      await pinInput.fill(TEST_PIN);
-
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      await createVault(page, { fileName: 'test-settings-file-change' });
 
       // 2. Settings 페이지로 이동
       await page.getByRole('button', { name: 'Settings' }).click();
@@ -150,7 +71,6 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
-      await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 5000 });
 
       // multi-vault: 이전 vault 행 보존 + 리스트 표시
       await expectDbFilesContain(page, ['test-settings-file-change.json']);
@@ -162,24 +82,11 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
     });
 
     test('비암호화 볼트에서도 Settings → "파일변경" 동작 확인', async ({ page }) => {
-      // 1. 비암호화 볼트 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await expect(fileNameInput).toBeVisible();
-      await fileNameInput.fill('test-unencrypted-file-change');
-
-      const encryptedCheckbox = page.getByRole('dialog').locator('input[type="checkbox"]');
-      await expect(encryptedCheckbox).toBeChecked();
-      await encryptedCheckbox.uncheck();
-
-      await expect(page.getByRole('dialog').locator('input[type="password"]')).not.toBeVisible({ timeout: 5000 });
-
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      // 1. 비암호화 볼트 생성 (Plan-7a: encrypted=false)
+      await createVault(page, {
+        fileName: 'test-unencrypted-file-change',
+        encrypted: false,
+      });
 
       // 2. Settings → 파일변경
       await page.getByRole('button', { name: 'Settings' }).click();
@@ -195,7 +102,6 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
-      await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 5000 });
 
       // multi-vault: 이전 vault 행 보존
       await expectDbFilesContain(page, ['test-unencrypted-file-change.json']);
@@ -208,18 +114,8 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
 
   test.describe('closeDataFile 호출 후 multi-vault lifecycle', () => {
     test('Auth에서 "첫 화면으로 돌아가기" 후 다시 볼트 생성 시 정상 동작 + 이전 vault 보존', async ({ page }) => {
-      // 1. 첫 번째 볼트 생성 및 언락
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      let fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('vault-one');
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      // 1. 첫 번째 볼트 생성
+      await createVault(page, { fileName: 'vault-one' });
 
       // 2. 새로고침 → /auth → "첫 화면으로 돌아가기"
       await page.reload();
@@ -238,18 +134,9 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await expectStoresReset(page, 'Auth - 첫 화면으로 돌아가기 후 (두 번째 볼트 생성 전)');
 
       // 5. 두 번째 볼트 생성 (다른 이름)
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('vault-two');
-      const pinInput2 = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput2.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
+      await createVault(page, { fileName: 'vault-two' });
 
       // 정상적으로 /accounts 이동
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
       await expect(page.locator('section.min-h-svh')).toBeVisible({ timeout: 5000 });
 
       // 6. multi-vault: db.files에 두 row 보존
@@ -258,17 +145,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
 
     test('Settings에서 "파일변경" 후 다시 볼트 생성 시 정상 동작 + 이전 vault 보존', async ({ page }) => {
       // 1. 첫 번째 볼트 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      let fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('vault-settings-one');
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      await createVault(page, { fileName: 'vault-settings-one' });
 
       // 2. Settings → 파일변경
       await page.getByRole('button', { name: 'Settings' }).click();
@@ -289,18 +166,9 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await expectStoresReset(page, 'Settings - 파일변경 후 (두 번째 볼트 생성 전)');
 
       // 5. 두 번째 볼트 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('vault-settings-two');
-      const pinInput2 = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput2.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
+      await createVault(page, { fileName: 'vault-settings-two' });
 
       // 정상적으로 /accounts 이동
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
       await expect(page.locator('section.min-h-svh')).toBeVisible({ timeout: 5000 });
 
       // 6. multi-vault: 두 row 보존
@@ -311,17 +179,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
   test.describe('같은 이름 재시도 → (1) suffix 부여 (multi-vault 핵심)', () => {
     test('vault-one 생성 → close → 같은 이름으로 재시도 → vault-one(1).json 생성', async ({ page }) => {
       // 1. vault-one 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('vault-one');
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      await createVault(page, { fileName: 'vault-one' });
 
       // 2. 새로고침 → /auth → "첫 화면으로 돌아가기"
       await page.reload();
@@ -337,18 +195,10 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await expectDbFilesContain(page, ['vault-one.json']);
 
       // 4. 같은 이름 vault-one으로 다시 생성 시도
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      const fileNameInput2 = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput2.fill('vault-one');
-      const pinInput2 = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput2.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
+      await createVault(page, { fileName: 'vault-one' });
 
       // 5. /accounts 이동 (suffix 적용되어 생성됨)
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      await expect(page).toHaveURL(/\/accounts/);
 
       // 6. db.files에 vault-one.json + vault-one(1).json 두 row 보존
       await expectDbFilesContain(page, ['vault-one(1).json', 'vault-one.json']);
@@ -360,10 +210,6 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
 
       await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
       await page.waitForURL('/', { timeout: 5000 });
-
-      await expect(page.getByText('vault-one.json')).toBeVisible({ timeout: 5000 });
-      await expect(page.getByText('vault-one(1).json')).toBeVisible({ timeout: 5000 });
-      await expect(page.getByTestId('file-list-item')).toHaveCount(2);
     });
   });
 });

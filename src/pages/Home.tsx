@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  createDataFile,
   isKiyoFile,
   openImportedDataFile,
 } from "@/database/fileStorage";
@@ -12,16 +11,19 @@ import {
   isFileStorageError,
 } from "@/errors/FileStorageError";
 import { setupVaultSession } from "@/database/fileStorage";
-import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import type { FileRecord } from "@/database/db";
 import { Trash2 } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [files, setFiles] = useState<FileRecord[]>([]);
+  const [pendingDeleteFileName, setPendingDeleteFileName] = useState<
+    string | null
+  >(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const refreshFiles = async () => {
     const all = await fileTable.getAllFiles();
@@ -67,28 +69,19 @@ const Home = () => {
   };
 
   const handleDeleteFile = async (fileName: string) => {
-    if (!window.confirm(`"${fileName}" 파일을 삭제하시겠습니까?`)) {
-      return;
-    }
-    await fileTable.deleteFileRecord(fileName);
-    await refreshFiles();
+    setPendingDeleteFileName(fileName);
   };
 
-  const handleCreateFile = async ({
-    fileName,
-    encrypted,
-    pin,
-  }: {
-    fileName: string;
-    encrypted: boolean;
-    pin: string;
-  }) => {
-    if (encrypted && !pin) {
-      throw new Error("핀번호를 입력하세요");
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteFileName) return;
+    setIsDeleting(true);
+    try {
+      await fileTable.deleteFileRecord(pendingDeleteFileName);
+      await refreshFiles();
+    } finally {
+      setIsDeleting(false);
+      setPendingDeleteFileName(null);
     }
-    await createDataFile(fileName, pin);
-    navigate("/accounts", { replace: true });
-    setShowCreateDialog(false);
   };
 
   const handleOpenFile = async ({ file, pin }: { file: File; pin: string }) => {
@@ -155,13 +148,13 @@ const Home = () => {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setShowCreateDialog(true)}
+            <Link
+              to="/create-vault"
+              data-testid="create-vault-link"
               className="rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80"
             >
               파일 생성
-            </button>
+            </Link>
             <button
               type="button"
               onClick={() => setShowOpenDialog(true)}
@@ -221,19 +214,27 @@ const Home = () => {
           </section>
         )}
       </div>
-      <FileCreateDialog
-        open={showCreateDialog}
-        title="새 파일 생성"
-        description="새 JSON 파일의 이름을 입력하세요."
-        defaultValue="my-accounts.json"
-        confirmLabel="생성"
-        onClose={() => setShowCreateDialog(false)}
-        onConfirm={handleCreateFile}
-      />
       <FileOpenDialog
         open={showOpenDialog}
         onClose={() => setShowOpenDialog(false)}
         onConfirm={handleOpenFile}
+      />
+      <ConfirmDialog
+        open={pendingDeleteFileName !== null}
+        title="파일 삭제"
+        message={
+          pendingDeleteFileName
+            ? `"${pendingDeleteFileName}" 파일을 삭제하시겠습니까?`
+            : ""
+        }
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        variant="danger"
+        isLoading={isDeleting}
+        onClose={() => {
+          if (!isDeleting) setPendingDeleteFileName(null);
+        }}
+        onConfirm={handleConfirmDelete}
       />
     </main>
   );

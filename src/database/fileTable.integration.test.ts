@@ -357,6 +357,21 @@ describe("fileTable - 파일 레코드 관리 (v14 multi-row)", () => {
       const result = await fileTable.resolveFileName("  vault  ");
       expect(result).toBe("vault.json");
     });
+
+    it("desired가 (N) suffix로 들어오면 그 다음 번호부터 부여", async () => {
+      // 사용자가 'my-accounts(1)'을 입력했는데 그 파일이 이미 존재하는 경우
+      // → 단순 (N)(1) append가 아니라 stem을 분리해 (N+1) 부터 시도
+      await fileTable.upsertFileRecord("my-accounts(1).json", createTestKiyoDataFile({ fileName: "my-accounts(1).json" }));
+      const result = await fileTable.resolveFileName("my-accounts(1)");
+      expect(result).toBe("my-accounts(2).json");
+    });
+
+    it("desired가 (N) suffix로 들어왔고 (N+1)도 존재하면 (N+2)로", async () => {
+      await fileTable.upsertFileRecord("my-accounts(1).json", createTestKiyoDataFile({ fileName: "my-accounts(1).json" }));
+      await fileTable.upsertFileRecord("my-accounts(2).json", createTestKiyoDataFile({ fileName: "my-accounts(2).json" }));
+      const result = await fileTable.resolveFileName("my-accounts(1)");
+      expect(result).toBe("my-accounts(3).json");
+    });
   });
 
   describe("Dexie v13 → v14 마이그레이션 (시나리오 B)", () => {

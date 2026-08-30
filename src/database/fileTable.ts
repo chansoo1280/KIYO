@@ -119,16 +119,29 @@ export const fileTable = {
 
   /**
    * Resolve a desired fileName to a unique name in the files table.
-   * If the name already exists, appends (1), (2), ... before .json.
+   * - Strip the `.json` extension.
+   * - Detect a trailing `(N)` suffix on the base name; if present, use it as the starting counter.
+   * - Otherwise, start from 1.
+   * - Walk forward until a non-existing `<base><counter>.json` is found.
+   *
+   * Examples (assuming each previous candidate exists):
+   *   my-accounts        → my-accounts(1).json
+   *   my-accounts(1)     → my-accounts(2).json
+   *   my-accounts(1)(1)  → my-accounts(1)(2).json  // unusual double-suffix, kept deterministic
    */
   async resolveFileName(desired: string): Promise<string> {
     const normalized = normalizeDataFileName(desired);
     const all = await db.files.toArray();
     const existing = new Set(all.map((r) => r.id));
     if (!existing.has(normalized)) return normalized;
+
     const base = normalized.replace(/\.json$/, "");
-    for (let i = 1; ; i++) {
-      const candidate = `${base}(${i}).json`;
+    const suffixMatch = base.match(/\((\d+)\)$/);
+    const startCounter = suffixMatch ? Number(suffixMatch[1]) : 0;
+    const stem = suffixMatch ? base.slice(0, -suffixMatch[0].length) : base;
+
+    for (let i = startCounter + 1; ; i++) {
+      const candidate = `${stem}(${i}).json`;
       if (!existing.has(candidate)) return candidate;
     }
   },

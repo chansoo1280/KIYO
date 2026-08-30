@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { clearIndexedDB } from './fixtures/indexeddb.fixture';
 import { TEST_PIN } from './fixtures/test-data';
+import { createVault } from './utils/vault-creation';
 
 // 헬퍼: 라벨 텍스트로 동적 필드의 값 입력란 찾기
 async function fillDynamicField(page: import('@playwright/test').Page, labelText: string, value: string) {
@@ -58,22 +59,8 @@ test.describe('계정 CRUD (Account CRUD)', () => {
 
   test.describe('계정 생성 (Create)', () => {
     test('계정 생성 버튼 클릭 → 필수 필드 입력 → 저장 → 리스트에 표시', async ({ page }) => {
-      // 1. 볼트 생성 (암호화)
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await expect(fileNameInput).toBeVisible();
-      await fileNameInput.fill('test-account-crud');
-
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await expect(pinInput).toBeVisible();
-      await pinInput.fill(TEST_PIN);
-
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      // 1. 볼트 생성 (Plan-7a: 페이지 기반)
+      await createVault(page, { fileName: 'test-account-crud' });
 
       // 2. 계정 추가 버튼 클릭 (aria-label="Add account"인 + 버튼)
       await page.getByRole('button', { name: 'Add account' }).click();
@@ -126,16 +113,8 @@ test.describe('계정 CRUD (Account CRUD)', () => {
 
   test.describe('계정 조회 (Read)', () => {
     test.beforeEach(async ({ page }) => {
-      // 사전 준비: 볼트 생성 + 계정 1개 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('test-read-account');
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      // 사전 준비: 볼트 생성 + 계정 1개 생성 (Plan-7a: 페이지 기반)
+      await createVault(page, { fileName: 'test-read-account' });
 
       // 계정 생성
       await page.getByRole('button', { name: 'Add account' }).click();
@@ -200,16 +179,8 @@ test.describe('계정 CRUD (Account CRUD)', () => {
 
   test.describe('계정 수정 (Update)', () => {
     test.beforeEach(async ({ page }) => {
-      // 사전 준비: 볼트 생성 + 계정 1개 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('test-update-account');
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      // 사전 준비: 볼트 생성 + 계정 1개 생성 (Plan-7a: 페이지 기반)
+      await createVault(page, { fileName: 'test-update-account' });
 
       // 계정 생성
       await page.getByRole('button', { name: 'Add account' }).click();
@@ -281,16 +252,8 @@ test.describe('계정 CRUD (Account CRUD)', () => {
 
   test.describe('계정 삭제 (Delete)', () => {
     test.beforeEach(async ({ page }) => {
-      // 사전 준비: 볼트 생성 + 계정 1개 생성
-      await page.getByRole('button', { name: '파일 생성' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-      const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-      await fileNameInput.fill('test-delete-account');
-      const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-      await pinInput.fill(TEST_PIN);
-      await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-      await page.waitForURL('**/accounts', { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+      // 사전 준비: 볼트 생성 + 계정 1개 생성 (Plan-7a: 페이지 기반)
+      await createVault(page, { fileName: 'test-delete-account' });
 
       // 계정 생성
       await page.getByRole('button', { name: 'Add account' }).click();

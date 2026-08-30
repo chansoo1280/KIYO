@@ -451,6 +451,7 @@ src/pages/CreateVault/steps/PinStep.test.tsx      # 단위 테스트
 | 진행 중 다른 plan (Plan-A1/A2) 회귀 | Plan-7a는 Plan-A1 이전에 진행. Plan-7a는 인라인 `err.message` 처리. Plan-A1 작업 시 Plan-7a 호출처도 함께 마이그레이션 (cross-plan 통합) |
 | active file이 있는 상태에서 `/create-vault` 진입 시 충돌 | 결정 (Q1-Q2): `useFileAuthGuard` 호출 안 함, active file이 있어도 진행. `createDataFile`의 `setupVaultSession`이 active를 새 파일로 덮어씀. UX 일관성: Home에서만 진입하는 게 정상 흐름 |
 | 빈 문자열일 때 메시지 표시 안 함 → 사용자 혼란 가능 | Q12 결정. 빈 문자열은 조용히 disabled, 메시지 없음. 비어있지 않은데 검증 실패한 경우만 메시지 표시. 사용자 입력 시작 → 검증이 의미 생김 |
+| **Android autofill E2E (`test:e2e:android`) setup 단계 깨짐** | `noAuthFill`/`authResync` 같은 기존 Android E2E는 `FileCreateDialog` 기반 vault 생성 setup에 의존. Plan-7a 머지 후 `/create-vault` 페이지로 전환되어 setup 단계가 깨질 가능성 있음. Out of Scope에서 후속 작업으로 분리 — Plan-7a-android-e2e 갱신 (별도 작업) |
 
 ## KIYO Security
 
@@ -518,5 +519,6 @@ Plan-7a 1차 PR 롤백:
 - **Plan-A2:** 초기 진입 Skeleton
 - **Plan-B:** `Button.loading`
 - **a11y audit:** axe-core CI + 키보드 Playwright
+- **Plan-7a-android-e2e:** Android autofill E2E (`test:e2e:android`)의 vault 생성 setup이 `FileCreateDialog` → `/create-vault`로 전환됨에 따라 깨질 가능성. `noAuthFill`/`authResync` 등의 setup 단계를 페이지 기반으로 갱신. 별도 작업.
 
 각 plan이 진행되면 Plan-7a 호출처는 cross-plan 통합으로 갱신 (특히 `mapError` import 교체).

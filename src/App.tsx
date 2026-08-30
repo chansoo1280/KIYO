@@ -8,6 +8,7 @@ import Auth from "@/pages/Auth";
 import AutofillTestLogin from "@/pages/AutofillTestLogin";
 import TemplateList from "@/pages/Templates";
 import TemplateEdit from "@/pages/Templates/TemplateEdit";
+import CreateVaultPage from "@/pages/CreateVault";
 import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -53,6 +54,7 @@ function App() {
       <AndroidBackButtonHandler />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/create-vault" element={<CreateVaultPage />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/accounts" element={<AccountList />} />
         <Route path="/accounts/new" element={<AccountEdit />} />
