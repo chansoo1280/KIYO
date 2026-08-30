@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { FormDialog } from "./FormDialog";
-import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 
 interface FileOpenDialogProps {
@@ -127,7 +126,8 @@ const FileOpenDialog = ({
                       placeholder="4~20자 PIN"
                       className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                     />
-          <PinStrengthMeter pin={pin} className="mt-2" />
+          {/* PIN 강도 표시는 의도적으로 생략 — 이 다이얼로그는 기존 PIN 인증용이며
+              강도 평가는 신규/변경 PIN 입력에서만 의미 있음 (CreateVaultPage, PinChangeDialog). */}
         </div>
       )}
     </FormDialog>

@@ -9,7 +9,6 @@ import {
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
-import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 
 const Auth = () => {
@@ -236,7 +235,8 @@ const Auth = () => {
                 autoFocus
                 disabled={isVerifying}
               />
-              <PinStrengthMeter pin={pin} />
+              {/* PIN 강도 표시는 의도적으로 생략 — 이 화면은 기존 PIN 인증용이며
+                  강도 평가는 신규/변경 PIN 입력에서만 의미 있음 (CreateVaultPage, PinChangeDialog). */}
             </div>
             <button
               type="button"

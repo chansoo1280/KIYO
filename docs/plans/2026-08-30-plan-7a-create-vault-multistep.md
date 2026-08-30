@@ -429,6 +429,12 @@ src/pages/CreateVault/steps/PinStep.test.tsx      # 단위 테스트
 - 빌드 검증: `npm run check` 383/383 통과, `:app:compileDebugAndroidTestKotlin` 성공, `:app:installDebugAndroidTest` 성공
 - 사용자 E2E 직접 실행: `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 (2026-08-30)
 
+**PIN 인증 화면 강도 표시 제거 (2026-08-30, Plan-7a 작업 중 발견):**
+- `src/pages/Auth.tsx` (잠금 해제) + `src/components/dialogs/FileOpenDialog.tsx` (파일 열기)에서 `PinStrengthMeter` 제거
+- **이유:** 두 화면은 기존 PIN으로 인증하는 화면. 입력값이 vault의 PIN과 일치하는지가 핵심이지, 입력 중 PIN의 "강도"가 의미 있는 정보 아님
+- **유지:** `CreateVault/steps/PinStep.tsx` (신규 vault PIN) + `Settings/components/PinChangeDialog.tsx` (PIN 변경) + `FileCreateDialog.tsx` (DataSection 백업용 잔존, 2차 PR에서 제거 예정)
+- **검증:** `npm run check` 383/383 통과
+
 ---
 
 # Tests
@@ -559,5 +565,6 @@ Plan-7a 1차 PR 롤백:
 - **Plan-B:** `Button.loading`
 - **a11y audit:** axe-core CI + 키보드 Playwright
 - **Plan-7a-android-e2e:** Android autofill E2E (`test:e2e:android`)의 vault 생성 setup이 `FileCreateDialog` → `/create-vault`로 전환됨에 따라 깨질 가능성. `noAuthFill`/`authResync` 등의 setup 단계를 페이지 기반으로 갱신. 별도 작업. **완료 (2026-08-30): `CreateVaultPage.kt`로 페이지 기반 갱신 + `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 확인.**
+- **Plan-7a-auth-pin-meter:** `Auth.tsx` (잠금 해제) + `FileOpenDialog.tsx` (파일 열기)에서 `PinStrengthMeter` 제거. **완료 (2026-08-30, see §구현 노트).** Plan-7a 작업 중 사용자가 발견 — 인증 화면에서 PIN 강도 표시는 의도적으로 부적절.
 
 각 plan이 진행되면 Plan-7a 호출처는 cross-plan 통합으로 갱신 (특히 `mapError` import 교체).
