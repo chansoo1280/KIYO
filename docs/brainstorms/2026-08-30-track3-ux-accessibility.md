@@ -17,6 +17,8 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 2. 우선순위 결정에 필요한 open questions만 남기고, 나머지는 옵션으로 압축
 3. 후속 `ce-plan`이 본 문서를 기준으로 작업 범위를 좁힐 수 있도록 함
 
+**업데이트 (2026-08-30):** Multi-Vault brainstorm [`2026-08-30-multi-vault-support.md`](2026-08-30-multi-vault-support.md) 가 별도 brainstorm으로 열렸고, **Track 3 진입 전 Multi-Vault가 최우선**으로 재배치됨 (§3.3, §8.1 갱신). 본 brainstorm은 §3의 UX 항목에 집중하고, Home UI 변경점은 Multi-Vault 결과에 의존.
+
 ## 2. Goal
 
 1. **Track 3의 진척 매트릭스** — ✅ / ⚠️ / ❌ / ❓로 코드 상태 매핑 (커밋 로그 + 실제 컴포넌트 인스펙션 기반)
@@ -78,6 +80,7 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | "다크/라이트 테마 시스템 설정 연동" | `initializeTheme` | 시스템 감지 로직 확인 필요, FOUC 가드 미확인 | ⚠️ |
 | "테마 전환 시 깜빡임 없음" | 없음 | 검증 안 됨 | ❓ |
 | "Plan-7 (다단계 페이지)" | 없음 | 메모 단계 | ❌ |
+| **README "다중 데이터 파일 — 여러 암호화된 볼트 생성/가져오기/백업/복원"** | schema는 multi-row 가능 | `ACTIVE_FILE_ID` 단일 id 강제 + 모든 함수가 덮어쓰기 | **❌ 미지원** — Multi-Vault brainstorm [`2026-08-30-multi-vault-support.md`](2026-08-30-multi-vault-support.md) 결과로 해소 예정 |
 
 **중요 시그널:** STRATEGY §3의 "최근 신호"는 "Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재" — **AutoLockIndicator 외에는 상태 표시 컴포넌트가 없다.** 이 한 줄이 §3의 5개 카테고리 중 어느 것도 본격 착수되지 않았음을 강하게 시사한다.
 
@@ -217,29 +220,34 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 
 ### 8.1 우선순위 권장 (사용자 결정 기반)
 
-| 순위 | Plan | 근거 | 예상 복잡도 |
-|---|---|---|---|
-| 1 | **Plan-A: 로딩/에러 토스트 인프라** | 다른 plan 모두 의존. 기반이 없으면 §3 나머지 작업이 "alert 띄우기"로 끝남 | 중 |
-| 2 | **Plan-B: 중복 제출/버튼 일관성** | Plan-A 위에서 동작, 사용자 체감 큼. 기존 Button/FormDialog 수정 중심 | 소 |
-| 3 | **Plan-7: 다단계 페이지** | §12 메모 흡수, Plan-4(패스프레이즈)와 자연 통합 | 중~대 |
-| 4 | **Plan-D: 테마 FOUC 가드** | 실측 후 필요성 판단, 작은 작업으로 큰 효과 가능 | 소 |
-| 5 | **Plan-C: 키보드/a11y** | 광범위, 점진적 가능. 단독 plan으로 묶지 말고 Plan-A/B/D 완료 후 페이지별 모듈로 흡수 | 대 |
+> **2026-08-30 갱신:** Multi-Vault brainstorm [`2026-08-30-multi-vault-support.md`](2026-08-30-multi-vault-support.md) 결과로 **순서 재배치** — Multi-Vault가 Track 3 진입 전 **최우선**으로 처리되어야 Home의 파일 리스트 UI가 가능해짐. Plan-7(다단계 페이지)의 "기존 파일 선택 / 새로 만들기" 분기도 Multi-Vault 결과에 의존.
 
-**근거:**
-- **Plan-A를 1순위로 둔 이유:** 토스트/스켈레톤이 없으면 Plan-B(중복제출)의 에러 표시가 alert로 회귀하고, Plan-7(다단계)의 단계 전환 피드백을 줄 방법이 없다.
-- **Plan-C를 5순위로 미룬 이유:** a11y는 모든 plan의 부산물로 흡수하는 게 효율적 (예: Toast 만들 때 `role="alert"`/`aria-live` 적용, FormDialog 만들 때 포커스 트랩 적용). 별도 plan으로 묶으면 작업 누락 위험.
-- **Plan-7을 3순위로 둔 이유:** 사용자가 STRATEGY §3에 직접 후보로 명시. 단, Plan-A 없이 진행하면 "단계 전환 시 피드백이 alert"로 품질 저하.
+| 순서 | Plan | 근거 | 예상 복잡도 |
+|---|---|---|---|
+| **0** | **[Multi-Vault Support](../2026-08-30-multi-vault-support.md) (§2 후속)** | Home 파일 리스트 UI 가능하게 함. STRATEGY Boundary #4 ("멀티 볼트는 로컬 파일 단위로만") 격차 해소. **Track 3 모든 plan의 전제** | 중~대 |
+| 1 | **Plan-7: 다단계 페이지** | Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기 가능. Plan-4(패스프레이즈, 완료)와 자연 통합 | 중~대 |
+| 2 | **Plan-A: 로딩/에러 토스트 인프라** | Plan-7의 단계 전환 피드백, Plan-B의 에러 표시 기반 | 중 |
+| 3 | **Plan-B: 중복 제출/버튼 일관성** | Plan-A 위에서 동작, 사용자 체감 큼. 기존 Button/FormDialog 수정 중심 | 소 |
+| 4 | **Plan-D: 테마 FOUC 가드** | 독립, 실측 후 작업 | 소 |
+| 5 | **a11y 부산물 흡수** | Plan-A/B/D 진행 중 role/aria/focus 자연 보강 + 후속 a11y audit plan | 대 |
+
+**근거 갱신:**
+- **Multi-Vault가 0순위인 이유:** Plan-7의 "기존 파일 선택 / 새로 만들기" 분기(§12.2 Step 1)는 1개 파일 모델에선 의미가 없음. Multi-Vault가 먼저 와야 Plan-7의 v1이 의미를 가짐. 또한 Home UI 자체가 "파일 1개 표시 → 파일 N개 리스트"로 바뀌어야 사용자가 multi-vault를 체감.
+- **Plan-7을 1순위(Track 3 내)로 둔 이유:** 사용자가 STRATEGY §3에 직접 후보로 명시. Plan-A 없이 진행하면 "단계 전환 시 피드백이 alert"로 품질 저하.
+- **Plan-A를 2순위로:** Plan-7과 Plan-B 모두 의존. 먼저 만들어야 후속이 "alert 띄우기"로 끝나지 않음.
+- **Plan-C(a11y)를 5순위로:** 모든 plan의 부산물로 흡수하는 게 효율적. 단독 plan으로 묶으면 누락 위험.
 
 ### 8.2 권장 분할
 
 ```
 Track 3: UX·접근성·인터랙션 품질
-├─ Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync)
-├─ Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit, FormDialog async)
-├─ Plan-7: 파일 생성 다단계 페이지 (/create-vault Step 1·2·3)
-├─ Plan-D: 테마 FOUC 가드 + 시스템 연동 강화
-└─ (점진 흡수) a11y — Plan-A/B/D 진행 중 role/aria/focus 자연 보강
-    별도 plan은 "누락 점검" 또는 "특정 영역 a11y audit" 트리거 시에만
+└─ [선행] Multi-Vault Support (§2 후속, 별도 brainstorm — Home UI 전제)
+   ├─ Plan-7: 파일 생성 다단계 페이지 (/create-vault Step 1·2·3)
+   ├─ Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync)
+   ├─ Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit, FormDialog async)
+   ├─ Plan-D: 테마 FOUC 가드 + 시스템 연동 강화
+   └─ (점진 흡수) a11y — Plan-A/B/D 진행 중 role/aria/focus 자연 보강
+       별도 plan은 "누락 점검" 또는 "특정 영역 a11y audit" 트리거 시에만
 ```
 
 ### 8.3 Plan-7 흡수 결정
@@ -266,15 +274,27 @@ Track 3: UX·접근성·인터랙션 품질
 
 ## 10. Current Decision State
 
-| # | 결정 | 권장 |
+| # | 결정 | 상태 |
 |---|---|---|
-| Q1~Q8 | (위 표 참조) | 권장 옵션 우선, 사용자 확정 대기 |
+| Q1 | Plan-A 토스트: 직접 구현 (b) | 📋 권장 (사용자 확정 대기) |
+| Q2 | Plan-B FormDialog 에러: 둘 다 (c) | 📋 권장 (사용자 확정 대기) |
+| Q3 | Plan-7 라우트: 단일 + store (b) | 📋 권장 (사용자 확정 대기) — **Multi-Vault 결과 의존** |
+| Q4 | Plan-7 FileCreateDialog: 완전 제거 (a) | 📋 권장 (사용자 확정 대기) — **Multi-Vault 결과 의존** |
+| Q5 | a11y: 부산물 흡수 (b) + 후속 audit plan | 📋 권장 (사용자 확정 대기) |
+| Q6 | Plan-D FOUC: 실측 우선 (a) | 📋 권장 (사용자 확정 대기) |
+| Q7 | Plan-A Skeleton: 초기 진입 (a) | 📋 권장 (사용자 확정 대기) |
+| Q8 | Plan-7 PIN: Plan-4 그대로 (a) | 📋 권장 (사용자 확정 대기) |
+| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ 확정 2026-08-30 (Multi-Vault brainstorm) |
 
-**진행 순서 (사용자 확정 시):**
-1. Plan-A → Plan-B (직렬, 의존성)
-2. Plan-A + Plan-B 완료 후 Plan-7 (독립 가능, 단 Plan-A에 일부 의존)
-3. Plan-D (실측 후 결정, 다른 plan과 독립)
-4. a11y 부산물 흡수 (진행 중 자연 보강)
+**진행 순서 (2026-08-30 확정):**
+1. **Multi-Vault Support** ([`2026-08-30-multi-vault-support.md`](../2026-08-30-multi-vault-support.md)) — Track 3 진입 전 선행, 모든 Q의 전제
+2. **Plan-7** (다단계 페이지) — Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기
+3. **Plan-A** (공통 UI 인프라) — Plan-7의 단계 전환 피드백, Plan-B의 에러 기반
+4. **Plan-B** (버튼/폼 일관성) — Plan-A 위에서 동작
+5. **Plan-D** (테마 FOUC 가드) — 독립, Q6 실측 후 작업
+6. **a11y 부산물 흡수** — Plan-A/B/D 진행 중 자연 보강 + 후속 audit plan
+
+> Track 3의 Q1~Q8은 Multi-Vault 완료 후 활성화됨. 현재 단계에서는 Q 확정 작업은 보류.
 
 ## 11. Risks
 
@@ -286,14 +306,20 @@ Track 3: UX·접근성·인터랙션 품질
 | Plan-D FOUC가 실측에서 안 나타나면 작업 무의미 | Q6 실측 우선 결정, 발생 안 하면 Plan-D cancel |
 | Track 1(autofill)/Track 2(vault) 진행 중 회귀 | Plan-A/B는 React UI 한정, autofill native 경로와 격리됨. Plan-7 라우트 추가는 `/create-vault` 신규라 기존 라우트 미영향 |
 | "단순화/이전과 같게" 사용자 신호 (메모) | 각 plan 시작 전 작업 범위 재확인, 첫 plan에서 검증된 패턴을 후속에 복제 |
-| 6개 항목 동시 착수 시 산만 | Plan-A → B → 7 → D 순서 엄수, Plan-C는 흡수 |
+| 6개 항목 동시 착수 시 산만 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** 순서 엄수, a11y는 흡수 |
+| **Multi-Vault 결과에 Track 3 전체 의존** | Multi-Vault 완료 전 Track 3 plan-A/B/7 작업 비효율. **순서 엄수** |
+| **Multi-Vault E2E 회귀 위험** | Home의 "파일 생성" 버튼은 `FileCreateDialog` 그대로 — Multi-Vault는 다이얼로그 UI 변경 0, E2E 회귀 0 (Q8 사용자 확정) |
 
 ## 12. Next Action
 
-1. **사용자 결정:** §9 Q1~Q8 — 권장 옵션 그대로 진행할지, 변경할지
-2. **사용자 결정:** §8.1 우선순위(Plan-A → B → 7 → D) 확정
-3. **사용자 결정:** 첫 plan으로 Plan-A부터 시작할지, 다른 순서 선호
-4. 결정되면 본 brainstorm을 **닫고** `ce-plan`(Plan-A)을 직접 개설. `docs/plans/2026-08-30-track3-plan-a-{spinner-skeleton-toast-async}.md` 형식
+**Track 3는 Multi-Vault 후속 (2026-08-30 확정).** 본 brainstorm의 Q1~Q8은 보류 상태.
+
+1. **즉시:** [`2026-08-30-multi-vault-support.md`](../2026-08-30-multi-vault-support.md) 기반으로 `ce-plan` 개설 → `docs/plans/2026-08-30-multi-vault-support.md`
+2. **Multi-Vault 완료 후:** 본 brainstorm §9 Q1~Q8 사용자 확정 (Plan-7 Q3/Q4는 Multi-Vault 결과 반영해 재평가)
+3. **첫 plan 선택:** Plan-7 (Multi-Vault와 가장 강하게 결합된 §3 항목)
+4. **그 후:** Plan-A → Plan-B → Plan-D 순서로 진행
+
+**본 brainstorm의 ce-plan 직접 개설은 보류.** Multi-Vault가 먼저 선행되어야 Track 3 plan의 Q 확정과 범위 산정이 의미를 가짐.
 
 ---
 
@@ -308,9 +334,9 @@ Track 3: UX·접근성·인터랙션 품질
 | 다크/라이트 테마 + 깜빡임 | Plan-D | FOUC 실측 후 작업 |
 | Plan-7: 파일 생성 다단계 | Plan-7 | §12 메모 공식 흡수 |
 
-## 부록 B. STRATEGY §3 업데이트 제안 (본 brainstorm 종료 후)
+## 부록 B. STRATEGY §3 업데이트 제안 (Multi-Vault 후속 결정 반영)
 
-본 brainstorm이 사용자에 의해 채택되면 STRATEGY.md §3을 다음과 같이 갱신:
+본 brainstorm은 **Multi-Vault brainstorm(2026-08-30) 후속**으로 갱신됨. STRATEGY.md §3은 Multi-Vault + 본 brainstorm 양쪽 완료 후 갱신.
 
 ```diff
  ### 3. UX·접근성·인터랙션 품질 (UX & Accessibility)
@@ -321,11 +347,13 @@ Track 3: UX·접근성·인터랙션 품질
 +- 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
 +- **후속 후보 — Plan-7: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm §12](docs/brainstorms/2026-08-29-vault-file-integrity.md)) — 3단계 (폴더 선택 → 파일 이름 → 암호 입력) 라우트 기반 흐름으로 모바일 키보드 가시성·뒤로가기 모호함·"되돌리기 어려운 결정" 가시성 개선. §2 볼트 무결성과 분리된 UX 개선 항목이며, Plan-4 (패스프레이즈) 도입 시 Step 3가 자연스럽게 통합됨
 +- **진척 (2026-08-30):** 6개 항목 중 0개 완료, 4개 부분 구현 (a11y/에러/테마/중복제출), 2개 미구현 (로딩/Plan-7)
-+  - 📋 Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync) — [brainstorm](docs/brainstorms/2026-08-30-track3-ux-accessibility.md) §8.1 Q1
++  - 🔒 [선행] Multi-Vault Support — [brainstorm](docs/brainstorms/2026-08-30-multi-vault-support.md), §2 후속, Home 파일 리스트 UI 전제
++  - 📋 Plan-7: 다단계 페이지 — §8.1 (Multi-Vault 결과 의존)
++  - 📋 Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync) — §8.1 Q1
 +  - 📋 Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit) — §8.1 Q2
-+  - 📋 Plan-7: 파일 생성 다단계 페이지 — §8.1, §12 메모 공식 흡수
 +  - 📋 Plan-D: 테마 FOUC 가드 — §8.1, Q6 실측 후 작업
 +  - 📋 a11y: Plan-A/B/D 부산물 흡수 + 후속 a11y audit plan (Q5)
  - **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
-+ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — 첫 plan(Plan-A) 미착수
++ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — Multi-Vault 선행 대기
++ - **진행 순서 (2026-08-30 확정):** Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D
 ```
