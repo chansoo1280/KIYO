@@ -7,10 +7,13 @@ import { useSessionStore } from "@/store/sessionStore";
 import TemplatePicker from "./components/TemplatePicker";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { Spinner } from "@/components/feedback/Spinner";
 
 const AccountList = () => {
   const navigate = useNavigate();
   const accounts = useAccountStore((state) => state.accounts);
+  const isLoading = useAccountStore((state) => state.isLoading);
+  const initialized = useAccountStore((state) => state.initialized);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -107,6 +110,39 @@ const AccountList = () => {
   }, [accounts, selectedTags, searchQuery, sortOrder]);
 
   const { copy } = useClipboard();
+
+  if (!initialized || isLoading) {
+    return (
+      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+                Accounts
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
+                My accounts
+              </h2>
+              {fileName && (
+                <p className="mt-1 text-sm text-[var(--color-text)]">
+                  {fileName}
+                </p>
+              )}
+            </div>
+          </div>
+          <div
+            className="flex flex-col items-center justify-center gap-3 py-16"
+            data-testid="accounts-loading"
+          >
+            <Spinner size="lg" label="계정을 불러오는 중..." />
+            <p className="text-sm text-[var(--color-text-muted)]">
+              계정을 불러오는 중...
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
