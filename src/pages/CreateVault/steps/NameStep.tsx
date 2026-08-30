@@ -1,3 +1,5 @@
+import Button from "@/components/Button";
+
 interface NameStepProps {
   fileName: string;
   defaultValue: string;
@@ -97,15 +99,15 @@ export const NameStep = ({
       </div>
 
       <div className="mt-6 flex justify-end">
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={handleNext}
           disabled={isDisabled}
           data-testid="create-vault-next"
-          className="rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          다음
-        </button>
+          className="!rounded-full !bg-[var(--color-accent)] !px-5 !py-3 !text-sm !font-semibold !text-white"
+          label="다음"
+        />
       </div>
     </section>
   );

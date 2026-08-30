@@ -1,5 +1,6 @@
 import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
+import Button from "@/components/Button";
 
 interface PinStepProps {
   fileName: string;
@@ -75,36 +76,37 @@ export const PinStep = ({
       )}
 
       <div className="mt-3 text-center">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onSkip}
           disabled={isSubmitting}
           data-testid="create-vault-skip-pin"
-          className="text-sm text-[var(--color-text-muted)] underline underline-offset-2 hover:text-[var(--color-text)] disabled:opacity-50"
-        >
-          비밀번호 없이 만들기
-        </button>
+          className="!text-sm !text-[var(--color-text-muted)] !underline !underline-offset-2 hover:!text-[var(--color-text)]"
+          label="비밀번호 없이 만들기"
+        />
       </div>
 
       <div className="mt-4 flex justify-between gap-3">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onBack}
           disabled={isSubmitting}
           data-testid="create-vault-back"
-          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-code-bg)] disabled:opacity-50"
-        >
-          이전
-        </button>
-        <button
+          className="!rounded-full !border !border-[var(--color-border)] !bg-[var(--color-bg)] !px-5 !py-3 !text-sm !font-semibold !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)]"
+          label="이전"
+        />
+        <Button
           type="button"
+          variant="primary"
           onClick={onSubmit}
-          disabled={!isPinValid || isSubmitting}
+          loading={isSubmitting}
+          disabled={!isPinValid}
           data-testid="create-vault-submit"
-          className="rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? "생성 중..." : "생성"}
-        </button>
+          className="!rounded-full !bg-[var(--color-accent)] !px-5 !py-3 !text-sm !font-semibold !text-white"
+          label={isSubmitting ? "생성 중..." : "생성"}
+        />
       </div>
     </section>
   );

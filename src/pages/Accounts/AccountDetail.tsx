@@ -6,6 +6,7 @@ import { PasswordFieldView } from "./components/PasswordFieldView";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -52,13 +53,12 @@ const AccountDetail = () => {
     return (
       <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
         <div className="flex justify-start">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => navigate(-1)}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-          >
-            ← 뒤로 가기
-          </button>
+            label="← 뒤로 가기"
+          />
         </div>
         <p className="mt-4 text-[var(--color-text)]">계정 정보를 찾을 수 없습니다.</p>
       </section>
@@ -94,28 +94,25 @@ const AccountDetail = () => {
     <>
       <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
         <div className="flex items-center justify-between">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={handleBack}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-          >
-            ← 뒤로 가기
-          </button>
+            label="← 뒤로 가기"
+          />
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="primary"
               onClick={() => navigate(`/accounts/${account.id}/edit`)}
-              className="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-            >
-              수정
-            </button>
-            <button
+              label="수정"
+            />
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => setShowDeleteConfirm(true)}
-              className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text-h)] shadow-sm"
-            >
-              삭제
-            </button>
+              label="삭제"
+            />
           </div>
         </div>
 
@@ -136,17 +133,17 @@ const AccountDetail = () => {
                 ))}
               </div>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => void updateAccount({ ...account, favorite: !account.favorite })}
-              className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
+              className={
                 account.favorite
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)]"
-              }`}
-            >
-              {account.favorite ? "★ Favorite" : "☆ Favorite"}
-            </button>
+                  ? "!rounded-full !border !border-[var(--color-accent)] !bg-[var(--color-accent-bg)] !px-3 !py-1 !text-sm !text-[var(--color-accent)]"
+                  : "!rounded-full !border !border-[var(--color-border)] !bg-[var(--color-bg)] !px-3 !py-1 !text-sm !text-[var(--color-text-h)]"
+              }
+              label={account.favorite ? "★ Favorite" : "☆ Favorite"}
+            />
           </div>
 
           <div className="mt-6 space-y-3">

@@ -11,6 +11,7 @@ import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -148,14 +149,16 @@ const Auth = () => {
     <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center gap-4">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={handleBackToHome}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text-h)]"
+            className="!h-10 !w-10 !rounded-xl !p-0 !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)] hover:!text-[var(--color-text-h)]"
+            label=""
             aria-label="첫 화면으로 돌아가기"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
+          </Button>
           <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
             K
           </div>
@@ -205,15 +208,21 @@ const Auth = () => {
           <div className="mt-6 space-y-4">
             {/* Biometric login button */}
             {showBiometricButton && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={handleBiometricLogin}
                 disabled={isVerifying}
-                className="w-full flex items-center justify-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-medium text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Fingerprint className="h-4 w-4" />
-                {biometryAvailable.type === "face" ? "Face ID로 로그인" : "지문으로 로그인"}
-              </button>
+                className="!w-full !flex !items-center !justify-center !gap-2 !rounded-full !border !border-[var(--color-border)] !bg-[var(--color-bg)] !px-5 !py-3 !text-sm !font-medium !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)]"
+                label={
+                  <span className="flex items-center gap-2">
+                    <Fingerprint className="h-4 w-4" />
+                    {biometryAvailable.type === "face"
+                      ? "Face ID로 로그인"
+                      : "지문으로 로그인"}
+                  </span>
+                }
+              />
             )}
 
             {/* PIN input */}
@@ -239,14 +248,14 @@ const Auth = () => {
               {/* PIN 강도 표시는 의도적으로 생략 — 이 화면은 기존 PIN 인증용이며
                   강도 평가는 신규/변경 PIN 입력에서만 의미 있음 (CreateVaultPage, PinChangeDialog). */}
             </div>
-            <button
+            <Button
               type="button"
+              variant="primary"
               onClick={handleVerifyPin}
-              disabled={isVerifying}
-              className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isVerifying ? "확인 중..." : "확인"}
-            </button>
+              loading={isVerifying}
+              className="!w-full !rounded-full !bg-[var(--color-accent)] !px-5 !py-3 !text-sm !font-semibold !text-white"
+              label={isVerifying ? "확인 중..." : "확인"}
+            />
           </div>
         </section>
       </div>

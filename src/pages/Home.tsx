@@ -13,6 +13,7 @@ import {
 import { setupVaultSession } from "@/database/fileStorage";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
+import Button from "@/components/Button";
 import type { FileRecord } from "@/database/db";
 import { Trash2 } from "lucide-react";
 
@@ -155,13 +156,12 @@ const Home = () => {
             >
               파일 생성
             </Link>
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setShowOpenDialog(true)}
-              className="rounded-full border-2 border-[var(--color-accent)] bg-[var(--color-bg)] px-5 py-3 text-sm font-semibold text-[var(--color-accent)] shadow-sm transition hover:bg-[var(--color-accent-bg)] hover:border-[var(--color-accent)]/80"
-            >
-              파일 선택
-            </button>
+              label="파일 선택"
+            />
           </div>
         </section>
 
@@ -186,27 +186,24 @@ const Home = () => {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3"
                     data-testid="file-list-item"
                   >
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => handleSelectFile(file.fileName)}
-                      className="flex-1 text-left text-sm font-medium text-[var(--color-text-h)]"
+                      className="!flex-1 !justify-start !text-left !text-sm !font-medium !text-[var(--color-text-h)]"
+                      label={file.fileName + (isActive ? " active" : "")}
                       aria-label={`${file.fileName} 활성화`}
-                    >
-                      {file.fileName}
-                      {isActive && (
-                        <span className="ml-2 rounded-full bg-[var(--color-accent-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
-                          active
-                        </span>
-                      )}
-                    </button>
-                    <button
+                    />
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => handleDeleteFile(file.fileName)}
-                      className="grid h-9 w-9 place-items-center rounded-full text-[var(--color-text-muted)] transition hover:bg-[var(--color-destructive-bg)] hover:text-[var(--color-destructive)]"
+                      className="!grid !h-9 !w-9 !place-items-center !rounded-full !text-[var(--color-text-muted)] hover:!bg-[var(--color-destructive-bg)] hover:!text-[var(--color-destructive)]"
+                      label=""
                       aria-label={`${file.fileName} 삭제`}
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </li>
                 );
               })}

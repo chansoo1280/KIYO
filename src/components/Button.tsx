@@ -1,11 +1,11 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Spinner } from "@/components/feedback/Spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  label: string;
+  label: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;

@@ -477,14 +477,53 @@ const handleDelete = async () => {
 
 ## Plan-B-2
 
-- [ ] `AccountEdit` 저장/취소 → Button + Plan-A1 catch + 인라인 에러
-- [ ] `AccountDetail` 뒤로/수정/삭제/Favorite → Button + Plan-A1 catch + ConfirmDialog error
-- [ ] `Accounts/index.tsx` 6개 버튼 → Button + Plan-A2 spinner 통합 (동시 PR)
-- [ ] `Home.tsx` 4개 버튼 → Button
-- [ ] `Auth.tsx` PIN 제출 → Button
-- [ ] `CreateVault/index.tsx` 5개 버튼 → Button
-- [ ] Plan-7a의 `e2e/01-create-vault.spec.ts` 회귀 0
-- [ ] (기타 Plan-B-1 게이트)
+- [x] `AccountEdit` 저장/취소 → Button + Plan-A1 catch + 인라인 에러
+- [x] `AccountDetail` 뒤로/수정/삭제/Favorite → Button + Plan-A1 catch + ConfirmDialog error
+- [x] `Accounts/index.tsx` 6개 버튼 → Button + Plan-A2 spinner 통합
+- [x] `Home.tsx` 3개 버튼 → Button (파일 선택/활성화/삭제)
+- [x] `Auth.tsx` 3개 버튼 → Button (뒤로/생체인증/PIN 제출)
+- [x] `CreateVault/index.tsx` 4개 버튼 → Button (홈/이전/제출/건너뛰기) + NameStep 다음
+- [x] `Button.tsx` label prop을 ReactNode로 확장 (string | JSX)
+- [x] `npm run typecheck` 통과
+- [x] `npm run lint` 통과
+- [x] `npm run test` 441/441 통과
+- [x] `npm run build` 통과
+- [x] Android: `compileDebugKotlin` + `testDebugUnitTest` 통과
+- [ ] 사용자가 Playwright E2E 직접 실행 시 회귀 0
+
+## Status (2026-08-30)
+
+**✅ Plan-B-2 완료** — 9개 작업 항목 verified.
+
+| # | 항목 | 상태 | 근거 |
+|---|---|---|---|
+| 1 | Accounts 6개 | ✅ | search/sort/clear/copy/FAB/scroll 모두 Button |
+| 2 | AccountDetail 4개 | ✅ | 뒤로/수정/삭제/Favorite |
+| 3 | AccountEdit 2개 + Plan-A1 catch | ✅ | isSaving state 추가, `handleSave` try/catch + setSaveError |
+| 4 | Home 3개 | ✅ | 파일 선택/활성화/삭제 (파일 생성은 Link) |
+| 5 | Auth 3개 | ✅ | 뒤로(ArrowLeft)/생체인증/PIN 제출 |
+| 6 | CreateVault 4개 | ✅ | 홈/이전/제출/건너뛰기 + NameStep 다음 |
+| 7 | Button.tsx 확장 | ✅ | `label: ReactNode` (string \| JSX), Auth의 `<Fingerprint>` JSX label 지원 |
+| 8 | check/build/Android | ✅ | 33 files / 441 tests / build 1.25s / Android 3s |
+| 9 | Debug 노트 | ✅ | 기존 `data-testid`가 Button에 그대로 전달되어 CreateVaultPage 테스트 9개 모두 통과 |
+
+**총 마이그레이션된 inline `<button>`:** ~21개
+
+**git diff:**
+- `src/components/Button.tsx` (label: ReactNode)
+- `src/pages/Accounts/index.tsx` (6 buttons → Button)
+- `src/pages/Accounts/AccountDetail.tsx` (4 buttons → Button)
+- `src/pages/Accounts/AccountEdit/index.tsx` (2 buttons + isSaving state)
+- `src/pages/Home.tsx` (3 buttons → Button)
+- `src/pages/Auth.tsx` (3 buttons → Button)
+- `src/pages/CreateVault/index.tsx` (1 button → Button)
+- `src/pages/CreateVault/steps/NameStep.tsx` (1 button → Button)
+- `src/pages/CreateVault/steps/PinStep.tsx` (3 buttons → Button)
+
+**남은 일:**
+- 사용자가 Playwright E2E 직접 실행
+- 1 commit
+- **Plan-B-3 (나머지 페이지)**: Templates/*, Settings/* 마이그레이션
 
 ## Plan-B-3
 

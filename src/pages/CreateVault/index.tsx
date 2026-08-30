@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createDataFile } from "@/database/fileStorage";
 import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 import { Stepper } from "./components/Stepper";
 import { NameStep, validateName } from "./steps/NameStep";
 import { PinStep } from "./steps/PinStep";
@@ -81,14 +82,14 @@ const CreateVaultPage = () => {
     >
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <header className="flex items-center gap-3">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => navigate("/")}
-            className="rounded-full p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text)]"
+            className="!h-10 !w-10 !rounded-full !p-0 !text-[var(--color-text-muted)] hover:!bg-[var(--color-code-bg)] hover:!text-[var(--color-text)]"
+            label="←"
             aria-label="홈으로"
-          >
-            ←
-          </button>
+          />
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
               New vault

@@ -6,6 +6,7 @@ import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
 import WebsiteSelector from "./components/WebsiteSelector";
@@ -111,6 +112,7 @@ const AccountEdit = () => {
     import("@/models/websitePreset").WebsitePreset | null
   >(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
@@ -207,6 +209,7 @@ const AccountEdit = () => {
 
     let savedAccount = updatedAccount;
 
+    setIsSaving(true);
     try {
       if (isNew) {
         savedAccount = await addAccount(updatedAccount);
@@ -217,6 +220,8 @@ const AccountEdit = () => {
       navigate(`/accounts/${savedAccount.id}`);
     } catch (err) {
       setSaveError(mapError(err));
+    } finally {
+      setIsSaving(false);
     }
   }, [
     fields,
@@ -235,20 +240,20 @@ const AccountEdit = () => {
   return (
     <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="flex items-center justify-between gap-3">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => navigate(-1)}
-          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-        >
-          ← 취소
-        </button>
-        <button
+          disabled={isSaving}
+          label="← 취소"
+        />
+        <Button
           type="button"
+          variant="primary"
           onClick={handleSave}
-          className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-        >
-          저장
-        </button>
+          loading={isSaving}
+          label={isSaving ? "저장 중..." : "저장"}
+        />
       </div>
 
       {saveError && (

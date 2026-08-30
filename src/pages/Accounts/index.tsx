@@ -8,6 +8,7 @@ import TemplatePicker from "./components/TemplatePicker";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { Spinner } from "@/components/feedback/Spinner";
+import Button from "@/components/Button";
 
 const AccountList = () => {
   const navigate = useNavigate();
@@ -163,26 +164,24 @@ const AccountList = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant={showSearch ? "secondary" : "ghost"}
               onClick={() => {
                 if (showSearch) {
-                  // Closing search - clear search query
                   setSearchQuery("");
                 }
                 setShowSearch(!showSearch);
               }}
-              className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg shadow-sm transition ${
-                showSearch
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-h)] hover:bg-[var(--color-code-bg)]"
-              }`}
+              className="!h-11 !w-11 !rounded-2xl !p-0 !text-lg"
+              label="🔍"
               aria-label="Search"
-            >
-              🔍
-            </button>
-            <button
+            />
+            <Button
               type="button"
+              size="sm"
+              variant={sortOrder ? "secondary" : "ghost"}
               onClick={() => {
                 setSortOrder((prev) => {
                   if (prev === null) return "asc";
@@ -190,15 +189,10 @@ const AccountList = () => {
                   return null;
                 });
               }}
-              className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg shadow-sm transition ${
-                sortOrder
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-h)] hover:bg-[var(--color-code-bg)]"
-              }`}
+              className="!h-11 !w-11 !rounded-2xl !p-0 !text-lg"
+              label={sortOrder === "asc" ? "↑" : sortOrder === "desc" ? "↓" : "↕"}
               aria-label="Sort"
-            >
-              {sortOrder === "asc" ? "↑" : sortOrder === "desc" ? "↓" : "↕"}
-            </button>
+            />
           </div>
         </div>
 
@@ -214,14 +208,15 @@ const AccountList = () => {
               autoFocus
             />
             {searchQuery && (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="ghost"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text)] hover:text-[var(--color-text-h)]"
+                className="!absolute !right-3 !top-1/2 !-translate-y-1/2 !text-[var(--color-text)] hover:!text-[var(--color-text-h)]"
+                label="✕"
                 aria-label="Clear search"
-              >
-                ✕
-              </button>
+              />
             )}
           </div>
         )}
@@ -287,8 +282,10 @@ const AccountList = () => {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="secondary"
                 onClick={(event) => {
                   event.stopPropagation();
                   const passwordField = account.fields.find(
@@ -298,33 +295,32 @@ const AccountList = () => {
                     copy(passwordField.value);
                   }
                 }}
-                className="rounded-full bg-[var(--color-accent-bg)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)] transition hover:bg-[var(--color-accent-bg)]/80"
+                className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-[0.08em] !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
+                label="복사"
                 aria-label="Copy password"
-              >
-                복사
-              </button>
+              />
             </article>
           ))}
         </div>
       </div>
 
       <div className="fixed right-5 bottom-28 z-20 flex flex-col gap-3">
-        <button
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-accent)] text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-[var(--color-accent)]/80"
+        <Button
           type="button"
-          aria-label="Add account"
+          variant="primary"
           onClick={() => setShowTemplatePicker(true)}
-        >
-          +
-        </button>
-        <button
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-bg)] text-xl shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-[var(--color-code-bg)]"
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-accent)] !text-white !shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:!bg-[var(--color-accent)]/80"
+          label="+"
+          aria-label="Add account"
+        />
+        <Button
           type="button"
-          aria-label="Scroll to top"
+          variant="ghost"
           onClick={scrollToTop}
-        >
-          ⬆
-        </button>
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-bg)] !text-xl !shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:!bg-[var(--color-code-bg)]"
+          label="⬆"
+          aria-label="Scroll to top"
+        />
       </div>
 
       {showTemplatePicker && (
