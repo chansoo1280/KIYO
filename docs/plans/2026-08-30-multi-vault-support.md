@@ -723,3 +723,96 @@ Step 4: 테스트 갱신
 
 - `getAllFileNames`가 진짜 dead 후보가 되면 다음 정리에서 `getAllFiles().map()` 호출처 2곳(`Home.tsx:27` 패턴)과 함께 묶어서 처리 가능.
 - autofill/Keystore와 직교하므로 메모리 변경 불필요.
+
+---
+
+# Post-Implementation: Code Review Corrections (2026-08-30)
+
+본 plan 범위 외 후속 정정. Multi-Vault 구현 커밋(`afff2e1f`) 후 코드 리뷰 중 발견된 정확성 결함 2건 수정. **외부 표면 변화 0 / 동작 변화는 내부 검증 강화일 뿐, 사용자 영향 0 / Android Keystore·autofill·SAF 영향 0.**
+
+## 정정 내역
+
+| # | 항목 | 위치 | 변경 종류 | 처리 |
+|---|------|------|-----------|------|
+| 1 | v13 upgrade hook 코멘트의 의도 불명확 | `src/database/db.ts:38-42` | 코멘트 보강 (영문화) | 한국어 1줄 → 영어 4줄 |
+| 2 | `replaceDatabaseData` 입력 검증의 연산자 우선순위 버그 + 평문 분기 미검증 + `fileName` 빈 문자열 미가드 | `src/database/db.ts:204-210` | 코드 수정 | `if (cryptoKey && !encryptedFileData \|\| !fileDataToSave)` → `if (!fileDataToSave)` + `if (!fileName)` 가드 추가 |
+
+### 1. v13 upgrade hook 코멘트 (영문화 보강)
+
+**변경 전 (한국어):**
+```ts
+// v13: schema as-is (clear upgrade) — preserved for users upgrading from v12
+this.version(13).stores({...}).upgrade((transaction) => {
+  // v12: files 테이블 키를 ++id에서 고정 "active"로 변경
+  // 기존 레코드 삭제 후 새로 생성 (볼트 파일로 복원 가능하므로 데이터 손실 없음)
+  transaction.table("files").clear();
+});
+```
+
+**변경 후 (영문 + 의도 명시):**
+```ts
+// v13: PK changes from ++id (auto-increment number) to id (out-of-line key).
+// Dexie preserves the existing number PK, but the rest of the codebase assumes
+// a single fixed "active" PK. Wipe the v12 rows so the next write seeds a
+// fresh "active" row. Data loss is 0: vault snapshot lives in the file-system
+// .json backup and is restored via the import flow.
+this.version(13).stores({...}).upgrade((transaction) => {
+  transaction.table("files").clear();
+});
+```
+
+**왜 정정했나:** 리뷰 중 v13 hook이 "dead code"라는 의심이 제기됐으나, git history로 v5~v12 (7개 버전) 모두 `files: "++id, ..."`였고 v13에서 `files: "id, ..."`로 바뀐 사실을 확인 → schema 변경이 있어 upgrade가 **정확히 1회 실행 중**임. 한국어 코멘트만으로는 "왜 schema as-is인데 clear가 필요한가" 의문이 들어 dead code로 오인될 위험. 영문화로 의도 (PK 모델 전환)와 데이터 손실 0 근거 (filesystem 백업)를 명시.
+
+### 2. `replaceDatabaseData` 입력 검증 (실제 결함 수정)
+
+**변경 전:**
+```ts
+const fileDataToSave = cryptoKey ? encryptedFileData : data;
+if (cryptoKey && !encryptedFileData || !fileDataToSave) {
+  throw new Error("저장할 파일 데이터가 없습니다.");
+}
+```
+
+**변경 후:**
+```ts
+const fileDataToSave = cryptoKey ? encryptedFileData : data;
+if (!fileDataToSave) {
+  throw new Error("저장할 파일 데이터가 없습니다.");
+}
+if (!fileName) {
+  throw new Error("fileName이 필요합니다.");
+}
+```
+
+**왜 결함이었나:**
+- **`&&`이 `||`보다 먼저 평가**되어 `if ((cryptoKey && !encryptedFileData) || !fileDataToSave)`로 동작. 의도는 "암호화 분기는 encryptedFileData 필수, 평문 분기는 data 필수, 어느 쪽이든 없으면 throw"였으나 실제 평문 분기에서 검증이 우연히 truthy 통과해버림.
+- **평문 분기에서 `data === null/undefined` 검증 미흡.** 우연히 `{}`은 truthy라 실제 크래시는 안 났지만, 외부 입력(가져오기 파이프라인)이 빈 객체를 넘기면 런타임 크래시 위험.
+- **`fileName` 빈 문자열 미가드.** v14 schema에서 PK는 `fileName`이므로 빈 문자열이면 PK `""` row가 생성되어 이후 `db.files.get("")`이 항상 hit.
+
+**왜 지금 발견:** Multi-Vault 구현 후 `replaceDatabaseData`가 평문/암호화 모두 호출하는 진입점이 됐고, v14 schema에서 fileName이 PK로 강제되면서 빈 문자열 가드의 의미가 커짐. Multi-Vault 이전(`active` 리터럴 PK)에는 fileName이 검증 대상이 아니었음.
+
+## 보존 결정 (이번 정정에서 손대지 않은 것)
+
+- **`db.files.clear()` 제거 (Step 1)**: multi-vault 모델 의도대로 files rows 보존. 변경 없음.
+- **v13 hook 자체의 동작**: 의도된 1회 실행. 변경 없음 (코멘트만 보강).
+- **`replaceDatabaseData` 트랜잭션 내 accounts/templates/metadata clear**: 의도된 동작. 변경 없음.
+- **`KiyoAutofill.clearAllAccounts`** 등 외부 호출처: 변경 없음.
+
+## 검증
+
+이번 정정은 `db.ts` 단일 파일 변경이며, 영향 범위는 `KiyoDatabase` 생성자 (v13 hook 코멘트) 와 `replaceDatabaseData` 함수 (입력 가드) 로 한정.
+
+**사용자 직접 검증 권장** (agent가 E2E 실행은 담당하지 않음, 메모리 §"KIYO E2E 실행 워크플로우" 참조):
+- `npm run check` — typecheck + Vitest 통과 확인 (21 파일 / 334 테스트 회귀 0 예상)
+- `npm run lint` — pre-existing 에러 10건 그대로 유지 확인
+- 수동: `replaceDatabaseData({fileName: ""})` → `throw new Error("fileName이 필요합니다.")` 확인
+- 수동: `replaceDatabaseData({data: null, fileName: "x.json"})` → 평문 분기 throw 확인
+
+**Android 영향**: Native 소스 변경 0 → JVM 유닛 테스트 영향 없음. Autofill/Keystore/SAF 표면 무관.
+
+**위험 평가**: 정정은 입력 검증 강화일 뿐 정상 경로 동작 변화 없음. 호출처 5곳 모두 기존에 `fileName`/`data`를 검증된 채로 넘기므로 새 가드가 트리거될 가능성 0 (defense-in-depth).
+
+## 관련 메모
+
+- `replaceDatabaseData` 호출처 5곳 (`fileStorage.ts`의 `openImportedDataFile` 평문/암호화 분기, `createDataFile` 등)은 모두 `fileName`을 외부에서 검증된 채로 넘기므로 새 `fileName` 가드는 defense-in-depth. 호출처 자체 수정 불필요.
+- v13 hook의 한국어 코멘트는 제거 시점의 의도를 정확히 반영하고 있었으나, schema-as-is 문구와 clear() 동작이 충돌해 보여 리뷰 비용 증가. 영문화로 의도 + 근거를 명시하면 다음 정정에서 같은 의심이 재발하지 않음.

@@ -35,7 +35,11 @@ export class KiyoDatabase extends Dexie {
 
   constructor() {
     super("kiyo-db");
-    // v13: schema as-is (clear upgrade) — preserved for users upgrading from v12
+    // v13: PK changes from ++id (auto-increment number) to id (out-of-line key).
+    // Dexie preserves the existing number PK, but the rest of the codebase assumes
+    // a single fixed "active" PK. Wipe the v12 rows so the next write seeds a
+    // fresh "active" row. Data loss is 0: vault snapshot lives in the file-system
+    // .json backup and is restored via the import flow.
     this.version(13)
       .stores({
         accounts:
@@ -48,8 +52,6 @@ export class KiyoDatabase extends Dexie {
         files: "id, fileName, createdAt, updatedAt",
       })
       .upgrade((transaction) => {
-        // v12: files 테이블 키를 ++id에서 고정 "active"로 변경
-        // 기존 레코드 삭제 후 새로 생성 (볼트 파일로 복원 가능하므로 데이터 손실 없음)
         transaction.table("files").clear();
       });
 
@@ -200,8 +202,11 @@ export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Pr
   const { data, fileName, cryptoKey, encryptedFileData } = params;
 
   const fileDataToSave = cryptoKey ? encryptedFileData : data;
-  if (cryptoKey && !encryptedFileData || !fileDataToSave) {
+  if (!fileDataToSave) {
     throw new Error("저장할 파일 데이터가 없습니다.");
+  }
+  if (!fileName) {
+    throw new Error("fileName이 필요합니다.");
   }
 
   // === 1단계: 트랜잭션 밖에서 암호화 완료 ===
