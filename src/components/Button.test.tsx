@@ -22,15 +22,16 @@ describe("Button (Plan-B-1)", () => {
     expect(btn.getAttribute("type")).toBe("submit");
   });
 
-  it("④ loading=true → SVG spinner 렌더 + aria-busy='true' + disabled", () => {
+  it("④ loading=true → Spinner 렌더 + aria-busy='true' + disabled", () => {
     render(<Button label="저장 중" loading />);
     const btn = screen.getByTestId("button");
     expect(btn).toBeDisabled();
     expect(btn.getAttribute("aria-busy")).toBe("true");
     expect(btn.getAttribute("data-loading")).toBe("true");
-    // 인라인 SVG (aria-hidden)
-    const svg = btn.querySelector("svg[aria-hidden='true']");
-    expect(svg).not.toBeNull();
+    // Spinner (aria-hidden=true로 button name에 영향 없음)
+    const spinner = btn.querySelector("[data-testid='spinner']");
+    expect(spinner).not.toBeNull();
+    expect(spinner?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("⑤ loading=false → aria-busy 미설정", () => {

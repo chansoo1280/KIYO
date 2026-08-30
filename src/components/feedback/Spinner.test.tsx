@@ -51,4 +51,12 @@ describe("Spinner (Plan-A2)", () => {
     expect(spinner.className).toContain("text-[var(--color-accent)]");
     expect(spinner.className).toContain("inline-block");
   });
+
+  it("⑧ aria-hidden=true → role='status' 미부여 + label 미적용 (장식용)", () => {
+    render(<Spinner aria-hidden />);
+    const spinner = screen.getByTestId("spinner");
+    expect(spinner.getAttribute("aria-hidden")).toBe("true");
+    expect(spinner.getAttribute("role")).toBeNull();
+    expect(spinner.getAttribute("aria-label")).toBeNull();
+  });
 });
