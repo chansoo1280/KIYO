@@ -13,6 +13,7 @@ import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { AutoLockIndicator } from "@/components/AutoLockIndicator";
+import { SyncErrorBanner } from "@/components/SyncErrorBanner";
 import { useEffect } from "react";
 import { useAutoLock } from "./hooks/useAutoLock";
 import AndroidBackButtonHandler from "./hooks/useAndroidBackButton";
@@ -67,6 +68,7 @@ function App() {
         <Route path="/templates/:id/edit" element={<TemplateEdit />} />
       </Routes>
       <AutoLockIndicator remainingSeconds={remainingSeconds} />
+      <SyncErrorBanner />
     </BrowserRouter>
   );
 }

@@ -9,6 +9,7 @@ import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { mapError } from "@/utils/mapError";
 
 export interface AccountState {
   accounts: Account[];
@@ -60,6 +61,7 @@ export const useAccountStore = create<AccountState>()(
           });
         } catch (error) {
           console.error("Failed to load accounts:", error instanceof Error ? error.message : String(error));
+          useSessionStore.getState().setSyncError(mapError(error));
           set({ isLoading: false });
         }
       },
@@ -140,6 +142,7 @@ export const useAccountStore = create<AccountState>()(
             }
           }
         } catch (error) {
+          useSessionStore.getState().setSyncError(mapError(error));
           if (import.meta.env.DEV) {
             console.error("[Autofill] Failed to sync accounts:", error instanceof Error ? error.message : String(error), error);
           }

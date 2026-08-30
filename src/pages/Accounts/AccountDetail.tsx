@@ -5,6 +5,7 @@ import { useAccountStore } from "@/store/accountStore";
 import { PasswordFieldView } from "./components/PasswordFieldView";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { mapError } from "@/utils/mapError";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const AccountDetail = () => {
   );
   const account = storedAccount;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { deleteAccount, updateAccount } = useAccountStore();
 
   // 파일/인증 상태 체크 (훅으로 분리)
@@ -68,8 +70,19 @@ const AccountDetail = () => {
   );
 
   const handleDelete = async () => {
-    await deleteAccount(account.id);
-    navigate("/accounts");
+    try {
+      await deleteAccount(account.id);
+      setDeleteError(null);
+      setShowDeleteConfirm(false);
+      navigate("/accounts");
+    } catch (err) {
+      // 모달을 닫지 않고 에러만 표시 (Plan-A1 결정)
+      setDeleteError(mapError(err));
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteError(null);
     setShowDeleteConfirm(false);
   };
 
@@ -156,10 +169,11 @@ const AccountDetail = () => {
         open={showDeleteConfirm}
         title="계정 삭제"
         message={"\"" + account.title + "\" 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
-        onClose={() => setShowDeleteConfirm(false)}
+        onClose={handleDeleteDialogClose}
         onConfirm={handleDelete}
         confirmLabel="삭제"
         variant="danger"
+        error={deleteError}
       />
     </>
   );

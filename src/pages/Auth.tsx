@@ -10,6 +10,7 @@ import {
 import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
+import { mapError } from "@/utils/mapError";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -89,7 +90,7 @@ const Auth = () => {
       navigate("/accounts", { replace: true });
     } catch (err) {
       console.error("PIN verification failed:", err instanceof Error ? err.message : String(err), err);
-      setError(`PIN verification failed:${err}`);
+      setError(mapError(err));
     } finally {
       setIsVerifying(false);
     }

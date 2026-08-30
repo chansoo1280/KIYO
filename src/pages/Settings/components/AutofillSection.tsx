@@ -9,6 +9,7 @@ import {
 import { useAccountStore } from "@/store/accountStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { mapError } from "@/utils/mapError";
 
 export const AutofillSection: React.FC = () => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
@@ -46,7 +47,7 @@ export const AutofillSection: React.FC = () => {
       // Don't fetch account count on initial status check to avoid Keystore auth prompt
       // Account count is stored from last successful sync
     } catch (err) {
-      setError(err instanceof Error ? err.message : "상태 확인 실패");
+      setError(mapError(err));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export const AutofillSection: React.FC = () => {
       await checkStatus();
       showMessage("자동완성 설정 화면이 열렸습니다. KIYO 자동완성을 활성화해주세요.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "자동완성 활성화 실패");
+      setError(mapError(err));
     } finally {
       setLoading(false);
     }
@@ -101,7 +102,7 @@ export const AutofillSection: React.FC = () => {
       }
       await checkStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "동기화 실패");
+      setError(mapError(err));
       showMessage("동기화 실패");
     } finally {
       setSyncing(false);
@@ -145,7 +146,7 @@ export const AutofillSection: React.FC = () => {
         }
         await checkStatus();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "데이터 삭제 실패");
+        setError(mapError(err));
         showMessage("데이터 삭제 실패");
       }
     } else {

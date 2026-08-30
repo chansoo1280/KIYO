@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
+import { mapError } from "@/utils/mapError";
 import IconPicker from "./components/IconPicker";
 import { TemplateFieldEditor } from "./components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
@@ -40,6 +41,7 @@ const TemplateEdit = () => {
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!initialized) {
@@ -86,7 +88,7 @@ const TemplateEdit = () => {
       navigate("/templates");
     } catch (error) {
       console.error("템플릿 저장 실패:", error instanceof Error ? error.message : String(error), error);
-      setErrors(["템플릿 저장에 실패했습니다."]);
+      setErrors([mapError(error)]);
     }
   };
 
@@ -151,8 +153,19 @@ const TemplateEdit = () => {
 
   const handleDelete = async () => {
     if (!isEdit || !id) return;
-    await deleteTemplate(id);
-    navigate("/templates");
+    try {
+      await deleteTemplate(id);
+      setDeleteError(null);
+      setShowDeleteConfirm(false);
+      navigate("/templates");
+    } catch (err) {
+      // 모달을 닫지 않고 에러만 표시 (Plan-A1 결정)
+      setDeleteError(mapError(err));
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteError(null);
     setShowDeleteConfirm(false);
   };
 
@@ -279,10 +292,11 @@ const TemplateEdit = () => {
         open={showDeleteConfirm}
         title="템플릿 삭제"
         message={"\"" + form.name + "\" 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
-        onClose={() => setShowDeleteConfirm(false)}
+        onClose={handleDeleteDialogClose}
         onConfirm={handleDelete}
         confirmLabel="삭제"
         variant="danger"
+        error={deleteError}
       />
     </>
   );

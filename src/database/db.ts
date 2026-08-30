@@ -7,7 +7,7 @@ import type {
   AppSettings,
   FileMetadata,
 } from "@/models/account";
-import { isFileStorageError } from "@/errors/FileStorageError";
+import { mapError } from "@/utils/mapError";
 import { fileTable } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
@@ -152,13 +152,8 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
     tryTriggerAutoBackup({ activeFileName, cryptoKey, salt });
   } catch (error) {
     console.error("persistVaultSnapshot failed:", error instanceof Error ? error.message : String(error), error);
-    // Store error in sessionStore for UI to display
-    const errorMessage = isFileStorageError(error)
-      ? error.message
-      : error instanceof Error
-        ? error.message
-        : "Unknown sync error";
-    setSyncError?.(errorMessage);
+    // 한국어 매핑된 에러 메시지를 store에 저장 → SyncErrorBanner가 표시
+    setSyncError?.(mapError(error));
     // Don't throw - auto-save should not break the app
   }
 };

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createDataFile } from "@/database/fileStorage";
+import { mapError } from "@/utils/mapError";
 import { Stepper } from "./components/Stepper";
 import { NameStep, validateName } from "./steps/NameStep";
 import { PinStep } from "./steps/PinStep";
@@ -52,15 +53,13 @@ const CreateVaultPage = () => {
       await createDataFile(`${fileName.trim()}.json`); // PIN 없이 호출 → 평문
       navigate("/accounts", { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
-      );
+      setError(mapError(err));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Q3-c: mapError 안 쓰고 인라인. Plan-A1 정식 도입 시 mapError로 교체
+  // Q3-c: mapError 통일 (Plan-A1 정식 도입)
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
@@ -69,9 +68,7 @@ const CreateVaultPage = () => {
       navigate("/accounts", { replace: true });
       // 성공 시 state는 unmount로 자동 GC
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
-      );
+      setError(mapError(err));
     } finally {
       setIsSubmitting(false);
     }

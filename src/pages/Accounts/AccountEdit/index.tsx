@@ -5,6 +5,7 @@ import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { mapError } from "@/utils/mapError";
 import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
 import WebsiteSelector from "./components/WebsiteSelector";
@@ -109,6 +110,7 @@ const AccountEdit = () => {
   const [selectedPreset, setSelectedPreset] = useState<
     import("@/models/websitePreset").WebsitePreset | null
   >(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
@@ -205,13 +207,17 @@ const AccountEdit = () => {
 
     let savedAccount = updatedAccount;
 
-    if (isNew) {
-      savedAccount = await addAccount(updatedAccount);
-    } else {
-      await updateAccount(updatedAccount);
-    }
+    try {
+      if (isNew) {
+        savedAccount = await addAccount(updatedAccount);
+      } else {
+        await updateAccount(updatedAccount);
+      }
 
-    navigate(`/accounts/${savedAccount.id}`);
+      navigate(`/accounts/${savedAccount.id}`);
+    } catch (err) {
+      setSaveError(mapError(err));
+    }
   }, [
     fields,
     title,
@@ -244,6 +250,16 @@ const AccountEdit = () => {
           저장
         </button>
       </div>
+
+      {saveError && (
+        <p
+          className="mt-4 rounded-md border border-[var(--color-error)]/20 bg-[var(--color-error)]/10 px-3 py-2 text-sm font-medium text-[var(--color-error)]"
+          role="alert"
+          data-testid="account-edit-error"
+        >
+          {saveError}
+        </p>
+      )}
 
       <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
         <AccountTitleSection

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { BaseDialog } from "./BaseDialog";
 import type { ReactNode } from "react";
+import { mapError } from "@/utils/mapError";
 
 interface FormDialogProps {
   open: boolean;
@@ -15,34 +16,6 @@ interface FormDialogProps {
   disabled?: boolean;
   errorMessage?: string;
   className?: string;
-}
-
-/**
- * catch된 에러를 사용자에게 표시할 메시지로 변환.
- *
- * - CryptoUnavailableError (LAN IP / HTTP 접근) → 친절한 안내 메시지
- * - Error 인스턴스 → 메시지 그대로 (이미 한국어인 경우 많음)
- * - 기타 → fallback
- */
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    // crypto.subtle undefined / secure context 부재 — Web Crypto API 사용 불가
-    if (
-      error.name === "CryptoUnavailableError" ||
-      /Cannot read properties of undefined.*crypto/i.test(error.message) ||
-      /crypto\.subtle is undefined/i.test(error.message) ||
-      /secure context/i.test(error.message) ||
-      /Cannot read properties of undefined.*importKey/i.test(error.message) ||
-      /Cannot read properties of undefined.*deriveKey/i.test(error.message) ||
-      /Cannot read properties of undefined.*encrypt/i.test(error.message) ||
-      /Cannot read properties of undefined.*decrypt/i.test(error.message) ||
-      /Cannot read properties of undefined.*getRandomValues/i.test(error.message)
-    ) {
-      return "이 환경에서는 암호화 기능을 사용할 수 없습니다. HTTPS 또는 localhost로 접속해주세요.";
-    }
-    return error.message;
-  }
-  return "알 수 없는 오류가 발생했습니다.";
 }
 
 export const FormDialog = ({
@@ -77,8 +50,7 @@ export const FormDialog = ({
         // 성공 시 이전 에러 클림
         setInternalError(null);
       } catch (error) {
-        const message = toErrorMessage(error);
-        setInternalError(message);
+        setInternalError(mapError(error));
         console.error("FormDialog submit error:", error);
       }
     },
