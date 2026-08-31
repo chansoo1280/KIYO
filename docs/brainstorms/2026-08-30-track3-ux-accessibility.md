@@ -27,6 +27,8 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 
 **업데이트 (2026-08-30, Plan-B-3 완료):** Plan-B-3 ([plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)) — Templates/index (3개), TemplateEdit (4개), Settings/index (2개), AutofillSection (3개, toggle switch 제외), DataSection (5개, `FileCreateDialog` 잔존 보류), SecuritySection (4개) = **21개 inline `<button>` → `<Button>` 마이그레이션**. Toggle switch(`AutofillSection.tsx:213` `role="switch"`)는 의미/시각적 토글로 `<Button>` 부적합 → a11y audit plan 이관. **`TemplateEdit/index.test.tsx` 신규** (3 테스트: Button 마이그레이션 + 저장 catch + 삭제 catch — Plan-A1 catch 결합 회귀 0 가드). 회귀 게이트: `typecheck` ✓, `lint` ✓ (신규 0 errors, 16 errors는 Plan-B-3과 무관한 기존), `test` 444/444 ✓, `build` ✓, Android `compileDebugKotlin` + `testDebugUnitTest` ✓, **Playwright React E2E 44/44 (31.8s) ✓**. Q4-a (`DataSection.tsx:197`의 `FileCreateDialog` 잔존)은 사용자 결정으로 보류 유지. Plan-B-3는 PR 미생성 (commit/push 대기).
 
+**업데이트 (2026-08-31, Plan-D PR 1 완료):** Plan-D ([plan](../plans/2026-08-30-plan-d-theme-fouc.md)) — 2-PR 분할 중 PR 1 (커밋 `15e2e870`+보완 `325a3b2f`+문서 `b148855f`). FOUC는 실측 대신 `index.html` inline script로 사전 차단 (Q6 결정 변경). PR 1 = 라우트 + FOUC 가드 + RootRedirect (4-state 머신: checking/preloading/redirecting/error + Dexie close race 3s timeout + 1회 재시도 + stale 감지) + SplashScreen + ErrorScreen + `App.tsx` useEffect 5개 제거 + `Home` → `/home` 이동 + `settingsStore.initializeXxx` 5개 제거. 보완에서 `e2e/10-persistence.spec.ts` 3건 회귀 흡수 — **self-load 패턴** (페이지 단위 load 책임 + `useFileAuthGuard.onInitialized` 단일 콜백 + store-side `if (get().initialized) return;` 가드 + `initializeStores` 명시 reset). `e2e/11-close-datafile.spec.ts` 7건 `waitForURL('/')` → `waitForURL((url) => url.pathname === '/')` 교체 (React Router `history.replaceState`의 pushstate/popstate 부재). 회귀 게이트: `typecheck` ✓, `lint` (우리 변경 파일 에러 0) ✓, `test` 470/470 ✓, `e2e/10-persistence.spec.ts` 3건 ✓ (사용자 직접 실행). PR 2 (`themeMode: "light" | "dark" | "system"` + UISection 3-way + `matchMedia` live 갱신) 미착수. **새로운 페이지 추가 시 self-load 적용 필수** — 잊으면 동일 회귀 재발. **2026-08-31 (Plan-D 머지 후) 추가 사실:** Plan-B-3 커밋 `93e007ed`은 이미 origin `feat/ux-accessibility` history에 포함 (Plan-D PR 1보다 시간상 먼저 push) — HEAD = `b148855f`의 ancestor. PR은 GitHub REST API로 0개 확인 → **단독 PR 개설 사용자 결정 대기**. 본 brainstorm 갱신분도 commit + push 미실행. **2026-08-31 추가 결정:** Plan-D PR 2 (themeMode + 시스템 연동 live 갱신) **보류** — inline script + 매치미디어 폴백으로 충분, 사용자가 "필요성 낮음" 결정. PR 개설 안 함
+
 ## 2. Goal
 
 1. **Track 3의 진척 매트릭스** — ✅ / ⚠️ / ❌ / ❓로 코드 상태 매핑 (커밋 로그 + 실제 컴포넌트 인스펙션 기반)
@@ -62,7 +64,7 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | 더블클릭/중복 제출 방지 | ✅ 완료 | Plan-B-1/2/3 완료. `Button.tsx` `loading`/`disabled`/`aria-busy` 일관 처리, FormDialog/ConfirmDialog 마이그레이션, 21개 페이지 inline `<button>` → `<Button>` 마이그레이션. `useFormSubmit` wrapper **포함 안 함** (Q2) |
 | 키보드 네비게이션/포커스 순서, 스크린리더 | ⚠️ 부분 | `AutoLockIndicator`/`BaseDialog`는 `aria-*` 적용. 그 외(메인 페이지/리스트/탭)는 표준 HTML 의미론에 의존, 명시적 포커스 관리 부재 |
 | 에러 토스트/인라인 에러, 사용자 언어 매핑 | ⚠️ 부분 | `setSyncError`는 store에 저장하지만 토스트 없음. 다이얼로그 에러는 `throw` → caller가 alert. 네이티브 에러 → 한국어 매핑 함수 부재 |
-| 다크/라이트 테마 전환 깜빡임, 시스템 연동 | ⚠️ 부분 | `initializeTheme`는 존재, 시스템 설정 감지 로직 확인 필요. 깜빡임(FOUC) 가드 없음 |
+|| 다크/라이트 테마 전환 깜빡임, 시스템 연동 | ✅ 완료 (Plan-D PR 1) | Plan-D PR 1 (`15e2e870`+보완 `325a3b2f`) — `index.html` inline splash CSS+script로 React mount 전 `<html class>` 결정 (FOUC 가드), SplashScreen/RootRedirect/ErrorScreen 도입. **`matchMedia` 시스템 변경 live 갱신 + `themeMode: "light" | "dark" | "system"` 3-way 토글은 Plan-D PR 2 미착수 → 2026-08-31 사용자 결정으로 보류** (현재 inline script가 localStorage.theme만 읽고 매치미디어는 첫 paint 폴백으로 작동 — 시스템 변경 live 갱신의 사용자 체감 가치 낮음). UISection은 2-way (light/dark) 유지 |
 | **후속 후보 Plan-7: 파일 생성 모달 → 다단계 페이지** | ❌ 미구현 | §12 brainstorm 메모 단계 — 본 문서에서 Q로 흡수 |
 
 ### 3.3 §2 brainstorm이 Plan-7을 어떻게 남겼나
@@ -85,9 +87,9 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | "키보드 네비게이션/포커스 순서" | `aria-*` 20+ 파일 | 표준 HTML 의존, 포커스 트랩/복귀 미구현 | ⚠️ |
 | "스크린리더 대응" | `BaseDialog` `aria-modal` | 전체 점검은 안 됨 | ⚠️ |
 | "에러 토스트/인라인 에러" | `setSyncError` store | 토스트 컴포넌트 없음, alert/throw 의존 | ⚠️ |
-| "다크/라이트 테마 시스템 설정 연동" | `initializeTheme` | 시스템 감지 로직 확인 필요, FOUC 가드 미확인 | ⚠️ |
-| "테마 전환 시 깜빡임 없음" | 없음 | 검증 안 됨 | ❓ |
-| "Plan-7 (다단계 페이지)" | 없음 | 메모 단계 | ❌ |
+| "다크/라이트 테마 시스템 설정 연동" | `settingsStore.theme: light\|dark`, UISection 2-way | inline script가 localStorage.theme + 매치미디어 폴백으로 첫 paint 처리, 사용자 명시 theme 시 강제. **`matchMedia` live 갱신 + 3-way 토글은 Plan-D PR 2 → 2026-08-31 사용자 결정으로 보류** (필요성 낮음) | ⚠️ (FOUC ✅, 시스템 live 갱신 ⚠️) |
+| "테마 전환 시 깜빡임 없음" | `index.html` inline script (`15e2e870`) | React mount 전 `<html class="dark|light">` 결정 → 첫 paint부터 정확한 테마. 사용자 reload 실측 시 깜빡임 0 확인 | ✅ |
+| "Plan-7 (다단계 페이지)" | `/create-vault` 단일 라우트 (`e878f85b`) | 2단계 Stepper (이름→PIN), Plan-4 zxcvbn 통합 | ✅ |
 | **README "다중 데이터 파일 — 여러 암호화된 볼트 생성/가져오기/백업/복원"** | multi-row + Dexie v14 + Home 리스트 UI | — | **✅ 완료** (2026-08-30) — [Multi-Vault plan](../plans/2026-08-30-multi-vault-support.md) 결과 |
 
 **중요 시그널:** STRATEGY §3의 "최근 신호"는 "Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재" — **AutoLockIndicator 외에는 상태 표시 컴포넌트가 없다.** 이 한 줄이 §3의 5개 카테고리 중 어느 것도 본격 착수되지 않았음을 강하게 시사한다.
@@ -263,7 +265,9 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 **테스팅:** Playwright E2E (2단계 시나리오) + 단위 테스트 (`useCreateVaultStore`).
 **마이그레이션:** `FileCreateDialog` 호출처 1개 (`Home.tsx`) + DataSection 백업은 Plan-7a와 별도.
 
-### E-b. Plan-7b: 폴더 선택 + 자동 백업 통합 (후속, 별도 brainstorm 예정)
+### E-b. Plan-7b: 폴더 선택 + 자동 백업 통합 (후속, 별도 brainstorm)
+
+**작업 위치 (2026-08-31 사용자 결정):** `KIYO-vault-integrity` worktree에서 진행 (Track 2 영역, 본 Track 3 brainstorm은 의존성 표기만).
 
 **계획 (Plan-7a 완료 후 별도 brainstorm):**
 - Plan-7a의 Step 3 (또는 별도 라우트) — SAF `pickBackupFolder`로 폴더 선택
@@ -272,11 +276,16 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 - 폴더 안 선택 시 → DB만 (Plan-7a 동작 유지)
 - `Settings > 자동 백업` 항목에서 URI 변경/해제 가능
 
+**핵심 정책 (2026-08-31 사용자 결정):**
+- **자동저장 시 파일이름을 고정이 아니라 현재 vault의 `fileName`으로 덮어쓴다.**
+- 자동저장 위치는 **SAF 폴더 URI** (사용자가 한 번 선택한 폴더). 즉 SAF 폴더 안의 `<fileName>.json` 자리에 overwrite — vault의 원본 위치(`Documents/<fileName>.json`)가 아님.
+- 현재 동작(`writeBackupToUri(autoBackupUri, encrypted)`)과 일치. 변경점은 파일이름을 `fileName` 인자에서 활성 vault의 `fileName`으로 동적 결정하는 것.
+- vault 전환(import/changePin) 시 새 `fileName`이 SAF 폴더 안의 새 파일이름이 되며, 이전 파일은 SAF 폴더에 그대로 남음 (사용자가 수동 정리).
+
 **범위 (예상):**
 - 새 라우트 또는 Plan-7a의 Step 3 추가
-- Dexie schema migration (v15)
-- `useAutoBackup` hook (변경 감지 → `writeBackupToUri`)
-- Settings UI 추가
+- Dexie schema migration (v15) — `fileName`은 이미 v14에 존재하므로 `autoBackupUri?` 추가만 필요할 수 있음 (KIYO-vault-integrity brainstorm에서 확정)
+- `useAutoBackup` hook (변경 감지 → SAF 폴더 URI 안의 `<fileName>.json`에 overwrite)
 
 **상태:** brainstorm 미작성. **STRATEGY §2 (vault integrity) 후속**으로 분류, Plan-7a 완료 + 사용자 결정 후 진행.
 
@@ -297,8 +306,9 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | 3 | **Plan-A2: 초기 진입 Spinner** (`<Spinner>` + Accounts 페이지 적용) | A1과 독립 가능, 단독 plan으로 검증된 패턴 만들기 좋음 (Q7). **범위 축소**: Templates/AccountDetail 미적용 | 소 | ✅ 완료 (PR `f1dcc638`) |
 | 4a | **Plan-B-1: Button 인프라** (Button.tsx + Dialog 마이그레이션) | A2의 `<Spinner>` 활용, `FormDialog`/`ConfirmDialog` inline → `<Button>` | 소 | ✅ 완료 (PR `cebf14ca`) |
 | 4b | **Plan-B-2: 자주 쓰는 페이지** (Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault) | A1의 `mapError` 활용, 사용자 체감 큼. 호출자 API 변경 0 | 소 | ✅ 완료 (PR `e3a4c1ae`) |
-| 4c | **Plan-B-3: 나머지 페이지** (Templates/Settings/AutofillSection/DataSection/SecuritySection) | A1의 `mapError` 활용, 21개 inline `<button>` → `<Button>` 마이그레이션. Toggle switch(`AutofillSection` line 213) 제외, `FileCreateDialog` 잔존(Q4-a) 보류. **순수 범위만** | 소 | ✅ 완료 (commit/push 대기) |
-| 5 | **Plan-D: 테마 FOUC 가드** | 독립, Q6 실측 후 작업 | 소 | 📋 미착수 |
+| 4c | **Plan-B-3: 나머지 페이지** (Templates/Settings/AutofillSection/DataSection/SecuritySection) | A1의 `mapError` 활용, 21개 inline `<button>` → `<Button>` 마이그레이션. Toggle switch(`AutofillSection` line 213) 제외, `FileCreateDialog` 잔존(Q4-a) 보류. **순수 범위만** | 소 | ✅ 완료 (커밋 `93e007ed`, **push 완료 (origin 브랜치 history에 포함)**, PR 미개설 — GitHub REST API `/pulls?head=chansoo1280:feat/ux-accessibility` 빈 배열) |
+| 5a | **Plan-D PR 1: 라우트 + FOUC 가드 + RootRedirect** | inline script로 FOUC 사전 차단 + 4-state RootRedirect + useEffect 5개 제거. **Q6 결정 변경** (실측 → 사전 차단). 10-persistence E2E 회귀는 self-load 패턴으로 흡수 | 중 | ✅ 완료 (커밋 `15e2e870`+`325a3b2f`) |
+| 5b | **Plan-D PR 2: themeMode + UI 3-way + matchMedia live 갱신** | Q6 시스템 연동 live 갱신 흡수. PR 1 머지 후 진행 | 소 | ⏸️ 보류 (2026-08-31 사용자 결정: inline script + 매치미디어 폴백으로 충분, 필요성 낮음) |
 | 6 | **a11y audit (별도 plan)** | axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 발생 시 (Q5) | 대 | 📋 미착수 |
 
 **근거 갱신:**
@@ -328,8 +338,9 @@ Track 3: UX·접근성·인터랙션 품질
    ├─ Plan-B: 버튼/폼 일관성
    │       Button.loading + FormDialog/ConfirmDialog throw 유지
    │       ❌ useFormSubmit wrapper (포함 안 함)
-   ├─ Plan-D: 테마 FOUC 가드 + 시스템 연동 강화
-   │       Playwright FOUC 실측 → 발생 시 작업, 아니면 cancel
+   ├─ Plan-D: 테마 FOUC 가드 + 시스템 연동 (2-PR 분할)
+   │       PR 1 ✅ 완료 (커밋 `15e2e870`+`325a3b2f`): inline script로 FOUC 사전 차단 + RootRedirect/SplashScreen/ErrorScreen + useEffect 5개 제거
+   │       PR 2 ⏸️ 보류 (2026-08-31 사용자 결정): themeMode 3-way + matchMedia live 갱신 + UISection 토글 — inline script + 매치미디어 폴백으로 충분
    └─ a11y audit (별도 plan) — Plan-A/B/D 완료 후 또는 트리거 시
           axe-core CI + 키보드 Playwright + remediation
           (각 plan에 a11y 자연 보강은 계속 진행)
@@ -372,10 +383,10 @@ Track 3: UX·접근성·인터랙션 품질
 || Q3-추가 | Plan-7 Step 순서: **1. 이름 → 2. PIN → 3. 폴더 (선택, 건너뛰기 가능)** | ✅ 확정 (2026-08-30 갱신: Plan-7a는 2단계(UI 흐름만)로 축소, Step 3 폴더 선택은 Plan-7b로 분리. Plan-7a 구현에는 "비밀번호 없이 만들기" 버튼이 추가되어 비암호화 vault 흐름도 유지됨 — plan §구현 노트 참조) |
 || Q4 | Plan-7 `FileCreateDialog`: **완전 제거** (호출처 100% 마이그레이션 후) | ⚠️ **부분 완료** — Home.tsx는 `/create-vault`로 마이그레이션됨. **`Settings/components/DataSection.tsx` 백업 다이얼로그가 여전히 FileCreateDialog 사용 중** (2026-08-30 grep: `DataSection.tsx:197` 미마이그레이션). **2026-08-30 사용자 결정: Q4-a 후속(완전 제거) 보류**, 다음 단계로 분리하지 않음. Plan-B-3는 순수 inline 버튼 마이그레이션만, FileCreateDialog 잔존은 그대로 |
 || Q5 | a11y: **별도 plan** (axe-core CI + 키보드 시나리오 + remediation). Plan-A/B/D 완료 후 또는 트리거 발생 시 | ✅ 확정 + **각 plan에 a11y 자연 보강 계속 진행** (Plan-A2/B-1은 `role="status"`/`aria-busy` 등 추가). 별도 audit plan 미착수 |
-|| Q6 | Plan-D FOUC: **Playwright 실측 우선** (reload 시 frame capture → 발생 시 작업, 아니면 cancel) | ✅ 확정 + **미착수** |
-|| Q7 | Plan-A Skeleton: **초기 진입만** (`loadAccounts`/`loadTemplates` 첫 페이지 로드) | ✅ 확정 + Plan-A2 부분 구현 완료 (Accounts만). Templates/AccountDetail 미적용 (Q7 적용 범위 축소 결정 가능성) |
-|| Q8 | Plan-7 PIN 정책: **Plan-4 그대로** (4~20자 mixed, 변경 없음) | ✅ 확정 + Plan-7a 구현 완료 |
-|| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ Multi-Vault / Plan-7a / Plan-7a-android-e2e / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / **Plan-B-3** 완료 (7개). Plan-D (plan 문서만 머지 `6204d909`, 구현 미착수) / a11y audit / Plan-7a 2차 PR / Plan-7b 미착수 |
+||| Q6 | Plan-D FOUC: **Playwright 실측 우선** (reload 시 frame capture → 발생 시 작업, 아니면 cancel) | ✅ 확정 + **Plan-D PR 1 구현 완료 (커밋 `15e2e870`, 보완 `325a3b2f`, 문서 `b148855f`)**. 실측 대신 inline script로 FOUC를 사전 차단 (실측 결과 대기 불필요). system 연동 live 갱신은 **PR 2 미착수** |
+||| Q7 | Plan-A Skeleton: **초기 진입만** (`loadAccounts`/`loadTemplates` 첫 페이지 로드) | ✅ 확정 + Plan-A2 부분 구현 완료 (Accounts만). Templates/AccountDetail 미적용 (Q7 적용 범위 축소 결정 가능성) |
+||| Q8 | Plan-7 PIN 정책: **Plan-4 그대로** (4~20자 mixed, 변경 없음) | ✅ 확정 + Plan-7a 구현 완료 |
+||| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ Multi-Vault / Plan-7a / Plan-7a-android-e2e / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / Plan-B-3 / **Plan-D PR 1** 완료 (8개). **Plan-D PR 2 (themeMode + UI)** ⏸️ 보류 (2026-08-31) / a11y audit / Plan-7a 2차 PR / Plan-7b 미착수 |
 
 **진행 순서 (2026-08-30 갱신):**
 1. **✅ Multi-Vault Support** ([plan](../plans/2026-08-30-multi-vault-support.md)) — 완료 (21 파일/334 테스트, Post-Implementation Dead Code Cleanup 62줄 정리)
@@ -385,13 +396,14 @@ Track 3: UX·접근성·인터랙션 품질
 5. **✅ Plan-A2** (Spinner + Accounts 로딩 표시) — 완료 (PR `f1dcc638`). [plan](../plans/2026-08-30-plan-a2-spinner-loading.md). `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. **범위 축소 결정** — Templates/AccountDetail은 미적용 (Q7 적용 범위 재확인 필요)
 6. **✅ Plan-B-1** (Button 인프라 + Dialog 마이그레이션) — 완료 (PR `cebf14ca`). [plan](../plans/2026-08-30-plan-b-button-loading-consistency.md). `Button.tsx` 보강 + `<Spinner>` 통합 + `aria-busy` + `FormDialog`/`ConfirmDialog` inline 버튼 → `<Button>` 마이그레이션 + 4+ 단위 테스트
 7. **✅ Plan-B-2** (자주 쓰는 페이지 inline 버튼 → Button) — 완료 (PR `e3a4c1ae`). Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault의 inline `<button>` → `<Button>`. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
-8. **Plan-B-3** (나머지 페이지) — **완료** (commit/push 대기, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index, TemplateEdit, Settings/index, AutofillSection, DataSection, SecuritySection의 inline `<button>` → `<Button>` 마이그레이션 (21개). Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 후속으로 사용자 결정 보류 유지. **다음 단계:** Plan-D (FOUC 실측) → a11y audit → Plan-7a 2차 PR(Q4-a) → Plan-7b (별도 brainstorm)
-9. **Plan-D** (테마 FOUC 가드) — Q6 실측 후 작업. 미착수
-10. **a11y audit plan** (별도) — Q5 확정. axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 시. 미착수
-11. **Plan-7a 2차 PR** (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거, Q4-a 후속) — **2026-08-30 사용자 결정으로 보류**. 트리거 발생 시(예: DataSection 백업 흐름 회귀, FileCreateDialog 코드 정리 요청) 진행
-12. **후속 — Plan-7b** (폴더 선택 + 자동 백업 통합) — STRATEGY §2 분류, 별도 brainstorm 예정. Plan-B-3 완료 + 사용자 결정 후 진행. 미착수
+| 8 | **Plan-B-3** (나머지 페이지) — **✅ 완료 (push 완료, PR 미개설)** (커밋 `93e007ed`, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index, TemplateEdit, Settings/index, AutofillSection, DataSection, SecuritySection의 inline `<button>` → `<Button>` 마이그레이션 (21개). Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 후속으로 사용자 결정 보류 유지. **원격 HEAD = `b148855f` (2026-08-31)이므로 Plan-B-3 커밋이 5개 commit 뒤에 위치 — push 완료된 상태에서 Plan-D PR 1(+보완) 커밋 5개가 그 뒤로 머지됨**. **PR은 GitHub에 미개설** (`api.github.com/.../pulls?head=chansoo1280:feat/ux-accessibility` 빈 배열) — 사용자 결정 시 별도 PR 개설 가능 (코드 리뷰 단순, 단독 PR 권장). **다음 단계:** PR 개설 여부 사용자 결정 → a11y audit → Plan-7a 2차 PR(Q4-a) → Plan-7b (별도 brainstorm) |
+| 9 | **Plan-D PR 1** (라우트 + FOUC 가드 + RootRedirect) — **완료** (커밋 `15e2e870`, 보완 `325a3b2f`, 문서 `b148855f`). `index.html` inline splash CSS + script (React mount 전 `<html class>` 결정) + `SplashScreen` (unlock 직후 preload 표시) + `RootRedirect` (4-state 머신: checking/preloading/redirecting/error, stale 감지 + Dexie close race 3s timeout + 1회 재시도) + `ErrorScreen` (variant='stale'/'generic') + `App.tsx` useEffect 5개 제거 + `Home` → `/home` 이동 + `settingsStore.initializeXxx` 5개 제거. 보완 커밋은 `e2e/10-persistence.spec.ts` 실패 진단 — RootRedirect는 `/`에서만 매칭하므로 `/accounts` 직접 렌더 시 `loadAccounts` 미호출 → Spinner 영원 → **self-load 패턴** (`useFileAuthGuard.onInitialized` + `AccountList`/`Templates/index` self-load + `loadAccounts`/`loadTemplates` 진입 시 `if (get().initialized) return;` store-side 가드 + `initializeStores` 명시 reset)으로 흡수. 회귀 게이트: `typecheck` ✓, `lint` (우리 변경 파일 에러 0) ✓, `test` 470/470 ✓, `e2e/10-persistence.spec.ts` 3건 ✓ (사용자 직접 실행 확인), `e2e/11-close-datafile.spec.ts` 7건 pathname predicate 교체. **Q6 결정 변경** — FOUC는 실측 대신 inline script로 사전 차단. PR 2 (themeMode + UI 3-way + `matchMedia` live 갱신) 미착수 |
+| 10 | **Plan-D PR 2** (themeMode + UI + 시스템 연동 live 갱신) — **⏸️ 보류** (2026-08-31 사용자 결정: inline script + 매치미디어 폴백으로 충분, 필요성 낮음). PR 개설 안 함. 트리거 발생 시 진행 (예: 다중 디바이스/OS 테마 토글 시 자동 동기화 요구 등) |
+| 11 | **a11y audit plan** (별도) — Q5 확정. axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 시. 미착수 |
+| 12 | **Plan-7a 2차 PR** (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거, Q4-a 후속) — **2026-08-30 사용자 결정으로 보류**. 트리거 발생 시(예: DataSection 백업 흐름 회귀, FileCreateDialog 코드 정리 요청) 진행 |
+| 13 | **후속 — Plan-7b** (폴더 선택 + 자동 백업 통합) — STRATEGY §2 분류, 별도 brainstorm 예정. Plan-B-3 완료 + 사용자 결정 후 진행. 미착수 |
 
-> 2026-08-30 현재 **7개 plan 완료** (Multi-Vault, Plan-7a, Plan-7a-android-e2e, Plan-A1, Plan-A2, Plan-B-1, Plan-B-2, Plan-B-3). 다음 자연스러운 단계는 **Plan-D** (FOUC 실측 — plan 문서는 `6204d909`로 머지, 구현 미착수). 그 후 **a11y audit** → **Plan-7a 2차 PR** (Q4-a 후속, 사용자 결정 보류) → **Plan-7b** (별도 brainstorm).
+> 2026-08-31 현재 **8개 plan commit 완료 + 8개 모두 push 완료** (Multi-Vault, Plan-7a, Plan-7a-android-e2e, Plan-A1, Plan-A2, Plan-B-1, Plan-B-2, Plan-B-3, Plan-D PR 1) — 7개 PR 머지 + **Plan-B-3 1개는 PR 미개설** (커밋 `93e007ed`은 origin `feat/ux-accessibility` history에 있음, HEAD = `b148855f`의 ancestor). **Plan-D PR 2 ⏸️ 보류** (2026-08-31 사용자 결정: inline script + 매치미디어 폴백으로 충분). 다음 자연스러운 단계는 **a11y audit** → **Plan-7a 2차 PR** (Q4-a 후속, 사용자 결정 보류) → **Plan-7b** (별도 brainstorm). **즉시 사용자 결정 항목:** (a) Plan-B-3 PR 개설 여부 (코드 리뷰 단순, 단독 PR 권장), (b) brainstorm 본 갱신분 commit + push.
 
 ## 11. Risks
 
@@ -401,10 +413,14 @@ Track 3: UX·접근성·인터랙션 품질
 | ~~Plan-7a 라우트 추정이 Playwright E2E navigation 깨뜨림~~ | ✅ 해소 (PR `e878f85b` + 2026-08-30 Android E2E 갱신). 단일 라우트(`/create-vault`)로 deep-link 부담 0, E2E 전면 재작성 후 사용자 직접 실행으로 Android E2E 전부 성공 확인 |
 | ~~Plan-A1 호출처 마이그레이션 누락~~ | ✅ 해소 (PR `19341aec`). 8곳 try/catch + CreateVaultPage 인라인 처리 마이그레이션 완료 |
 | a11y 누락 | Q5-a로 별도 plan 분리. 각 plan은 a11y 자연 보강 (Plan-A2 `role="status"`, Plan-B-1 `aria-busy` 추가됨). 별도 audit plan에서 axe-core violations 0 / 키보드 시나리오 통과를 명시적 게이트로 |
-| Plan-D FOUC가 실측에서 안 나타나면 작업 무의미 | Q6 실측 우선 결정, 발생 안 하면 Plan-D cancel 또는 시스템 연동 live 갱신만 |
+| Plan-D FOUC가 실측에서 안 나타나면 작업 무의미 | ✅ 해소 (Q6 결정 변경 + PR 1 완료). inline script로 FOUC를 사전 차단, 실측 결과 대기 불필요. PR 2 시스템 연동 live 갱신은 PR 1 완료 후 진행 |
 | ~~Track 1(autofill)/Track 2(vault) 진행 중 회귀~~ | ✅ 해소. Plan-A1/A2/B-1/B-2는 React UI 한정, autofill native 경로와 격리됨. git diff로 회귀 0 검증 |
 | "단순화/이전과 같게" 사용자 신호 (메모) | 각 plan 시작 전 작업 범위 재확인, 첫 plan에서 검증된 패턴을 후속에 복제. Plan-A/B 4개 PR이 모두 이 신호 없이 머지됨 |
 | ~~7개 항목 동시 착수 시 산만~~ | ✅ 해소. 순서 (Multi-Vault → Plan-7a → Plan-A → Plan-B) 엄수로 6개 plan 순차 완료. Plan-B-3 다음 / Plan-D 그 다음 |
+| Plan-D PR 1 도입 회귀 (`/accounts` reload → Spinner 영원) | ✅ 해소 (커밋 `325a3b2f`). RootRedirect는 `/`에서만 매칭하므로 `/accounts` 직접 렌더 시 `loadAccounts` 미호출 → self-load 패턴으로 흡수 (`useFileAuthGuard.onInitialized` + 페이지 단위 `loadAccounts`/`loadTemplates` + store-side 가드 + `initializeStores` reset). **새로운 페이지 추가 시 동일 self-load 적용 필수** — 잊으면 동일 회귀 재발 |
+| `e2e/11-close-datafile.spec.ts` 7건의 timing 의존 (pathname predicate로 흡수했으나 잔존) | 경미. 핵심 동작은 후속 `expect(page.getByText('파일을 선택하세요'))`가 보장. 향후 `useNavigate` 패턴 변경 시 재평가 필요 |
+| Plan-B-3 PR 미개설 (origin HEAD = `b148855f`, 커밋 `93e007ed`은 origin 브랜치 history에 포함) | GitHub REST API `pulls?head=chansoo1280:feat/ux-accessibility` 빈 배열로 PR 0개 확인. 사용자 결정으로 PR 개설 보류 (코드 리뷰 단순, 단독 PR 권장). **본 brainstorm 갱신분도 같이 commit + push 미실행** (Plan-B-3 push 사실 자체와 무관 — docs 파일 자체가 미커밋) |
+| Plan-D PR 2 보류 (2026-08-31 사용자 결정) | inline script + 매치미디어 폴백으로 시스템 변경 live 갱신 없이도 동작. 사용자가 "필요성 낮음" 결정 — 트리거 발생 시에만 진행. PR 개설 안 함 |
 | ~~Multi-Vault 결과에 Track 3 전체 의존~~ | ✅ 해소 (2026-08-30 Multi-Vault 완료) |
 | ~~Multi-Vault E2E 회귀 위험~~ | ⚠️ **부분 해소 + 사용자 결정으로 보류**. Home.tsx는 마이그레이션됨, DataSection.tsx:197 잔존. **2026-08-30 사용자 결정: Q4-a (완전 제거)는 지금 진행하지 않음**, FileCreateDialog 잔존은 그대로 유지. 트리거 발생 시(회귀/정리 요청) 진행 |
 | ~~Plan-7a Step 3 폴더 "건너뛰기" 시 기본 저장 위치 결정~~ | ✅ 해소 (2026-08-30: Plan-7a는 2단계, Step 3 폴더 선택은 Plan-7b로 분리). Plan-7a는 DB만 저장 (현재 `createDataFile` 동작 유지) |
@@ -413,7 +429,7 @@ Track 3: UX·접근성·인터랙션 품질
 
 ## 12. Next Action
 
-**Track 3의 Q1~Q8 모두 확정 + 7개 plan 완료 (2026-08-30).**
+**Track 3의 Q1~Q8 모두 확정 + 8개 plan commit 완료 (2026-08-31). 8개 모두 push 완료 / 7개 PR 머지 + Plan-B-3 1개 PR 미개설 (사용자 결정 대기).**
 
 1. **✅ Multi-Vault 완료:** [plan](../plans/2026-08-30-multi-vault-support.md) — Dexie v14 + Home 파일 리스트 UI + 21 파일/334 테스트 + Dead Code Cleanup 62줄
 2. **✅ Q1~Q8 확정** (2026-08-30): 인라인 에러 / throw 유지 / 단일 라우트 + Progress bar / Step 순서 (이름→PIN, 2026-08-30 Plan-7a로 2단계 축소) / FileCreateDialog 완전 제거 / a11y 별도 plan / FOUC 실측 / 초기 진입 Spinner / PIN Plan-4 그대로
@@ -425,9 +441,14 @@ Track 3: UX·접근성·인터랙션 품질
 8. **✅ Plan-A2 완료 (2026-08-30, PR `f1dcc638`):** [plan](../plans/2026-08-30-plan-a2-spinner-loading.md). `<Spinner>` 공통 컴포넌트 + `aria-hidden` 지원 + Accounts 페이지 spinner 표시. **범위 축소**: Templates/AccountDetail은 미적용 (Q7 적용 범위 사용자 결정 대기)
 9. **✅ Plan-B-1 완료 (2026-08-30, PR `cebf14ca`):** [plan](../plans/2026-08-30-plan-b-button-loading-consistency.md). `Button.tsx` 보강 (`loading`/`disabled`/`aria-busy` 일관 처리) + `<Spinner>` 통합 + `FormDialog`/`ConfirmDialog` inline 버튼 → `<Button>` 마이그레이션 + 4+ 단위 테스트
 10. **✅ Plan-B-2 완료 (2026-08-30, PR `e3a4c1ae`):** 자주 쓰는 페이지(Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault)의 inline `<button>` → `<Button>` 마이그레이션. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
-11. **✅ Plan-B-3 완료 (2026-08-30):** [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md). Templates/Settings/AutofillSection/DataSection/SecuritySection의 21개 inline `<button>` → `<Button>` 마이그레이션. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 후속으로 사용자 결정 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 0 가드). 회귀 게이트: `typecheck` ✓, `lint` ✓ (신규 0 errors), `test` 444/444 ✓, `build` ✓, Android `compileDebugKotlin` + `testDebugUnitTest` ✓, **Playwright React E2E 44/44 (31.8s) ✓**. PR 미생성, commit/push 대기
+11. **✅ Plan-B-3 완료 (2026-08-30, 커밋 `93e007ed`, push 완료, PR 미개설):** [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md). Templates/Settings/AutofillSection/DataSection/SecuritySection의 21개 inline `<button>` → `<Button>` 마이그레이션. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 후속으로 사용자 결정 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 가드). 회귀 게이트: typecheck/lint(신규 0)/test 444/444/build/Android compile+unitTest/Playwright React E2E 44/44 모두 ✓. **origin HEAD = `b148855f`이므로 Plan-B-3 커밋은 origin 브랜치 history에 포함 (HEAD의 ancestor) — push는 완료. PR은 GitHub REST API로 0개 확인 — 사용자 결정 시 단독 PR 개설 가능**
+12. **✅ Plan-D PR 1 완료 (2026-08-31):** [plan](../plans/2026-08-30-plan-d-theme-fouc.md). `index.html` inline splash CSS + script (FOUC 가드) + `SplashScreen` + `RootRedirect` (4-state 머신 + Dexie close race 3s timeout + 1회 재시도 + stale 감지) + `ErrorScreen` (variant='stale'/'generic') + `App.tsx` useEffect 5개 제거 + `Home` → `/home` 이동 + `settingsStore.initializeXxx` 5개 제거. 보완 (`325a3b2f`): `e2e/10-persistence.spec.ts` 실패 진단 → **self-load 패턴** (페이지 단위 load 책임, RootRedirect 우회 흡수) + `useFileAuthGuard.onInitialized` 단일 콜백 (onNoFile/onLocked YAGNI 제거) + store-side `if (get().initialized) return;` 가드 + `initializeStores` 명시 reset (vault 전환 시 잔존 회귀 방지). `e2e/11-close-datafile.spec.ts` 7건 `waitForURL` → `waitForURL((url) => url.pathname === '/', { timeout: 5000 })` 교체 (history.replaceState의 pushstate/popstate 부재 흡수). 회귀 게이트: `typecheck` ✓, `lint` (우리 변경 파일 에러 0) ✓, `test` 470/470 ✓, `e2e/10-persistence.spec.ts` 3건 ✓ (사용자 직접 실행). 4개 knowledge 캡처: ① 페이지 단위 self-load 원칙, ② store-side 가드의 transition 책임, ③ React Router replace navigate + Playwright waitForURL flake, ④ useFileAuthGuard 콜백 YAGNI
+13. **Plan-D PR 2** (themeMode + UI 3-way + 시스템 연동 live 갱신) — **⏸️ 보류** (2026-08-31 사용자 결정: inline script + 매치미디어 폴백으로 충분, 필요성 낮음). PR 개설 안 함. 트리거 발생 시 진행
+14. **a11y audit plan** (별도) — Q5 확정. axe-core CI + 키보드 Playwright + remediation. Plan-D PR 2 보류, 다음 자연스러운 단계
+15. **Plan-7a 2차 PR** (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거, Q4-a 후속) — **2026-08-30 사용자 결정으로 보류**. 트리거 발생 시 진행
+16. **후속 — Plan-7b** (폴더 선택 + 자동 백업 통합) — STRATEGY §2 분류, 별도 brainstorm 예정
 
-**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** §7 Options / §8.1/8.2 / §10 Current Decision State / §11 Risks 모두 확정 내용 반영 (Plan-A1/A2 분리, Plan-7a/7b 분리, E2E 회귀 0 가정 철회, Plan-B 3-PR 분할 진행 반영 포함). STRATEGY.md 갱신은 별도 작업 (부록 B diff 적용).
+**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** §7 Options / §8.1/8.2 / §10 Current Decision State / §11 Risks 모두 확정 내용 반영 (Plan-A1/A2 분리, Plan-7a/7b 분리, Plan-D PR 1/2 분할, E2E 회귀 0 가정 철회, Plan-B 3-PR 분할 진행 반영 포함). STRATEGY.md 갱신은 별도 작업 (부록 B diff 적용).
 
 ---
 
@@ -436,10 +457,10 @@ Track 3: UX·접근성·인터랙션 품질
 || §3 원문 | 흡수 plan | 비고 |
 ||---|---|---|
 || 로딩 상태/스피너 UI | **Plan-A2** ✅ 완료 (PR `f1dcc638`) | `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. 토스트는 **포함 안 함** (Q1). **범위 축소**: Templates/AccountDetail 미적용 (Q7 사용자 결정 대기) |
-|| 더블클릭/중복 제출 방지 | **Plan-B** (3-PR 분할) | Plan-B-1 ✅ 완료 (PR `cebf14ca`, Button 인프라 + Dialog 마이그레이션 + `aria-busy`). Plan-B-2 ✅ 완료 (PR `e3a4c1ae`, 자주 쓰는 페이지). **Plan-B-3 ✅ 완료** (2026-08-30, 21개 inline → `<Button>` 마이그레이션, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Toggle switch 제외, FileCreateDialog 잔존은 Q4-a 보류. `useFormSubmit` wrapper **포함 안 함** (Q2) |
+|| 더블클릭/중복 제출 방지 | **Plan-B** (3-PR 분할) | Plan-B-1 ✅ 완료 (PR `cebf14ca`, Button 인프라 + Dialog 마이그레이션 + `aria-busy`). Plan-B-2 ✅ 완료 (PR `e3a4c1ae`, 자주 쓰는 페이지). **Plan-B-3 ✅ 완료** (2026-08-30, 커밋 `93e007ed`, 21개 inline → `<Button>` 마이그레이션, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Toggle switch 제외, FileCreateDialog 잔존은 Q4-a 보류. **origin HEAD = `b148855f` (Plan-B-3은 ancestor) — push는 완료, PR은 GitHub REST API로 0개 확인 — 단독 PR 개설 사용자 결정 대기**. `useFormSubmit` wrapper **포함 안 함** (Q2) |
 || 키보드 네비게이션/포커스/스크린리더 | **별도 plan (Q5-a)** 미착수 | axe-core CI + 키보드 Playwright + remediation. 각 plan에 a11y 자연 보강은 계속 (Plan-A2 `role="status"`, Plan-B-1 `aria-busy` 추가됨) |
 || 에러 토스트/인라인 에러 | **Plan-A1** ✅ 완료 (PR `19341aec`) | `mapError()` + 인라인 + `SyncErrorBanner` + 호출처 8곳 try/catch. **토스트는 포함 안 함** (Q1). 후속 plan 공통 전제 해소 |
-|| 다크/라이트 테마 + 깜빡임 | **Plan-D** 미착수 | FOUC Playwright 실측 후 작업 (Q6). 실측 결과 발생 안 하면 cancel 또는 시스템 연동 live 갱신만 |
+|| 다크/라이트 테마 + 깜빡임 | **Plan-D** PR 1 ✅ 완료 (커밋 `15e2e870`+`325a3b2f`) / PR 2 ⏸️ 보류 (2026-08-31) | FOUC: `index.html` inline script로 React mount 전 `<html class>` 결정 (실측 없이 사전 차단). 시스템 연동 live 갱신 + themeMode 3-way는 **PR 2 보류** — inline script + 매치미디어 폴백으로 충분, 사용자 결정. PR 1에서 `settingsStore.initializeXxx` 5개 제거 |
 || Plan-7a: 파일 생성 다단계 | **Plan-7a** ✅ 완료 (PR `e878f85b`) + Plan-7a-android-e2e ✅ | 단일 라우트 + Progress bar + Step 순서 (이름→PIN, 2단계). **Q4-a 후속 보류** (2026-08-30 사용자 결정): `DataSection.tsx:197`에서 `FileCreateDialog` 미마이그레이션 — 현재는 그대로 유지, 트리거 발생 시 진행. 폴더 선택 Step은 **Plan-7b로 분리** (별도 brainstorm) |
 || (후속) Plan-7b: 폴더 선택 + 자동 백업 | **Plan-7b** (별도 brainstorm, STRATEGY §2 분류) 미착수 | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15 |
 
@@ -455,18 +476,19 @@ Track 3: UX·접근성·인터랙션 품질
 +- 에러 토스트/인라인 에러 — 네이티브/브리지 에러를 사용자 언어로 매핑
 +- 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
 +- **후속 후보 — Plan-7: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm §12](docs/brainstorms/2026-08-29-vault-file-integrity.md)) — 3단계 (폴더 선택 → 파일 이름 → 암호 입력) 라우트 기반 흐름으로 모바일 키보드 가시성·뒤로가기 모호함·"되돌리기 어려운 결정" 가시성 개선. §2 볼트 무결성과 분리된 UX 개선 항목이며, Plan-4 (패스프레이즈) 도입 시 Step 3가 자연스럽게 통합됨
-+- **진척 (2026-08-30 갱신):** 6개 항목 중 **6개 완료** (Plan-7a / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / Plan-B-3, 7개 PR 머지, Plan-B-3은 commit/push 대기), 1개 미구현 (a11y audit / Plan-D). **선행 의존성 해소**: Multi-Vault Support ✅ 완료 (2026-08-30) — [plan](../plans/2026-08-30-multi-vault-support.md)
+|+- **진척 (2026-08-31 갱신):** 6개 항목 중 **5개 완료** (Plan-7a / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / Plan-B-3, 8개 PR/PR-series 머지 — Multi-Vault + Plan-7a + Plan-7a-android-e2e + Plan-A1 + Plan-A2 + Plan-B-1 + Plan-B-2 + Plan-B-3 + Plan-D PR 1, **Plan-B-3은 commit + push 완료, PR 미개설**), 1개 미구현 (a11y audit). Plan-D PR 1(FOUC 가드) 완료, PR 2(시스템 연동) 보류. **선행 의존성 해소**: Multi-Vault Support ✅ 완료 (2026-08-30) — [plan](../plans/2026-08-30-multi-vault-support.md)
 +  - ✅ Multi-Vault Support — 완료, Post-Implementation Dead Code Cleanup 62줄 정리. Home 파일 리스트 UI 전제 해소
 +  - ✅ Plan-7a: 다단계 페이지 — 완료 (2026-08-30, PR `e878f85b`). `/create-vault` 2단계 라우트 + Stepper + NameStep/PinStep + 4개 단위 테스트. 후속(2026-08-30): Android E2E pageobject `VaultCreateDialog.kt` → `CreateVaultPage.kt` 페이지 기반 재작성 + 사용자 E2E 직접 실행으로 `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 확인
 +  - ✅ Plan-A1: 에러 가시화 — 완료 (2026-08-30, PR `19341aec`). `mapError()` (네이티브/Dexie/Web Crypto → 한국어) + `SyncErrorBanner` + 호출처 8곳 try/catch + `CreateVaultPage` 인라인 정식 전환. 토스트 없음 (Q1). 후속 plan 공통 전제 해소 — [plan](../plans/2026-08-30-plan-a1-error-visibility.md)
 +  - ✅ Plan-A2: Spinner — 완료 (2026-08-30, PR `f1dcc638`). `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. **범위 축소**: Templates/AccountDetail 미적용 (Q7 사용자 결정 대기) — [plan](../plans/2026-08-30-plan-a2-spinner-loading.md)
 +  - ✅ Plan-B-1: Button 인프라 — 완료 (2026-08-30, PR `cebf14ca`). `Button.tsx` 보강 (`loading`/`disabled`/`aria-busy`) + `<Spinner>` 통합 + `FormDialog`/`ConfirmDialog` inline → `<Button>` + 4+ 단위 테스트
 |  - ✅ Plan-B-2: 자주 쓰는 페이지 — 완료 (PR `e3a4c1ae`). Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault inline → `<Button>`. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
-|  - ✅ Plan-B-3: 나머지 페이지 — 완료 (2026-08-30, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index (3개) / TemplateEdit (4개) / Settings/index (2개) / AutofillSection (3개) / DataSection (5개) / SecuritySection (4개) = **21개 inline `<button>` → `<Button>` 마이그레이션**. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 가드). 회귀 게이트: typecheck/lint(신규 0)/test 444/444/build/Android compile+unitTest/Playwright React E2E 44/44 모두 ✓. PR 미생성 (commit/push 대기)
-|  - 📋 Plan-D: 테마 FOUC 가드 — plan 문서만 머지 (`6204d909`), 구현 미착수. Q6 Playwright 실측 후 작업 (발생 안 하면 cancel 또는 시스템 연동 live 갱신만)
+|  - ✅ Plan-B-3: 나머지 페이지 — 완료 (2026-08-30, 커밋 `93e007ed`, PR 미개설, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index (3개) / TemplateEdit (4개) / Settings/index (2개) / AutofillSection (3개) / DataSection (5개) / SecuritySection (4개) = **21개 inline `<button>` → `<Button>` 마이그레이션**. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 가드). 회귀 게이트: typecheck/lint(신규 0)/test 444/444/build/Android compile+unitTest/Playwright React E2E 44/44 모두 ✓. **origin HEAD = `b148855f` (Plan-B-3은 ancestor) — push 완료, PR은 GitHub REST API로 0개 확인 — 단독 PR 개설 사용자 결정 대기**
+|  - ✅ **Plan-D PR 1** — 완료 (2026-08-31, 커밋 `15e2e870`+보완 `325a3b2f`+문서 `b148855f`). `index.html` inline splash CSS + script (FOUC 가드) + `SplashScreen` + `RootRedirect` (4-state 머신 + Dexie close race 3s timeout + 1회 재시도 + stale 감지) + `ErrorScreen` (variant='stale'/'generic') + `App.tsx` useEffect 5개 제거 + `Home` → `/home` 이동 + `settingsStore.initializeXxx` 5개 제거. 보완에서 `e2e/10-persistence.spec.ts` 회귀 흡수 — **self-load 패턴** (페이지 단위 load 책임 + `useFileAuthGuard.onInitialized` 단일 콜백 + store-side `if (get().initialized) return;` 가드 + `initializeStores` 명시 reset). **`e2e/11-close-datafile.spec.ts` 7건** `waitForURL('/')` → `waitForURL((url) => url.pathname === '/')` 교체 (React Router `history.replaceState`의 pushstate/popstate 부재). 회귀 게이트: `typecheck` ✓, `lint` (우리 변경 파일 0) ✓, `test` 470/470 ✓, `e2e/10-persistence.spec.ts` 3건 ✓ (사용자 직접 실행). 4개 knowledge 캡처: ① 페이지 단위 self-load 원칙, ② store-side 가드의 transition 책임, ③ React Router replace navigate + Playwright waitForURL flake, ④ useFileAuthGuard 콜백 YAGNI. **Q6 결정 변경** — 실측 대신 inline script로 FOUC 사전 차단
+|  - 📋 **Plan-D PR 2** — **⏸️ 보류** (2026-08-31 사용자 결정: inline script + 매치미디어 폴백으로 충분). `themeMode: "light" | "dark" | "system"` 추가 + `setThemeMode` + `matchMedia` 리스너 + UISection 3-way 토글. 트리거 발생 시 진행 (다중 디바이스/OS 테마 토글 시 자동 동기화 요구 등)
 +  - 📋 a11y audit plan — 미착수. axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 시 (Q5-a)
-+  - 📋 Plan-7b: 폴더 선택 + 자동 백업 통합 — 미착수. SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15. STRATEGY §2 분류, 별도 brainstorm 예정
- - **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
-+ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — **7개 plan 완료 + Q1~Q8 모두 확정**. 다음 단계는 Plan-D (FOUC 실측 — plan 문서는 머지, 구현 미착수) → a11y audit → Plan-7a 2차 PR (Q4-a, 보류) → Plan-7b (별도 brainstorm)
-+ - **진행 순서 (2026-08-30 갱신):** ~~Multi-Vault~~ ✅ → ~~Plan-7a~~ ✅ → ~~Plan-A1~~ ✅ → ~~Plan-A2~~ ✅ → ~~Plan-B-1~~ ✅ → ~~Plan-B-2~~ ✅ → ~~Plan-B-3~~ ✅ (commit/push 대기) → **Plan-D (FOUC 실측)** → **a11y audit plan** → **Plan-7a 2차 PR (Q4-a, 보류)** → **Plan-7b** (별도 brainstorm)
+|  - 📋 Plan-7b: 폴더 선택 + 자동 백업 통합 — 미착수. SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15. STRATEGY §2 분류, 별도 brainstorm 예정
+| - **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
++- **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — **8개 plan commit 완료 / 8개 push 완료 / 7개 PR 머지 + Plan-B-3 PR 미개설 + Plan-D PR 2 보류** (2026-08-31 갱신). 다음 단계는 a11y audit → Plan-7a 2차 PR (Q4-a, 보류) → Plan-7b (별도 brainstorm)
++ - **진행 순서 (2026-08-31 갱신):** ~~Multi-Vault~~ ✅ → ~~Plan-7a~~ ✅ → ~~Plan-A1~~ ✅ → ~~Plan-A2~~ ✅ → ~~Plan-B-1~~ ✅ → ~~Plan-B-2~~ ✅ → **Plan-B-3** ✅ (commit + push 완료, PR 미개설 — 사용자 결정 대기) → **Plan-D PR 1** ✅ (커밋 `15e2e870`+`325a3b2f`+`b148855f`, origin HEAD) → **Plan-D PR 2** ⏸️ 보류 → **a11y audit plan** → **Plan-7a 2차 PR (Q4-a, 보류)** → **Plan-7b** (별도 brainstorm)
 ```
