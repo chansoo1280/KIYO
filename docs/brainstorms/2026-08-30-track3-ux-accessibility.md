@@ -21,6 +21,12 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 
 **업데이트 (2026-08-30, 후속):** Multi-Vault plan [`2026-08-30-multi-vault-support.md`](../plans/2026-08-30-multi-vault-support.md) **완료**. Dexie v14 migration + `ACTIVE_FILE_ID` 제거 + `resolveFileName` suffix + Home 파일 리스트 UI + 21 파일/334 테스트 통과. Post-Implementation Dead Code Cleanup으로 62줄 정리 (syncAutofillToken 주석, importDataFile 주석, syncDatabaseToFile 별칭, changePin 중복 가드). Track 3의 §3.3 / §8.1 의존성이 해소되어 **Plan-7 활성화 가능**.
 
+**업데이트 (2026-08-30, Plan-A1/A2 완료):** Plan-A1 ([plan](../plans/2026-08-30-plan-a1-error-visibility.md), PR `19341aec`) — `mapError()` + `SyncErrorBanner` + 호출처 8곳 try/catch 마이그레이션. Plan-A2 ([plan](../plans/2026-08-30-plan-a2-spinner-loading.md), PR `f1dcc638`) — `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. Plan-A 전체 완료로 후속 plan(B/D)의 공통 전제 해소.
+
+**업데이트 (2026-08-30, Plan-B 분할 완료):** Plan-B ([plan](../plans/2026-08-30-plan-b-button-loading-consistency.md)) — 3-PR 분할 진행. Plan-B-1 (인프라, PR `cebf14ca`) 완료: `Button.tsx` 보강 + `FormDialog`/`ConfirmDialog` 마이그레이션 + `aria-busy` 추가. Plan-B-2 (자주 쓰는 페이지, PR `e3a4c1ae`) 완료: Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault의 inline 버튼 → `<Button>` 마이그레이션. Plan-B-3 (나머지 페이지) 미착수.
+
+**업데이트 (2026-08-30, Plan-B-3 완료):** Plan-B-3 ([plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)) — Templates/index (3개), TemplateEdit (4개), Settings/index (2개), AutofillSection (3개, toggle switch 제외), DataSection (5개, `FileCreateDialog` 잔존 보류), SecuritySection (4개) = **21개 inline `<button>` → `<Button>` 마이그레이션**. Toggle switch(`AutofillSection.tsx:213` `role="switch"`)는 의미/시각적 토글로 `<Button>` 부적합 → a11y audit plan 이관. **`TemplateEdit/index.test.tsx` 신규** (3 테스트: Button 마이그레이션 + 저장 catch + 삭제 catch — Plan-A1 catch 결합 회귀 0 가드). 회귀 게이트: `typecheck` ✓, `lint` ✓ (신규 0 errors, 16 errors는 Plan-B-3과 무관한 기존), `test` 444/444 ✓, `build` ✓, Android `compileDebugKotlin` + `testDebugUnitTest` ✓, **Playwright React E2E 44/44 (31.8s) ✓**. Q4-a (`DataSection.tsx:197`의 `FileCreateDialog` 잔존)은 사용자 결정으로 보류 유지. Plan-B-3는 PR 미생성 (commit/push 대기).
+
 ## 2. Goal
 
 1. **Track 3의 진척 매트릭스** — ✅ / ⚠️ / ❌ / ❓로 코드 상태 매핑 (커밋 로그 + 실제 컴포넌트 인스펙션 기반)
@@ -53,7 +59,7 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 | STRATEGY §3 항목 | 코드 상태 | 비고 |
 |---|---|---|
 | 로딩 상태/스켈레톤 UI (암호화/복호화·동기화·파일 I/O) | ❌ 미구현 | 스피너/스켈레톤 컴포넌트 부재, `persistVaultSnapshot`/`loadAccounts` 등 비동기 경로에 시각 피드백 없음 |
-| 더블클릭/중복 제출 방지 | ⚠️ 부분 | `Button.tsx` disabled 상태 일부 처리되나 일관성 부재. 폼 submit은 throw 기반, 비동기 in-flight 표시는 미흡 |
+| 더블클릭/중복 제출 방지 | ✅ 완료 | Plan-B-1/2/3 완료. `Button.tsx` `loading`/`disabled`/`aria-busy` 일관 처리, FormDialog/ConfirmDialog 마이그레이션, 21개 페이지 inline `<button>` → `<Button>` 마이그레이션. `useFormSubmit` wrapper **포함 안 함** (Q2) |
 | 키보드 네비게이션/포커스 순서, 스크린리더 | ⚠️ 부분 | `AutoLockIndicator`/`BaseDialog`는 `aria-*` 적용. 그 외(메인 페이지/리스트/탭)는 표준 HTML 의미론에 의존, 명시적 포커스 관리 부재 |
 | 에러 토스트/인라인 에러, 사용자 언어 매핑 | ⚠️ 부분 | `setSyncError`는 store에 저장하지만 토스트 없음. 다이얼로그 에러는 `throw` → caller가 alert. 네이티브 에러 → 한국어 매핑 함수 부재 |
 | 다크/라이트 테마 전환 깜빡임, 시스템 연동 | ⚠️ 부분 | `initializeTheme`는 존재, 시스템 설정 감지 로직 확인 필요. 깜빡임(FOUC) 가드 없음 |
@@ -279,17 +285,21 @@ STRATEGY §3(UX·접근성·인터랙션 품질)는 5개 카테고리(로딩, �
 ### 8.1 우선순위 권장 (사용자 결정 기반)
 
 > **2026-08-30 갱신:** Multi-Vault brainstorm [`2026-08-30-multi-vault-support.md`](2026-08-30-multi-vault-support.md) 결과로 **순서 재배치** — Multi-Vault가 Track 3 진입 전 **최우선**으로 처리되어야 Home의 파일 리스트 UI가 가능해짐. Plan-7(다단계 페이지)의 "기존 파일 선택 / 새로 만들기" 분기도 Multi-Vault 결과에 의존.
+> **2026-08-30 (2차) 갱신:** Multi-Vault / Plan-7a / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 6개 plan 완료. 순서 표는 **계획**과 **실제 진행**을 모두 반영.
 
-| 순서 | Plan | 근거 | 예상 복잡도 |
-|---|---|---|---|
-| **0** | **[Multi-Vault Support](../2026-08-30-multi-vault-support.md) (§2 후속)** | Home 파일 리스트 UI 가능하게 함. STRATEGY Boundary #4 ("멀티 볼트는 로컬 파일 단위로만") 격차 해소. **Track 3 모든 plan의 전제** | 중~대 |
-| 1 | **Plan-7a: 다단계 페이지** (이름 → PIN, Progress bar + 라벨, 2단계) | Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기 가능. Plan-4(패스프레이즈, 완료)와 자연 통합 | 중 |
-| **후속** | **Plan-7b: 폴더 선택 + 자동 백업 통합** (별도 brainstorm, STRATEGY §2 분류) | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook. Plan-7a 완료 + 사용자 결정 후 진행 | 대 |
-| 2 | **Plan-A1: 에러 가시화** (`mapError()` + 호출처 6곳 try/catch + `SyncErrorBanner`) | Plan-7a/Plan-B의 공통 전제. 토스트 없음 (Q1) | 소 |
-| 3 | **Plan-A2: 초기 진입 Skeleton** (Spinner/Skeleton + 3개 페이지 적용) | A1과 독립 가능, 단독 plan으로 검증된 패턴 만들기 좋음 (Q7) | 소 |
-| 4 | **Plan-B: 버튼/폼 일관성** (Button.loading, FormDialog throw 유지) | A1의 `mapError` 활용, 사용자 체감 큼. 호출자 API 변경 0 (Q2) | 소 |
-| 5 | **Plan-D: 테마 FOUC 가드** | 독립, Q6 실측 후 작업 | 소 |
-| 6 | **a11y audit (별도 plan)** | axe-core CI + 키보드 Playwright + remediation. Plan-A/B/D 완료 후 또는 트리거 발생 시 (Q5) | 대 |
+| 순서 | Plan | 근거 | 예상 복잡도 | 상태 |
+|---|---|---|---|---|
+| **0** | **[Multi-Vault Support](../2026-08-30-multi-vault-support.md) (§2 후속)** | Home 파일 리스트 UI 가능하게 함. STRATEGY Boundary #4 ("멀티 볼트는 로컬 파일 단위로만") 격차 해소. **Track 3 모든 plan의 전제** | 중~대 | ✅ 완료 (PR `afff2e1f`) |
+| 1 | **Plan-7a: 다단계 페이지** (이름 → PIN, Progress bar + 라벨, 2단계) | Multi-Vault 리스트 위에서 "기존 파일 선택 / 새로 만들기" 분기 가능. Plan-4(패스프레이즈, 완료)와 자연 통합 | 중 | ✅ 완료 (PR `e878f85b`) |
+| **Plan-7a 2차 (Q4-a)** | `DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거 | Q4 결정. 2026-08-30 사용자 결정으로 **보류** — 트리거 발생 시 진행 | 소 | ⏸️ 보류 |
+| **후속** | **Plan-7b: 폴더 선택 + 자동 백업 통합** (별도 brainstorm, STRATEGY §2 분류) | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook. Plan-7a 완료 + 사용자 결정 후 진행 | 대 | 📋 미착수 (별도 brainstorm) |
+| 2 | **Plan-A1: 에러 가시화** (`mapError()` + 호출처 8곳 try/catch + `SyncErrorBanner`) | Plan-7a/Plan-B의 공통 전제. 토스트 없음 (Q1) | 소 | ✅ 완료 (PR `19341aec`) |
+| 3 | **Plan-A2: 초기 진입 Spinner** (`<Spinner>` + Accounts 페이지 적용) | A1과 독립 가능, 단독 plan으로 검증된 패턴 만들기 좋음 (Q7). **범위 축소**: Templates/AccountDetail 미적용 | 소 | ✅ 완료 (PR `f1dcc638`) |
+| 4a | **Plan-B-1: Button 인프라** (Button.tsx + Dialog 마이그레이션) | A2의 `<Spinner>` 활용, `FormDialog`/`ConfirmDialog` inline → `<Button>` | 소 | ✅ 완료 (PR `cebf14ca`) |
+| 4b | **Plan-B-2: 자주 쓰는 페이지** (Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault) | A1의 `mapError` 활용, 사용자 체감 큼. 호출자 API 변경 0 | 소 | ✅ 완료 (PR `e3a4c1ae`) |
+| 4c | **Plan-B-3: 나머지 페이지** (Templates/Settings/AutofillSection/DataSection/SecuritySection) | A1의 `mapError` 활용, 21개 inline `<button>` → `<Button>` 마이그레이션. Toggle switch(`AutofillSection` line 213) 제외, `FileCreateDialog` 잔존(Q4-a) 보류. **순수 범위만** | 소 | ✅ 완료 (commit/push 대기) |
+| 5 | **Plan-D: 테마 FOUC 가드** | 독립, Q6 실측 후 작업 | 소 | 📋 미착수 |
+| 6 | **a11y audit (별도 plan)** | axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 발생 시 (Q5) | 대 | 📋 미착수 |
 
 **근거 갱신:**
 - **Multi-Vault가 0순위인 이유:** Plan-7a의 "기존 파일 선택 / 새로 만들기" 분기는 1개 파일 모델에선 의미가 없음. Multi-Vault가 먼저 와야 Plan-7a의 v1이 의미를 가짐. 또한 Home UI 자체가 "파일 1개 표시 → 파일 N개 리스트"로 바뀌어야 사용자가 multi-vault를 체감.
@@ -354,76 +364,84 @@ Track 3: UX·접근성·인터랙션 품질
 
 ## 10. Current Decision State
 
-| # | 결정 | 상태 |
-|---|---|---|
-| Q1 | Plan-A 에러 표시: **인라인만** (수동 try/catch + `mapError()` 매핑 함수). 토스트/Snackbar/공통 hook 없음. `setSyncError`는 페이지 상단 배너로 가시화 | ✅ 확정 |
-| Q2 | Plan-B FormDialog 에러: **throw 유지** (Q1-b와 일관, 호출자가 try/catch) | ✅ 확정 |
-| Q3 | Plan-7 라우트: **단일 라우트** `/create-vault` + `useCreateVaultStore.step`. Stepper는 **Progress bar + 단계 라벨** (`●─────●─────○` 형태) | ✅ 확정 |
-| Q3-추가 | Plan-7 Step 순서: **1. 이름 → 2. PIN → 3. 폴더 (선택, 건너뛰기 가능)** | ✅ 확정 (2026-08-30 갱신: Plan-7a는 2단계(UI 흐름만)로 축소, Step 3 폴더 선택은 Plan-7b로 분리. Plan-7a 구현에는 "비밀번호 없이 만들기" 버튼이 추가되어 비암호화 vault 흐름도 유지됨 — plan §구현 노트 참조) |
-| Q4 | Plan-7 `FileCreateDialog`: **완전 제거** (호출처 100% 마이그레이션 후) | ✅ 확정 |
-| Q5 | a11y: **별도 plan** (axe-core CI + 키보드 시나리오 + remediation). Plan-A/B/D 완료 후 또는 트리거 발생 시 | ✅ 확정 |
-| Q6 | Plan-D FOUC: **Playwright 실측 우선** (reload 시 frame capture → 발생 시 작업, 아니면 cancel) | ✅ 확정 |
-| Q7 | Plan-A Skeleton: **초기 진입만** (`loadAccounts`/`loadTemplates` 첫 페이지 로드) | ✅ 확정 |
-| Q8 | Plan-7 PIN 정책: **Plan-4 그대로** (4~20자 mixed, 변경 없음) | ✅ 확정 |
-| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ Multi-Vault 완료 2026-08-30, 나머지 순서 확정 |
+|| # | 결정 | 상태 |
+||---|---|---|
+|| Q1 | Plan-A 에러 표시: **인라인만** (수동 try/catch + `mapError()` 매핑 함수). 토스트/Snackbar/공통 hook 없음. `setSyncError`는 페이지 상단 배너로 가시화 | ✅ 확정 + Plan-A1 구현 완료 (PR `19341aec`) |
+|| Q2 | Plan-B FormDialog 에러: **throw 유지** (Q1-b와 일관, 호출자가 try/catch) | ✅ 확정 + Plan-B-1 구현 완료 (PR `cebf14ca`). throw 유지 + `aria-busy` 추가 |
+|| Q3 | Plan-7 라우트: **단일 라우트** `/create-vault` + `useCreateVaultStore.step`. Stepper는 **Progress bar + 단계 라벨** (`●─────●─────○` 형태) | ✅ 확정 + Plan-7a 구현 완료 (PR `e878f85b`) |
+|| Q3-추가 | Plan-7 Step 순서: **1. 이름 → 2. PIN → 3. 폴더 (선택, 건너뛰기 가능)** | ✅ 확정 (2026-08-30 갱신: Plan-7a는 2단계(UI 흐름만)로 축소, Step 3 폴더 선택은 Plan-7b로 분리. Plan-7a 구현에는 "비밀번호 없이 만들기" 버튼이 추가되어 비암호화 vault 흐름도 유지됨 — plan §구현 노트 참조) |
+|| Q4 | Plan-7 `FileCreateDialog`: **완전 제거** (호출처 100% 마이그레이션 후) | ⚠️ **부분 완료** — Home.tsx는 `/create-vault`로 마이그레이션됨. **`Settings/components/DataSection.tsx` 백업 다이얼로그가 여전히 FileCreateDialog 사용 중** (2026-08-30 grep: `DataSection.tsx:197` 미마이그레이션). **2026-08-30 사용자 결정: Q4-a 후속(완전 제거) 보류**, 다음 단계로 분리하지 않음. Plan-B-3는 순수 inline 버튼 마이그레이션만, FileCreateDialog 잔존은 그대로 |
+|| Q5 | a11y: **별도 plan** (axe-core CI + 키보드 시나리오 + remediation). Plan-A/B/D 완료 후 또는 트리거 발생 시 | ✅ 확정 + **각 plan에 a11y 자연 보강 계속 진행** (Plan-A2/B-1은 `role="status"`/`aria-busy` 등 추가). 별도 audit plan 미착수 |
+|| Q6 | Plan-D FOUC: **Playwright 실측 우선** (reload 시 frame capture → 발생 시 작업, 아니면 cancel) | ✅ 확정 + **미착수** |
+|| Q7 | Plan-A Skeleton: **초기 진입만** (`loadAccounts`/`loadTemplates` 첫 페이지 로드) | ✅ 확정 + Plan-A2 부분 구현 완료 (Accounts만). Templates/AccountDetail 미적용 (Q7 적용 범위 축소 결정 가능성) |
+|| Q8 | Plan-7 PIN 정책: **Plan-4 그대로** (4~20자 mixed, 변경 없음) | ✅ 확정 + Plan-7a 구현 완료 |
+|| §8.1 순서 | **Multi-Vault → Plan-7 → Plan-A → Plan-B → Plan-D** | ✅ Multi-Vault / Plan-7a / Plan-7a-android-e2e / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / **Plan-B-3** 완료 (7개). Plan-D (plan 문서만 머지 `6204d909`, 구현 미착수) / a11y audit / Plan-7a 2차 PR / Plan-7b 미착수 |
 
 **진행 순서 (2026-08-30 갱신):**
 1. **✅ Multi-Vault Support** ([plan](../plans/2026-08-30-multi-vault-support.md)) — 완료 (21 파일/334 테스트, Post-Implementation Dead Code Cleanup 62줄 정리)
 2. **✅ Plan-7a** (다단계 페이지, 2단계) — 완료 (2026-08-30, PR `e878f85b`). `/create-vault` 라우트 + Stepper + NameStep/PinStep + 4개 단위 테스트 + E2E 재작성. [plan](../plans/2026-08-30-plan-7a-create-vault-multistep.md)
 3. **✅ Plan-7a-android-e2e** (Android E2E 갱신) — 완료 (2026-08-30). `VaultCreateDialog.kt` → `CreateVaultPage.kt` 페이지 기반 재작성 + 사용자 E2E 직접 실행으로 Android E2E 전부 성공
-4. **Plan-7a 2차 PR** (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거, Q4-a 후속) — 다음 단계
-5. **Plan-A1** (에러 가시화) — Q1 확정. `mapError()` + 호출처 6곳 try/catch + `SyncErrorBanner`. `CreateVaultPage.handleSubmit/handleSkip` 인라인 처리도 정식 `mapError`로 마이그레이션 (plan §Out of Scope). 모든 후속 plan의 전제
-6. **Plan-A2** (초기 진입 Skeleton) — Q7 확정. Spinner/Skeleton + Accounts/Templates/AccountDetail 첫 진입. Plan-B와 병행 가능
-7. **Plan-B** (버튼/폼 일관성) — Q2 확정. `Button.loading` + FormDialog throw 유지. A1의 `mapError` 활용
-8. **Plan-D** (테마 FOUC 가드) — Q6 실측 후 작업
-9. **a11y audit plan** (별도) — Q5 확정. axe-core CI + 키보드 시나리오 + remediation. Plan-A/B/D 완료 후 또는 트리거 시
-10. **후속 — Plan-7b** (폴더 선택 + 자동 백업 통합) — STRATEGY §2 분류, 별도 brainstorm 예정. Plan-7a 2차 PR 완료 + 사용자 결정 후 진행
+4. **✅ Plan-A1** (에러 가시화) — 완료 (PR `19341aec`). [plan](../plans/2026-08-30-plan-a1-error-visibility.md). `mapError()` + `SyncErrorBanner` + 호출처 8곳 try/catch (`AccountEdit` 저장 2건, `AccountDetail` 삭제, `loadAccounts`/`loadTemplates` 초기, `syncToAutofill`, `CreateVaultPage.handleSubmit/handleSkip`). 후속 plan 공통 전제 해소
+5. **✅ Plan-A2** (Spinner + Accounts 로딩 표시) — 완료 (PR `f1dcc638`). [plan](../plans/2026-08-30-plan-a2-spinner-loading.md). `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. **범위 축소 결정** — Templates/AccountDetail은 미적용 (Q7 적용 범위 재확인 필요)
+6. **✅ Plan-B-1** (Button 인프라 + Dialog 마이그레이션) — 완료 (PR `cebf14ca`). [plan](../plans/2026-08-30-plan-b-button-loading-consistency.md). `Button.tsx` 보강 + `<Spinner>` 통합 + `aria-busy` + `FormDialog`/`ConfirmDialog` inline 버튼 → `<Button>` 마이그레이션 + 4+ 단위 테스트
+7. **✅ Plan-B-2** (자주 쓰는 페이지 inline 버튼 → Button) — 완료 (PR `e3a4c1ae`). Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault의 inline `<button>` → `<Button>`. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
+8. **Plan-B-3** (나머지 페이지) — **완료** (commit/push 대기, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index, TemplateEdit, Settings/index, AutofillSection, DataSection, SecuritySection의 inline `<button>` → `<Button>` 마이그레이션 (21개). Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 후속으로 사용자 결정 보류 유지. **다음 단계:** Plan-D (FOUC 실측) → a11y audit → Plan-7a 2차 PR(Q4-a) → Plan-7b (별도 brainstorm)
+9. **Plan-D** (테마 FOUC 가드) — Q6 실측 후 작업. 미착수
+10. **a11y audit plan** (별도) — Q5 확정. axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 시. 미착수
+11. **Plan-7a 2차 PR** (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거, Q4-a 후속) — **2026-08-30 사용자 결정으로 보류**. 트리거 발생 시(예: DataSection 백업 흐름 회귀, FileCreateDialog 코드 정리 요청) 진행
+12. **후속 — Plan-7b** (폴더 선택 + 자동 백업 통합) — STRATEGY §2 분류, 별도 brainstorm 예정. Plan-B-3 완료 + 사용자 결정 후 진행. 미착수
 
-> Q1~Q8 모두 확정됨 + Plan-7a 완료. 다음 자연스러운 단계는 **Plan-7a 2차 PR** (`FileCreateDialog` 완전 제거) → **Plan-A1**.
+> 2026-08-30 현재 **7개 plan 완료** (Multi-Vault, Plan-7a, Plan-7a-android-e2e, Plan-A1, Plan-A2, Plan-B-1, Plan-B-2, Plan-B-3). 다음 자연스러운 단계는 **Plan-D** (FOUC 실측 — plan 문서는 `6204d909`로 머지, 구현 미착수). 그 후 **a11y audit** → **Plan-7a 2차 PR** (Q4-a 후속, 사용자 결정 보류) → **Plan-7b** (별도 brainstorm).
 
 ## 11. Risks
 
 | 리스크 | 완화 |
 |---|---|
-| ~~Plan-A 토스트를 잘못 만들면 모든 plan에 영향~~ | ✅ 해소 (Q1: 인라인만, 토스트 없음). Plan-A1은 `mapError()` + 수동 try/catch + SyncErrorBanner로 한정, 마이그레이션 매핑표 불필요 |
-| Plan-7a 라우트 추정이 Playwright E2E navigation 깨뜨림 | stepper `data-testid` 일관성 + pageobject 추가, 기존 E2E smoke 먼저. 단일 라우트(`/create-vault`)라 deep-link 테스트 부담 0 (Q3-b). 기존 `01-create-vault.spec.ts`는 **전면 재작성** (브레인스톰 "E2E 회귀 0" 가정이 틀림 — 모달→페이지 전환은 E2E 표면 자체가 바뀜) |
-| a11y 누락 | Q5-a로 별도 plan 분리. 각 plan은 a11y 자연 보강(role/aria/focus), 별도 audit plan에서 axe-core violations 0 / 키보드 시나리오 통과를 명시적 게이트로 |
+| ~~Plan-A 토스트를 잘못 만들면 모든 plan에 영향~~ | ✅ 해소 (Q1: 인라인만, 토스트 없음) + Plan-A1 완료 (PR `19341aec`). `mapError()` + 수동 try/catch + SyncErrorBanner로 한정, 마이그레이션 매핑표 불필요 |
+| ~~Plan-7a 라우트 추정이 Playwright E2E navigation 깨뜨림~~ | ✅ 해소 (PR `e878f85b` + 2026-08-30 Android E2E 갱신). 단일 라우트(`/create-vault`)로 deep-link 부담 0, E2E 전면 재작성 후 사용자 직접 실행으로 Android E2E 전부 성공 확인 |
+| ~~Plan-A1 호출처 마이그레이션 누락~~ | ✅ 해소 (PR `19341aec`). 8곳 try/catch + CreateVaultPage 인라인 처리 마이그레이션 완료 |
+| a11y 누락 | Q5-a로 별도 plan 분리. 각 plan은 a11y 자연 보강 (Plan-A2 `role="status"`, Plan-B-1 `aria-busy` 추가됨). 별도 audit plan에서 axe-core violations 0 / 키보드 시나리오 통과를 명시적 게이트로 |
 | Plan-D FOUC가 실측에서 안 나타나면 작업 무의미 | Q6 실측 우선 결정, 발생 안 하면 Plan-D cancel 또는 시스템 연동 live 갱신만 |
-| Track 1(autofill)/Track 2(vault) 진행 중 회귀 | Plan-A1/A2/B는 React UI 한정, autofill native 경로와 격리됨. Plan-7a 라우트 추가는 `/create-vault` 신규라 기존 라우트 미영향 |
-| "단순화/이전과 같게" 사용자 신호 (메모) | 각 plan 시작 전 작업 범위 재확인, 첫 plan에서 검증된 패턴을 후속에 복제 |
-| 7개 항목 동시 착수 시 산만 | **Multi-Vault → Plan-7 → Plan-A1 → Plan-A2 → Plan-B → Plan-D** 순서 엄수, a11y는 별도 plan (Q5-a). Plan-A2는 Plan-B와 병행 시작 가능 |
-| ~~Multi-Vault 결과에 Track 3 전체 의존~~ | ✅ 해소 (2026-08-30 Multi-Vault 완료). 이제 Plan-7 활성화 가능 |
-| ~~Multi-Vault E2E 회귀 위험~~ | ✅ 해소 (Q4-a: `FileCreateDialog` 완전 제거 시점 = 호출처 100% 마이그레이션 후). 마이그레이션은 점진, 회귀 0 |
-| Plan-7a Step 3 폴더 "건너뛰기" 시 기본 저장 위치 결정 | ✅ 해소 (2026-08-30: Plan-7a는 2단계, Step 3 폴더 선택은 Plan-7b로 분리). Plan-7a는 DB만 저장 (현재 `createDataFile` 동작 유지) |
-| Plan-A2 Skeleton 깜빡임 (로딩이 짧으면) | throttle 또는 `isLoading && accounts.length === 0` 같은 조건부 렌더. accounts.length > 0이면 Skeleton 표시 안 함 |
+| ~~Track 1(autofill)/Track 2(vault) 진행 중 회귀~~ | ✅ 해소. Plan-A1/A2/B-1/B-2는 React UI 한정, autofill native 경로와 격리됨. git diff로 회귀 0 검증 |
+| "단순화/이전과 같게" 사용자 신호 (메모) | 각 plan 시작 전 작업 범위 재확인, 첫 plan에서 검증된 패턴을 후속에 복제. Plan-A/B 4개 PR이 모두 이 신호 없이 머지됨 |
+| ~~7개 항목 동시 착수 시 산만~~ | ✅ 해소. 순서 (Multi-Vault → Plan-7a → Plan-A → Plan-B) 엄수로 6개 plan 순차 완료. Plan-B-3 다음 / Plan-D 그 다음 |
+| ~~Multi-Vault 결과에 Track 3 전체 의존~~ | ✅ 해소 (2026-08-30 Multi-Vault 완료) |
+| ~~Multi-Vault E2E 회귀 위험~~ | ⚠️ **부분 해소 + 사용자 결정으로 보류**. Home.tsx는 마이그레이션됨, DataSection.tsx:197 잔존. **2026-08-30 사용자 결정: Q4-a (완전 제거)는 지금 진행하지 않음**, FileCreateDialog 잔존은 그대로 유지. 트리거 발생 시(회귀/정리 요청) 진행 |
+| ~~Plan-7a Step 3 폴더 "건너뛰기" 시 기본 저장 위치 결정~~ | ✅ 해소 (2026-08-30: Plan-7a는 2단계, Step 3 폴더 선택은 Plan-7b로 분리). Plan-7a는 DB만 저장 (현재 `createDataFile` 동작 유지) |
+| ~~Plan-A2 Skeleton 깜빡임 (로딩이 짧으면)~~ | ✅ 부분 해소 (Accounts만 spinner 적용). Templates/AccountDetail은 미적용 (Q7 적용 범위 축소 — 사용자 결정 대기) |
+| **Plan-B-3 시작 시 inline `<button>` 잔존 범위 정확히 파악 필요** | ✅ 해소 (2026-08-30 Plan-B-3 완료). 21개 인라인 버튼 정확히 식별·마이그레이션 (Templates 7 + Settings 14, AutofillSection toggle switch 1 제외). Plan-B-1/2 PR들과 동일 패턴 적용, Button prop 매핑표 작성 |
 
 ## 12. Next Action
 
-**Track 3의 Q1~Q8 모두 확정 (2026-08-30).** Multi-Vault 선행 의존성도 해소됨.
+**Track 3의 Q1~Q8 모두 확정 + 7개 plan 완료 (2026-08-30).**
 
 1. **✅ Multi-Vault 완료:** [plan](../plans/2026-08-30-multi-vault-support.md) — Dexie v14 + Home 파일 리스트 UI + 21 파일/334 테스트 + Dead Code Cleanup 62줄
-2. **✅ Q1~Q8 확정** (2026-08-30): 인라인 에러 / throw 유지 / 단일 라우트 + Progress bar / Step 순서 (이름→PIN, 2026-08-30 Plan-7a로 2단계 축소) / FileCreateDialog 완전 제거 / a11y 별도 plan / FOUC 실측 / 초기 진입 Skeleton / PIN Plan-4 그대로
-3. **Plan-A 분리 확정 (2026-08-30):** Plan-A1 (에러 가시화) / Plan-A2 (Skeleton) — A1이 모든 plan의 전제, A2는 Plan-B와 병행 가능
+2. **✅ Q1~Q8 확정** (2026-08-30): 인라인 에러 / throw 유지 / 단일 라우트 + Progress bar / Step 순서 (이름→PIN, 2026-08-30 Plan-7a로 2단계 축소) / FileCreateDialog 완전 제거 / a11y 별도 plan / FOUC 실측 / 초기 진입 Spinner / PIN Plan-4 그대로
+3. **Plan-A 분리 확정 (2026-08-30):** Plan-A1 (에러 가시화) / Plan-A2 (Spinner) — A1이 모든 plan의 전제, A2는 Plan-B와 병행 가능
 4. **Plan-7a/7b 분리 확정 (2026-08-30):** Plan-7a는 2단계(UI 흐름만), Plan-7b는 폴더 선택 + 자동 백업 통합(STRATEGY §2 후속, 별도 brainstorm)
 5. **✅ Plan-7a 완료 (2026-08-30, PR `e878f85b`):** `/create-vault` 라우트 + Stepper + NameStep/PinStep + 4개 단위 테스트 + E2E 재작성 — [plan](../plans/2026-08-30-plan-7a-create-vault-multistep.md). React E2E(Playwright) 통과 + `npm run check` 383/383 통과
 6. **✅ Plan-7a-android-e2e 완료 (2026-08-30):** Android E2E pageobject `VaultCreateDialog.kt` → `CreateVaultPage.kt` 페이지 기반 재작성. 사용자 직접 E2E 실행(`run-autofill-e2e.ps1`, `run-autosave-e2e.ps1`, `run-biometric-e2e.ps1`) 전부 성공. Auth/Biometric/SecureKey 코드 경로는 Plan-7a PR에서 변경 없음 — git diff로 회귀 0 검증
-7. **다음 단계:** **Plan-7a 2차 PR** (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거, Q4-a 후속) → **Plan-A1** (`mapError` 정식 도입 + `SyncErrorBanner` + `CreateVaultPage.handleSubmit/handleSkip` 호출처 마이그레이션) → **Plan-A2** (Plan-B와 병행) → **Plan-B** → **Plan-D** → a11y audit → **Plan-7b** (별도 brainstorm 후)
+7. **✅ Plan-A1 완료 (2026-08-30, PR `19341aec`):** [plan](../plans/2026-08-30-plan-a1-error-visibility.md). `mapError()` (네이티브/Dexie/Web Crypto → 한국어 매핑) + `SyncErrorBanner` + 호출처 8곳 try/catch 마이그레이션 + `CreateVaultPage` 인라인 처리 정식 `mapError`로 전환. 후속 plan 공통 전제 해소
+8. **✅ Plan-A2 완료 (2026-08-30, PR `f1dcc638`):** [plan](../plans/2026-08-30-plan-a2-spinner-loading.md). `<Spinner>` 공통 컴포넌트 + `aria-hidden` 지원 + Accounts 페이지 spinner 표시. **범위 축소**: Templates/AccountDetail은 미적용 (Q7 적용 범위 사용자 결정 대기)
+9. **✅ Plan-B-1 완료 (2026-08-30, PR `cebf14ca`):** [plan](../plans/2026-08-30-plan-b-button-loading-consistency.md). `Button.tsx` 보강 (`loading`/`disabled`/`aria-busy` 일관 처리) + `<Spinner>` 통합 + `FormDialog`/`ConfirmDialog` inline 버튼 → `<Button>` 마이그레이션 + 4+ 단위 테스트
+10. **✅ Plan-B-2 완료 (2026-08-30, PR `e3a4c1ae`):** 자주 쓰는 페이지(Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault)의 inline `<button>` → `<Button>` 마이그레이션. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
+11. **✅ Plan-B-3 완료 (2026-08-30):** [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md). Templates/Settings/AutofillSection/DataSection/SecuritySection의 21개 inline `<button>` → `<Button>` 마이그레이션. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 후속으로 사용자 결정 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 0 가드). 회귀 게이트: `typecheck` ✓, `lint` ✓ (신규 0 errors), `test` 444/444 ✓, `build` ✓, Android `compileDebugKotlin` + `testDebugUnitTest` ✓, **Playwright React E2E 44/44 (31.8s) ✓**. PR 미생성, commit/push 대기
 
-**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** §7 Options / §8.1/8.2 / §10 Current Decision State / §11 Risks 모두 확정 내용 반영 (Plan-A1/A2 분리, Plan-7a/7b 분리, E2E 회귀 0 가정 철회 포함). STRATEGY.md 갱신은 별도 작업 (부록 B diff 적용).
+**본 brainstorm의 ce-plan 직접 개설 보류 사유 해소됨.** §7 Options / §8.1/8.2 / §10 Current Decision State / §11 Risks 모두 확정 내용 반영 (Plan-A1/A2 분리, Plan-7a/7b 분리, E2E 회귀 0 가정 철회, Plan-B 3-PR 분할 진행 반영 포함). STRATEGY.md 갱신은 별도 작업 (부록 B diff 적용).
 
 ---
 
-## 부록 A. §3 카테고리 ↔ Plan 매핑 (최종, Q1~Q8 + Plan-A 분리 확정 반영)
+## 부록 A. §3 카테고리 ↔ Plan 매핑 (최종, Q1~Q8 + Plan-A 분리 + Plan-B 3-PR 진행 반영)
 
-| §3 원문 | 흡수 plan | 비고 |
-|---|---|---|
-| 로딩 상태/스켈레톤 UI | **Plan-A2** | Spinner/Skeleton + 초기 진입 UX (`loadAccounts`/`loadTemplates`/`AccountDetail`). 토스트는 **포함 안 함** (Q1) |
-| 더블클릭/중복 제출 방지 | Plan-B | `Button.loading` + `FormDialog` throw 유지. `useFormSubmit` wrapper **포함 안 함** (Q2) |
-| 키보드 네비게이션/포커스/스크린리더 | **별도 plan (Q5-a)** | axe-core CI + 키보드 Playwright + remediation. 각 plan에 a11y 자연 보강은 계속 |
-| 에러 토스트/인라인 에러 | **Plan-A1** | `mapError()` + 인라인 + `SyncErrorBanner`. **토스트는 포함 안 함** (Q1) |
-| 다크/라이트 테마 + 깜빡임 | Plan-D | FOUC Playwright 실측 후 작업 (Q6) |
-| Plan-7a: 파일 생성 다단계 | **Plan-7a** (✅ 완료 2026-08-30) | 단일 라우트 + Progress bar + Step 순서 (이름→PIN, 2단계) + `FileCreateDialog` 완전 제거 (Q3/Q4/Q8). 폴더 선택 Step은 **Plan-7b로 분리** (2026-08-30 결정). Plan-7a 1차 PR 머지 후 Plan-7a 2차 PR (`DataSection` 백업 마이그레이션 + `FileCreateDialog` 완전 제거)이 남음. Android E2E는 Plan-7a-android-e2e로 별도 갱신 완료 (2026-08-30) |
-| (후속) Plan-7b: 폴더 선택 + 자동 백업 | **Plan-7b** (별도 brainstorm, STRATEGY §2 분류) | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15 |
+|| §3 원문 | 흡수 plan | 비고 |
+||---|---|---|
+|| 로딩 상태/스피너 UI | **Plan-A2** ✅ 완료 (PR `f1dcc638`) | `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. 토스트는 **포함 안 함** (Q1). **범위 축소**: Templates/AccountDetail 미적용 (Q7 사용자 결정 대기) |
+|| 더블클릭/중복 제출 방지 | **Plan-B** (3-PR 분할) | Plan-B-1 ✅ 완료 (PR `cebf14ca`, Button 인프라 + Dialog 마이그레이션 + `aria-busy`). Plan-B-2 ✅ 완료 (PR `e3a4c1ae`, 자주 쓰는 페이지). **Plan-B-3 ✅ 완료** (2026-08-30, 21개 inline → `<Button>` 마이그레이션, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Toggle switch 제외, FileCreateDialog 잔존은 Q4-a 보류. `useFormSubmit` wrapper **포함 안 함** (Q2) |
+|| 키보드 네비게이션/포커스/스크린리더 | **별도 plan (Q5-a)** 미착수 | axe-core CI + 키보드 Playwright + remediation. 각 plan에 a11y 자연 보강은 계속 (Plan-A2 `role="status"`, Plan-B-1 `aria-busy` 추가됨) |
+|| 에러 토스트/인라인 에러 | **Plan-A1** ✅ 완료 (PR `19341aec`) | `mapError()` + 인라인 + `SyncErrorBanner` + 호출처 8곳 try/catch. **토스트는 포함 안 함** (Q1). 후속 plan 공통 전제 해소 |
+|| 다크/라이트 테마 + 깜빡임 | **Plan-D** 미착수 | FOUC Playwright 실측 후 작업 (Q6). 실측 결과 발생 안 하면 cancel 또는 시스템 연동 live 갱신만 |
+|| Plan-7a: 파일 생성 다단계 | **Plan-7a** ✅ 완료 (PR `e878f85b`) + Plan-7a-android-e2e ✅ | 단일 라우트 + Progress bar + Step 순서 (이름→PIN, 2단계). **Q4-a 후속 보류** (2026-08-30 사용자 결정): `DataSection.tsx:197`에서 `FileCreateDialog` 미마이그레이션 — 현재는 그대로 유지, 트리거 발생 시 진행. 폴더 선택 Step은 **Plan-7b로 분리** (별도 brainstorm) |
+|| (후속) Plan-7b: 폴더 선택 + 자동 백업 | **Plan-7b** (별도 brainstorm, STRATEGY §2 분류) 미착수 | SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15 |
 
 ## 부록 B. STRATEGY §3 업데이트 제안 (Multi-Vault 후속 결정 반영)
 
@@ -437,15 +455,18 @@ Track 3: UX·접근성·인터랙션 품질
 +- 에러 토스트/인라인 에러 — 네이티브/브리지 에러를 사용자 언어로 매핑
 +- 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
 +- **후속 후보 — Plan-7: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm §12](docs/brainstorms/2026-08-29-vault-file-integrity.md)) — 3단계 (폴더 선택 → 파일 이름 → 암호 입력) 라우트 기반 흐름으로 모바일 키보드 가시성·뒤로가기 모호함·"되돌리기 어려운 결정" 가시성 개선. §2 볼트 무결성과 분리된 UX 개선 항목이며, Plan-4 (패스프레이즈) 도입 시 Step 3가 자연스럽게 통합됨
-+- **진척 (2026-08-30 갱신):** 6개 항목 중 1개 완료 (Plan-7a), 4개 부분 구현 (a11y/에러/테마/중복제출), 1개 미구현 (로딩). **선행 의존성 해소**: Multi-Vault Support ✅ 완료 (2026-08-30) — [plan](../plans/2026-08-30-multi-vault-support.md)
++- **진척 (2026-08-30 갱신):** 6개 항목 중 **6개 완료** (Plan-7a / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / Plan-B-3, 7개 PR 머지, Plan-B-3은 commit/push 대기), 1개 미구현 (a11y audit / Plan-D). **선행 의존성 해소**: Multi-Vault Support ✅ 완료 (2026-08-30) — [plan](../plans/2026-08-30-multi-vault-support.md)
 +  - ✅ Multi-Vault Support — 완료, Post-Implementation Dead Code Cleanup 62줄 정리. Home 파일 리스트 UI 전제 해소
 +  - ✅ Plan-7a: 다단계 페이지 — 완료 (2026-08-30, PR `e878f85b`). `/create-vault` 2단계 라우트 + Stepper + NameStep/PinStep + 4개 단위 테스트. 후속(2026-08-30): Android E2E pageobject `VaultCreateDialog.kt` → `CreateVaultPage.kt` 페이지 기반 재작성 + 사용자 E2E 직접 실행으로 `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 확인
-+  - 📋 Plan-7a 2차 PR: `DataSection` 백업 다이얼로그 마이그레이션 + `FileCreateDialog` 완전 제거 (Q4-a 후속)
-+  - 📋 Plan-A: 공통 UI 인프라 (Spinner, Skeleton, Toast, useAsync) — §8.1 Q1
-+  - 📋 Plan-B: 버튼/폼 일관성 (Button.loading, useFormSubmit) — §8.1 Q2
-+  - 📋 Plan-D: 테마 FOUC 가드 — §8.1, Q6 실측 후 작업
-+  - 📋 a11y: Plan-A/B/D 부산물 흡수 + 후속 a11y audit plan (Q5)
++  - ✅ Plan-A1: 에러 가시화 — 완료 (2026-08-30, PR `19341aec`). `mapError()` (네이티브/Dexie/Web Crypto → 한국어) + `SyncErrorBanner` + 호출처 8곳 try/catch + `CreateVaultPage` 인라인 정식 전환. 토스트 없음 (Q1). 후속 plan 공통 전제 해소 — [plan](../plans/2026-08-30-plan-a1-error-visibility.md)
++  - ✅ Plan-A2: Spinner — 완료 (2026-08-30, PR `f1dcc638`). `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. **범위 축소**: Templates/AccountDetail 미적용 (Q7 사용자 결정 대기) — [plan](../plans/2026-08-30-plan-a2-spinner-loading.md)
++  - ✅ Plan-B-1: Button 인프라 — 완료 (2026-08-30, PR `cebf14ca`). `Button.tsx` 보강 (`loading`/`disabled`/`aria-busy`) + `<Spinner>` 통합 + `FormDialog`/`ConfirmDialog` inline → `<Button>` + 4+ 단위 테스트
+|  - ✅ Plan-B-2: 자주 쓰는 페이지 — 완료 (PR `e3a4c1ae`). Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault inline → `<Button>`. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
+|  - ✅ Plan-B-3: 나머지 페이지 — 완료 (2026-08-30, [plan](../plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index (3개) / TemplateEdit (4개) / Settings/index (2개) / AutofillSection (3개) / DataSection (5개) / SecuritySection (4개) = **21개 inline `<button>` → `<Button>` 마이그레이션**. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:197`의 `FileCreateDialog` 잔존은 Q4-a 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 가드). 회귀 게이트: typecheck/lint(신규 0)/test 444/444/build/Android compile+unitTest/Playwright React E2E 44/44 모두 ✓. PR 미생성 (commit/push 대기)
+|  - 📋 Plan-D: 테마 FOUC 가드 — plan 문서만 머지 (`6204d909`), 구현 미착수. Q6 Playwright 실측 후 작업 (발생 안 하면 cancel 또는 시스템 연동 live 갱신만)
++  - 📋 a11y audit plan — 미착수. axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 시 (Q5-a)
++  - 📋 Plan-7b: 폴더 선택 + 자동 백업 통합 — 미착수. SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15. STRATEGY §2 분류, 별도 brainstorm 예정
  - **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
-+ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — **Multi-Vault 선행 완료 (2026-08-30), Q1~Q8 사용자 확정 대기**
-+ - **진행 순서 (2026-08-30 갱신):** ~~Multi-Vault~~ ✅ → Plan-7a ✅ → Plan-A1 → Plan-A2 (Plan-B와 병행) → Plan-B → Plan-D → a11y audit plan → Plan-7a 2차 PR (Q4-a 후속) → Plan-7b (별도 brainstorm)
++ - **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — **7개 plan 완료 + Q1~Q8 모두 확정**. 다음 단계는 Plan-D (FOUC 실측 — plan 문서는 머지, 구현 미착수) → a11y audit → Plan-7a 2차 PR (Q4-a, 보류) → Plan-7b (별도 brainstorm)
++ - **진행 순서 (2026-08-30 갱신):** ~~Multi-Vault~~ ✅ → ~~Plan-7a~~ ✅ → ~~Plan-A1~~ ✅ → ~~Plan-A2~~ ✅ → ~~Plan-B-1~~ ✅ → ~~Plan-B-2~~ ✅ → ~~Plan-B-3~~ ✅ (commit/push 대기) → **Plan-D (FOUC 실측)** → **a11y audit plan** → **Plan-7a 2차 PR (Q4-a, 보류)** → **Plan-7b** (별도 brainstorm)
 ```
