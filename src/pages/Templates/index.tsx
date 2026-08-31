@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BottomTabs from "@/components/BottomTabs";
+import Button from "@/components/Button";
 import { useTemplateStore } from "@/store/templateStore";
 
 const TemplateList = () => {
@@ -46,13 +47,7 @@ const TemplateList = () => {
           <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
             템플릿 관리
           </h1>
-          <button
-            type="button"
-            onClick={handleNewTemplate}
-            className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-          >
-            + 템플릿 생성
-          </button>
+          <Button variant="primary" onClick={handleNewTemplate} label="+ 템플릿 생성" />
         </header>
 
         {templates.length === 0 ? (
@@ -60,13 +55,7 @@ const TemplateList = () => {
             <p className="text-[var(--color-text-muted)] mb-4">
               등록된 템플릿이 없습니다.
             </p>
-            <button
-              type="button"
-              onClick={handleNewTemplate}
-              className="rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-            >
-              첫 템플릿 만들기
-            </button>
+            <Button variant="primary" onClick={handleNewTemplate} label="첫 템플릿 만들기" />
           </div>
         ) : (
           <div className="space-y-3">
@@ -92,13 +81,12 @@ const TemplateList = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleEditTemplate(template.id)}
-                    className="rounded-xl bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition"
-                  >
-                    수정
-                  </button>
+                    label="수정"
+                  />
                 </div>
               </div>
             ))}

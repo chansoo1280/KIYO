@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
+import Button from "@/components/Button";
 import {
   KiyoAutofill,
   type AutofillStatus,
@@ -251,23 +252,20 @@ export const AutofillSection: React.FC = () => {
                 className={`w-2 h-2 rounded-full ${isEnabled ? "bg-[var(--color-success)]" : isOurService ? "bg-[var(--color-warning)]" : "bg-[var(--color-border)]"}`}
               />
               {isEnabled ? (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={openAutofillSettings}
                   disabled={loading}
-                  className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-                >
-                  설정
-                </button>
+                  label="설정"
+                />
               ) : (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   onClick={requestEnable}
+                  loading={loading}
                   disabled={loading}
-                  className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50"
-                >
-                  {loading ? "확인 중..." : "활성화"}
-                </button>
+                  label={loading ? "확인 중..." : "활성화"}
+                />
               )}
             </div>
           </div>
@@ -293,14 +291,13 @@ export const AutofillSection: React.FC = () => {
                 {formatTime(lastSyncTime)}
               </span>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={syncAccounts}
+              loading={syncing}
               disabled={syncing || loading}
-              className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] disabled:opacity-50"
-            >
-              {syncing ? "동기화 중..." : "동기화"}
-            </button>
+              label={syncing ? "동기화 중..." : "동기화"}
+            />
           </div>
         </>
       )}

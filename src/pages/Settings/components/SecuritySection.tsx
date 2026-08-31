@@ -4,6 +4,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
 import { changePin } from "@/database/fileStorage";
+import Button from "@/components/Button";
 import { PinChangeDialog } from "./PinChangeDialog";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { exportKey } from "@/crypto/encryption";
@@ -141,13 +142,11 @@ export function SecuritySection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>PIN</span>
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={handlePinChangeClick}
-            className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-          >
-            {isEncrypted ? "변경" : "설정"}
-          </button>
+            label={isEncrypted ? "변경" : "설정"}
+          />
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>자동잠금</span>
@@ -183,18 +182,12 @@ export function SecuritySection() {
       <div className="space-y-3 mt-4">
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>생체인증 로그인</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={() => handleBiometricToggle(!biometricEnabled)}
             disabled={!isEncrypted}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              biometricEnabled
-                ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                : "bg-[var(--color-bg)] text-[var(--color-text-muted)]"
-            } ${!isEncrypted ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {biometricEnabled ? "사용 중" : "사용 안 함"}
-          </button>
+            label={biometricEnabled ? "사용 중" : "사용 안 함"}
+          />
         </div>
       </div>
 
@@ -222,20 +215,8 @@ export function SecuritySection() {
               생체인증 프롬프트가 표시되면 지문 또는 얼굴을 인증해 주세요.
             </p>
             <div className="mt-4 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowBiometricSetupDialog(false)}
-                className="flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] py-2 text-sm font-medium text-[var(--color-text)]"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleBiometricSetupConfirm}
-                className="flex-1 rounded-full bg-[var(--color-accent)] py-2 text-sm font-semibold text-white"
-              >
-                등록하기
-              </button>
+              <Button variant="ghost" onClick={() => setShowBiometricSetupDialog(false)} label="취소" />
+              <Button variant="primary" onClick={handleBiometricSetupConfirm} label="등록하기" />
             </div>
           </div>
         </div>

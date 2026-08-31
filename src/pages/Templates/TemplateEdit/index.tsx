@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Button from "@/components/Button";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
 import { mapError } from "@/utils/mapError";
@@ -179,28 +180,23 @@ const TemplateEdit = () => {
             </h1>
             <div className="flex items-center gap-2">
               {isEdit && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--error)] shadow-sm hover:bg-[var(--error)]/10 dark:border-[var(--border)]/30"
-                >
-                  삭제
-                </button>
+                  label="삭제"
+                />
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={handleCancel}
-                className="rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)]"
-              >
-                취소
-              </button>
-              <button
-                type="button"
+                label="취소"
+              />
+              <Button
+                variant="primary"
+                type="submit"
                 onClick={handleSave}
-                className="rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-              >
-                저장
-              </button>
+                label="저장"
+              />
             </div>
           </header>
 
@@ -261,13 +257,12 @@ const TemplateEdit = () => {
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-[var(--color-text-h)]">필드 정의</h2>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={addField}
-                className="rounded-xl bg-[var(--color-accent-bg)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
-              >
-                + 필드 추가
-              </button>
+                label="+ 필드 추가"
+              />
             </div>
 
             <div className="space-y-3">
