@@ -34,7 +34,9 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await backButton.click();
 
       // 4. Home 페이지(/)로 이동 — 이전 vault는 db.files에 보존되어 리스트에 보임
-      await page.waitForURL('/', { timeout: 5000 });
+      // React Router의 `navigate({ replace: true })`는 history 이벤트를 발생시키지 않아
+      // `waitForURL('/')`이 polling timeout하는 케이스가 있으므로 pathname predicate 사용.
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
@@ -67,7 +69,8 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await fileChangeRow.locator('button:has-text("이동")').click();
 
       // 4. Home 페이지로 이동
-      await page.waitForURL('/', { timeout: 5000 });
+      // pathname predicate — replace navigate의 history 이벤트 미발생 케이스 흡수.
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
@@ -98,7 +101,8 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await fileChangeRow.locator('button:has-text("이동")').click();
 
       // 3. Home으로 이동
-      await page.waitForURL('/', { timeout: 5000 });
+      // pathname predicate — replace navigate의 history 이벤트 미발생 케이스 흡수.
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
@@ -123,7 +127,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForURL('**/auth', { timeout: 10000 });
 
       await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
-      await page.waitForURL('/', { timeout: 5000 });
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
       await expect(page.getByText('파일을 선택하세요')).toBeVisible({ timeout: 5000 });
 
       // 3. multi-vault: 이전 vault 행 보존 확인
@@ -155,7 +159,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       const fileChangeRow = page.locator('text=파일변경').locator('..');
       await fileChangeRow.locator('button:has-text("이동")').click();
 
-      await page.waitForURL('/', { timeout: 5000 });
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
       await expect(page.getByText('파일을 선택하세요')).toBeVisible({ timeout: 5000 });
 
       // 3. multi-vault: 이전 vault 행 보존 확인
@@ -187,7 +191,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForURL('**/auth', { timeout: 10000 });
 
       await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
-      await page.waitForURL('/', { timeout: 5000 });
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
 
       // 3. Home에 vault-one.json 1개 보임
       await expect(page.getByText('vault-one.json')).toBeVisible({ timeout: 5000 });
@@ -209,7 +213,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForURL('**/auth', { timeout: 10000 });
 
       await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
-      await page.waitForURL('/', { timeout: 5000 });
+      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
     });
   });
 });
