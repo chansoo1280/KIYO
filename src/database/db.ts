@@ -11,7 +11,6 @@ import { mapError } from "@/utils/mapError";
 import { fileTable } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
-import { isNativeFileStorageAvailable } from "@/database/fileExport";
 import { createEncryptedRecord, createPlaintextRecord } from "@/crypto/recordEncryption";
 import { useSettingsStore } from "@/store/settingsStore";
 import { writeBackupToUri } from "@/database/fileExport";
@@ -125,10 +124,6 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
   try {
     if (!activeFileName) {
       console.warn("persistVaultSnapshot: No active file name");
-      return;
-    }
-    if (!isNativeFileStorageAvailable()) {
-      // 앱에서만 자동저장
       return;
     }
     const data = await getDatabaseSnapshot(activeFileName, cryptoKey ?? undefined);
