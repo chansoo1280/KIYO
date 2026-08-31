@@ -77,17 +77,6 @@ describe("settingsStore - autoBackup fields", () => {
     expect(stored.state.autoBackupUri).toBe("content://test/uri");
   });
 
-  it("initializeAutoBackup이 에러 없이 실행됨", async () => {
-    const { useSettingsStore: store } = await import("@/store/settingsStore");
-    
-    await act(async () => {
-      await store.getState().initializeAutoBackup();
-    });
-
-    // 에러 없이 완료되면 성공
-    expect(true).toBe(true);
-  });
-
   it("autoBackupEnabled false 설정 시 autoBackupUri 유지됨", async () => {
     const { useSettingsStore: store } = await import("@/store/settingsStore");
     

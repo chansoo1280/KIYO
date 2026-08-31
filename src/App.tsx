@@ -9,52 +9,26 @@ import AutofillTestLogin from "@/pages/AutofillTestLogin";
 import TemplateList from "@/pages/Templates";
 import TemplateEdit from "@/pages/Templates/TemplateEdit";
 import CreateVaultPage from "@/pages/CreateVault";
-import { useAccountStore } from "@/store/accountStore";
-import { useTemplateStore } from "@/store/templateStore";
-import { useSettingsStore } from "@/store/settingsStore";
+import RootRedirect from "@/pages/RootRedirect";
 import { AutoLockIndicator } from "@/components/AutoLockIndicator";
 import { SyncErrorBanner } from "@/components/SyncErrorBanner";
-import { useEffect } from "react";
 import { useAutoLock } from "./hooks/useAutoLock";
 import AndroidBackButtonHandler from "./hooks/useAndroidBackButton";
 
 function App() {
   const { remainingSeconds } = useAutoLock();
-  const loadAccounts = useAccountStore((state) => state.loadAccounts);
-  const loadTemplates = useTemplateStore((state) => state.loadTemplates);
-  const initializeTheme = useSettingsStore((state) => state.initializeTheme);
-  const initializeFontSize = useSettingsStore(
-    (state) => state.initializeFontSize,
-  );
-  const initializeAutoLockTimeout = useSettingsStore(
-    (state) => state.initializeAutoLockTimeout,
-  );
-
-  useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
-
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
-
-  useEffect(() => {
-    initializeTheme();
-  }, [initializeTheme]);
-
-  useEffect(() => {
-    initializeFontSize();
-  }, [initializeFontSize]);
-
-  useEffect(() => {
-    initializeAutoLockTimeout();
-  }, [initializeAutoLockTimeout]);
 
   return (
     <BrowserRouter>
       <AndroidBackButtonHandler />
       <Routes>
-        <Route path="/" element={<Home />} />
+        {/* `/` → RootRedirect (cryptoKey 분기 + preload + /accounts 또는 /auth) */}
+        <Route path="/" element={<RootRedirect />} />
+
+        {/* 실제 Home은 /home으로 이동 */}
+        <Route path="/home" element={<Home />} />
+
+        {/* 기존 라우트 그대로 */}
         <Route path="/create-vault" element={<CreateVaultPage />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/accounts" element={<AccountList />} />

@@ -61,11 +61,6 @@ describe("useAutoLock - Edge Cases", () => {
       setAutofillEnabled: vi.fn(),
       setAutoBackupEnabled: vi.fn(),
       setAutoBackupUri: vi.fn(),
-      initializeTheme: vi.fn(),
-      initializeFontSize: vi.fn(),
-      initializeAutoLockTimeout: vi.fn(),
-      initializeAutofillEnabled: vi.fn(),
-      initializeAutoBackup: vi.fn(),
     };
 
     mockSessionState = {

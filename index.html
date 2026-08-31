@@ -4,9 +4,56 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#aa3bff" />
     <title>kiyo</title>
+    <style>
+      /* FOUC 가드 inline CSS — React mount 전 light/dark 토큰 결정 */
+      html { color-scheme: light dark; }
+      html.light { color-scheme: light; }
+      html.dark { color-scheme: dark; }
+      /* Splash 표시 — React mount 후 SplashScreen이 덮어씀 */
+      #splash {
+        position: fixed; inset: 0; display: flex;
+        align-items: center; justify-content: center;
+        background: #fff; color: #6b6375;
+        font: 18px/145% system-ui, sans-serif;
+        /* 클릭/포인터 차단 — React mount 전 click-blocking 방지 (E2E 회귀) */
+        pointer-events: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        #splash { background: #16171d; color: #9ca3af; }
+      }
+      html.dark #splash { background: #16171d; color: #9ca3af; }
+    </style>
+    <script>
+      // FOUC 가드 — React mount 전에 theme 결정
+      // stored에 명시적 theme이 있을 때만 <html class> 적용.
+      // stored가 없거나 theme 필드가 없으면 <html>에 클래스 두지 않음 →
+      // index.css의 `@media (prefers-color-scheme: dark) :root:not(.light)` 매치미디어가
+      // OS 설정을 따라 첫 paint 결정 → store 기본값 light와도 충돌 없음.
+      (function () {
+        try {
+          var stored = null;
+          try { stored = localStorage.getItem("kiyo-settings"); } catch (e) {}
+          if (stored) {
+            try {
+              var parsed = JSON.parse(stored);
+              var s = parsed && parsed.state ? parsed.state : parsed;
+              if (s && (s.theme === "dark" || s.theme === "light")) {
+                var html = document.documentElement;
+                html.classList.remove("light", "dark");
+                html.classList.add(s.theme);
+              }
+            } catch (e) {}
+          }
+        } catch (e) {
+          // localStorage 접근 실패 시 매치미디어에 위임 (클래스 미적용)
+        }
+      })();
+    </script>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">kiyo</div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

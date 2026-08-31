@@ -20,11 +20,6 @@ export interface SettingsState {
   setAutofillEnabled: (enabled: boolean) => Promise<void>;
   setAutoBackupEnabled: (enabled: boolean) => Promise<void>;
   setAutoBackupUri: (uri: string | null) => Promise<void>;
-  initializeTheme: () => Promise<void>;
-  initializeFontSize: () => Promise<void>;
-  initializeAutoLockTimeout: () => Promise<void>;
-  initializeAutofillEnabled: () => Promise<void>;
-  initializeAutoBackup: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -91,52 +86,31 @@ export const useSettingsStore = create<SettingsState>()(
         setAutoBackupUri: async (uri: string | null) => {
           set({ autoBackupUri: uri });
         },
-
-        initializeTheme: async () => {
-          // Theme is loaded from localStorage via zustand persist middleware
-          const theme = get().theme;
-          // Apply theme to document
-          if (theme === "dark") {
-            document.documentElement.classList.add("dark");
-            document.documentElement.classList.remove("light");
-          } else {
-            document.documentElement.classList.add("light");
-            document.documentElement.classList.remove("dark");
-          }
-        },
-
-        initializeFontSize: async () => {
-          // Font size is loaded from localStorage via zustand persist middleware
-          const fontSize = get().fontSize;
-          // Apply font size to document
-          const fontSizeClass =
-            fontSize === "small" ? "sm" : fontSize === "medium" ? "base" : "lg";
-          document.documentElement.classList.remove(
-            "text-size-sm",
-            "text-size-base",
-            "text-size-lg",
-          );
-          document.documentElement.classList.add(`text-size-${fontSizeClass}`);
-        },
-
-        initializeAutoLockTimeout: async () => {
-          // Auto lock timeout is loaded from localStorage via zustand persist middleware
-          // No side effects needed, just ensure it's loaded
-        },
-
-        initializeAutofillEnabled: async () => {
-          // Autofill enabled is loaded from localStorage via zustand persist middleware
-          // No side effects needed, just ensure it's loaded
-        },
-
-        initializeAutoBackup: async () => {
-          // Auto backup settings are loaded from localStorage via zustand persist middleware
-          // No side effects needed, just ensure it's loaded
-        },
       }),
       {
         name: "kiyo-settings",
         storage: createJSONStorage(() => localStorage),
+        onRehydrateStorage: () => (state) => {
+          // persist hydrate 직후 1회 호출 — <html>에 font-size 클래스 적용
+          // App.tsx의 useEffect initializeFontSize() 이관 (Plan-D PR 1)
+          if (state) {
+            const fontSize = state.fontSize;
+            const fontSizeClass =
+              fontSize === "small"
+                ? "sm"
+                : fontSize === "medium"
+                  ? "base"
+                  : "lg";
+            document.documentElement.classList.remove(
+              "text-size-sm",
+              "text-size-base",
+              "text-size-lg",
+            );
+            document.documentElement.classList.add(
+              `text-size-${fontSizeClass}`,
+            );
+          }
+        },
         partialize: (state) => ({
           theme: state.theme,
           fontSize: state.fontSize,

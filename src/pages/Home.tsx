@@ -32,25 +32,9 @@ const Home = () => {
   };
 
   useEffect(() => {
-    const checkFileAndNavigate = async () => {
-      const sessionActiveFileName = useSessionStore.getState().activeFileName;
-      if (sessionActiveFileName) {
-        const { activeFileName, encrypted } = await fileTable.getFileInfo(sessionActiveFileName);
-        const { cryptoKey } = useSessionStore.getState();
-        if (activeFileName && encrypted && !cryptoKey) {
-          navigate("/auth", { replace: true });
-          return;
-        }
-        if (activeFileName) {
-          navigate("/accounts", { replace: true });
-          return;
-        }
-      }
-      // active 없음 — Home에 머무르며 파일 리스트 표시
-      await refreshFiles();
-    };
-    checkFileAndNavigate();
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshFiles();
+  }, []);
 
   const handleSelectFile = async (fileName: string) => {
     await useSessionStore.getState().clearSession();

@@ -63,6 +63,8 @@ export const useAccountStore = create<AccountState>()(
           console.error("Failed to load accounts:", error instanceof Error ? error.message : String(error));
           useSessionStore.getState().setSyncError(mapError(error));
           set({ isLoading: false });
+          // 호출자(RootRedirect 등)가 인지할 수 있도록 rethrow
+          throw error;
         }
       },
 
