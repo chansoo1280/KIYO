@@ -25,6 +25,10 @@ export const useTemplateStore = create<TemplateState>()(
       initialized: false,
 
       loadTemplates: async () => {
+        // Store-side guard: 이미 initialized면 즉시 return.
+        // RootRedirect 경로(preload)와 self-load 경로(AccountList/Templates)가
+        // 같은 store를 공유하므로 중복 호출 흡수. 호출자가 await해도 안전.
+        if (get().initialized) return;
         set({ isLoading: true });
         try {
           const sessionState = useSessionStore.getState();

@@ -85,15 +85,13 @@ const createMockActiveFileInfo = (overrides: Partial<ActiveFileInfo>): ActiveFil
 };
 
 describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
-  let mockOnNoFile: () => void;
-  let mockOnLocked: () => void;
+  let mockOnInitialized: () => void;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     mockNavigate.mockClear();
-    mockOnNoFile = vi.fn<() => void>();
-    mockOnLocked = vi.fn<() => void>();
+    mockOnInitialized = vi.fn<() => void>();
 
     // Reset the mock store state — activeFileName null (no active vault)
     mockUseSessionStore.getState.mockReturnValue(createMockSessionState());
@@ -104,13 +102,13 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
     vi.resetModules();
   });
 
-  it("sessionStore에 active가 없으면 onNoFile 콜백 호출 및 홈으로 리다이렉트", async () => {
+  it("sessionStore에 active가 없으면 홈으로 리다이렉트하고 onInitialized는 호출 안 됨", async () => {
     mockUseSessionStore.getState.mockReturnValue(createMockSessionState({ activeFileName: null }));
     // getFileInfo는 호출되지 않음 (activeFileName null이면 early return)
 
     renderHook(() =>
       useFileAuthGuard({
-        onNoFile: mockOnNoFile,
+        onInitialized: mockOnInitialized,
         skipRedirect: false,
       }),
     );
@@ -119,7 +117,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnNoFile).toHaveBeenCalled();
+    expect(mockOnInitialized).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
@@ -128,7 +126,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     renderHook(() =>
       useFileAuthGuard({
-        onNoFile: mockOnNoFile,
+        onInitialized: mockOnInitialized,
         skipRedirect: true,
       }),
     );
@@ -137,11 +135,11 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnNoFile).toHaveBeenCalled();
+    expect(mockOnInitialized).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("active가 encrypted이지만 cryptoKey가 없으면 onLocked 콜백 호출 및 /auth로 리다이렉트", async () => {
+  it("active가 encrypted이지만 cryptoKey가 없으면 /auth로 리다이렉트하고 onInitialized는 호출 안 됨", async () => {
     mockUseSessionStore.getState.mockReturnValue(
       createMockSessionState({ cryptoKey: null, activeFileName: "test.json" }),
     );
@@ -151,7 +149,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     renderHook(() =>
       useFileAuthGuard({
-        onLocked: mockOnLocked,
+        onInitialized: mockOnInitialized,
         skipRedirect: false,
       }),
     );
@@ -160,12 +158,12 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnLocked).toHaveBeenCalled();
+    expect(mockOnInitialized).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith("/auth", { replace: true });
     expect(mockFileTable.getFileInfo).toHaveBeenCalledWith("test.json");
   });
 
-  it("active가 encrypted이지만 cryptoKey가 없는데 skipRedirect=true면 리다이렉트 안 함", async () => {
+  it("locked 상태에서 skipRedirect=true면 리다이렉트 안 하고 onInitialized 호출 안 함", async () => {
     mockUseSessionStore.getState.mockReturnValue(
       createMockSessionState({ cryptoKey: null, activeFileName: "test.json" }),
     );
@@ -175,7 +173,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     renderHook(() =>
       useFileAuthGuard({
-        onLocked: mockOnLocked,
+        onInitialized: mockOnInitialized,
         skipRedirect: true,
       }),
     );
@@ -184,11 +182,11 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnLocked).toHaveBeenCalled();
+    expect(mockOnInitialized).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("active가 plaintext이고 cryptoKey가 없어도 통과 (리다이렉트 없음)", async () => {
+  it("plaintext이고 cryptoKey가 없어도 통과 — onInitialized 호출, 리다이렉트 없음", async () => {
     mockUseSessionStore.getState.mockReturnValue(
       createMockSessionState({ cryptoKey: null, activeFileName: "plain.json" }),
     );
@@ -198,8 +196,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     renderHook(() =>
       useFileAuthGuard({
-        onLocked: mockOnLocked,
-        onNoFile: mockOnNoFile,
+        onInitialized: mockOnInitialized,
         skipRedirect: false,
       }),
     );
@@ -208,12 +205,11 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnLocked).not.toHaveBeenCalled();
-    expect(mockOnNoFile).not.toHaveBeenCalled();
+    expect(mockOnInitialized).toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("active가 encrypted이고 cryptoKey가 있으면 통과", async () => {
+  it("encrypted이고 cryptoKey가 있으면 통과 — onInitialized 호출, 리다이렉트 없음", async () => {
     const mockCryptoKey = {} as CryptoKey;
 
     mockUseSessionStore.getState.mockReturnValue(
@@ -225,8 +221,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     renderHook(() =>
       useFileAuthGuard({
-        onLocked: mockOnLocked,
-        onNoFile: mockOnNoFile,
+        onInitialized: mockOnInitialized,
         skipRedirect: false,
       }),
     );
@@ -235,12 +230,11 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnLocked).not.toHaveBeenCalled();
-    expect(mockOnNoFile).not.toHaveBeenCalled();
+    expect(mockOnInitialized).toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("언마운트 시 mounted 플래그로 정리됨", async () => {
+  it("언마운트 시 mounted 플래그로 정리됨 — onInitialized 호출 안 됨", async () => {
     mockUseSessionStore.getState.mockReturnValue(
       createMockSessionState({ cryptoKey: null, activeFileName: "test.json" }),
     );
@@ -250,7 +244,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     const { unmount } = renderHook(() =>
       useFileAuthGuard({
-        onLocked: mockOnLocked,
+        onInitialized: mockOnInitialized,
         skipRedirect: false,
       }),
     );
@@ -261,11 +255,11 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockOnLocked).not.toHaveBeenCalled();
+    expect(mockOnInitialized).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("getFileInfo 에러 시에도 에러 던지지 않음", async () => {
+  it("getFileInfo 에러 시에도 에러 던지지 않고 onInitialized 호출 안 됨", async () => {
     mockUseSessionStore.getState.mockReturnValue(
       createMockSessionState({ activeFileName: "test.json" }),
     );
@@ -273,7 +267,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
 
     renderHook(() =>
       useFileAuthGuard({
-        onNoFile: mockOnNoFile,
+        onInitialized: mockOnInitialized,
         skipRedirect: false,
       }),
     );
@@ -282,6 +276,7 @@ describe("useFileAuthGuard - Session/Auth Boundaries (v14 multi-row)", () => {
       await vi.runAllTimersAsync();
     });
 
+    expect(mockOnInitialized).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 

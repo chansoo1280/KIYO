@@ -1,18 +1,22 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BottomTabs from "@/components/BottomTabs";
 import Button from "@/components/Button";
 import { useTemplateStore } from "@/store/templateStore";
+import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
 const TemplateList = () => {
   const navigate = useNavigate();
-  const { templates, isLoading, initialized, loadTemplates } = useTemplateStore();
+  const { templates, isLoading, loadTemplates } = useTemplateStore();
 
-  useEffect(() => {
-    if (!initialized) {
-      loadTemplates();
-    }
-  }, [initialized, loadTemplates]);
+  // 파일/인증 상태 체크 (훅으로 분리). 통과 시점에 self-load.
+  // store-side initialized 가드가 RootRedirect 경로와 중복 호출을 흡수.
+  useFileAuthGuard({
+    onInitialized: () => {
+      loadTemplates().catch(() => {
+        // loadTemplates 실패 시 Spinner가 계속 보이도록 silent swallow.
+      });
+    },
+  });
 
   const handleNewTemplate = () => {
     navigate("/templates/new");

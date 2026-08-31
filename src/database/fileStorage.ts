@@ -94,8 +94,15 @@ export const decryptVaultData = async (
 /**
  * 3.5단계: 세션 설정 후 Store들 초기화 (계정/템플릿 로드)
  * setupVaultSession 호출 후 사용
+ *
+ * 다른 vault로의 import/change 후 호출 시 store의 `initialized=true` 잔존 상태를
+ * 명시적으로 reset한 뒤 다시 load한다. 그렇지 않으면 store-side guard(`if
+ * (get().initialized) return;`)가 이전 vault의 데이터를 그대로 보존시켜
+ * 새 vault 데이터가 화면에 반영되지 않는 회귀가 발생.
  */
 export const initializeStores = async (): Promise<void> => {
+  useAccountStore.setState({ initialized: false });
+  useTemplateStore.setState({ initialized: false });
   await useAccountStore.getState().loadAccounts();
   await useTemplateStore.getState().loadTemplates();
 };

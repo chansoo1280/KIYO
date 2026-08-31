@@ -15,6 +15,7 @@ const AccountList = () => {
   const accounts = useAccountStore((state) => state.accounts);
   const isLoading = useAccountStore((state) => state.isLoading);
   const initialized = useAccountStore((state) => state.initialized);
+  const loadAccounts = useAccountStore((state) => state.loadAccounts);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -22,8 +23,17 @@ const AccountList = () => {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { activeFileName: fileName } = useSessionStore((state) => state);
 
-  // 파일/인증 상태 체크 (훅으로 분리)
-  useFileAuthGuard({ skipRedirect: false });
+  // 파일/인증 상태 체크 (훅으로 분리). 통과 시점(activeFileName 있고
+  // plaintext || cryptoKey 있음)에 self-load. store-side initialized 가드가
+  // RootRedirect 경로와 중복 호출을 흡수.
+  useFileAuthGuard({
+    onInitialized: () => {
+      loadAccounts().catch(() => {
+        // loadAccounts 실패 시 RootRedirect가 rethrow를 처리하지만 self-load
+        // 경로에서는 Spinner가 계속 보이도록 silent swallow.
+      });
+    },
+  });
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
