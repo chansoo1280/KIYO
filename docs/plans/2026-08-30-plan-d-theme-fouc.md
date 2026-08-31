@@ -941,3 +941,175 @@ PR 2 머지 후:
 - ✅ Q-no-inline-script — 폐기 (inline FOUC script 복원)
 
 Plan-D는 결정 완료 상태. 작업 시작 준비.
+
+---
+
+# Plan-D PR 1 보완 — RootRedirect 우회 회귀 + Self-load 패턴 (2026-08-31)
+
+- Source: `e2e/10-persistence.spec.ts` 실패 분석 → RootRedirect는 `/`에서만 동작 → `/accounts`/`/settings`/`/templates`에 머문 상태에서 새로고침 시 우회됨
+- 의존: Plan-D-1 PR 1 머지 (RootRedirect 도입 완료)
+- Worktree: `feat/ux-accessibility`
+- **상태: 완료 — 모든 테스트 + E2E 통과**
+
+## Goal
+
+**Plan-D-1 PR 1에서 미처 다룬 "RootRedirect 우회 회귀"를 흡수한다.** `/accounts`나 `/settings`에 머문 상태에서 새로고침하면 Zustand 메모리가 초기화되지만 `RootRedirect`는 마운트되지 않아 `loadAccounts`/`loadTemplates`가 영원히 호출되지 않는 회귀를 self-load 패턴으로 막는다. 동시에 store-side 가드와 `initializeStores` reset으로 다른 vault 전환 경로의 정합성을 보장한다.
+
+완료 시 다음이 참:
+- `AccountList`/`Templates/index.tsx`가 파일/인증 통과 시점에 `loadAccounts`/`loadTemplates`를 self-load한다.
+- `loadAccounts`/`loadTemplates` 진입 시 `if (get().initialized) return;` 가드로 중복 호출을 흡수한다 (RootRedirect 경로와 self-load 경로 모두 안전).
+- `useFileAuthGuard`에 `onInitialized?: () => void` 콜백이 추가되며, 호출자가 사용하지 않던 `onNoFile`/`onLocked`는 제거한다.
+- `initializeStores`는 다른 vault로의 import/changePin 호출 시 store의 `initialized=true` 잔존 상태를 명시 reset한 뒤 다시 load한다.
+
+## Why
+
+**진단 (10-persistence.spec.ts 실패 원인 추적):**
+
+- 2번/3번 테스트는 `/accounts`에서 `page.reload()` 호출 → React 프로세스 재시작 → Zustand 메모리 초기화
+- `App.tsx` 라우트는 `/accounts` 매칭 → `AccountList` 직접 렌더
+- `RootRedirect`는 `/`에서만 매칭되므로 **절대 마운트되지 않음**
+- `AccountList`는 store의 `accounts`/`initialized`만 읽고 `loadAccounts`는 호출하지 않음
+- `!initialized` → Spinner만 영원히 표시 → `addAccountButton` 10초 timeout → 실패
+
+**Settings 테스트는 통과한 이유:**
+`Templates/index.tsx:11-15`에 기존 `useEffect`가 `if (!initialized) loadTemplates()` 패턴으로 이미 self-load 중이었음. Settings 페이지도 templates에 의존하지 않으니 영향 없음.
+
+**AccountList만 빠져 있던 이유:**
+Templates 페이지의 self-load 패턴을 AccountList에 추가하지 않았던 것. 두 store의 self-load 책임이 비대칭.
+
+**Self-load와 store-side 가드의 결합이 정답인 이유:**
+- `loadAccounts`가 idempotent하지 않으면 self-load와 RootRedirect.preload가 동시에 호출될 때 race 발생
+- store-side `if (get().initialized) return;`은 **이미 완료된 호출을 흡수**해서 두 경로의 호출이 같은 결과로 수렴
+- store-side guard가 있어도 **vault 전환 경로(import/changePin)**는 명시적 reset이 필요 — `initializeStores`에서 `setState({ initialized: false })` 후 load
+
+## Proposed Changes
+
+### A. `src/store/accountStore.ts` — `loadAccounts` 진입 시 store-side 가드
+
+```ts
+loadAccounts: async () => {
+  // Store-side guard: 이미 initialized면 즉시 return.
+  // RootRedirect 경로(preload)와 self-load 경로(AccountList/Templates)가
+  // 같은 store를 공유하므로 중복 호출 흡수. 호출자가 await해도 안전.
+  if (get().initialized) return;
+  set({ isLoading: true });
+  // ... 기존 로직
+},
+```
+
+**왜:** RootRedirect.preload와 AccountList self-load가 같은 store를 공유. 둘 중 하나가 먼저 끝나면 다른 쪽 호출은 no-op이어야 함. 호출자는 `await`해도 안전 (resolved 즉시 종료).
+
+### C. `src/store/templateStore.ts` — `loadTemplates`에 동일 가드
+
+`AccountList`만 self-load하면 `AccountDetail`이나 `TemplatePicker`에서 `useTemplateStore`가 미초기화 상태일 수 있음. Templates 페이지와 동일한 가드.
+
+### B. `src/hooks/useFileAuthGuard.ts` — `onNoFile`/`onLocked` 제거 + `onInitialized` 추가
+
+```ts
+export function useFileAuthGuard(options: {
+  onInitialized?: () => void;  // 신규
+  skipRedirect?: boolean;
+} = {}) {
+  // ...
+  // 통과 조건: activeFileName && (!encrypted || cryptoKey !== null)
+  // 통과 시점에 onInitialized?.() 호출
+}
+```
+
+**왜 `onNoFile`/`onLocked`를 제거하나:**
+- `src/` 전체 검색 결과 두 콜백을 실제로 사용하는 호출자는 없음 (테스트 제외)
+- 테스트는 콜백 자체의 동작 검증용이라 프로덕션 시그니처에서 불필요
+- YAGNI — 사용되지 않는 추상화 옵션은 시그니처 노이즈
+
+**`onInitialized`만 두는 이유:** self-load 진입점에서 "통과했다 = loadStores해도 안전하다" 시점을 명확히 표현. RootRedirect의 unlock 분기와 의미가 일치 — plaintext 또는 unlocked 상태.
+
+### D. `src/pages/Accounts/index.tsx` — `useFileAuthGuard`에 self-load 추가
+
+```tsx
+useFileAuthGuard({
+  onInitialized: () => {
+    loadAccounts().catch(() => {
+      // loadAccounts 실패 시 RootRedirect가 rethrow를 처리하지만 self-load
+      // 경로에서는 Spinner가 계속 보이도록 silent swallow.
+    });
+  },
+});
+```
+
+**왜 `useFileAuthGuard.onInitialized`를 통하나:
+- `activeFileName` 검증 + `encrypted && cryptoKey` 분기 + `getFileInfo` 호출까지 한 번에 해결
+- 호출자(AccountList)는 store 상태만 알면 되고 파일 메타데이터는 알 필요 없음
+
+### E. `src/pages/Templates/index.tsx` — 기존 useEffect 제거, 동일 패턴 적용
+
+기존 `useEffect(() => { if (!initialized) loadTemplates(); }, [initialized, loadTemplates])` 패턴은 **race에 취약**:
+- `initialized`가 의존성에 포함되어 있어 store 갱신 시 effect 재실행
+- StrictMode에서 double-mount 시 race 가능
+- `useFileAuthGuard.onInitialized`로 통일하면 mount 시 1회만 실행되며 `getFileInfo` 검증까지 보장
+
+**왜 통일하나:** AccountList와 동일한 패턴. 코드 일관성 + 검증 강화(`getFileInfo`로 stale 케이스 즉시 차단).
+
+### F. `src/database/fileStorage.ts` — `initializeStores`에서 명시 reset
+
+```ts
+export const initializeStores = async (): Promise<void> => {
+  useAccountStore.setState({ initialized: false });
+  useTemplateStore.setState({ initialized: false });
+  await useAccountStore.getState().loadAccounts();
+  await useTemplateStore.getState().loadTemplates();
+};
+```
+
+**왜 필요한가:** store-side 가드의 부작용. **다른 vault로의 import/changePin** 경로(`openImportedDataFile`/`changePin`)에서 `initializeStores`를 호출하면 guard가 `initialized=true` 잔존 상태를 보고 즉시 return → 새 vault 데이터가 store에 반영되지 않는 회귀. `fileStorage.lifecycle.integration.test.ts`에서 2건 회귀 확인.
+
+**`clearAccounts`/`clearTemplates`를 안 쓰고 직접 `setState`를 쓰는 이유:**
+- `clearAccounts`는 `accountTable.clear()` (DB도 비움) + `enqueuePersistVaultSnapshot` 호출 — DB 변경 직전에 호출하면 의도하지 않은 빈 상태 persist 발생
+- 단순히 `initialized` 플래그만 reset하면 가드를 우회하면서도 DB는 유지
+
+## 결정
+
+| Q | 결정 | 근거 |
+|---|---|---|
+| Q-Self-Load-Trig | **`useFileAuthGuard.onInitialized`** | `activeFileName` 검증 + `encrypted`/`cryptoKey` 분기 + `getFileInfo` 호출을 한 번에 처리. 호출자는 store만 알면 됨 |
+| Q-Store-Side-Guard | **`if (get().initialized) return;` 진입 가드** | RootRedirect와 self-load의 중복 호출 흡수. 호출자 await 안전 |
+| Q-Reset-In-InitializeStores | **명시적 `setState({ initialized: false })` + reload** | `clearAccounts`/`clearTemplates`는 DB까지 비움 — 의도하지 않은 빈 상태 persist 위험 |
+| Q-Remove-Old-Callbacks | **`onNoFile`/`onLocked` 제거** | 프로덕션 호출자 0 (src/ 검색 결과) |
+| Q-Templates-Unify | **기존 `useEffect` 제거하고 `useFileAuthGuard` 패턴 통일** | race 약점 (initialized dep) + stale 케이스 차단 |
+
+## Tests
+
+### 단위 테스트
+
+- `src/hooks/useFileAuthGuard.test.tsx` (확장) — onNoFile/onLocked 관련 4건 삭제, onInitialized 검증 4건 추가 (plaintext/cryptoKey=set 통과, activeFileName 없으면 미호출, locked 상태 미호출, getFileInfo 에러 시 미호출)
+- `src/pages/Accounts/AccountList.test.tsx` — 영향 없음 (mock의 `loadAccounts = vi.fn()`이라 store-side 가드 무관)
+
+### 회귀 게이트
+
+- `npm run typecheck` — 통과 (DB.ts 기존 `isNativeFileStorageAvailable` 미사용 에러 1건은 본 PR과 무관)
+- `npm run test` — **470/470 통과** (`fileStorage.lifecycle.integration.test.ts` 회귀 2건은 initializeStores 수정으로 해결)
+- `npm run lint` — 우리 변경 파일 에러 0
+
+### Playwright E2E
+
+- `e2e/10-persistence.spec.ts` 3건 — ✅ **모두 통과** (이 PR의 직접 목표)
+  - 1번 (설정 유지): 사전 통과 확인됨
+  - 2번 (비암호화 새로고침): self-load로 `/accounts`에서 reload 후 즉시 데이터 표시
+  - 3번 (암호화 새로고침): PIN 입력 후 self-load로 3개 계정 표시
+
+## 부수 발견 및 수정: `e2e/11-close-datafile.spec.ts` (React Router replace navigate flake)
+
+- **증상:** 11번 테스트 2건이 `waitForURL('/', { timeout: 5000 })`에서 timeout. 페이지 스냅샷은 Home이 정상 렌더링된 상태였음.
+- **원인:** `Settings/index.tsx:18`의 `navigate("/", { replace: true })`와 Auth "첫 화면으로 돌아가기"가 동일 패턴. React Router의 `history.replaceState`는 popstate/pushstate 이벤트를 발생시키지 않아 Playwright의 `waitForURL('/')`이 polling timeout.
+- **수정:** 7건 모두 `waitForURL((url) => url.pathname === '/', { timeout: 5000 })`로 교체 (pathname predicate). `e2e/01-create-vault.spec.ts:159`에 이미 동일 패턴이 있어 일관성 확보.
+
+## 새로 캡처한 knowledge (재사용 가능)
+
+- **KIYO 페이지 단위 self-load 원칙:** `/accounts`나 `/settings`처럼 Zustand store에 의존하는 페이지는 RootRedirect를 우회하는 진입 경로(새로고침/딥링크/북마크)가 있으므로 **반드시 자체 load 책임**을 가져야 함. store-side `if (initialized) return;` 가드와 결합하면 중복 호출 안전.
+- **store-side 가드의 부작용:** `if (initialized) return;`은 일반 호출에는 안전하지만 **vault 전환 경로**(import/changePin)에서 이전 상태를 잔존시키는 회귀가 발생. `initializeStores` 같은 transition 함수는 명시적 reset 책임이 필요.
+- **React Router `replace: true` + Playwright `waitForURL` flake:** history 이벤트가 발생하지 않음 → `waitForURL('/')`이 감지 못함. pathname 함수 predicate로 우회.
+- **DI 분해 — `useFileAuthGuard`의 콜백 단순화:** 사용되지 않는 옵션(`onNoFile`/`onLocked`)은 YAGNI. 호출 패턴을 보면 "통과한 시점"만 필요했음 → `onInitialized` 단일 콜백으로 단순화 가능.
+
+## Risks (잔여)
+
+- `e2e/11-close-datafile.spec.ts`의 7건은 pathname predicate로 교체했으나 **timing 의존**은 잔존. 핵심 동작(파일 변경 후 Home 표시)은 후속 `expect(page.getByText('파일을 선택하세요'))`가 보장.
+- store-side guard와 Dexie close race (Plan-D-1 §1-C effect 3 store state 동기 검사) 상호작용: race가 발생하면 RootRedirect가 retry → 두 번째 시도에 가드가 `initialized=true`로 남아있어 즉시 return 가능. **단, race 가드는 `runOnce` 내부에서 store state를 동기 검사하므로 race 흡수 시 setState가 정상 적용됨** — 가드와의 상호작용 안전.
