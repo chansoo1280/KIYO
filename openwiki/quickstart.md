@@ -7,85 +7,132 @@ tags: [quickstart, navigation]
 
 # KIYO Wiki Quickstart
 
-This wiki provides comprehensive documentation for the KIYO repository, an offline-first Android password manager with system-level autofill integration. Use this guide to navigate the documentation and find information for specific development tasks.
+KIYO is an **offline-first, privacy-focused Android password manager** with system-level autofill integration. The repository pairs a React 19 / TypeScript frontend running inside a Capacitor 8 WebView with Kotlin native code that implements the Android `AutofillService` (API 26+), SQLCipher-backed credential storage, and Android Keystore-mediated key wrapping.
 
-## Repository Overview
+This wiki documents the source so an agent or contributor can understand the system, navigate the code, and safely change it.
 
-KIYO is a hybrid application combining:
-- **React frontend** (TypeScript, Vite, Tailwind CSS) for the user interface
-- **Android native layer** (Kotlin) for autofill service and secure storage
-- **Capacitor bridge** for communication between web and native layers
-- **Local storage** using IndexedDB (Dexie.js) for frontend data and SQLCipher for autofill credentials
+## Architecture at a Glance
 
-## Navigation Guide
+```mermaid
+flowchart LR
+    subgraph "React App (WebView)"
+        A[React UI] --> B[Zustand Stores]
+        B --> C[Dexie/IndexedDB]
+        B --> D[Capacitor Plugins]
+    end
 
-Use the table below to find documentation based on your development intent:
+    subgraph "Capacitor Bridge"
+        D --> E[KiyoAutofill Plugin]
+        D --> F[SecureKey Plugin]
+        D --> G[KiyoFile Plugin]
+    end
 
-| Intent / Change Area | Relevant Wiki Page(s) | Key Entrypoints / Symbols | Focused Tests | Validation Command |
-|----------------------|------------------------|----------------------------|---------------|---------------------|
-| Understanding overall architecture | `/openwiki/architecture/overview.md` | `src/main.tsx`, `src/App.tsx` | N/A | `npm run build` |
-| Modifying UI pages (Home, Accounts, Settings) | `/openwiki/frontend/pages/` | `src/pages/` directory | `src/pages/**/*.test.tsx` | `npm run test` |
-| Adding/editing account fields or templates | `/openwiki/frontend/pages/templates/`<br>`/openwiki/models/` | `src/models/`<br>`src/pages/Templates/` | `src/database/templateTable.integration.test.ts` | `npm run test -- --reporter verbose template` |
-| Changing autofill behavior or Android integration | `/openwiki/android/` | `android/app/src/main/java/com/kiyo/app/autofill/`<br>`src/plugins/` | `android/app/src/androidTest/` | `npm run test:e2e` |
-| Updating cryptographic operations or key management | `/openwiki/crypto/`<br>`/openwiki/android/database/database-key-manager.md` | `src/crypto/`<br>`android/app/src/main/java/com/kiyo/app/autofill/repository/` | `src/crypto/**/*.test.ts`<br>`src/database/fileStorage.encryption.integration.test.ts` | `npm run test -- --reporter verbose crypto` |
-| Modifying state management (Zustand stores) | `/openwiki/frontend/state/` | `src/store/` directory | `src/store/**/*.test.ts` | `npm run test` |
-| Adding new UI components or hooks | `/openwiki/frontend/components/`<br>`/openwiki/frontend/hooks/` | `src/components/`<br>`src/hooks/` | `src/components/**/*.test.tsx`<br>`src/hooks/**/*.test.ts` | `npm run test` |
-| Android back button handling | `/openwiki/frontend/hooks/use-android-back-button.md` | `src/hooks/useAndroidBackButton.ts` | N/A | `npm run test:e2e` |
-| Changing error handling or file storage operations | `/openwiki/errors/file-storage-error.md`<br>`/openwiki/database/file-storage.md` | `src/errors/FileStorageError.ts`<br>`src/database/fileStorage.ts` | `src/database/fileStorage*.integration.test.ts` | `npm run test` |
-| Updating build configuration or dependencies | `/openwiki/operations/build.md` | `vite.config.ts`<br>`android/` Gradle files | N/A | `npm run build` |
-| CI/CD pipeline changes | `/openwiki/operations/ci-cd.md` | `.github/workflows/ci.yml` | N/A | `npm run typecheck && npm run lint && npm run test && npm run build` |
-| Modifying environment variables or configuration | `/openwiki/operations/build.md` | `vite.config.ts`<br>`capacitor.config.ts` | N/A | `npm run dev` |
+    subgraph "Android Native"
+        E --> H[KiyoAutofillService]
+        F --> I[SecureKeyManager]
+        G --> J[KiyoFile Plugin]
+        H --> K[AutofillRepository]
+        I --> L[Biometric Auth Helper]
+        K --> M[SQLCipher main + index]
+        L --> N[Android Keystore]
+        M --> N
+        J --> O[Encrypted Vault Files]
+    end
 
-## Key Entry Points
+    subgraph "File System"
+        C --> O
+    end
+```
 
-- **Application bootstrap**: `/src/main.tsx` - React root rendering
-- **Root application**: `/src/App.tsx` - Routing, providers, top-level layout, and Android back button handler
-- **Autofill service entry**: `/android/app/src/main/java/com/kiyo/app/autofill/service/KiyoAutofillService.kt`
-- **Capacitor plugin registration**: `/src/plugins/kiyautofill.ts` (Android) and `.web.ts` (web)
-- **Database initialization**: `/src/database/db.ts` - Dexie schema and instance
+## Navigation Map
 
-## Common Development Tasks
+| Intent / Change Area | Wiki Page(s) | Key Entrypoints / Symbols | Focused Tests | Validation Command |
+|----------------------|---------------|----------------------------|---------------|---------------------|
+| Overall system architecture | [architecture/overview.md](architecture/overview.md), [architecture/data-flow.md](architecture/data-flow.md) | `src/main.tsx`, `src/App.tsx`, `android/app/src/main/java/com/kiyo/app/KiyoApplication.kt` | n/a | `npm run build` |
+| Encryption / key management | [architecture/security-model.md](architecture/security-model.md), [frontend/crypto/](frontend/crypto/), [android/security/](android/security/) | `src/crypto/encryption.ts`, `src/crypto/recordEncryption.ts`, `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` | `src/crypto/encryption.test.ts`, `src/database/fileStorage.encryption.integration.test.ts`, `android/app/src/test/java/com/kiyo/app/security/DatabaseKeyManagerTest.kt` | `npm run test -- --reporter verbose crypto` |
+| Vault lifecycle (create/open/import/change-pin/lock/close) | [frontend/database/file-storage.md](frontend/database/file-storage.md), [frontend/database/dexie-schema.md](frontend/database/dexie-schema.md) | `src/database/fileStorage.ts` (`createDataFile`, `unlockFile`, `closeDataFile`, `changePin`) | `src/database/fileStorage.lifecycle.integration.test.ts`, `src/database/fileStorage.encryption.integration.test.ts` | `npm run test` |
+| Multi-vault model and v14 PK migration | [frontend/database/file-storage.md](frontend/database/file-storage.md), [frontend/database/dexie-schema.md](frontend/database/dexie-schema.md) | `src/database/fileTable.ts::resolveFileName`, `src/database/db.ts::KiyoDatabase.version(14)` | `src/database/fileStorage.encryption.integration.test.ts` | `npm run test` |
+| Auto-save / Sync Queue | [frontend/database/sync-queue.md](frontend/database/sync-queue.md) | `src/database/syncQueue.ts`, `src/database/db.ts::persistVaultSnapshot` | `src/database/fileStorage.lifecycle.integration.test.ts` | `npm run test` |
+| Zustand stores | [frontend/state-management.md](frontend/state-management.md) | `src/store/{sessionStore,accountStore,templateStore,settingsStore}.ts` | `src/store/settingsStore.test.ts`, `src/database/accountTable.integration.test.ts` | `npm run test` |
+| Routing / preload state machine | [frontend/app-structure.md](frontend/app-structure.md), [frontend/pages/root-redirect.md](frontend/pages/root-redirect.md) | `src/App.tsx`, `src/pages/RootRedirect.tsx` | `src/pages/RootRedirect.test.tsx`, `src/App.simple.test.tsx` | `npm run test` |
+| UI pages | [frontend/pages/](frontend/pages/) | `src/pages/**/*.{ts,tsx}` | `src/pages/**/*.test.{ts,tsx}` | `npm run test` |
+| Shared components & dialogs | [frontend/components/overview.md](frontend/components/overview.md), [frontend/components/dialogs/](frontend/components/dialogs/) | `src/components/**/*.{ts,tsx}` | `src/components/**/*.test.{ts,tsx}` | `npm run test` |
+| Capacitor plugins (web) | [frontend/capacitor-plugins/](frontend/capacitor-plugins/) | `src/plugins/{kiyautofill,kiyosecurekey,kiyofile}.ts` (+ `.web.ts` fallbacks) | web tests via `common.setup.ts` mocks | `npm run test` |
+| Hooks (auto-lock, file guard, back button) | [frontend/hooks/](frontend/hooks/) | `src/hooks/{useAutoLock,useFileAuthGuard,useAndroidBackButton,useClipboard}.ts(x)` | `src/hooks/useAutoLock.test.tsx`, `src/hooks/useFileAuthGuard.test.tsx` | `npm run test` |
+| Android autofill service | [android/autofill-service/](android/autofill-service/) | `android/app/src/main/java/com/kiyo/app/autofill/service/KiyoAutofillService.kt`, `autofill/detection/`, `autofill/viewnode/`, `autofill/response/` | `android/app/src/test/java/com/kiyo/app/autofill/{FieldScorer,FieldScoringRules,DomainMatcher,HtmlAttributeExtractor}Test.kt` | `./gradlew testDebugUnitTest` |
+| Android autofill repository | [android/repository/](android/repository/) | `AutofillRepository.kt`, `AutofillDatabaseHelper.kt`, `AutofillIndexDatabaseHelper.kt` | `android/app/src/test/java/com/kiyo/app/autofill/repository/{AccountMapper,DomainMatcher}Test.kt` | `./gradlew testDebugUnitTest` |
+| Android Keystore / DB_KEY | [android/security/](android/security/) | `KeystoreManager.kt`, `DatabaseKeyManager.kt`, `EncryptedKey.kt`, `DatabaseKeyGenerator.kt` | `android/app/src/test/java/com/kiyo/app/security/{KeystoreManager,DatabaseKeyManager}Test.kt` | `./gradlew testDebugUnitTest` |
+| Android SQLCipher migrations | [android/repository/database-migrations.md](android/repository/database-migrations.md) | `AutofillDatabaseHelper.kt::onCreate/onUpgrade`, `AutofillIndexDatabaseHelper.kt` | Robolectric `AutofillDatabaseHelperTest` (where present) | `./gradlew testDebugUnitTest` |
+| Capacitor plugins (native) | [android/capacitor-plugins/](android/capacitor-plugins/) | `KiyoAutofillPlugin.kt`, `SecureKeyPlugin.kt`, `KiyoFilePlugin.kt`, `AutofillSyncManager.kt`, `AutofillPlatformBridge.kt` | `android/app/src/test/java/com/kiyo/app/capacitor/{AutofillSyncManager,KiyoAutofillPlugin}Test.kt` | `./gradlew testDebugUnitTest` |
+| Biometric vault unlock | [android/securekey/](android/securekey/) | `SecureKeyManager.kt`, `BiometricAuthHelper.kt`, `BiometricAuthHelperFactory` | n/a (manual / androidTest only) | `./gradlew connectedAndroidTest` |
+| Android E2E (autofill, autosave, biometric) | [testing/android-e2e-tests.md](testing/android-e2e-tests.md), [android/test-host.md](android/test-host.md) | `android/run-{autofill,autosave,biometric}-e2e.ps1`, page objects under `android/app/src/androidTest/.../e2e/pageobjects/` | `android/app/src/androidTest/java/com/kiyo/app/{autofill/AutofillE2E,autosave/AutosaveE2E,biometric/BiometricUnlockE2E}Test.kt` | `npm run test:e2e:android`, `npm run test:e2e:biometric` |
+| Data models | [models/](models/), [data-models/](data-models/), [frontend/data/](frontend/data/) | `src/models/*.ts`, `src/data/*.ts` | `src/database/{account,template,file}Table.integration.test.ts` | `npm run test` |
+| Build / CI / Release | [operations/](operations/) | `vite.config.ts`, `capacitor.config.ts`, `.github/workflows/*.yml` | n/a | `npm run android:build`, `npm run check` |
 
-### Adding a new account field type
-1. Define field type in `/src/models/fieldTypes.ts`
-2. Add to built-in templates in `/src/data/builtinTemplates.ts` if applicable
-3. Update template store in `/src/store/templateStore.ts` if needed
-4. Ensure UI components handle the new field type (AccountEdit, TemplateEdit)
-5. Add tests in `/src/database/templateTable.integration.test.ts`
+## Key Concepts
 
-### Modifying autofill behavior
-1. Identify relevant autofill submodule in `/android/app/src/main/java/com/kiyo/app/autofill/` (e.g., detection, credential, repository)
-2. Modify Kotlin implementation
-3. Update Capacitor plugin interface if needed in `/src/plugins/`
-4. Update frontend usage in `/src/pages/AutofillTestLogin.tsx` or stores
-5. Run E2E tests: `npm run test:e2e`
+### Vault
+A vault is an encrypted JSON file (`KiyoVaultData` plaintext or `EncryptedKiyoVaultData` after `createEncryptedVault`). Each vault is a row in the `files` Dexie table keyed by `fileName` (since v14). The PIN derives a `CryptoKey` via PBKDF2 (100k iterations, SHA-256) which encrypts the vault blob with AES-GCM.
 
-### Changing encryption parameters
-1. Review `/src/crypto/encryption.ts` for low-level crypto
-2. Check `/src/crypto/recordEncryption.ts` for record-level operations
-3. Verify Android KeyStore integration in `/openwiki/android/database/database-key-manager.md`
-4. Run crypto tests: `npm run test -- --reporter verbose crypto`
-5. Verify file storage tests still pass
+### Multi-vault Model
+Since v14, the `files` table uses `fileName` as PK instead of the legacy `"active"` literal. Multiple vault files co-exist; `resolveFileName` appends `(N)` for collisions. `closeDataFile` clears the active session and in-memory stores but preserves the `files` rows. Switching vaults calls `initializeStores()` which resets the store-side `initialized` guard so `loadAccounts`/`loadTemplates` reload from the freshly-decrypted vault.
 
-### Adding a new settings option
-1. Add setting definition in `/src/store/settingsStore.ts`
-2. Update Settings UI in `/src/pages/Settings/` directory
-3. Persist setting via `initialize*` functions in `App.tsx`
-4. Ensure setting is retrieved and used in relevant components
-5. Add unit tests for settings store
+### Two-Stage Autofill (Matching Layer)
+The Android `KiyoAutofillService.onFillRequest` is intentionally two-stage:
+1. Open `kiyo_autofill_index.db` (non-auth `INDEX_KEY`) and run `findMatchingAccountIdsByIndex(domain, packageNames)`.
+2. **Only if** Stage 1 returns matches, acquire `kiyo_master_key_N` (auth-required `DB_KEY`) and open `kiyo_autofill.db` to fetch full credentials.
 
-### Modifying Android back button behavior
-1. Locate the hook at `/src/hooks/useAndroidBackButton.ts`
-2. Modify the handler logic for navigation vs. exit conditions
-3. Test on Android device/emulator with hardware back button
-4. Run E2E tests: `npm run test:e2e`
+This design ensures that autofill requests for sites/apps that have no matching credentials never trigger an Android Keystore auth prompt. The index DB is rebuilt on every full React→Native sync (`syncAndRebuildIndex`).
+
+### Auto-Lock
+`useAutoLock` enforces a `none | 1m | 10m | 30m` timeout. Activity events (click, keydown, touchstart, scroll) reset the timer. On expiry, `lockDataFile` clears `cryptoKey` (vault and DB rows remain). The `cryptoKey` is in memory only — never persisted.
+
+### Keystore Master Keys
+Two separate Keystore keys:
+- `kiyo_master_key_N` (alias pointer + indexed migration) — wraps `DB_KEY` for the autofill SQLCipher DB. Auth-required (biometric or device credential).
+- `kiyo_secure_master_key` — wraps the React `cryptoKey` for biometric vault unlock. Biometric STRONG only.
+
+`kiyo_index_master_key` / `kiyo_index_key` are non-auth Keystore keys that encrypt the index DB only.
+
+### Capacitor Bridge
+The WebView ↔ native communication happens via three Capacitor plugins: `KiyoAutofill` (status + sync), `SecureKey` (biometric vault unlock), `KiyoFile` (SAF backup). Web fallbacks (`*.web.ts`) return safe defaults so the React app runs in a browser without changes.
+
+## Common Tasks
+
+### Adding a New Account Field Type
+1. Add to `FieldType` union in `src/models/fieldTypes.ts`.
+2. Add to `DEFAULT_TEMPLATE_FIELDS` and `BUILTIN_TEMPLATES` (`src/data/builtinTemplates.ts`) if applicable.
+3. Map to the right input component in `src/components/inputs/Input.tsx` and `PasswordField.tsx`.
+4. Add focused tests in `src/database/templateTable.integration.test.ts`.
+
+### Modifying Autofill Behavior
+1. Identify the relevant Kotlin module under `android/app/src/main/java/com/kiyo/app/autofill/`.
+2. For detection changes: edit `detection/FieldScorer.kt` or `FieldScoringRules.kt` constants.
+3. For matching changes: edit `repository/DomainMatcher.kt`.
+4. Add Robolectric test under `android/app/src/test/java/com/kiyo/app/autofill/...`.
+5. Run `npm run test:e2e:android` for the E2E suite (emulator required).
+
+### Changing Encryption Parameters
+1. `src/crypto/encryption.ts` — `createCryptoKey`, `encryptData`, `decryptData`.
+2. `src/crypto/recordEncryption.ts` — per-record AES-GCM encryption.
+3. `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` — `rewrapDbKey`, alias pointer, reset flow.
+4. Re-run `npm run check` and `npm run test -- --reporter verbose crypto`.
+
+### Adding a New Settings Option
+1. Add to `src/store/settingsStore.ts` (state field + partialize + setter).
+2. Update `src/pages/Settings/components/{SecuritySection,UISection,DataSection,AutofillSection}.tsx`.
+3. If persisted to Android native (e.g., `autoBackupEnabled`/`autoBackupUri`), add to `src/database/db.ts::tryTriggerAutoBackup` consumer.
+4. Add focused tests in `src/store/settingsStore.test.ts`.
+
+## Source of Truth
+
+- **Source code + tests** are authoritative. Every wiki page links back to source anchors.
+- **README.md** and **STRATEGY.md** at the repository root are upstream product documentation.
+- **/openwiki/** is the generated evidence index. The scheduled OpenWiki GitHub Actions workflow refreshes it. Treat the wiki as just-in-time context, not startup reading.
 
 ## Getting Help
 
-- Examine test files for usage patterns and edge cases
-- Check git history for recent changes and rationale
-- Look for TODO comments in source code for known issues
-- Run `npm run lint` to catch code style issues
-- Use `npm run typecheck` to verify TypeScript safety
-
----
+- Search the codebase with targeted tools (rg, grep) — the wiki is a map, not a copy.
+- Look at tests for the behavior expected by the developer (tests are the contract).
+- For Android Keystore errors, check logcat with the relevant tags (`KeystoreManager`, `DatabaseKeyManager`, `BiometricAuthHelper`).
+- For React-side issues, use the Vitest UI (`npm run test:ui`) and dev-tools.

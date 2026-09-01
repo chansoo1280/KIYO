@@ -11,6 +11,7 @@
 - [capacitor-plugins](capacitor-plugins/)
 - [components](components/)
 - [crypto](crypto/)
+- [data](data/)
 - [database](database/)
 - [hooks](hooks/)
 - [pages](pages/)

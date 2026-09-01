@@ -1,153 +1,78 @@
 ---
 type: model
 title: Account Model
-description: Represents a single password/account entry with fields for username, password, notes, and custom fields defined by templates.
-tags: [model, account, data-structure]
+description: Frontend Account model. Represents a single password/account entry with custom fields defined by templates.
+tags: [model, account, data-structure, template]
 ---
-
 # Account Model
-
 The Account model represents a single password/account entry in KIYO. It includes standard fields (username, password, notes) and custom fields defined by templates, along with metadata for organization and security.
-
-## Source File
-- `/src/models/account.ts`
-
-## TypeScript Interface
-
-```typescript
+Source File: /src/models/account.ts
+TypeScript Interface:
 export interface Account {
-  id: string;
-  name: string; // Account name or title (e.g., "Gmail", "Netflix")
-  username: string;
-  password: string;
+  id: number; // PK from Dexie (auto-incremented)
+  title: string; // Display title (e.g., "Gmail", "Netflix")
+  username?: string; // Top-level username field (often duplicated in fields[])
+  password?: string; // Top-level password field
+  websiteUrl?: string; // Optional website URL for autofill hint
+  domain?: string; // Optional normalized domain (e.g., "google.com") for autofill
+  packageNames?: string[]; // Optional Android package names (e.g., ["com.google.android.googlequicksearchbox"])
+  packageName?: string | null; // Single-package convenience for autofill
+  icon?: string; // Emoji icon (optional, defaults in UI)
   notes?: string;
-  fields: CustomField[]; // Custom fields defined by the account's template
-  templateId: string; // Reference to the template used for this account
-  createdAt: number; // Timestamp (milliseconds since epoch)
-  updatedAt: number; // Timestamp (milliseconds since epoch)
-  favorite: boolean; // Whether the account is marked as favorite
-  tags: string[]; // User-defined tags for categorization
+  fields: AccountField[]; // Fields from the template + custom additions
+  tags: string[]; // User-defined tags
+  favorite: boolean;
+  createdAt: number;
+  updatedAt: number;
+  templateId?: number | null; // Reference to the template (null for "no template")
+  appName?: string; // Optional display label (e.g., "Google Search")
 }
-```
-
-### CustomField Type
-
-```typescript
-export interface CustomField {
-  id: string; // Unique identifier for the field (from template)
-  value: string; // User-entered value for this field
+export interface AccountField {
+  id: string; // Stable id (often matches TemplateField.id)
+  label: string; // Display label
+  type: FieldType; // "text" | "email" | "password" | "url" | "tel" | "number" | "date" | "textarea"
+  value: string;
+  sensitive?: boolean; // Marks the field for password-style obscuring
 }
-```
-
-## Properties Explained
-
+Properties Explained
 | Property | Type | Description |
-|---------|------|-------------|
-| `id` | string | Unique identifier for the account (UUID) |
-| `name` | string | Display name/title of the account |
-| `username` | string | Username or email associated with the account |
-| `password` | string | Password for the account (encrypted at rest) |
-| `notes` | string (optional) | Additional notes about the account |
-| `fields` | CustomField[] | Array of custom fields defined by the template |
-| `templateId` | string | ID of the template that defines this account's structure |
-| `createdAt` | number | Timestamp when account was created |
-| `updatedAt` | number | Timestamp when account was last modified |
-| `favorite` | boolean | Flag indicating if account is favorited |
-| `tags` | string[] | Array of user-defined tags for organization |
-
-## Usage Across Layers
-
-### Frontend Components
-- **AccountList**: Displays accounts in a list, showing name, username, and favorite status
-- **AccountDetail**: Shows all account fields including custom fields from template
-- **AccountEdit/Form**: Uses template to render appropriate input fields for editing
-- **Templates**: When creating accounts from templates, uses templateId to determine field structure
-
-### Zustand Stores
-- **accountStore**: 
-  - Loads/saves accounts to/from IndexedDB
-  - Handles encryption/decryption of sensitive fields (password, custom field values)
-  - Provides CRUD operations (add, update, delete, favorite, tag)
-  - Supports filtering/searching by name, username, tags, favorites
-
-### Database Layer
-- **accountTable** (`src/database/accountTable.ts`):
-  - Dexie.js table typed to Account interface
-  - Indexes on `templateId`, `favorite`, `updatedAt` for efficient queries
-  - Automatic encryption/decryption of sensitive fields via middleware
-
-### Cryptographic Operations
-- Sensitive fields (`password`, `fields[].value`) are encrypted using:
-  - PBKDF2 key derivation from user PIN
-  - AES-GCM encryption with random IV
-  - Encryption/decryption handled automatically by store/database layer
-- Non-sensitive fields (`id`, `name`, `username`, `notes`, `templateId`, timestamps, `favorite`, `tags`) are stored in plaintext
-
-## Relationships
-
-### Template Relationship
-- Each Account references exactly one Template via `templateId`
-- Template defines which `CustomField` objects an Account can have
-- When template changes, existing accounts retain their original template reference
-
-### Vault Relationship
-- Accounts can be exported to/imported from encrypted Vault files
-- During export, Accounts are encrypted with vault-specific key
-- During import, Accounts are decrypted and added to current database
-
-### WebsitePreset Relationship
-- Used for autofill matching: WebsitePreset defines patterns that match Account
-- Matching based on:
-  - Account.username matching email patterns in WebsitePreset
-  - Or custom logic in AutofillService for domain/package matching
-
-## Validation Rules
-
-### Required Fields
-- `id`: Must be non-empty string (UUID)
-- `name`: Must be non-empty string (max 100 chars)
-- `username`: Must be non-empty string
-- `password`: Must be non-empty string
-- `templateId`: Must reference existing template
-- `createdAt`, `updatedAt`: Must be valid timestamps
-- `favorite`: Must be boolean
-- `tags`: Must be array of strings
-
-### Field Validation
-- `name`: Max length 100 characters
-- `username`: Valid email format or non-empty string
-- `password`: Min length 6 characters (configurable)
-- `notes`: Max length 500 characters
-- `fields[].id`: Must match field ID from template
-- `fields[].value`: Validation depends on template field type
-
-## Example Account
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "Gmail",
-  "username": "user@gmail.com",
-  "password": "encrypted_value_here",
-  "notes": "Work email account",
-  "fields": [
-    {
-      "id": "recovery-email",
-      "value": "recovery@example.com"
-    }
-  ],
-  "templateId": "email-template",
-  "createdAt": 1640995200000,
-  "updatedAt": 1640995200000,
-  "favorite": true,
-  "tags": ["work", "email", "google"]
-}
-```
-
-## Security Considerations
-
-- **Encryption at Rest**: Sensitive fields (`password`, `custom field values`) are encrypted before storage
-- **In-Memory Protection**: Decrypted values exist only in memory during active sessions
-- **Auto-Lock**: Session clearing removes decrypted sensitive data from memory
-- **No Plaintext Storage**: Sensitive data never written to disk in unencrypted form
-- **Access Control**: Frontend components only decrypt data when needed for display/edit
+|----------|------|-------------|
+| id | number | PK from Dexie (auto-incremented) |
+| title | string | Display title (e.g., "Gmail", "Netflix") |
+| username | string? | Top-level username |
+| password | string? | Top-level password |
+| websiteUrl | string? | Login URL (informational) |
+| domain | string? | Normalized domain for autofill matching |
+| packageNames | string[]? | Android package names for autofill |
+| packageName | string? | Single Android package (autofill hint) |
+| icon | string? | Emoji icon |
+| notes | string? | Free-form notes |
+| fields | AccountField[] | Template-derived fields + user-added fields |
+| tags | string[] | User-defined tags |
+| favorite | boolean | Starred |
+| createdAt | number | ms epoch |
+| updatedAt | number | ms epoch |
+| templateId | number? | PK of the template this account was created from |
+| appName | string? | Display label override (used by Android autofill save) |
+Usage Across Layers
+Frontend Components
+AccountList: Displays accounts in a list, showing title, tags, favorite.
+AccountDetail: Shows all account fields with copy-to-clipboard.
+AccountEdit/Form: Uses template to render appropriate input fields.
+Templates: When creating accounts from templates, uses templateId to determine field structure.
+Zustand Stores
+accountStore: Loads/saves accounts to/from IndexedDB. Handles encryption/decryption of records. Provides CRUD operations (addAccount, updateAccount, deleteAccount, getAccountById). Provides syncToAutofill that pushes accounts to the native autofill.
+Database Layer
+accountTable (src/database/accountTable.ts): Dexie.js table typed to Account interface. Indexes on createdAt, updatedAt. Encryption handled at table-module layer (createEncryptedRecord/decryptRecord).
+Cryptographic Operations
+Sensitive fields are encrypted using PBKDF2 key derivation from user PIN, then AES-GCM record-level encryption with random IV (recordEncryption.ts).
+Relationships
+Template Relationship: Each Account optionally references exactly one Template via templateId. The Template defines the field set the Account has. Custom fields not in the template can also be added.
+Vault Relationship: Accounts are bundled inside KiyoVaultData for export/import.
+WebsitePreset Relationship: Used for autofill matching via domain.
+Autofill Relationship: The account getAutofillAccounts() helper extracts username/password and domain/packageNames for KiyoAutofillPlugin.syncAccountsFromReact.
+Source Anchors
+models/account.ts: /src/models/account.ts
+accountTable.ts: /src/database/accountTable.ts
+accountStore.ts: /src/store/accountStore.ts
+getAutofillAccounts: /src/store/accountStore.ts::getAutofillAccounts
