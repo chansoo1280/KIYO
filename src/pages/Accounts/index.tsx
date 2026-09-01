@@ -319,7 +319,7 @@ const AccountList = () => {
           type="button"
           variant="primary"
           onClick={() => setShowTemplatePicker(true)}
-          className="!h-14 !w-14 !rounded-full !bg-[var(--color-accent)] !text-white !shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:!bg-[var(--color-accent)]/80"
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-accent)] !text-white !shadow-md hover:!bg-[var(--color-accent)]/80"
           label="+"
           aria-label="Add account"
         />
@@ -327,7 +327,7 @@ const AccountList = () => {
           type="button"
           variant="ghost"
           onClick={scrollToTop}
-          className="!h-14 !w-14 !rounded-full !bg-[var(--color-bg)] !text-xl !shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:!bg-[var(--color-code-bg)]"
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-bg)] !text-xl !shadow-md hover:!bg-[var(--color-code-bg)]"
           label="⬆"
           aria-label="Scroll to top"
         />

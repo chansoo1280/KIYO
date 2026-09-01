@@ -42,7 +42,7 @@ const IconPicker = ({ value, onChange }: IconPickerProps) => {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute z-50 mt-2 w-full max-w-md rounded-2xl bg-[var(--color-bg)] p-4 shadow-xl border border-[var(--color-border)]"
+          className="absolute z-50 mt-2 w-full max-w-md rounded-2xl bg-[var(--color-bg)] p-4 shadow-sm border border-[var(--color-border)]"
         >
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-[var(--color-text-h)]">아이콘 선택</h3>

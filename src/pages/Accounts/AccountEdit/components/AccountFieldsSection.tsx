@@ -23,7 +23,7 @@ export function AccountFieldsSection({
         <button
           type="button"
           onClick={onAddField}
-          className="rounded-full bg-[var(--color-accent-bg)] px-3 py-2 text-sm font-semibold text-[var(--color-accent)]"
+          className="rounded-md bg-[var(--color-accent-bg)] px-3 py-2 text-sm font-semibold text-[var(--color-accent)]"
         >
           + 항목 추가
         </button>

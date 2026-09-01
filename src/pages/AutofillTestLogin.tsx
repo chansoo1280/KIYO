@@ -17,7 +17,7 @@ const AutofillTestLogin = () => {
   return (
     <PageShell maxWidth="sm">
       <header className="flex items-center gap-4">
-        <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
+        <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
           K
         </div>
         <div>
@@ -97,7 +97,7 @@ const AutofillTestLogin = () => {
           <p className="text-xs font-medium text-[var(--color-text)]">
             Autofill 힌트 설정
           </p>
-          <ul className="mt-2 space-y-1 text-xs text-[var(--color-text)] font-mono">
+          <ul className="mt-2 space-y-1 text-xs text-[var(--color-text)]">
             <li>
               이메일: <code>autoComplete="email"</code> (username/email 힌트)
             </li>

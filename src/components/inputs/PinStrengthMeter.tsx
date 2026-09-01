@@ -53,9 +53,9 @@ const PinStrengthMeter = ({
       className={`mt-1 ${className}`}
       aria-label={`PIN 강도: ${label}`}
     >
-      <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--color-code-bg)]">
+      <div className="h-1 w-full overflow-hidden rounded-md bg-[var(--color-code-bg)]">
         <div
-          className="h-full rounded-full transition-all duration-200"
+          className="h-full rounded-md transition-[width] duration-200"
           data-testid={`${testId}-bar`}
           data-score={score}
           style={{

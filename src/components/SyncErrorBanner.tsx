@@ -18,7 +18,7 @@ export function SyncErrorBanner() {
         onClick={clearSyncError}
         aria-label="에러 배너 닫기"
         data-testid="sync-error-banner-close"
-        className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
+        className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
       >
         ×
       </button>

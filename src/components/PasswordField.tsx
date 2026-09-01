@@ -62,7 +62,7 @@ export function PasswordField({
           <button
             type="button"
             onClick={() => handleCopy(value)}
-            className="rounded-full bg-[var(--color-accent-bg)] px-3 py-1.5 text-xs font-semibold uppercase tracking-chip text-[var(--color-accent)]"
+            className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1.5 text-xs font-semibold uppercase tracking-chip text-[var(--color-accent)]"
           >
             복사
           </button>

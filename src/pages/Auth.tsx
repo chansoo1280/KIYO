@@ -151,11 +151,9 @@ const Auth = () => {
             variant="ghost"
             onClick={handleBackToHome}
             className="!h-10 !w-10 !rounded-xl !p-0 !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)] hover:!text-[var(--color-text-h)]"
-            label=""
+            label={<ArrowLeft className="h-5 w-5" />}
             aria-label="첫 화면으로 돌아가기"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          />
           <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
             K
           </div>
@@ -185,7 +183,7 @@ const Auth = () => {
             <p className="text-xs font-medium text-[var(--color-text)]">
               파일 정보
             </p>
-            <p className="mt-1 text-sm font-mono text-[var(--color-text-h)] truncate">
+            <p className="mt-1 text-sm text-[var(--color-text-h)] truncate">
               {fileName}
             </p>
             <p className="mt-1 text-xs text-[var(--color-text)]">

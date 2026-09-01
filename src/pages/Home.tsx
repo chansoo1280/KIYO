@@ -112,7 +112,7 @@ const Home = () => {
   return (
     <PageShell maxWidth="lg">
       <header className="flex items-center gap-3">
-          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
+          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
             K
           </div>
           <div>
@@ -187,11 +187,9 @@ const Home = () => {
                       variant="ghost"
                       onClick={() => handleDeleteFile(file.fileName)}
                       className="!grid !h-9 !w-9 !place-items-center !rounded-full !text-[var(--color-text-muted)] hover:!bg-[var(--color-destructive-bg)] hover:!text-[var(--color-destructive)]"
-                      label=""
+                      label={<Trash2 className="h-4 w-4" />}
                       aria-label={`${file.fileName} 삭제`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    />
                   </li>
                 );
               })}
