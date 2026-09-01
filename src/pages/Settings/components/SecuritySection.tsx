@@ -6,6 +6,8 @@ import { fileTable } from "@/database/fileTable";
 import { changePin } from "@/database/fileStorage";
 import Button from "@/components/Button";
 import { Input } from "@/components/inputs";
+import { SettingsSection } from "@/components/SettingsSection";
+import { SettingsRow } from "@/components/SettingsRow";
 import { PinChangeDialog } from "./PinChangeDialog";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { exportKey } from "@/crypto/encryption";
@@ -136,42 +138,35 @@ export function SecuritySection() {
   }, [cryptoKey, setBiometricEnabled]);
 
   return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
-        Security
-      </h3>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>PIN</span>
-          <Button
-            variant="primary"
-            onClick={handlePinChangeClick}
-            label={isEncrypted ? "변경" : "설정"}
-          />
-        </div>
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>자동잠금</span>
-          <Input
-            as="select"
-            size="sm"
-            variant={!isEncrypted ? "disabled" : "default"}
-            value={autoLockTimeout}
-            onChange={(e) => handleAutoLockChange(e.target.value)}
-            onPointerDown={(e) => {
-              if (!isEncrypted) {
-                e.preventDefault();
-              }
-            }}
-            disabled={!isEncrypted}
-            aria-label="자동잠금 시간 선택"
-          >
-            <option value="none">미사용</option>
-            <option value="1m">1분</option>
-            <option value="10m">10분</option>
-            <option value="30m">30분</option>
-          </Input>
-        </div>
-      </div>
+    <SettingsSection title="Security">
+      <SettingsRow label="PIN">
+        <Button
+          variant="primary"
+          onClick={handlePinChangeClick}
+          label={isEncrypted ? "변경" : "설정"}
+        />
+      </SettingsRow>
+      <SettingsRow label="자동잠금">
+        <Input
+          as="select"
+          size="sm"
+          variant={!isEncrypted ? "disabled" : "default"}
+          value={autoLockTimeout}
+          onChange={(e) => handleAutoLockChange(e.target.value)}
+          onPointerDown={(e) => {
+            if (!isEncrypted) {
+              e.preventDefault();
+            }
+          }}
+          disabled={!isEncrypted}
+          aria-label="자동잠금 시간 선택"
+        >
+          <option value="none">미사용</option>
+          <option value="1m">1분</option>
+          <option value="10m">10분</option>
+          <option value="30m">30분</option>
+        </Input>
+      </SettingsRow>
       {securityMessage && (
         <p className="text-sm font-medium text-[var(--color-accent)]">
           {securityMessage}
@@ -179,15 +174,14 @@ export function SecuritySection() {
       )}
 
       <div className="space-y-3 mt-4">
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>생체인증 로그인</span>
+        <SettingsRow label="생체인증 로그인">
           <Button
             variant="ghost"
             onClick={() => handleBiometricToggle(!biometricEnabled)}
             disabled={!isEncrypted}
             label={biometricEnabled ? "사용 중" : "사용 안 함"}
           />
-        </div>
+        </SettingsRow>
       </div>
 
       <PinChangeDialog
@@ -220,6 +214,6 @@ export function SecuritySection() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsSection>
   );
 }

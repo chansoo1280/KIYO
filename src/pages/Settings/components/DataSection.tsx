@@ -3,6 +3,8 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/Button";
+import { SettingsSection } from "@/components/SettingsSection";
+import { SettingsRow } from "@/components/SettingsRow";
 import { backupDataFile, openImportedDataFile, isKiyoFile } from "@/database/fileStorage";
 import { pickBackupFolder } from "@/database/fileExport";
 import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
@@ -148,29 +150,23 @@ export function DataSection() {
   };
 
   return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
-        Data
-      </h3>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>백업</span>
+    <>
+      <SettingsSection title="Data">
+        <SettingsRow label="백업">
           <Button variant="primary" onClick={handleBackupClick} label="저장" />
-        </div>
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>복원</span>
+        </SettingsRow>
+        <SettingsRow label="복원">
           <Button variant="ghost" onClick={handleRestoreClick} label="불러오기" />
-        </div>
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>{getAutoBackupStatus()}</span>
+        </SettingsRow>
+        <SettingsRow label={getAutoBackupStatus()}>
           <Button
             variant="ghost"
             onClick={() => handleAutoBackupToggle(!autoBackupEnabled)}
             disabled={!nativeAvailable || !isEncryptedVault}
             label={autoBackupEnabled ? "해제" : "켜기"}
           />
-        </div>
-      </div>
+        </SettingsRow>
+      </SettingsSection>
       {dataMessage && (
         <p className="text-sm font-medium text-[var(--color-accent)]">
           {dataMessage}
@@ -205,6 +201,6 @@ export function DataSection() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
