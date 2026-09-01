@@ -7,17 +7,16 @@ import type {
   AppSettings,
   FileMetadata,
 } from "@/models/account";
-import { isFileStorageError } from "@/errors/FileStorageError";
-import { fileTable, ACTIVE_FILE_ID } from "@/database/fileTable";
+import { mapError } from "@/utils/mapError";
+import { fileTable } from "@/database/fileTable";
 import type { AccountRecord } from "@/database/accountTable";
 import type { TemplateRecord } from "@/database/templateTable";
-import { isNativeFileStorageAvailable } from "@/database/fileExport";
 import { createEncryptedRecord, createPlaintextRecord } from "@/crypto/recordEncryption";
 import { useSettingsStore } from "@/store/settingsStore";
 import { writeBackupToUri } from "@/database/fileExport";
 
 export interface FileRecord {
-  id: typeof ACTIVE_FILE_ID;
+  id: string; // PK = fileName (v14)
   fileName: string;
   fileData: string; // JSON string of KiyoVaultData (encrypted or plain)
   encrypted: boolean;
@@ -31,10 +30,15 @@ export class KiyoDatabase extends Dexie {
   templates!: EntityTable<TemplateRecord, "id">;
   settings!: Table<AppSettings, number>;
   metadata!: Table<FileMetadata, number>;
-  files!: Table<FileRecord, typeof ACTIVE_FILE_ID>;
+  files!: Table<FileRecord, string>;
 
   constructor() {
     super("kiyo-db");
+    // v13: PK changes from ++id (auto-increment number) to id (out-of-line key).
+    // Dexie preserves the existing number PK, but the rest of the codebase assumes
+    // a single fixed "active" PK. Wipe the v12 rows so the next write seeds a
+    // fresh "active" row. Data loss is 0: vault snapshot lives in the file-system
+    // .json backup and is restored via the import flow.
     this.version(13)
       .stores({
         accounts:
@@ -47,9 +51,34 @@ export class KiyoDatabase extends Dexie {
         files: "id, fileName, createdAt, updatedAt",
       })
       .upgrade((transaction) => {
-        // v12: files 테이블 키를 ++id에서 고정 "active"로 변경
-        // 기존 레코드 삭제 후 새로 생성 (볼트 파일로 복원 가능하므로 데이터 손실 없음)
         transaction.table("files").clear();
+      });
+
+    // v14: PK is now fileName (string) instead of the "active" literal.
+    // Migrate the v13 row by rewriting its id to its fileName — data loss 0.
+    this.version(14)
+      .stores({
+        accounts:
+          "++id, createdAt, updatedAt",
+        templates:
+          "++id, createdAt, updatedAt",
+        settings:
+          "++id, theme, lockEnabled, autoLockTime, fontSize, biometricEnabled",
+        metadata: "id, version, createdAt",
+        files: "id, fileName, createdAt, updatedAt",
+      })
+      .upgrade(async (transaction) => {
+        // v13 row 1개(id="active")를 fileName PK로 승계 — 데이터 손실 0.
+        // Dexie 4의 put은 PK가 변경되면 새 row로 처리될 수 있으므로
+        // delete + put 패턴으로 안전하게 승계.
+        const rows = await transaction.table("files").toArray();
+        for (const row of rows) {
+          if (row.id === "active" && row.fileName) {
+            const newId = row.fileName;
+            await transaction.table("files").delete("active");
+            await transaction.table("files").put({ ...row, id: newId });
+          }
+        }
       });
   }
 }
@@ -97,10 +126,6 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
       console.warn("persistVaultSnapshot: No active file name");
       return;
     }
-    if (!isNativeFileStorageAvailable()) {
-      // 앱에서만 자동저장
-      return;
-    }
     const data = await getDatabaseSnapshot(activeFileName, cryptoKey ?? undefined);
 
     if (!cryptoKey) {
@@ -122,13 +147,8 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
     tryTriggerAutoBackup({ activeFileName, cryptoKey, salt });
   } catch (error) {
     console.error("persistVaultSnapshot failed:", error instanceof Error ? error.message : String(error), error);
-    // Store error in sessionStore for UI to display
-    const errorMessage = isFileStorageError(error)
-      ? error.message
-      : error instanceof Error
-        ? error.message
-        : "Unknown sync error";
-    setSyncError?.(errorMessage);
+    // 한국어 매핑된 에러 메시지를 store에 저장 → SyncErrorBanner가 표시
+    setSyncError?.(mapError(error));
     // Don't throw - auto-save should not break the app
   }
 };
@@ -154,9 +174,6 @@ async function tryTriggerAutoBackup(params: SyncDatabaseParams) {
   }
 }
 
-// Deprecated alias for backward compatibility
-export const syncDatabaseToFile = persistVaultSnapshot;
-
 type ReplaceDatabaseDataParams =
   | {
       data: KiyoVaultData;
@@ -175,8 +192,11 @@ export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Pr
   const { data, fileName, cryptoKey, encryptedFileData } = params;
 
   const fileDataToSave = cryptoKey ? encryptedFileData : data;
-  if (cryptoKey && !encryptedFileData || !fileDataToSave) {
+  if (!fileDataToSave) {
     throw new Error("저장할 파일 데이터가 없습니다.");
+  }
+  if (!fileName) {
+    throw new Error("fileName이 필요합니다.");
   }
 
   // === 1단계: 트랜잭션 밖에서 암호화 완료 ===
@@ -247,7 +267,8 @@ export const replaceDatabaseData = async (params: ReplaceDatabaseDataParams): Pr
       await db.accounts.clear();
       await db.templates.clear();
       await db.metadata.clear();
-      await db.files.clear();
+      // files는 clear하지 않음 — multi-vault 모델에서 이전 vault row 보존.
+      // active fileName 1개만 upsert하여 새 vault로 갈아탄다.
 
       // 이미 완성된 레코드 바로 bulkPut
       await db.accounts.bulkPut(accountRecords);

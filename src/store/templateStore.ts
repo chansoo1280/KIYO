@@ -25,13 +25,20 @@ export const useTemplateStore = create<TemplateState>()(
       initialized: false,
 
       loadTemplates: async () => {
+        // Store-side guard: 이미 initialized면 즉시 return.
+        // RootRedirect 경로(preload)와 self-load 경로(AccountList/Templates)가
+        // 같은 store를 공유하므로 중복 호출 흡수. 호출자가 await해도 안전.
+        if (get().initialized) return;
         set({ isLoading: true });
         try {
           const sessionState = useSessionStore.getState();
           const dbTemplates = await templateTable.getAll(sessionState.cryptoKey ?? undefined);
           set({ templates: dbTemplates, isLoading: false, initialized: true });
         } catch (error) {
-          console.error("Failed to load templates:", error instanceof Error ? error.message : String(error), error);
+          // multi-vault: reload 직후 또는 lock 상태에서 encrypted records가 있고
+          // cryptoKey가 없는 경우 throw. 사용자 영향 0 (unlock 후 initializeStores로
+          // 정상 로드). 콘솔 노이즈만 남김.
+          console.error("Failed to load templates:", error instanceof Error ? error.message : String(error));
           set({ isLoading: false });
         }
       },

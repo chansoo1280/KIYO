@@ -9,6 +9,7 @@ import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { mapError } from "@/utils/mapError";
 
 export interface AccountState {
   accounts: Account[];
@@ -48,15 +49,27 @@ export const useAccountStore = create<AccountState>()(
       },
 
       loadAccounts: async () => {
+        // Store-side guard: 이미 initialized면 즉시 return.
+        // RootRedirect 경로(preload)와 self-load 경로(AccountList/Templates)가
+        // 같은 store를 공유하므로 중복 호출 흡수. 호출자가 await해도 안전.
+        if (get().initialized) return;
         set({ isLoading: true });
-        const sessionState = useSessionStore.getState();
-        const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
+        try {
+          const sessionState = useSessionStore.getState();
+          const accounts = await accountTable.getAll(sessionState.cryptoKey ?? undefined);
 
-        set({
-          accounts,
-          initialized: true,
-          isLoading: false,
-        });
+          set({
+            accounts,
+            initialized: true,
+            isLoading: false,
+          });
+        } catch (error) {
+          console.error("Failed to load accounts:", error instanceof Error ? error.message : String(error));
+          useSessionStore.getState().setSyncError(mapError(error));
+          set({ isLoading: false });
+          // 호출자(RootRedirect 등)가 인지할 수 있도록 rethrow
+          throw error;
+        }
       },
 
       addAccount: async (account) => {
@@ -135,6 +148,7 @@ export const useAccountStore = create<AccountState>()(
             }
           }
         } catch (error) {
+          useSessionStore.getState().setSyncError(mapError(error));
           if (import.meta.env.DEV) {
             console.error("[Autofill] Failed to sync accounts:", error instanceof Error ? error.message : String(error), error);
           }

@@ -1,6 +1,7 @@
 import { processWebsiteUrl } from "@/utils/urlUtils";
 import type { WebsitePreset } from "@/models/websitePreset";
 import PresetIcon from "@/components/PresetIcon";
+import { Input } from "@/components/inputs";
 
 interface AccountTitleSectionProps {
   title: string;
@@ -33,43 +34,38 @@ export function AccountTitleSection({
 }: AccountTitleSectionProps) {
   return (
     <>
-      <label className="block text-sm font-semibold text-[var(--color-text)]">
-        제목
-        <input
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-          data-field-value="true"
-        />
-      </label>
+      <Input
+        label="제목"
+        id="account-title"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        className="mt-2"
+        data-field-value="true"
+      />
 
-      <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
-        웹사이트 URL (자동완성용)
-        <input
-          value={websiteUrl}
-          onChange={(e) => {
-            const { websiteUrl: parsedUrl } = processWebsiteUrl(e.target.value);
-            onWebsiteUrlChange(parsedUrl);
-          }}
-          placeholder="https://www.example.com/login"
-          className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-          data-field-value="true"
-        />
-      </label>
+      <Input
+        label="웹사이트 URL (자동완성용)"
+        id="account-website-url"
+        value={websiteUrl}
+        onChange={(e) => {
+          const { websiteUrl: parsedUrl } = processWebsiteUrl(e.target.value);
+          onWebsiteUrlChange(parsedUrl);
+        }}
+        placeholder="https://www.example.com/login"
+        className="mt-2"
+        data-field-value="true"
+      />
 
-      <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
-        안드로이드 패키지명 (자동완성용)
-        <input
-          value={packageName}
-          onChange={(e) => onPackageNameChange(e.target.value)}
-          placeholder="com.example.app, com.example.debug"
-          className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-          data-field-value="true"
-        />
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-          쉼표(,)로 구분하여 여러 개 입력 가능
-        </p>
-      </label>
+      <Input
+        label="안드로이드 패키지명 (자동완성용)"
+        id="account-package-name"
+        value={packageName}
+        onChange={(e) => onPackageNameChange(e.target.value)}
+        placeholder="com.example.app, com.example.debug"
+        className="mt-2"
+        helperText="쉼표(,)로 구분하여 여러 개 입력 가능"
+        data-field-value="true"
+      />
 
       {/* Website Selector Button — placed below packageName so auto-fill is visible */}
       <div className="mt-3">
@@ -111,16 +107,15 @@ export function AccountTitleSection({
         )}
       </div>
 
-      <label className="mt-4 block text-sm font-semibold text-[var(--color-text)]">
-        태그
-        <input
-          value={tagInput}
-          onChange={(e) => onTagInputChange(e.target.value)}
-          placeholder="예: work, finance"
-          className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-          data-field-value="true"
-        />
-      </label>
+      <Input
+        label="태그"
+        id="account-tag"
+        value={tagInput}
+        onChange={(e) => onTagInputChange(e.target.value)}
+        placeholder="예: work, finance"
+        className="mt-2"
+        data-field-value="true"
+      />
     </>
   );
 }

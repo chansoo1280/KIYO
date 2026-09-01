@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { clearIndexedDB } from './fixtures/indexeddb.fixture';
 import { TEST_PIN, WRONG_PIN } from './fixtures/test-data';
+import { createVault } from './utils/vault-creation';
 
 test.describe('PIN 언락 (PIN Unlock)', () => {
   test.beforeEach(async ({ page }) => {
@@ -11,26 +12,8 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
   });
 
   test('올바른 PIN으로 기존 볼트 잠금 해제 후 홈 화면(/accounts) 진입', async ({ page }) => {
-    // 1. 사전 준비: 암호화 볼트 생성
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-unlock-vault');
-
-    const encryptedCheckbox = page.getByRole('dialog').locator('input[type="checkbox"]');
-    await expect(encryptedCheckbox).toBeChecked();
-
-    const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-    await expect(pinInput).toBeVisible();
-    await pinInput.fill(TEST_PIN);
-
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-    // 최초 생성 시 바로 /accounts 이동
-    await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    // 1. 사전 준비: 암호화 볼트 생성 (Plan-7a: 페이지 기반)
+    await createVault(page, { fileName: 'test-unlock-vault' });
 
     // 2. 페이지 새로고침하여 잠금 상태 유도 (cryptoKey는 persist 안 됨)
     await page.reload();
@@ -58,21 +41,7 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
 
   test('잘못된 PIN 입력 시 에러 메시지 표시 및 잠금 상태 유지', async ({ page }) => {
     // 1. 사전 준비: 암호화 볼트 생성 및 잠금 유도
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-wrong-pin-vault');
-
-    const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-    await expect(pinInput).toBeVisible();
-    await pinInput.fill(TEST_PIN);
-
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-    await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await createVault(page, { fileName: 'test-wrong-pin-vault' });
 
     // 새로고침으로 잠금 상태 유도
     await page.reload();
@@ -83,8 +52,8 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
     await page.fill('input[type="password"]', WRONG_PIN);
     await page.getByRole('button', { name: '확인' }).click();
 
-    // 3. 에러 메시지 표시 확인 ("PIN이 일치하지 않습니다" 또는 유사)
-    await expect(page.locator('[role="alert"]').filter({ hasText: 'PIN 불일치' })).toBeVisible({ timeout: 5000 });
+    // 3. 에러 메시지 표시 확인
+    await expect(page.locator('[role="alert"]').filter({ hasText: 'PIN 번호가 올바르지 않습니다.' })).toBeVisible({ timeout: 5000 });
 
     // 4. 여전히 인증 페이지(/auth)에 머물러 있어야 함
     await expect(page).toHaveURL(/\/auth/);
@@ -93,21 +62,7 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
 
   test('PIN 입력 없이 확인 버튼 클릭 시 에러 메시지', async ({ page }) => {
     // 1. 사전 준비: 암호화 볼트 생성 및 잠금 유도
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-empty-pin-vault');
-
-    const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-    await expect(pinInput).toBeVisible();
-    await pinInput.fill(TEST_PIN);
-
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-
-    await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await createVault(page, { fileName: 'test-empty-pin-vault' });
 
     await page.reload();
     await page.waitForLoadState('networkidle');
@@ -123,27 +78,16 @@ test.describe('PIN 언락 (PIN Unlock)', () => {
     await expect(page).toHaveURL(/\/auth/);
   });
 
+  // Plan-7a: PIN 건너뛰기 옵션으로 비암호화 볼트 생성 가능 (체크박스 제거 보강)
   test('비암호화 볼트는 새로고침 후 바로 /accounts 접근 가능 (PIN 불필요)', async ({ page }) => {
-    // 1. 비암호화 볼트 생성
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-unencrypted-unlock-vault');
-
-    const encryptedCheckbox = page.getByRole('dialog').locator('input[type="checkbox"]');
-    await expect(encryptedCheckbox).toBeChecked();
-    await encryptedCheckbox.uncheck();
-
-    // PIN 입력 필드가 사라져야 함
-    await expect(page.getByRole('dialog').locator('input[type="password"]')).not.toBeVisible({ timeout: 5000 });
-
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
+    // 1. 비암호화 볼트 생성 (Plan-7a: encrypted=false 옵션)
+    await createVault(page, {
+      fileName: 'test-unencrypted-unlock-vault',
+      encrypted: false,
+    });
 
     // 2. 바로 /accounts 이동 확인
-    await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/accounts/);
 
     // 3. 새로고침 후에도 /accounts 유지 (인증 불필요)
     await page.reload();

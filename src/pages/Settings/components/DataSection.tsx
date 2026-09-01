@@ -2,8 +2,8 @@ import { useState, useCallback } from "react";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useNavigate } from "react-router-dom";
+import Button from "@/components/Button";
 import { backupDataFile, openImportedDataFile, isKiyoFile } from "@/database/fileStorage";
-import { fileTable } from "@/database/fileTable";
 import { pickBackupFolder } from "@/database/fileExport";
 import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
@@ -32,7 +32,10 @@ export function DataSection() {
     encrypted: boolean;
     pin: string;
   }) => {
-    const { activeFileName: currentActiveFileName } = await fileTable.getActiveFileInfo();
+    const currentActiveFileName = useSessionStore.getState().activeFileName;
+    if (!currentActiveFileName) {
+      throw new Error("활성 데이터 파일이 없습니다.");
+    }
     const exists = currentActiveFileName === backupFileName;
     if (exists) {
       const overwrite = window.confirm(
@@ -152,38 +155,20 @@ export function DataSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>백업</span>
-          <button
-            type="button"
-            onClick={handleBackupClick}
-            className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-          >
-            저장
-          </button>
+          <Button variant="primary" onClick={handleBackupClick} label="저장" />
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>복원</span>
-          <button
-            type="button"
-            onClick={handleRestoreClick}
-            className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-          >
-            불러오기
-          </button>
+          <Button variant="ghost" onClick={handleRestoreClick} label="불러오기" />
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>{getAutoBackupStatus()}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={() => handleAutoBackupToggle(!autoBackupEnabled)}
             disabled={!nativeAvailable || !isEncryptedVault}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${
-              autoBackupEnabled
-                ? "bg-[var(--color-destructive-bg)] text-[var(--color-destructive)]"
-                : "bg-[var(--color-muted)] text-[var(--color-text-muted)]"
-            } ${!nativeAvailable || !isEncryptedVault ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {autoBackupEnabled ? "해제" : "켜기"}
-          </button>
+            label={autoBackupEnabled ? "해제" : "켜기"}
+          />
         </div>
       </div>
       {dataMessage && (
@@ -214,20 +199,8 @@ export function DataSection() {
               자동 백업이 저장될 폴더를 선택하세요. 한 번 선택하면 이후 자동으로 백업됩니다.
             </p>
             <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowAutoBackupFolderDialog(false)}
-                className="rounded-full bg-[var(--color-muted)] px-4 py-2 text-sm font-semibold text-[var(--color-text)]"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handlePickFolderConfirm}
-                className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-              >
-                폴더 선택
-              </button>
+              <Button variant="ghost" onClick={() => setShowAutoBackupFolderDialog(false)} label="취소" />
+              <Button variant="primary" onClick={handlePickFolderConfirm} label="폴더 선택" />
             </div>
           </div>
         </div>

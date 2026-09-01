@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Button from "@/components/Button";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
+import { mapError } from "@/utils/mapError";
+import { Input } from "@/components/inputs";
 import IconPicker from "./components/IconPicker";
 import { TemplateFieldEditor } from "./components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
+import ErrorMessage from "@/components/feedback/ErrorMessage";
 
 const TemplateEdit = () => {
   const navigate = useNavigate();
@@ -40,6 +44,7 @@ const TemplateEdit = () => {
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!initialized) {
@@ -86,7 +91,7 @@ const TemplateEdit = () => {
       navigate("/templates");
     } catch (error) {
       console.error("템플릿 저장 실패:", error instanceof Error ? error.message : String(error), error);
-      setErrors(["템플릿 저장에 실패했습니다."]);
+      setErrors([mapError(error)]);
     }
   };
 
@@ -151,8 +156,19 @@ const TemplateEdit = () => {
 
   const handleDelete = async () => {
     if (!isEdit || !id) return;
-    await deleteTemplate(id);
-    navigate("/templates");
+    try {
+      await deleteTemplate(id);
+      setDeleteError(null);
+      setShowDeleteConfirm(false);
+      navigate("/templates");
+    } catch (err) {
+      // 모달을 닫지 않고 에러만 표시 (Plan-A1 결정)
+      setDeleteError(mapError(err));
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteError(null);
     setShowDeleteConfirm(false);
   };
 
@@ -166,40 +182,27 @@ const TemplateEdit = () => {
             </h1>
             <div className="flex items-center gap-2">
               {isEdit && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--error)] shadow-sm hover:bg-[var(--error)]/10 dark:border-[var(--border)]/30"
-                >
-                  삭제
-                </button>
+                  label="삭제"
+                />
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={handleCancel}
-                className="rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)]"
-              >
-                취소
-              </button>
-              <button
-                type="button"
+                label="취소"
+              />
+              <Button
+                variant="primary"
+                type="submit"
                 onClick={handleSave}
-                className="rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-              >
-                저장
-              </button>
+                label="저장"
+              />
             </div>
           </header>
 
-          {errors.length > 0 && (
-            <div className="rounded-2xl border border-[var(--error)]/20 bg-[var(--error)]/10 p-4 dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20">
-              <ul className="space-y-1 text-sm text-[var(--error)] dark:text-[var(--error)]">
-                {errors.map((err, i) => (
-                  <li key={i}>• {err}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ErrorMessage items={errors} testId="template-edit-error" />
 
           {/* 기본 정보 섹션 */}
           <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
@@ -207,28 +210,25 @@ const TemplateEdit = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  템플릿 이름
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="템플릿 이름"
+                  id="template-name"
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="예: 로그인, API 키, 신용카드"
-                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  설명 (선택)
-                </label>
-                <textarea
+                <Input
+                  label="설명 (선택)"
+                  id="template-description"
+                  as="textarea"
                   value={form.description}
                   onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="이 템플릿에 대한 설명을 입력하세요."
                   rows={2}
-                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
+                  className="resize-none"
                 />
               </div>
 
@@ -248,13 +248,12 @@ const TemplateEdit = () => {
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-[var(--color-text-h)]">필드 정의</h2>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={addField}
-                className="rounded-xl bg-[var(--color-accent-bg)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
-              >
-                + 필드 추가
-              </button>
+                label="+ 필드 추가"
+              />
             </div>
 
             <div className="space-y-3">
@@ -279,10 +278,11 @@ const TemplateEdit = () => {
         open={showDeleteConfirm}
         title="템플릿 삭제"
         message={"\"" + form.name + "\" 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
-        onClose={() => setShowDeleteConfirm(false)}
+        onClose={handleDeleteDialogClose}
         onConfirm={handleDelete}
         confirmLabel="삭제"
         variant="danger"
+        error={deleteError}
       />
     </>
   );

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BottomTabs from "@/components/BottomTabs";
+import Button from "@/components/Button";
 import { SecuritySection } from "./components/SecuritySection";
 import { UISection } from "./components/UISection";
 import { DataSection } from "./components/DataSection";
@@ -41,24 +42,12 @@ const Settings = () => {
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
               <span>파일변경</span>
-              <button
-                type="button"
-                className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-                onClick={handleFileChange}
-              >
-                이동
-              </button>
+              <Button variant="primary" onClick={handleFileChange} label="이동" />
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
               <span>앱 정보</span>
-              <button
-                type="button"
-                onClick={() => setShowAppInfoDialog(true)}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
-              >
-                보기
-              </button>
+              <Button variant="ghost" onClick={() => setShowAppInfoDialog(true)} label="보기" />
             </div>
           </div>
 

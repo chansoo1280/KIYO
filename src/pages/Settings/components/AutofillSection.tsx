@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
+import Button from "@/components/Button";
 import {
   KiyoAutofill,
   type AutofillStatus,
@@ -9,6 +10,7 @@ import {
 import { useAccountStore } from "@/store/accountStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { mapError } from "@/utils/mapError";
 
 export const AutofillSection: React.FC = () => {
   const [status, setStatus] = useState<AutofillStatus | null>(null);
@@ -46,7 +48,7 @@ export const AutofillSection: React.FC = () => {
       // Don't fetch account count on initial status check to avoid Keystore auth prompt
       // Account count is stored from last successful sync
     } catch (err) {
-      setError(err instanceof Error ? err.message : "상태 확인 실패");
+      setError(mapError(err));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export const AutofillSection: React.FC = () => {
       await checkStatus();
       showMessage("자동완성 설정 화면이 열렸습니다. KIYO 자동완성을 활성화해주세요.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "자동완성 활성화 실패");
+      setError(mapError(err));
     } finally {
       setLoading(false);
     }
@@ -101,7 +103,7 @@ export const AutofillSection: React.FC = () => {
       }
       await checkStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "동기화 실패");
+      setError(mapError(err));
       showMessage("동기화 실패");
     } finally {
       setSyncing(false);
@@ -145,7 +147,7 @@ export const AutofillSection: React.FC = () => {
         }
         await checkStatus();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "데이터 삭제 실패");
+        setError(mapError(err));
         showMessage("데이터 삭제 실패");
       }
     } else {
@@ -250,23 +252,20 @@ export const AutofillSection: React.FC = () => {
                 className={`w-2 h-2 rounded-full ${isEnabled ? "bg-[var(--color-success)]" : isOurService ? "bg-[var(--color-warning)]" : "bg-[var(--color-border)]"}`}
               />
               {isEnabled ? (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={openAutofillSettings}
                   disabled={loading}
-                  className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)]"
-                >
-                  설정
-                </button>
+                  label="설정"
+                />
               ) : (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   onClick={requestEnable}
+                  loading={loading}
                   disabled={loading}
-                  className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50"
-                >
-                  {loading ? "확인 중..." : "활성화"}
-                </button>
+                  label={loading ? "확인 중..." : "활성화"}
+                />
               )}
             </div>
           </div>
@@ -292,20 +291,19 @@ export const AutofillSection: React.FC = () => {
                 {formatTime(lastSyncTime)}
               </span>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={syncAccounts}
+              loading={syncing}
               disabled={syncing || loading}
-              className="rounded-full bg-[var(--color-accent-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] disabled:opacity-50"
-            >
-              {syncing ? "동기화 중..." : "동기화"}
-            </button>
+              label={syncing ? "동기화 중..." : "동기화"}
+            />
           </div>
         </>
       )}
 
       {error && (
-        <div className="rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)] dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]">
+        <div className="rounded-xl border border-[var(--color-error)]/20 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)] dark:border-[var(--color-error)]/40 dark:bg-[var(--color-error)]/20 dark:text-[var(--color-error)]">
           {error}
         </div>
       )}

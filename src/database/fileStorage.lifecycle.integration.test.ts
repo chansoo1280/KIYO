@@ -28,6 +28,8 @@ import { templateTable } from "@/database/templateTable";
 import { createTestMetadata, getDefaultMetadata } from "@/test/fixtures/databaseFixtures";
 import Dexie from "dexie";
 import { useTemplateStore } from "@/store/templateStore";
+import { fileTable } from "@/database/fileTable";
+import { closeDataFile } from "@/database/fileStorage";
 
 type Metadata = FileMetadata;
 
@@ -710,3 +712,102 @@ describe("autosave - concurrency & stability (Plan-6)", () => {
 //   // Tests skipped due to vitest module mock isolation issues
 //   // Core logic tested in fileStorage.test.ts unit tests
 // });
+
+// ============================================================================
+// Multi-Vault Support: v14 multi-row lifecycle
+// ============================================================================
+
+describe("multi-vault lifecycle (v14)", () => {
+  beforeAll(async () => {
+    try {
+      await Dexie.delete("kiyo-db");
+    } catch {
+      // Ignore
+    }
+  });
+
+  afterAll(async () => {
+    try {
+      await Dexie.delete("kiyo-db");
+    } catch {
+      // Ignore
+    }
+  });
+
+  const resetMulti = async () => {
+    const db = getDatabase();
+    await db.accounts.clear();
+    await db.templates.clear();
+    await db.settings.clear();
+    await db.metadata.clear();
+    await db.files.clear();
+    await useSessionStore.getState().clearSession();
+    await useAccountStore.getState().clearAccounts();
+  };
+
+  beforeEach(async () => {
+    await resetMulti();
+    vi.clearAllMocks();
+    vi.spyOn(accountTable, "initializeDevData").mockResolvedValue(undefined);
+  });
+
+  afterEach(async () => {
+    await resetMulti();
+    vi.clearAllMocks();
+  });
+
+  it("vault-one 생성 → close → vault-one 이름으로 재시도 → (1) suffix 부여", async () => {
+    // 1. vault-one 생성 (plaintext)
+    await createDataFile("vault-one", "");
+
+    let all = await fileTable.getAllFiles();
+    expect(all).toHaveLength(1);
+    expect(all[0].fileName).toBe("vault-one.json");
+    expect(all[0].id).toBe("vault-one.json");
+
+    // 2. close — closeDataFile은 db.files를 건드리지 않음
+    await closeDataFile();
+    all = await fileTable.getAllFiles();
+    expect(all).toHaveLength(1); // 보존
+
+    // 3. sessionStore.activeFileName도 null
+    const session = useSessionStore.getState();
+    expect(session.activeFileName).toBeNull();
+    expect(session.cryptoKey).toBeNull();
+
+    // 4. vault-one 이름으로 다시 생성 시도 → (1) suffix
+    await createDataFile("vault-one", "");
+
+    const allAfterRetry = await fileTable.getAllFiles();
+    expect(allAfterRetry).toHaveLength(2);
+    const names = allAfterRetry.map((f) => f.fileName).sort();
+    expect(names).toEqual(["vault-one(1).json", "vault-one.json"]);
+  });
+
+  it("3개 vault 생성 → 각각 close → 모두 row 보존 (multi-vault 핵심 invariant)", async () => {
+    await createDataFile("alpha", "");
+    await closeDataFile();
+    await createDataFile("beta", "");
+    await closeDataFile();
+    await createDataFile("gamma", "");
+
+    const all = await fileTable.getAllFiles();
+    expect(all).toHaveLength(3);
+    const names = all.map((f) => f.fileName).sort();
+    expect(names).toEqual(["alpha.json", "beta.json", "gamma.json"]);
+  });
+
+  it("특정 vault 삭제 시 다른 vault는 영향 없음", async () => {
+    await createDataFile("keep.json", "");
+    await createDataFile("remove.json", "");
+
+    let all = await fileTable.getAllFiles();
+    expect(all).toHaveLength(2);
+
+    await fileTable.deleteFileRecord("remove.json");
+
+    all = await fileTable.getAllFiles();
+    expect(all).toHaveLength(1);
+    expect(all[0].fileName).toBe("keep.json");
+  });
+});

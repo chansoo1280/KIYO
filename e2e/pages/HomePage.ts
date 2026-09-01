@@ -1,18 +1,18 @@
 import { type Page, type Locator, expect } from '@playwright/test';
+import { createVault } from '../utils/vault-creation';
 
 export class HomePage {
   readonly page: Page;
-  readonly createFileButton: Locator;
+  readonly createFileLink: Locator;
   readonly openFileButton: Locator;
-  readonly fileCreateDialog: Locator;
-  readonly fileOpenDialog: Locator;
+  readonly fileList: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.createFileButton = page.getByRole('button', { name: '파일 생성' });
+    // Plan-7a: "파일 생성"은 <Link> (button 아님)
+    this.createFileLink = page.getByTestId('create-vault-link');
     this.openFileButton = page.getByRole('button', { name: '파일 선택' });
-    this.fileCreateDialog = page.getByRole('dialog').filter({ hasText: '새 파일 생성' });
-    this.fileOpenDialog = page.getByRole('dialog').filter({ hasText: '파일 열기' });
+    this.fileList = page.getByTestId('file-list');
   }
 
   async goto(): Promise<void> {
@@ -20,29 +20,16 @@ export class HomePage {
     await this.page.waitForLoadState('networkidle');
   }
 
+  /**
+   * Plan-7a: 페이지 기반 vault 생성. 옵션은 createVault() 위임.
+   * @deprecated createVault() 유틸 직접 사용 권장
+   */
   async createFile(fileName: string, encrypted: boolean = true, pin?: string): Promise<void> {
-    await this.createFileButton.click();
-    await expect(this.fileCreateDialog).toBeVisible({ timeout: 5000 });
-    
-    const fileNameInput = this.fileCreateDialog.locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill(fileName);
-    
-    if (!encrypted) {
-      const encryptedCheckbox = this.fileCreateDialog.locator('input[type="checkbox"]');
-      if (await encryptedCheckbox.isChecked()) {
-        await encryptedCheckbox.uncheck();
-      }
-      await expect(this.fileCreateDialog.locator('input[type="password"]')).not.toBeVisible({ timeout: 5000 });
-    } else if (pin) {
-      const pinInput = this.fileCreateDialog.locator('input[type="password"]').first();
-      await expect(pinInput).toBeVisible();
-      await pinInput.fill(pin);
-    }
-    
-    await this.fileCreateDialog.getByRole('button', { name: '생성' }).click();
-    await this.page.waitForURL('**/accounts', { timeout: 10000 });
-    await this.page.waitForLoadState('networkidle');
+    await createVault(this.page, {
+      fileName,
+      encrypted,
+      pin,
+    });
   }
 }
 

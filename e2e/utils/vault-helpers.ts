@@ -1,45 +1,17 @@
 import { type Page } from '@playwright/test';
 import { TEST_PIN } from './test-data';
+import { createVault } from './vault-creation';
 
 /**
  * 테스트용 볼트 생성 및 잠금 해제까지 수행
- * 최초 실행 화면에서 PIN 설정 후 홈 화면으로 진입
+ * Plan-7a: createVault() 유틸을 호출 — /create-vault 페이지 기반
  */
 export async function createTestVault(page: Page, pin: string = TEST_PIN): Promise<void> {
-  // 앱 로드 대기
+  // 홈 화면으로 명시적 이동 (multi-vault E2E 등 이전 상태 정리)
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  
-  // 볼트 생성 화면 대기 (PIN 설정 폼)
-  await page.waitForSelector('[data-testid="pin-create-form"], [data-testid="pin-input"], input[type="password"]', { 
-    timeout: 10000 
-  });
-  
-  // PIN 입력 필드 찾기
-  const pinInputs = page.locator('input[type="password"]');
-  const count = await pinInputs.count();
-  
-  if (count >= 2) {
-    // PIN 생성 화면 (PIN + 확인)
-    await pinInputs.nth(0).fill(pin);
-    await pinInputs.nth(1).fill(pin);
-  } else if (count === 1) {
-    // 이미 볼트가 있고 언락 대기 중인 경우
-    await pinInputs.nth(0).fill(pin);
-  }
-  
-  // 생성/확인 버튼 클릭
-  const createButton = page.locator('button:has-text("생성"), button:has-text("확인"), button:has-text("잠금 해제"), button[type="submit"]').first();
-  await createButton.click();
-  
-  // 홈 화면으로 리다이렉트 대기
-  await page.waitForURL('**/', { timeout: 10000 });
-  await page.waitForLoadState('networkidle');
-  
-  // 홈 화면 요소 확인 (계정 리스트 또는 빈 상태)
-  await page.waitForSelector('[data-testid="account-list"], [data-testid="empty-state"], .account-list, main', { 
-    timeout: 5000 
-  });
+
+  await createVault(page, { pin });
 }
 
 /**

@@ -129,7 +129,7 @@ describe("fileStorage - changePin 전체 invariant", () => {
       await populateTestData();
 
       // 3. changePin으로 PIN 변경 (session의 cryptoKey 사용)
-      await changePin(NEW_PIN);
+      await changePin("change-pin-test.json", NEW_PIN);
       await new Promise(r => setTimeout(r, 10));
 
       // 4. 세션이 새 키로 업데이트되었는지 확인
@@ -160,7 +160,7 @@ describe("fileStorage - changePin 전체 invariant", () => {
       await populateTestData();
 
       // 3. changePin으로 PIN 설정 (암호화)
-      await changePin(NEW_PIN);
+      await changePin("plain-to-encrypted.json", NEW_PIN);
 
       // 4. 세션이 암호화 상태로 업데이트되었는지 확인
       const sessionState = useSessionStore.getState();
@@ -192,15 +192,15 @@ describe("fileStorage - changePin 전체 invariant", () => {
       await useSessionStore.getState().clearCryptoKey();
 
       // 4. changePin 호출 시 에러 발생해야 함
-      await expect(changePin(NEW_PIN)).rejects.toThrow();
+      await expect(changePin("wrong-pin-test.json", NEW_PIN)).rejects.toThrow();
 
       // 5. 원본 데이터는 그대로 유지되어야 함 (파일 레코드 존재 확인)
-      const fileRecord = await (await import("@/database/fileTable")).fileTable.getActiveFileRecord();
+      const fileRecord = await (await import("@/database/fileTable")).fileTable.getFileRecord("wrong-pin-test.json");
       expect(fileRecord).not.toBeNull();
     });
 
     it("활성 파일이 없으면 에러", async () => {
-      await expect(changePin(NEW_PIN)).rejects.toThrow("활성 데이터 파일이 없습니다");
+      await expect(changePin("", NEW_PIN)).rejects.toThrow("활성 데이터 파일이 없습니다");
     });
 
     it("동일 PIN 재설정 시에도 정상 동작 (새 salt/key 생성)", async () => {
@@ -213,7 +213,7 @@ describe("fileStorage - changePin 전체 invariant", () => {
       const oldSalt = sessionBefore.salt;
 
       // 3. 같은 PIN으로 변경
-      await changePin(TEST_PIN);
+      await changePin("same-pin-test.json", TEST_PIN);
       await new Promise(r => setTimeout(r, 10));
 
       // 4. 새 salt/key가 생성되었는지 확인
@@ -233,11 +233,11 @@ describe("fileStorage - changePin 전체 invariant", () => {
       await populateTestData();
 
       // 2. 연속 PIN 변경 - 각 변경 사이에 약간의 지연으로 트랜잭션 완료 대기
-      await changePin("2222");
+      await changePin("multi-change.json", "2222");
       await new Promise(r => setTimeout(r, 10));
-      await changePin("3333");
+      await changePin("multi-change.json", "3333");
       await new Promise(r => setTimeout(r, 10));
-      await changePin("4444");
+      await changePin("multi-change.json", "4444");
 
       // 3. 마지막 PIN으로 unlock
       await lockDataFile();
@@ -258,7 +258,7 @@ describe("fileStorage - changePin 전체 invariant", () => {
       await populateTestData();
 
       // 2. PIN 변경
-      await changePin(NEW_PIN);
+      await changePin("backup-after-change.json", NEW_PIN);
 
       // 3. 새 PIN으로 백업
       const backedUp = await backupDataFile("backup-after-change-backup.json", NEW_PIN);
@@ -284,7 +284,7 @@ describe("fileStorage - changePin 전체 invariant", () => {
 
       // 2. 영문+숫자+특수문자 12자 PIN으로 변경
       const newMixedPin = "MyVault2024!";
-      await changePin(newMixedPin);
+      await changePin("plan4-mixed-forward.json", newMixedPin);
       await new Promise(r => setTimeout(r, 10));
 
       // 3. 세션 클리어 후 새 PIN으로 unlock
@@ -308,7 +308,7 @@ describe("fileStorage - changePin 전체 invariant", () => {
 
       // 2. 6자리 숫자 PIN으로 변경
       const newNumericPin = "987654";
-      await changePin(newNumericPin);
+      await changePin("plan4-mixed-backward.json", newNumericPin);
       await new Promise(r => setTimeout(r, 10));
 
       // 3. 세션 클리어 후 새 PIN으로 unlock

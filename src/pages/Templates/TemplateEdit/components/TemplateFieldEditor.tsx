@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { TemplateField } from "@/models/template";
 import type { FieldType } from "@/models/fieldTypes";
 import { FIELD_TYPE_OPTIONS, getFieldTypePlaceholder } from "@/models/fieldTypes";
+import { Input } from "@/components/inputs";
 
 interface TemplateFieldEditorProps {
   field: TemplateField;
@@ -62,13 +63,13 @@ export const TemplateFieldEditor = ({
           >
             ↓
           </button>
-          <input
+          <Input
             value={field.label}
             onChange={(e) => onChange(index, { label: e.target.value })}
             placeholder="항목 이름"
-            className={`flex-1 rounded-2xl border px-3 py-2 text-sm text-[var(--color-text-h)] bg-[var(--color-bg)] outline-none focus:border-[var(--color-accent)] ${
-              isDuplicateLabel ? "border-[var(--color-error)]" : "border-[var(--color-border)]"
-            }`}
+            className="flex-1"
+            variant={isDuplicateLabel ? "error" : "default"}
+            errorId={isDuplicateLabel ? `field-${index}-label-error` : undefined}
           />
         </div>
         <button
@@ -88,27 +89,27 @@ export const TemplateFieldEditor = ({
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
             타입
           </label>
-          <select
+          <Input
+            as="select"
             value={field.type}
             onChange={(e) => handleTypeChange(e.target.value as FieldType)}
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           >
             {FIELD_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
-          </select>
+          </Input>
         </div>
 
         <div>
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
             플레이스홀더 (자동 설정)
           </label>
-          <input
+          <Input
+            variant="readonly"
             value={fixedPlaceholder}
             readOnly
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-muted)] outline-none"
             title="필드 타입에 따라 자동으로 설정됩니다"
           />
         </div>
@@ -117,11 +118,10 @@ export const TemplateFieldEditor = ({
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
             기본값
           </label>
-          <input
+          <Input
             value={field.defaultValue || ""}
             onChange={(e) => onChange(index, { defaultValue: e.target.value })}
             placeholder="기본값 (선택)"
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           />
         </div>
 
@@ -142,12 +142,13 @@ export const TemplateFieldEditor = ({
                 옵션 제거
               </button>
             </div>
-            <textarea
+            <Input
+              as="textarea"
               value={optionsText}
               onChange={(e) => handleOptionsChange(e.target.value)}
               rows={3}
               placeholder="옵션1\n옵션2\n옵션3"
-              className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
+              className="resize-none"
             />
           </div>
         )}

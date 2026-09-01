@@ -9,8 +9,10 @@ import {
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
-import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
+import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
+import { Input } from "@/components/inputs";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -23,8 +25,13 @@ const Auth = () => {
 
   useEffect(() => {
     const checkFileAndNavigate = async () => {
-      const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
-      if (!activeFileName || !encrypted) {
+      const activeFileName = useSessionStore.getState().activeFileName;
+      if (!activeFileName) {
+        navigate("/", { replace: true });
+        return;
+      }
+      const { encrypted } = await fileTable.getFileInfo(activeFileName);
+      if (!encrypted) {
         navigate("/", { replace: true });
         return;
       }
@@ -85,7 +92,7 @@ const Auth = () => {
       navigate("/accounts", { replace: true });
     } catch (err) {
       console.error("PIN verification failed:", err instanceof Error ? err.message : String(err), err);
-      setError(`PIN verification failed:${err}`);
+      setError(mapError(err));
     } finally {
       setIsVerifying(false);
     }
@@ -105,7 +112,7 @@ const Auth = () => {
       const cryptoKeyBase64 = result.key;
 
       // Get the salt from the file
-      const { salt } = await fileTable.getActiveFileInfo();
+      const { salt } = await fileTable.getFileInfo(useSessionStore.getState().activeFileName!);
       if (!salt) {
         throw new Error("Salt not found for encrypted file");
       }
@@ -143,14 +150,16 @@ const Auth = () => {
     <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center gap-4">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={handleBackToHome}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] hover:text-[var(--color-text-h)]"
+            className="!h-10 !w-10 !rounded-xl !p-0 !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)] hover:!text-[var(--color-text-h)]"
+            label=""
             aria-label="첫 화면으로 돌아가기"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
+          </Button>
           <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
             K
           </div>
@@ -190,7 +199,7 @@ const Auth = () => {
 
           {error && (
                       <div
-                        className="mt-4 p-3 rounded-lg border border-[var(--error)]/20 bg-[var(--error)]/10 text-[var(--error)] text-sm dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]"
+                        className="mt-4 p-3 rounded-lg border border-[var(--color-error)]/20 bg-[var(--color-error)]/10 text-[var(--color-error)] text-sm dark:border-[var(--color-error)]/40 dark:bg-[var(--color-error)]/20 dark:text-[var(--color-error)]"
                         role="alert"
                       >
                         {error}
@@ -200,15 +209,21 @@ const Auth = () => {
           <div className="mt-6 space-y-4">
             {/* Biometric login button */}
             {showBiometricButton && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={handleBiometricLogin}
                 disabled={isVerifying}
-                className="w-full flex items-center justify-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-medium text-[var(--color-text)] transition hover:bg-[var(--color-code-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Fingerprint className="h-4 w-4" />
-                {biometryAvailable.type === "face" ? "Face ID로 로그인" : "지문으로 로그인"}
-              </button>
+                className="!w-full !flex !items-center !justify-center !gap-2 !rounded-full !border !border-[var(--color-border)] !bg-[var(--color-bg)] !px-5 !py-3 !text-sm !font-medium !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)]"
+                label={
+                  <span className="flex items-center gap-2">
+                    <Fingerprint className="h-4 w-4" />
+                    {biometryAvailable.type === "face"
+                      ? "Face ID로 로그인"
+                      : "지문으로 로그인"}
+                  </span>
+                }
+              />
             )}
 
             {/* PIN input */}
@@ -219,28 +234,29 @@ const Auth = () => {
               >
                 PIN 번호
               </label>
-              <input
+              <Input
                 id="pin"
+                size="lg"
                 type="password"
                 value={pin}
                 onChange={(e) => handlePinChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
-                className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
                 placeholder="4~20자 PIN"
                 maxLength={20}
                 autoFocus
-                disabled={isVerifying}
+                // Q5-1 결정: isVerifying 동안 input은 평소 상태 유지. spinner는 Button에만.
               />
-              <PinStrengthMeter pin={pin} />
+              {/* PIN 강도 표시는 의도적으로 생략 — 이 화면은 기존 PIN 인증용이며
+                  강도 평가는 신규/변경 PIN 입력에서만 의미 있음 (CreateVaultPage, PinChangeDialog). */}
             </div>
-            <button
+            <Button
               type="button"
+              variant="primary"
               onClick={handleVerifyPin}
-              disabled={isVerifying}
-              className="w-full rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isVerifying ? "확인 중..." : "확인"}
-            </button>
+              loading={isVerifying}
+              className="!w-full !rounded-full !bg-[var(--color-accent)] !px-5 !py-3 !text-sm !font-semibold !text-white"
+              label={isVerifying ? "확인 중..." : "확인"}
+            />
           </div>
         </section>
       </div>

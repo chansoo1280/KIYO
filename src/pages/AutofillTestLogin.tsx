@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Input } from "@/components/inputs";
 
 const AutofillTestLogin = () => {
   const [email, setEmail] = useState("");
@@ -49,16 +50,16 @@ const AutofillTestLogin = () => {
               >
                 이메일
               </label>
-              <input
-                id="username"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
-                placeholder="example@email.com"
-                autoFocus
-              />
+              <Input
+                            id="username"
+                            size="lg"
+                            type="email"
+                            autoComplete="username"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="example@email.com"
+                            autoFocus
+                          />
             </div>
 
             {/* Password Field */}
@@ -69,15 +70,15 @@ const AutofillTestLogin = () => {
               >
                 비밀번호
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
-                placeholder="비밀번호"
-              />
+              <Input
+                            id="password"
+                            size="lg"
+                            type="password"
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="비밀번호"
+                          />
             </div>
 
             {/* Login Button */}

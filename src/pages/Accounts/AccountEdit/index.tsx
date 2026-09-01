@@ -5,10 +5,13 @@ import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
 import WebsiteSelector from "./components/WebsiteSelector";
 import { PasswordGenerator } from "./components/PasswordGenerator";
+import ErrorMessage from "@/components/feedback/ErrorMessage";
 
 const AccountEdit = () => {
   const navigate = useNavigate();
@@ -109,6 +112,8 @@ const AccountEdit = () => {
   const [selectedPreset, setSelectedPreset] = useState<
     import("@/models/websitePreset").WebsitePreset | null
   >(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
@@ -205,13 +210,20 @@ const AccountEdit = () => {
 
     let savedAccount = updatedAccount;
 
-    if (isNew) {
-      savedAccount = await addAccount(updatedAccount);
-    } else {
-      await updateAccount(updatedAccount);
-    }
+    setIsSaving(true);
+    try {
+      if (isNew) {
+        savedAccount = await addAccount(updatedAccount);
+      } else {
+        await updateAccount(updatedAccount);
+      }
 
-    navigate(`/accounts/${savedAccount.id}`);
+      navigate(`/accounts/${savedAccount.id}`);
+    } catch (err) {
+      setSaveError(mapError(err));
+    } finally {
+      setIsSaving(false);
+    }
   }, [
     fields,
     title,
@@ -228,22 +240,29 @@ const AccountEdit = () => {
 
   return (
     <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-        >
-          ← 취소
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-        >
-          저장
-        </button>
-      </div>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
+          {isNew ? "새 계정" : "계정 수정"}
+        </h1>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+            label="← 취소"
+          />
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSave}
+            loading={isSaving}
+            label={isSaving ? "저장 중..." : "저장"}
+          />
+        </div>
+      </header>
+
+      <ErrorMessage items={saveError} testId="account-edit-error" />
 
       <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
         <AccountTitleSection

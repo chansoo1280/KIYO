@@ -15,6 +15,7 @@ export interface TemplateRecord extends EncryptedRecord {
 export const templateTable = {
   /**
    * Get all templates, decrypting encrypted records if cryptoKey provided
+   * Encrypted records without cryptoKey are silently skipped (multi-vault reload/lock race)
    */
   async getAll(cryptoKey?: CryptoKey): Promise<Template[]> {
     const records = await db.templates.toArray();
@@ -25,14 +26,15 @@ export const templateTable = {
       records.map(async (record) => {
         if (record.encrypted) {
           if (!cryptoKey) {
-            // Encrypted record but no key - return minimal
-            throw new Error("CryptoKey is required to decrypt template records");
+            // Skip — encrypted record but no key (e.g. multi-vault reload/lock).
+            // unlock 후 initializeStores가 다시 채움.
+            return null;
           }
           try {
             return await decryptRecord<Template>(record.encryptedData, record.iv, cryptoKey);
           } catch (error) {
             console.error("Failed to decrypt template record:", error instanceof Error ? error.message : String(error), error);
-            throw new Error("Failed to decrypt template record", { cause: error });
+            return null;
           }
         }
         // Plaintext record
@@ -45,7 +47,9 @@ export const templateTable = {
       })
     );
 
-    return templates.sort((a, b) => a.sortOrder - b.sortOrder);
+    return templates
+      .filter((t): t is Template => t !== null)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   },
 
   /**
