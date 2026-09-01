@@ -59,6 +59,9 @@ const TemplateList = () => {
             {templates.map((template) => (
               <div
                 key={template.id}
+                role="listitem"
+                data-testid="template-card"
+                data-template-name={template.name}
                 className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition hover:border-[var(--color-accent)]/50"
               >
                 <div className="flex items-center justify-between gap-3">

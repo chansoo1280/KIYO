@@ -14,6 +14,8 @@ interface FieldCardProps {
    * 결정 사항: 두 호출처의 padding 차이(compact vs comfy)를 단일 prop으로 분리.
    */
   density?: "compact" | "comfy";
+  /** data-testid for e2e selector (Plan-X: E2E Selector Hardening) */
+  testId?: string;
   children: ReactNode;
 }
 
@@ -27,10 +29,11 @@ interface FieldCardProps {
  * - compact (default): AccountDetail — px-4 py-3 (작은 메타 표시)
  * - comfy: TemplateFieldEditor — p-4 (여러 입력/액션 묶음)
  */
-export function FieldCard({ label, density = "compact", children }: FieldCardProps) {
+export function FieldCard({ label, density = "compact", testId, children }: FieldCardProps) {
   const paddingClass = density === "comfy" ? "p-4" : "px-4 py-3";
   return (
     <div
+      data-testid={testId}
       className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] ${paddingClass}`}
     >
       {label && (

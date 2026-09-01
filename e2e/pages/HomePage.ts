@@ -41,7 +41,6 @@ export class AccountListPage {
   readonly sortButton: Locator;
   readonly templatePickerDialog: Locator;
   readonly accountItems: Locator;
-  readonly tagButtons: Locator;
   readonly fileName: Locator;
 
   constructor(page: Page) {
@@ -52,7 +51,6 @@ export class AccountListPage {
     this.sortButton = page.getByRole('button', { name: /Sort|정렬/ });
     this.templatePickerDialog = page.getByRole('dialog').filter({ hasText: '템플릿 선택' });
     this.accountItems = page.locator('article[role="button"]');
-    this.tagButtons = page.locator('button.rounded-full.px-3.py-1.5');
     this.fileName = page.locator('p.text-sm.text-\\[var\\(--color-text\\)\\]').first();
   }
 
@@ -123,6 +121,7 @@ export class AccountListPage {
     const accounts = await this.accountItems.all();
     const names: string[] = [];
     for (const account of accounts) {
+      // eslint-disable-next-line no-restricted-syntax -- (Plan-X 후속) AccountDetail 카드 title은 4-class 의존, 변경 7의 testid 부여와 함께 후속 plan에서 처리
       const title = await account.locator('p.truncate.text-sm.font-semibold').textContent();
       if (title) names.push(title.trim());
     }

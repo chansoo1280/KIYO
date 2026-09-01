@@ -238,6 +238,8 @@ const AccountList = () => {
                 key={tag}
                 type="button"
                 onClick={() => toggleTag(tag)}
+                aria-label={`태그 필터: ${tag}`}
+                aria-pressed={selectedTags.includes(tag)}
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-chip transition ${
                   selectedTags.includes(tag)
                     ? "bg-[var(--color-accent)] text-white"

@@ -257,10 +257,11 @@ const TemplateEdit = () => {
               />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="template-field-editor-list">
               {form.fields.map((field, index) => (
                 <TemplateFieldEditor
                   key={`${index}-${field.label}`}
+                  testId="template-field-editor"
                   field={field}
                   index={index}
                   onChange={updateField}

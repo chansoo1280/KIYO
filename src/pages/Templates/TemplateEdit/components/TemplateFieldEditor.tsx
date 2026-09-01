@@ -13,6 +13,8 @@ interface TemplateFieldEditorProps {
   onMoveDown: (index: number) => void;
   onDelete: (index: number) => void;
   allLabels: string[];
+  /** data-testid for e2e selector (Plan-X: E2E Selector Hardening) */
+  testId?: string;
 }
 
 export const TemplateFieldEditor = ({
@@ -23,6 +25,7 @@ export const TemplateFieldEditor = ({
   onMoveDown,
   onDelete,
   allLabels,
+  testId,
 }: TemplateFieldEditorProps) => {
   const [optionsText, setOptionsText] = useState(field.options?.join("\n") || "");
   const [showOptions, setShowOptions] = useState(field.type === "select");
@@ -44,7 +47,7 @@ export const TemplateFieldEditor = ({
   const fixedPlaceholder = getFieldTypePlaceholder(field.type);
 
   return (
-    <FieldCard density="comfy">
+    <FieldCard density="comfy" data-testid={testId}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1">
           <button

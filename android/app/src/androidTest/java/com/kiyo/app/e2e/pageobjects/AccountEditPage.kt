@@ -97,10 +97,10 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
             val value = helper.readInputValue(xpath)
             log("VERIFY $name: '$value' (expected contains '${if (name == "title") data.title else data.websiteUrl}')")
         }
-        // 동적 필드 (사용자명/비밀번호): placeholder 기반 컨테이너 내 data-field-value 값
-        val usernameValue = helper.readInputValue(
-            "//input[@placeholder='항목 이름' and @value='아이디/이메일']/ancestor::div[contains(@class,'rounded-2xl')]//*[@data-field-value='true']"
-        )
+        // 동적 필드 (사용자명/비밀번호): placeholder 기반 컨테이너 내 data-field-value 값 (data-testid 기반)
+                val usernameValue = helper.readInputValue(
+                    "//input[@placeholder='항목 이름' and @value='아이디/이메일']/ancestor::*[@data-testid='account-field-editor'][1]//*[@data-field-value='true']"
+                )
         log("VERIFY username: '$usernameValue' (expected '${data.username}')")
     }
 

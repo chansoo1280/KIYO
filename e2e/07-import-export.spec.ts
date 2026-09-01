@@ -23,7 +23,7 @@ async function fillDynamicField(page: import('@playwright/test').Page, labelText
     throw new Error(`Label input with text "${labelText}" not found`);
   }
 
-  const fieldContainer = targetLabelInput.locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+  const fieldContainer = targetLabelInput.locator('xpath=ancestor::*[@data-testid="account-field-editor"][1]');
 
   let valueInput: import('@playwright/test').Locator;
   if (labelText === '메모') {

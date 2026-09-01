@@ -212,8 +212,10 @@ class SettingsPage(helper: WebViewTestHelper, private val nativeAuthPrompt: Nati
 
     /** "마지막 동기화" 시간 텍스트 읽기 */
     private fun getLastSyncTimeText(): String? {
-        return helper.getTextByXPath("//span[contains(text(), '마지막 동기화')]/following-sibling::span[1]")
-            ?: helper.getTextByXPath("//*[contains(text(), '마지막 동기화')]/following-sibling::*[1]")
+        // AutofillSection에서 "마지막 동기화" 라벨과 시간은 부모 div 안의 형제 span.
+        // wrapper 구조 비의존으로 부모 div 내부의 마지막 span을 매칭.
+        return helper.getTextByXPath("//*[contains(., '마지막 동기화')]/span[last()]")
+            ?: helper.getTextByXPath("//div[.//span[contains(text(), '마지막 동기화')]]/span[last()]")
             ?: helper.getTextByXPath("(//span[contains(@class, 'text-xs')])[last()]")
     }
 

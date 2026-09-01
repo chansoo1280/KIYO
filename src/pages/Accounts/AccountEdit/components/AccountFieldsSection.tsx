@@ -29,10 +29,11 @@ export function AccountFieldsSection({
         </button>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 space-y-3" data-testid="account-field-editor-list">
         {fields.map((field) => (
           <FieldEditor
             key={field.id}
+            testId="account-field-editor"
             field={field}
             onUpdate={onUpdateField}
             onRemove={onRemoveField}

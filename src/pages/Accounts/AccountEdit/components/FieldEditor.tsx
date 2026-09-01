@@ -8,6 +8,8 @@ interface FieldEditorProps {
   onUpdate: (id: string, patch: Partial<AccountField>) => void;
   onRemove: (id: string) => void;
   onGeneratePassword?: (fieldId: string) => void;
+  /** data-testid for e2e selector (Plan-X: E2E Selector Hardening) */
+  testId?: string;
 }
 
 export function FieldEditor({
@@ -15,6 +17,7 @@ export function FieldEditor({
   onUpdate,
   onRemove,
   onGeneratePassword,
+  testId,
 }: FieldEditorProps) {
   const handleTypeChange = (newType: FieldType) => {
     onUpdate(field.id, { type: newType, value: "" });
@@ -138,7 +141,7 @@ export function FieldEditor({
   };
 
   return (
-    <div key={field.id} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-3">
+    <div key={field.id} data-testid={testId} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-3">
       <div className="flex items-center justify-between gap-3">
         <Input
           value={field.label}
