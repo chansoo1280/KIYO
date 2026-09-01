@@ -88,7 +88,7 @@ const CreateVaultPage = () => {
             aria-label="홈으로"
           />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               New vault
             </p>
             <h1 className="mt-1 text-3xl font-semibold text-[var(--color-text-h)]">

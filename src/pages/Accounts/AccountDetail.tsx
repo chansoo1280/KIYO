@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
-import { PasswordFieldView } from "./components/PasswordFieldView";
+import { PasswordField } from "@/components/PasswordField";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
@@ -29,7 +29,8 @@ const AccountDetail = () => {
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
       return (
-        <PasswordFieldView
+        <PasswordField
+          mode="view"
           value={field.value}
         />
       );
@@ -127,7 +128,7 @@ const AccountDetail = () => {
                 {account.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]"
+                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-chip text-[var(--color-accent)]"
                   >
                     {tag}
                   </span>
@@ -153,7 +154,7 @@ const AccountDetail = () => {
                 key={field.id}
                 className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text)]">
+                <p className="text-xs font-semibold uppercase tracking-label text-[var(--color-text)]">
                   {field.label}
                 </p>
                 <div className="mt-1">{renderFieldValue(field)}</div>

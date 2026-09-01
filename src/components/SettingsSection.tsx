@@ -9,7 +9,7 @@ interface SettingsSectionProps {
  * Plan-G1: Settings 섹션 wrapper.
  *
  * 기존 4개 Settings 섹션(Security/UI/Data/Autofill)이 동일하게 사용하던
- *   <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
+ *   <h3 className="mb-3 text-sm font-semibold uppercase tracking-section text-[var(--color-text)]">
  *   ...
  *   <div className="space-y-3">{rows}</div>
  * 패턴을 단일 컴포넌트로 흡수.
@@ -23,7 +23,7 @@ interface SettingsSectionProps {
 export function SettingsSection({ title, children }: SettingsSectionProps) {
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-section text-[var(--color-text)]">
         {title}
       </h2>
       <div className="space-y-3">{children}</div>

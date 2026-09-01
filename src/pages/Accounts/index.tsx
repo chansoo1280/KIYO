@@ -128,7 +128,7 @@ const AccountList = () => {
       <PageShell maxWidth="xl" withBottomTabs>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               Accounts
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
@@ -159,7 +159,7 @@ const AccountList = () => {
     <PageShell maxWidth="xl" withBottomTabs>
       <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               Accounts
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
@@ -238,7 +238,7 @@ const AccountList = () => {
                 key={tag}
                 type="button"
                 onClick={() => toggleTag(tag)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition ${
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-chip transition ${
                   selectedTags.includes(tag)
                     ? "bg-[var(--color-accent)] text-white"
                     : "bg-[var(--color-accent-bg)] text-[var(--color-accent)] hover:bg-[var(--color-accent-bg)]/80"
@@ -304,7 +304,7 @@ const AccountList = () => {
                     copy(passwordField.value);
                   }
                 }}
-                className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-[0.08em] !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
+                className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-chip !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
                 label="복사"
                 aria-label="Copy password"
               />

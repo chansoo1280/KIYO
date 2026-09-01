@@ -112,7 +112,7 @@ const Home = () => {
             K
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               Start
             </p>
             <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
@@ -122,7 +122,7 @@ const Home = () => {
         </header>
 
         <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
             Get started
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
@@ -151,7 +151,7 @@ const Home = () => {
 
         {files.length > 0 && (
           <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               Existing vaults
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">

@@ -21,7 +21,7 @@ const AutofillTestLogin = () => {
           K
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
             Autofill Test
           </p>
           <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
@@ -31,7 +31,7 @@ const AutofillTestLogin = () => {
       </header>
 
       <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+        <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
           Autofill Service Test
         </p>
         <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">

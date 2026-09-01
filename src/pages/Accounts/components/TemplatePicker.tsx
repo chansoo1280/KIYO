@@ -55,7 +55,7 @@ const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-label text-[var(--color-accent)]">
               새 계정
             </p>
             <h2

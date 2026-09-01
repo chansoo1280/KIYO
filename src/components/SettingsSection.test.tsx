@@ -24,11 +24,11 @@ describe("SettingsSection (Plan-G1)", () => {
     expect(screen.getByTestId("child-row")).toHaveTextContent("child content");
   });
 
-  it("④ 헤더 className 보존 (uppercase tracking-[0.18em])", () => {
+  it("④ 헤더 className 보존 (uppercase tracking-section)", () => {
     render(<SettingsSection title="UI">x</SettingsSection>);
     const heading = screen.getByRole("heading", { level: 2 });
     expect(heading.className).toContain("uppercase");
-    expect(heading.className).toContain("tracking-[0.18em]");
+    expect(heading.className).toContain("tracking-section");
     expect(heading.className).toContain("text-[var(--color-text)]");
   });
 
