@@ -4,6 +4,7 @@ import Button from "@/components/Button";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
 import { mapError } from "@/utils/mapError";
+import { Input } from "@/components/inputs";
 import IconPicker from "./components/IconPicker";
 import { TemplateFieldEditor } from "./components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
@@ -216,28 +217,25 @@ const TemplateEdit = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  템플릿 이름
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="템플릿 이름"
+                  id="template-name"
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="예: 로그인, API 키, 신용카드"
-                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  설명 (선택)
-                </label>
-                <textarea
+                <Input
+                  label="설명 (선택)"
+                  id="template-description"
+                  as="textarea"
                   value={form.description}
                   onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="이 템플릿에 대한 설명을 입력하세요."
                   rows={2}
-                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
+                  className="resize-none"
                 />
               </div>
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FormDialog } from "./FormDialog";
 import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
+import { Input, Checkbox } from "@/components/inputs";
 
 interface FileCreateDialogProps {
   open: boolean;
@@ -77,26 +78,24 @@ const FileCreateDialog = ({
       </label>
 
       <div className="mt-2 flex items-center gap-2">
-        <input
-          id="vault-name-input"
-          value={fileName}
-          onChange={(e) => setFileName(e.target.value)}
-          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-        />
+        <Input
+        id="vault-name-input"
+        value={fileName}
+        onChange={(e) => setFileName(e.target.value)}
+        className="flex-1"
+      />
 
         <span className="text-sm text-[var(--color-text)]">.json</span>
       </div>
 
       {/* 암호화 여부 */}
       <label className="mt-5 flex items-center gap-3 text-sm font-medium text-[var(--color-text)]" htmlFor="encrypt-checkbox">
-        <input
-          type="checkbox"
+        <Checkbox
+          label="파일 암호화 사용"
           id="encrypt-checkbox"
           checked={encrypted}
           onChange={(e) => setEncrypted(e.target.checked)}
-          className="h-4 w-4 accent-[var(--color-accent)]"
         />
-        파일 암호화 사용
       </label>
 
       {/* PIN */}
@@ -106,14 +105,14 @@ const FileCreateDialog = ({
             PIN 번호
           </label>
 
-          <input
+          <Input
             type="password"
             inputMode="text"
             maxLength={20}
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="4~20자 PIN"
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
           />
           <PinStrengthMeter pin={pin} className="mt-2" />
         </div>

@@ -5,6 +5,7 @@ import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
 import { changePin } from "@/database/fileStorage";
 import Button from "@/components/Button";
+import { Input } from "@/components/inputs";
 import { PinChangeDialog } from "./PinChangeDialog";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { exportKey } from "@/crypto/encryption";
@@ -150,7 +151,10 @@ export function SecuritySection() {
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>자동잠금</span>
-          <select
+          <Input
+            as="select"
+            size="sm"
+            variant={!isEncrypted ? "disabled" : "default"}
             value={autoLockTimeout}
             onChange={(e) => handleAutoLockChange(e.target.value)}
             onPointerDown={(e) => {
@@ -159,18 +163,13 @@ export function SecuritySection() {
               }
             }}
             disabled={!isEncrypted}
-            className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent ${
-              !isEncrypted
-                ? "opacity-50 cursor-not-allowed text-[var(--color-text-muted)]"
-                : "text-[var(--color-text)]"
-            }`}
             aria-label="자동잠금 시간 선택"
           >
             <option value="none">미사용</option>
             <option value="1m">1분</option>
             <option value="10m">10분</option>
             <option value="30m">30분</option>
-          </select>
+          </Input>
         </div>
       </div>
       {securityMessage && (

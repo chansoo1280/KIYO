@@ -1,6 +1,7 @@
 import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 import Button from "@/components/Button";
+import { Input } from "@/components/inputs";
 
 interface PinStepProps {
   fileName: string;
@@ -51,7 +52,7 @@ export const PinStep = ({
         >
           PIN 번호
         </label>
-        <input
+        <Input
           id="pin"
           type="password"
           value={pin}
@@ -60,7 +61,6 @@ export const PinStep = ({
           placeholder="4~20자 PIN"
           data-testid="create-vault-pin-input"
           autoFocus
-          className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
         />
         <PinStrengthMeter pin={pin} className="mt-2" />
       </div>

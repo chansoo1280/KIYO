@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSettingsStore } from "@/store/settingsStore";
+import { Input } from "@/components/inputs";
 
 type FontSize = "small" | "medium" | "large";
 
@@ -50,16 +51,17 @@ export function UISection() {
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
           <span>글자크기</span>
-          <select
+          <Input
+            as="select"
+            size="sm"
             value={fontSize}
             onChange={(e) => handleFontSizeChange(e.target.value as FontSize)}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
             aria-label="글자 크기 선택"
           >
             <option value="small">작게</option>
             <option value="medium">보통</option>
             <option value="large">크게</option>
-          </select>
+          </Input>
         </div>
       </div>
       {uiMessage && (

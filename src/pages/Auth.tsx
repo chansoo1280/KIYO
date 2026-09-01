@@ -12,6 +12,7 @@ import { SecureKey } from "@/plugins/kiyosecurekey";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
+import { Input } from "@/components/inputs";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -233,17 +234,17 @@ const Auth = () => {
               >
                 PIN 번호
               </label>
-              <input
+              <Input
                 id="pin"
+                size="lg"
                 type="password"
                 value={pin}
                 onChange={(e) => handlePinChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
-                className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-base text-[var(--color-text-h)] placeholder-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
                 placeholder="4~20자 PIN"
                 maxLength={20}
                 autoFocus
-                disabled={isVerifying}
+                // Q5-1 결정: isVerifying 동안 input은 평소 상태 유지. spinner는 Button에만.
               />
               {/* PIN 강도 표시는 의도적으로 생략 — 이 화면은 기존 PIN 인증용이며
                   강도 평가는 신규/변경 PIN 입력에서만 의미 있음 (CreateVaultPage, PinChangeDialog). */}

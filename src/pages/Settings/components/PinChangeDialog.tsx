@@ -3,6 +3,7 @@ import { FormDialog } from "@/components/dialogs/FormDialog";
 import { fileTable } from "@/database/fileTable";
 import { verifyPin } from "@/crypto/encryption";
 import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
+import { Input } from "@/components/inputs";
 
 interface PinChangeDialogProps {
   open: boolean;
@@ -89,12 +90,12 @@ export const PinChangeDialog = ({
             >
               현재 PIN
             </label>
-            <input
+            <Input
               id="currentPin"
               type="password"
               value={currentPin}
               onChange={(e) => setCurrentPin(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+              className="mt-1"
               placeholder="현재 PIN 입력"
               autoFocus
             />
@@ -108,12 +109,12 @@ export const PinChangeDialog = ({
           >
             {isEncrypted ? "새 PIN" : "PIN"}
           </label>
-          <input
+          <Input
             id="newPin"
             type="password"
             value={newPin}
             onChange={(e) => setNewPin(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+            className="mt-1"
             placeholder={
               isEncrypted
                 ? "새 PIN 입력 (4~20자)"
@@ -132,12 +133,12 @@ export const PinChangeDialog = ({
           >
             PIN 확인
           </label>
-          <input
+          <Input
             id="confirmPin"
             type="password"
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+            className="mt-1"
             placeholder={isEncrypted ? "새 PIN 재입력" : "PIN 재입력"}
             maxLength={20}
           />

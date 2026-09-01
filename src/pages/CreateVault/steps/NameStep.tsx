@@ -1,4 +1,5 @@
 import Button from "@/components/Button";
+import { Input } from "@/components/inputs";
 
 interface NameStepProps {
   fileName: string;
@@ -68,20 +69,15 @@ export const NameStep = ({
           파일 이름
         </label>
         <div className="mt-2 flex items-center gap-2">
-          <input
+          <Input
             id="vault-name"
-            type="text"
             value={fileName}
             onChange={(e) => onFileNameChange(e.target.value)}
             placeholder={defaultValue}
-            aria-invalid={hasError}
-            aria-describedby={hasError ? "vault-name-error" : undefined}
+            variant={hasError ? "error" : "default"}
+            errorId={hasError ? "vault-name-error" : undefined}
             data-testid="create-vault-name-input"
-            className={`w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] ${
-              hasError
-                ? "border-[var(--color-error)]"
-                : "border-[var(--color-border)] bg-[var(--color-code-bg)]"
-            } text-[var(--color-text-h)]`}
+            className="flex-1"
           />
           <span className="text-sm text-[var(--color-text)]">.json</span>
         </div>
