@@ -141,7 +141,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await createVault(page, { fileName: 'vault-two' });
 
       // 정상적으로 /accounts 이동
-      await expect(page.locator('section.min-h-svh')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('main.min-h-svh')).toBeVisible({ timeout: 5000 });
 
       // 6. multi-vault: db.files에 두 row 보존
       await expectDbFilesContain(page, ['vault-one.json', 'vault-two.json']);
@@ -173,7 +173,7 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await createVault(page, { fileName: 'vault-settings-two' });
 
       // 정상적으로 /accounts 이동
-      await expect(page.locator('section.min-h-svh')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('main.min-h-svh')).toBeVisible({ timeout: 5000 });
 
       // 6. multi-vault: 두 row 보존
       await expectDbFilesContain(page, ['vault-settings-one.json', 'vault-settings-two.json']);

@@ -1,7 +1,7 @@
 # KIYO Strategy
 
 name: "KIYO"
-last_updated: "2026-08-30"
+last_updated: "2026-09-01"
 
 ---
 
@@ -149,7 +149,14 @@ last_updated: "2026-08-30"
 - 릴리스 서명·ProGuard/R8·버저닝·네트워크 권한 0 검증
 - CI: typecheck/lint/단위통합/Playwright E2E/안드로이드 E2E(수동) 게이트
 - **멀티플랫폼 빌드/릴리스 파이프라인 기반** — 향후 iOS/데스크톱 확장 시 재사용
-- **최근 신호:** CI 워크플로, Playwright E2E 39개 구현, 로드맵 Phase 0~4
+- **E2E selector 안정성 (User-Centric Selectors)** — 컴포넌트 리팩터링이 e2e 회귀를 만들지 않도록 selector 전략 유지
+  - **선호 셀렉터 (사용자 인지 가능)**: `getByRole` (button/link/heading/textbox), `getByText`, `getByPlaceholder`, `getByLabel`, `aria-label`
+  - **금지 셀렉터 (구조 의존)**: 태그+클래스 (`div.group.rounded-2xl.border`), 부모 셀렉터 + `> div` 깊은 결합, 클래스명 해시 (`button.rounded-full.px-3.py-1.5`)
+  - **`data-testid` 비선호** — `aria-label`/`role`이 본질적으로 부여 가능한 경우 testid 추가 안 함. 컴포넌트에 의미적 라벨이 부족하면 먼저 라벨 부여 우선, testid는 최후 수단 (복수 호출처·aria 부재 시 한정)
+  - **허용 예외**: `<main className="min-h-svh">`처럼 의도가 명확한 wrapper — 디자인 시스템 변경 시 같이 갱신
+  - **진척 (2026-09-01):** [`2026-09-01-e2e-selector-hardening.md`](docs/brainstorms/2026-09-01-e2e-selector-hardening.md) — PR #58 머지 직후 wrapper `<section>` → `<main>` 변경으로 회귀 5건 발생, selector 5건 정정(44/44 통과). 위험 selector 6건 식별 (`div.group ...` 카드, `div.space-y-3 > div` 필드 래퍼, `button.rounded-full.px-3.py-1.5` tag 버튼) — 후속 plan에서 마이그레이션 결정 대기 (Q1)
+  - **부수 발견**: PR #58 이후 `Encountered two children with the same key, 0` 콘솔 경고 — FieldCard/PageShell 영향 가능성, 실패로 이어지지 않음, 별도 추적 (Q3)
+- **최근 신호:** CI 워크플로, Playwright E2E 39→44 구현, 로드맵 Phase 0~4
 
 ---
 
