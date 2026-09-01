@@ -76,6 +76,7 @@ vi.mock("@/store/accountStore", () => ({
       selector({ loadAccounts: mockLoadAccounts }),
     {
       getState: hoisted.mockAccountGetState,
+      setState: vi.fn(),
     },
   ),
 }));
@@ -86,6 +87,7 @@ vi.mock("@/store/templateStore", () => ({
       selector({ loadTemplates: mockLoadTemplates }),
     {
       getState: hoisted.mockTemplateGetState,
+      setState: vi.fn(),
     },
   ),
 }));
