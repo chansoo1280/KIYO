@@ -90,6 +90,10 @@ object E2EEnv {
      * 활성 볼트 파일명은 **Auth 잠금 화면**(파일 정보 카드)과 **계정 리스트 화면**에만
      * 표시된다. 파일 선택 화면은 목록의 첫 파일명을 보여줄 뿐 "활성"이 아니므로 제외 —
      * 이 화면에서는 null 반환 (구현 시 목록 표시 오독 방지, 2026-08-28).
+     *
+     * 반환값은 (N) suffix 없는 stem. fileTable의 중복 회피 정책(`(1)`, `(2)`)으로
+     * 부착된 suffix는 동일 stem + 순번 의미이므로 비교 시 무시한다.
+     * 예: "vault-one.json" → "vault-one", "vault-one(1).json" → "vault-one"
      */
     fun readActiveVaultFileName(env: BaseEnv): String? {
         val device = env.device
@@ -102,8 +106,11 @@ object E2EEnv {
         val node = device.wait(Until.findObject(By.textContains(".json")), 5000)
         val fileName = node?.text?.trim()
         if (!fileName.isNullOrBlank()) {
-            Log.i(TAG, "Active vault file name observed (${if (onAuth) "auth" else "accounts"}): $fileName")
-            return fileName.removeSuffix(".json")
+            val stem = fileName.removeSuffix(".json")
+                .replace(Regex("\\(\\d+\\)$"), "")
+                .trim()
+            Log.i(TAG, "Active vault file name observed (${if (onAuth) "auth" else "accounts"}): $fileName → stem=$stem")
+            return stem.ifBlank { null }
         }
         Log.i(TAG, "No active vault file name found on ${if (onAuth) "auth" else "accounts"} screen")
         return null
@@ -213,7 +220,10 @@ object E2EEnv {
         Log.i(TAG, "App started: state=$state activeVault=$activeVaultName target=$vaultName encrypted=$encrypted")
 
         // 2. 목표 볼트가 이미 활성이면 생성 생략 (freshVault 런은 재사용하지 않고 항상 새로 생성)
-        val reuseActive = activeVaultName == vaultName && !consumeFreshVaultIfRequested()
+        // 양쪽 stem 비교 — activeVaultName은 readActiveVaultFileName에서 (N) suffix 제거됨.
+        // vaultName도 같은 정책으로 정규화해 사용자 입력 `vault-one(1)` 같은 경우도 매칭.
+        val targetStem = vaultName.removeSuffix(".json").replace(Regex("\\(\\d+\\)$"), "").trim()
+        val reuseActive = activeVaultName == targetStem && !consumeFreshVaultIfRequested()
         if (reuseActive && state == ScreenState.PLAIN_ACTIVE) {
             Log.i(TAG, "Target vault '$vaultName' already active (plain), skipping creation")
             return bind(bound)

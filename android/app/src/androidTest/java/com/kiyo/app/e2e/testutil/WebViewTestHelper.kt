@@ -119,13 +119,14 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
         return typeByLabelFieldValueAttribute(labelText, text, description)
     }
 
-    /** data-field-value="true" 속성을 가진 입력 필드 찾아 텍스트 입력 (React data-field-value 속성 사용 - 고정 필드용) */
+/** data-field-value="true" 속성을 가진 입력 필드 찾아 텍스트 입력 (React data-field-value 속성 사용 - 고정 필드용) */
     private fun typeByLabelFieldValueAttribute(labelText: String, text: String, description: String): Boolean {
-        // label[text] 내부 또는 형제의 data-field-value="true" 요소 찾기
-        return typeByXPath(
-            "//label[contains(text(), '$labelText')]//*[@data-field-value='true']",
-            text,
-            description
+        // 현재 마크업: <div><label htmlFor="X">제목</label><input id="X" data-field-value="true" /></div>
+        // label과 input은 형제 → following-sibling 사용
+        return trySelectorChain(
+            { typeByXPath("//label[contains(text(), '$labelText')]/following-sibling::*[@data-field-value='true']", text, description) },
+            // 폴백: 옛 마크업 — label 내부에 input이 중첩된 구조
+            { typeByXPath("//label[contains(text(), '$labelText')]//*[@data-field-value='true']", text, description) }
         )
     }
 
