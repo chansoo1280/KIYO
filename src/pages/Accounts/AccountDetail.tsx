@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import { PasswordField } from "@/components/PasswordField";
+import { FieldCard } from "@/components/FieldCard";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
@@ -150,15 +151,9 @@ const AccountDetail = () => {
 
           <div className="mt-6 space-y-3">
             {sortedFields.map((field) => (
-              <div
-                key={field.id}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3"
-              >
-                <p className="text-xs font-semibold uppercase tracking-label text-[var(--color-text)]">
-                  {field.label}
-                </p>
-                <div className="mt-1">{renderFieldValue(field)}</div>
-              </div>
+              <FieldCard key={field.id} label={field.label}>
+                {renderFieldValue(field)}
+              </FieldCard>
             ))}
           </div>
         </article>
