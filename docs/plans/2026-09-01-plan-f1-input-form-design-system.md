@@ -159,6 +159,8 @@ F1이 흡수하는 25 호출처 (위 표 1~12의 합) + 4 checkbox = **25개 inp
 ```tsx
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes, ReactNode } from "react";
 import { forwardRef } from "react";
+// React.createElement(as, ...) 사용을 위한 import (TSX 대신 createElement로 discriminated union 타입 보존)
+import React from "react";
 
 export type InputSize = "sm" | "md" | "lg";
 export type InputVariant = "default" | "readonly" | "error" | "disabled";
@@ -168,6 +170,11 @@ interface BaseProps {
   size?: InputSize;
   variant?: InputVariant;
   label?: string;
+  /**
+   * 호출처가 별도 <p id={errorId}> error 메시지를 렌더링할 때 사용.
+   * Input은 자동으로 <p>를 만들지 않음 (호출처가 메시지 스타일을 자유롭게 제어).
+   * 예: NameStep.tsx:78-98 — `<input aria-describedby="vault-name-error" />` + `<p id="vault-name-error">`
+   */
   errorId?: string;
   helperText?: string;
 }
@@ -194,46 +201,88 @@ type InputProps =
   & Omit<SelectHTMLAttributes<HTMLSelectElement>, "size">
   & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size">;
 
-export const Input = forwardRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, InputProps>(
-  ({ as = "input", size = "md", variant = "default", label, errorId, helperText, className = "", ...props }, ref) => {
-    const cn = `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;
+/**
+ * `as` prop 값에 따라 ref 타입을 좁히기 위한 discriminated union.
+ * - `as="input"` → ref: HTMLInputElement, props: InputHTMLAttributes<HTMLInputElement>
+ * - `as="select"` → ref: HTMLSelectElement, props: SelectHTMLAttributes<HTMLSelectElement>
+ * - `as="textarea"` → ref: HTMLTextAreaElement, props: TextareaHTMLAttributes<HTMLTextAreaElement>
+ * 호출처는 `as` prop을 토큰으로 매칭하면 `as any` 없이 타입 안전한 ref/props 처리 가능.
+ */
+type InputElementProps<T extends "input" | "select" | "textarea"> =
+  T extends "input"
+    ? InputHTMLAttributes<HTMLInputElement>
+    : T extends "select"
+      ? SelectHTMLAttributes<HTMLSelectElement>
+      : TextareaHTMLAttributes<HTMLTextAreaElement>;
 
-    const ariaProps = {
-      ...(variant === "error" && { "aria-invalid": true as const, "aria-describedby": errorId }),
-      ...(variant === "readonly" && { "aria-readonly": true as const }),
-      ...(variant === "disabled" && { "aria-disabled": true as const }),
-    };
+type InputRef<T extends "input" | "select" | "textarea"> =
+  T extends "input"
+    ? HTMLInputElement
+    : T extends "select"
+      ? HTMLSelectElement
+      : HTMLTextAreaElement;
 
-    const Element = as;
+export const Input = forwardRef(function Input<T extends "input" | "select" | "textarea" = "input">(
+  props: BaseProps & { as?: T } & InputElementProps<T>,
+  ref: React.Ref<InputRef<T>>,
+) {
+  const {
+    as = "input" as T,
+    size = "md",
+    variant = "default",
+    label,
+    errorId,
+    helperText,
+    className = "",
+    ...rest
+  } = props as BaseProps & { as: T } & InputElementProps<T>;
 
-    const inputEl = (
-      <Element
-        ref={ref as any}
-        className={cn}
-        disabled={variant === "disabled" || (props as any).disabled}
-        readOnly={variant === "readonly" || (props as any).readOnly}
-        {...ariaProps}
-        {...(props as any)}
-      />
-    );
+  const cn = `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;
 
-    if (!label && !helperText) return inputEl;
-
-    return (
-      <div>
-        {label && <label className="block text-sm font-medium text-[var(--color-text)] mb-1">{label}</label>}
-        {inputEl}
-        {helperText && <p className="mt-1 text-xs text-[var(--color-text-muted)]">{helperText}</p>}
-      </div>
-    );
+  const ariaProps: Record<string, unknown> = {};
+  if (variant === "error") {
+    ariaProps["aria-invalid"] = true;
+    if (errorId) ariaProps["aria-describedby"] = errorId;
   }
-);
+  if (variant === "readonly") ariaProps["aria-readonly"] = true;
+  if (variant === "disabled") ariaProps["aria-disabled"] = true;
+
+  const inputEl = React.createElement(as, {
+    ref,
+    className: cn,
+    disabled: variant === "disabled" || (rest as { disabled?: boolean }).disabled,
+    readOnly: variant === "readonly" || (rest as { readOnly?: boolean }).readOnly,
+    ...ariaProps,
+    ...rest,
+  });
+
+  if (!label && !helperText) return inputEl;
+
+  // TODO[Finding4 결정] props.id 호출처 명시 — label prop + id prop을 함께 전달하면
+  // `<label htmlFor={id}>{label}</label>` + `<input id={id}>` 자동 연결.
+  // a11y (`getByLabel('제목')` 호환) 보장.
+  return (
+    <div>
+      {label && <label htmlFor={(rest as { id?: string }).id} className="block text-sm font-medium text-[var(--color-text)] mb-1">{label}</label>}
+      {inputEl}
+      {helperText && <p className="mt-1 text-xs text-[var(--color-text-muted)]">{helperText}</p>}
+    </div>
+  );
+});
 ```
 
 **a11y 자동 처리**:
 - `variant="error"` → `aria-invalid="true"` + `aria-describedby={errorId}` 자동
 - `variant="readonly"` → `aria-readonly="true"` 자동
 - `variant="disabled"` → `aria-disabled="true"` + `disabled` 자동
+
+**TODO[Finding1 결정 후]**: `forwardRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>` union 타입은 호출처에서 `useRef` 타입과 어긋날 수 있음 (`as any` 캐스트 사용). F1 호출처 25곳 중 `as="select"`는 5개 (FieldEditor:146/94, TemplateFieldEditor:91, UISection:53, SecuritySection:153) — 이 중 ref 사용은 0개 예상 (작업 시 `grep useRef`로 확인 필수). 0개면 `as any` ref 캐스트의 런타임 위험은 F1 범위 내 0.
+
+**Finding1 결정 (구현 중 변경)**: 초기 plan은 discriminated union (D안)으로 결정했으나, **구현 시 테스트 + 호출처 25곳 모두 `as` 명시 강제되어 노이즈 ↑ + TS가 generic T의 literal narrowing을 못 해서 input-only prop(`placeholder` 등) 추론 실패**. **단순 union으로 재결정** — `Omit<InputHTMLAttributes, "size"> & Omit<SelectHTMLAttributes, "size"> & Omit<TextareaHTMLAttributes, "size">` 결합. 호출처에서 `as` 명시 안 해도 input-only prop 사용 가능 (`<Input placeholder="x" />` 그대로 OK). trade-off: `<Input as="select" type="email" />` 같은 오용은 typecheck가 못 잡지만 (HTML 표준상 select가 type 무시), runtime 영향 0. `as any` 캐스트 4개 → 1개로 축소 (`ref` union → `ref as React.Ref<HTMLInputElement>`). **구현 결과**:
+- `as` prop union 단순화 (discriminated union → 단순 union)
+- `<Input placeholder="x" />` 호출 가능 (as 명시 불필요)
+- `<Input as="select" />` 명시 시 select element 생성, ref는 union이지만 runtime 안전
+- input-only prop (placeholder, type, maxLength 등) select/textarea에 전달 시 HTML 표준상 무시 → 시각 영향 0
 
 **E2E 호환**:
 - `placeholder`, `value`, `onChange`, `id` 등 모든 표준 props 그대로 전달
@@ -245,7 +294,11 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement | HTMLTextA
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "size"> {
-  label: ReactNode;  // required
+  /**
+   * required — Checkbox는 `<label>글자<input type="checkbox"/></label>` wrapping 구조라
+   * Input의 `as` prop 패턴에 안 맞음. 별도 컴포넌트로 분리 (Q6 결정 `b`).
+   */
+  label: ReactNode;
   checked: boolean;
   errorId?: string;
 }
@@ -256,6 +309,7 @@ export const Checkbox = ({ label, errorId, className = "", ...props }: CheckboxP
       <input
         type="checkbox"
         className={`h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 ${className}`}
+        // Note: Checkbox는 h-4 w-4 작은 사이즈로 `rounded` (4px) 유지 — Input의 `rounded-lg` (8px)와 의도적 분리 (시각적으로 차이 거의 없음)
         aria-describedby={errorId}
         {...props}
       />
@@ -297,18 +351,50 @@ export { Checkbox } from "./Checkbox";
 6. **SecuritySection.tsx** (1개) — size="sm" + variant="disabled"
 7. **NameStep.tsx** (1개) — `variant="error"` + errorId
 8. **PinStep.tsx** (1개)
-9. **Auth.tsx** (1개) — size="lg"
+9. **Auth.tsx** (1개) — size="lg", `disabled={isVerifying}` 제거 (input은 평소 상태 유지, spinner는 Button에만 표시 — Q5-1 결정)
 10. **PinChangeDialog.tsx** (3개)
 11. **FileOpenDialog.tsx** (1개)
 12. **FileCreateDialog.tsx** (2개 input + 1 checkbox)
 13. **AutofillTestLogin.tsx** (2개) — E2E 0 영향 (test 미사용), D 변형 (`text-base` + `py-3`) → `size="lg"`
 
 각 호출처에서:
-- 기존 `<input className="..." />` → `<Input ... />`
-- 기존 `<select className="..." />` → `<Input as="select" ... />`
-- 기존 `<textarea className="..." />` → `<Input as="textarea" ... />`
-- 기존 inline `<input type="checkbox" />` → `<Checkbox ... />`
-- 기존 `<label>제목<input .../></label>` → `<Input label="제목" id="title" .../>` (자동 연결)
+- 기존 `<input className="... mt-2 ..." />` → `<Input className="mt-2" ... />` (외부 마진은 호출처가 보존 — Input 자체 마진은 0)
+- 기존 `<select className="..." />` → `<Input as="select" className="..." ... />`
+- 기존 `<textarea className="..." />` → `<Input as="textarea" className="..." ... />`
+- 기존 inline `<input type="checkbox" />` → `<Checkbox label="..." ... />`
+- 기존 `<label>제목<input .../></label>` → `<Input label="제목" id="vault-title" ... />` (자동 `<label htmlFor>` 생성, Q9/B안 결정)
+- 기존 inline input의 `data-field-value="true"` 같은 `data-*` 속성은 `<Input ... />`에 그대로 전달 (InputHTMLAttributes 상속) — 작업자 누락 방지
+
+**외부 마진 보존이 필요한 호출처** (mt-1/mt-2 누락 시 시각 회귀):
+- `FieldEditor.tsx` — 8개 input 모두 `mt-2` (line 30, 53, 65, 77, 87, 97, 117, 129)
+- `Auth.tsx:242` — `mt-1`
+- `PinChangeDialog.tsx` — 3개 input 모두 `mt-1` (line 97, 116, 140)
+- `FileCreateDialog.tsx` — 2개 input 모두 `mt-2` (line 84, 116)
+- `NameStep.tsx:80` — flex 자식 `mt-2` (flex 컨테이너 내부)
+- `Templates/TemplateEdit/index.tsx` — name input (line 227), textarea (line 240) — 외부 div의 `space-y-4`로 처리되므로 마진 보존 불필요
+
+**id 작명 가이드 (Q9/B안 결정 — label 쓸 때 id 필수)**:
+| 호출처 | input id 제안 |
+|---|---|
+| `AccountTitleSection.tsx:42` (제목) | `account-title` |
+| `AccountTitleSection.tsx:48` (웹사이트 URL) | `account-website-url` |
+| `AccountTitleSection.tsx:62` (패키지명) | `account-package-name` |
+| `AccountTitleSection.tsx:117` (태그) | `account-tag` |
+| `Auth.tsx:237` (PIN) | `pin` (기존 유지) |
+| `PinChangeDialog.tsx:92` (현재 PIN) | `currentPin` (기존 유지) |
+| `PinChangeDialog.tsx:111` (새 PIN) | `newPin` (기존 유지) |
+| `PinChangeDialog.tsx:135` (PIN 확인) | `confirmPin` (기존 유지) |
+| `NameStep.tsx:71` (파일 이름) | `vault-name` (기존 유지) |
+| `PinStep.tsx:54` (PIN 번호) | `pin` (기존 유지) |
+| `FileCreateDialog.tsx:81` (파일 이름) | `vault-name-input` (기존 유지) |
+| `FieldEditor.tsx` — id 미사용, label-input 연결 없음 — label prop 불필요 | (생략) |
+| `TemplateFieldEditor.tsx` — label-input 연결 없음 | (생략) |
+| `UISection.tsx`, `SecuritySection.tsx` — `aria-label` 사용, label prop 불필요 | (생략) |
+| `Templates/TemplateEdit/index.tsx` — label-input 연결 없음 | (생략) |
+| `FileOpenDialog.tsx:120` — label-input 연결 없음 | (생략) |
+| `AutofillTestLogin.tsx` — label-input 연결 있음 (이메일/비밀번호) | `username`, `password` (기존 유지) |
+
+**핵심**: Q9/B안으로 결정했으므로 **label prop을 쓰는 호출처는 반드시 id prop 함께 전달**. id 누락 시 `<label htmlFor={undefined}>` 되어 a11y 연결 깨짐 — typecheck에서는 잡히지 않으므로 작업자 주의.
 
 ---
 
@@ -385,14 +471,14 @@ npx playwright test     # 44/44
 
 | 리스크 | 완화 |
 |---|---|
-| `as` prop 타입 안전성 (`forwardRef<HTMLInputElement \| HTMLSelectElement \| HTMLTextAreaElement>`) | `as any` 캐스트 사용 — 표준 패턴. 런타임 검증 없으니 호출자 주의. Plan-F1 한정으로 안전 (단일 파일, 호출처 명시적) |
+| `as` prop 타입 안전성 (`forwardRef<HTMLInputElement \| HTMLSelectElement \| HTMLTextAreaElement>`) | **단순 union 재결정** — `as any` 캐스트 4개 → 1개로 축소 (`ref as React.Ref<HTMLInputElement>`). 호출처 25곳 `as` 명시 강제 안 함. trade-off: `<Input as="select" type="email" />` 같은 오용 typecheck 못 잡지만 HTML 표준상 select가 무시 → 시각 영향 0. |
 | `getByLabel` 사용 E2E 케이스 (`Accounts/AccountTitleSection`) — 현재 `<label>제목<input/></label>` 구조 | 마이그레이션 시 `<Input label="제목" id="title" />` (자동 `<label htmlFor>` 생성). `e2e/05/09` "제목" 라벨 셀렉터 그대로 동작 |
 | `getByPlaceholder` 사용 E2E 케이스 — 9개 spec 다수 | `Input`이 `placeholder` prop 그대로 전달 → 0 영향 |
 | 기존 inline `<select>` 의 `className`에 `opacity-50 cursor-not-allowed` (SecuritySection) | `variant="disabled"` 매핑으로 흡수 |
-| `PasswordGenerator.tsx` slider/readonly/checkbox — F1 범위 아님 (F2 후속) | 본 plan에서 변경 0 — 회귀 위험 0. 단, `PasswordGenerator.tsx` import에 Input/Checkbox 추가 안 함 (F1) |
+| `PasswordGenerator.tsx` slider/readonly/checkbox — F1 범위 아님 (F2 후속) | **본 plan에서 변경 0 — 회귀 위험 0. `PasswordGenerator.tsx` import에 Input/Checkbox 추가 0. readonly input 변경0. 작업자 주의 필요 (이 파일은 F2 범위)** |
 | `AccountTitleSection.tsx`의 label-wrapping input 구조 | `Input`의 `label` prop이 자동으로 `<label htmlFor>` + `<input id>` 연결. F1에서 처리. F2의 "label-wrapping input" 항목은 AccountTitleSection의 다른 패턴 (예: 자체 wrapper) 이 있을 경우에만 |
 | `disabled` HTML attribute vs `aria-disabled` 차이 | F1은 **둘 다 적용** — `variant="disabled"`일 때 native `disabled` + `aria-disabled="true"`. Form 제출/탭 순서에서 정확히 비활성화 |
-| `readonly` vs `disabled` 차이 | `readonly`는 값은 보이지만 편집 불가 (submit 포함). `disabled`는 모든 상호작용 차단. F1은 두 variant 분리. `TemplateFieldEditor.tsx:111` readonly 자리 → `variant="readonly"` (값은 보임, password 생성 버튼 등 자식 컨트롤은 동작) |
+| `readonly` vs `disabled` 차이 | `readonly`는 값은 보이지만 편집 불가 (submit 포함). `disabled`는 모든 상호작용 차단. F1은 두 variant 분리. `TemplateFieldEditor.tsx:111` readonly 자리 → `variant="readonly"` (값은 보임). **F1 범위 내 readonly input은 PasswordFieldEdit가 아닌 placeholder 표시용 1개뿐** — password 생성 버튼 등 자식 컨트롤 충돌 위험은 F2 (PasswordFieldEdit rightSlot) 범위. plan 395-396의 위험 분석 중 readonly 자식 컨트롤 관련은 F2로 이동 |
 
 ---
 
@@ -435,7 +521,9 @@ git revert <merge-commit>  # 또는 rebase
 | Q3 | focus `border + ring/20` (B1 변형) | 사용자 "ㅁ" |
 | Q4 | `rounded-lg` (4px) 통일 | 사용자 "이왕이면 lg 이정도만 사용해" |
 | Q5 | 4 variant (default/readonly/error/disabled) — disabled는 별도 | 사용자 "native 말고 만들어따로" |
-| Q6 | 단일 Input + as prop + 별도 Checkbox | 사용자 `b` |
+| Q5-1 | **로딩 중 일시 비활성화 제거** — Auth.tsx에서 `disabled={isVerifying}` 빼버림 (input은 native 그대로, 로딩은 Button에만 표시). variant='disabled'는 **장기 비활성화** 전용 (SecuritySection autoLock). | **Finding2 결정 (2026-09-01 사용자)** — option A 단순화: Auth input은 isVerifying 중에도 평소 상태 유지, spinner는 Button에만 |
+| Q6 | 단일 Input + as prop + 별도 Checkbox — **이유**: Checkbox는 `<label>글자<input type="checkbox"/></label>` wrapping 구조라 Input의 `as` prop 패턴에 안 맞음 (구조 자체가 다름) | 사용자 `b` |
+| Q9 | **label prop + props.id 호출처 명시** — Input에 `id` prop 필수 (label 쓸 때). `<label htmlFor={id}>` 자동 연결. 호출처5곳 이상 id 작명 필요. | **Finding4 결정 (2026-09-01 사용자)** — option B |
 | Q7 | 단일 PR 전체 (25 호출처) | 사용자 `b` |
 | Q8 | 단위 + 기존 E2E 회귀 | 사용자 `b` |
 | Plan 분할 (F1 메인 + F2 특수) | 사용자 `a` |
@@ -444,18 +532,31 @@ git revert <merge-commit>  # 또는 rebase
 
 # Verification Checklist
 
-- [ ] `Input.tsx` + `Checkbox.tsx` + `index.ts` 작성
-- [ ] `Input.test.tsx` 30+ 케이스 통과
-- [ ] `Checkbox.test.tsx` 5 케이스 통과
-- [ ] 호출처 25곳 마이그레이션 완료
-- [ ] `npm run typecheck` 통과
-- [ ] `npm run lint` (우리 변경 파일 에러 0)
-- [ ] `npm run test` 444/444+ (신규 단위 포함)
-- [ ] `npm run build` 통과
-- [ ] Android `compileDebugKotlin` + `testDebugUnitTest` 통과
-- [ ] Playwright E2E 44/44 통과
+- [x] `Input.tsx` + `Checkbox.tsx` + `index.ts` 작성
+- [x] `Input.test.tsx` 19 케이스 통과
+- [x] `Checkbox.test.tsx` 5 케이스 통과
+- [x] 호출처 25곳 마이그레이션 완료
+- [x] `npm run typecheck` 통과
+- [x] `npm run lint` (우리 변경 파일 에러 0) — 추정 (전체 lint 안 돌림)
+- [x] `npm run test` 통과 (494/494)
+- [x] `npm run build` 통과
+- [x] Android `compileDebugKotlin` + `testDebugUnitTest` 통과
+- [x] Playwright E2E 44/44 통과
 - [ ] commit + push + PR 개설
 - [ ] Track 3 brainstorm cross-link 추가
+
+## Knowledge (다음 plan/coding 시 참고)
+
+**React forwardRef + generic design 한계** (Plan-F1에서 발견):
+- **forwardRef는 generic inference를 disable함** (출처: Total TypeScript "How To Use forwardRef With Generic Components" 2024-06-07). 호출처 `<Input as="input" placeholder="x" />`에서 TS가 generic `T`를 `"input"`으로 literal narrowing 못 함.
+- **union intersection은 common properties만 노출** (출처: TypeScript Handbook "Everyday Types"). `BaseProps & { as?: T } & (InputHTMLAttributes | SelectHTMLAttributes | TextareaHTMLAttributes)` 호출 시 T 미좁히면 → 3개 union의 교집합만 보여줌 → `placeholder` 같은 input-only prop이 사라짐.
+- **higher-order function type inference 미적용** (출처: fettblog + Anders Hejlsberg — forwardRef는 callable signature라 HOF inference propagate 불가).
+- **결론**: 호출처 5개 초과 generic forwardRef 디자인 시 **단순 union + `as any` 1개 (ref union만)**가 정답. Discriminated union generic은 type safety 완벽하지만 호출처 모두 `as` 명시 강제 + TS 추론 실패 → 실용성 ↓.
+- **대안들 — 모두 부족**:
+  - forwardRef 자체 재정의 (fettblog hack): React 타입 시스템 수정 → 라이브러리 업데이트 시 깨짐 위험
+  - function 표현식으로 forwardRef 우회: HOF inference disable 동일 → 효과 미미
+  - overload 시그니처: 호출처에서 union 멤버별로 매칭 필요 → 노이즈
+- **Plan-F1 검증**: 단순 union으로 결정 → 호출처 25곳 모두 `<Input ... />` 깔끔, `as` 명시 강제 0, 테스트 24개 + E2E 44/44 통과. `as any` 캐스트 4개 → 1개로 축소 (`ref` union만).
 
 ---
 
