@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Account } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import BottomTabs from "@/components/BottomTabs";
+import { PageShell } from "@/components/PageShell";
 import { useSessionStore } from "@/store/sessionStore";
 import TemplatePicker from "./components/TemplatePicker";
 import { useClipboard } from "@/hooks/useClipboard";
@@ -124,41 +125,39 @@ const AccountList = () => {
 
   if (!initialized || isLoading) {
     return (
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
-                Accounts
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
-                My accounts
-              </h2>
-              {fileName && (
-                <p className="mt-1 text-sm text-[var(--color-text)]">
-                  {fileName}
-                </p>
-              )}
-            </div>
-          </div>
-          <div
-            className="flex flex-col items-center justify-center gap-3 py-16"
-            data-testid="accounts-loading"
-          >
-            <Spinner size="lg" label="계정을 불러오는 중..." />
-            <p className="text-sm text-[var(--color-text-muted)]">
-              계정을 불러오는 중...
+      <PageShell maxWidth="xl" withBottomTabs>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+              Accounts
             </p>
+            <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
+              My accounts
+            </h2>
+            {fileName && (
+              <p className="mt-1 text-sm text-[var(--color-text)]">
+                {fileName}
+              </p>
+            )}
           </div>
         </div>
-      </section>
+        <div
+          className="flex flex-col items-center justify-center gap-3 py-16"
+          data-testid="accounts-loading"
+        >
+          <Spinner size="lg" label="계정을 불러오는 중..." />
+          <p className="text-sm text-[var(--color-text-muted)]">
+            계정을 불러오는 중...
+          </p>
+        </div>
+        <BottomTabs />
+      </PageShell>
     );
   }
 
   return (
-    <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <div className="flex items-center justify-between gap-3">
+    <PageShell maxWidth="xl" withBottomTabs>
+      <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
               Accounts
@@ -312,7 +311,6 @@ const AccountList = () => {
             </article>
           ))}
         </div>
-      </div>
 
       <div className="fixed right-5 bottom-28 z-20 flex flex-col gap-3">
         <Button
@@ -341,7 +339,7 @@ const AccountList = () => {
       )}
 
       <BottomTabs />
-    </section>
+    </PageShell>
   );
 };
 

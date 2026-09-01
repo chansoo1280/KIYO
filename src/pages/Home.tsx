@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  isKiyoFile,
-  openImportedDataFile,
+ isKiyoFile,
+ openImportedDataFile,
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
 import {
-  FileStorageErrorCode,
-  isFileStorageError,
+ FileStorageErrorCode,
+ isFileStorageError,
 } from "@/errors/FileStorageError";
 import { setupVaultSession } from "@/database/fileStorage";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
 import type { FileRecord } from "@/database/db";
 import { Trash2 } from "lucide-react";
 
@@ -105,9 +106,8 @@ const Home = () => {
   };
 
   return (
-    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <header className="flex items-center gap-3">
+    <PageShell maxWidth="lg">
+      <header className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-3xl bg-linear-to-br from-[var(--color-accent)] to-[#7c3aed] text-3xl font-bold text-white shadow-sm">
             K
           </div>
@@ -194,7 +194,6 @@ const Home = () => {
             </ul>
           </section>
         )}
-      </div>
       <FileOpenDialog
         open={showOpenDialog}
         onClose={() => setShowOpenDialog(false)}
@@ -217,7 +216,7 @@ const Home = () => {
         }}
         onConfirm={handleConfirmDelete}
       />
-    </main>
+    </PageShell>
   );
 };
 

@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import BottomTabs from "@/components/BottomTabs";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 import { useTemplateStore } from "@/store/templateStore";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 
@@ -28,31 +30,22 @@ const TemplateList = () => {
 
   if (isLoading) {
     return (
-      <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <header className="flex items-center gap-3">
-            <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
-              템플릿 관리
-            </h1>
-          </header>
-          <div className="flex items-center justify-center h-48">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
-          </div>
-          <BottomTabs />
+      <PageShell maxWidth="lg" withBottomTabs>
+        <PageHeader title="템플릿 관리" />
+        <div className="flex items-center justify-center h-48">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
         </div>
-      </main>
+        <BottomTabs />
+      </PageShell>
     );
   }
 
   return (
-    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <header className="flex items-center justify-between gap-3">
-          <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
-            템플릿 관리
-          </h1>
-          <Button variant="primary" onClick={handleNewTemplate} label="+ 템플릿 생성" />
-        </header>
+    <PageShell maxWidth="lg" withBottomTabs>
+      <PageHeader
+        title="템플릿 관리"
+        actions={<Button variant="primary" onClick={handleNewTemplate} label="+ 템플릿 생성" />}
+      />
 
         {templates.length === 0 ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-12 text-center">
@@ -98,8 +91,7 @@ const TemplateList = () => {
         )}
 
         <BottomTabs />
-      </div>
-    </main>
+    </PageShell>
   );
 };
 

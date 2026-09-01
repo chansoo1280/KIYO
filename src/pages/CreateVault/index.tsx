@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createDataFile } from "@/database/fileStorage";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
 import { Stepper } from "./components/Stepper";
 import { NameStep, validateName } from "./steps/NameStep";
 import { PinStep } from "./steps/PinStep";
@@ -76,11 +77,7 @@ const CreateVaultPage = () => {
   };
 
   return (
-    <main
-      className="min-h-svh bg-[var(--color-bg)] px-5 py-8"
-      data-testid="create-vault-page"
-    >
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+    <PageShell maxWidth="md" data-testid="create-vault-page">
         <header className="flex items-center gap-3">
           <Button
             type="button"
@@ -123,8 +120,7 @@ const CreateVaultPage = () => {
             error={error}
           />
         )}
-      </div>
-    </main>
+    </PageShell>
   );
 };
 

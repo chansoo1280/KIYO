@@ -303,17 +303,17 @@ Track 3의 Plan-A1/A2/Plan-B 3-PR/Plan-E/Plan-F1이 Button/Input/Spinner/ErrorMe
 | Q13 | PR 분할 패턴 (= Q12와 중복) | (a) Plan-F1처럼 단일 PR (b) Plan-B처럼 3-PR 분할 | **(a) Plan-F1 단일 PR** | ✅ 종결 (Q12 결정으로) |
 | Q-신규 | 회귀 게이트 | (a) 신규 단위 테스트 + 기존 E2E (b) 기존 E2E만 (c) wrapper 스냅샷 테스트 | **(a) 신규 단위 테스트 + 기존 E2E** | ✅ 확정 (2026-09-01) — Plan-F1/Plan-B 패턴 일관. `SettingsSection.test.tsx` (title/h2/children) + `SettingsRow.test.tsx` (label string/ReactNode/children 컨테이너). Playwright React E2E 회귀 |
 
-### Plan-G1 범위 밖 (Q2~Q5/Q9~Q11 후속 plan으로 분리)
+### Plan-G2~G5 (Plan-G1과 동일 패턴, 사용자 답변 없는 권장안 기본값 채택)
 
-| Q | 질문 | 옵션 | 권장 | 상태 |
-|---|---|---|---|---|
-| Q2 | PageHeader의 eyebrow 슬롯 | (a) 항상 렌더 (b) optional (c) 없음 | — | ⏸️ Plan-G2 (PageHeader) 시 답변 |
-| Q3 | PageHeader의 actions 슬롯 위치 | (a) 우측 단일 (b) 좌측+우측 (c) 자유 | — | ⏸️ Plan-G2 시 답변 |
-| Q4 | PageShell의 max-width 표준화 | (a) max-w-3xl 통일 (b) max-w-4xl (AccountList만) (c) 의도 보존 — 페이지별 prop | — | ⏸️ Plan-G2 시 답변 |
-| Q5 | PageShell의 `<main>` vs `<section>` 통일 | (a) `<main>` 통일 (b) 페이지별 prop (c) 그대로 | — | ⏸️ Plan-G2 시 답변 |
-| Q9 | tracking 토큰화 진행 여부 | (a) 별도 plan으로 분리 (b) G1과 함께 (c) G2와 함께 (d) 지금 안 함 | — | ⏸️ Plan-G3 (tracking) 시 답변 |
-| Q10 | PasswordField 묶음 진행 시점 | (a) G1~G3 후 (b) G1과 함께 (c) 별도 brainstorm | — | ⏸️ Plan-G4 (PasswordField) 시 답변 |
-| Q11 | TagChip/FieldCard 통합 | (a) 별도 brainstorm (b) 이번 plan에 흡수 (c) 진행 안 함 | — | ⏸️ Plan-G5 (Tag/Field) 시 답변 |
+| Plan | Q | 결정 | 근거 |
+|---|---|---|---|
+| **G2** (PageShell + PageHeader) | Q2 eyebrow | **(c) 없음** — title만. eyebrow는 Home KIYO 로고에서만 사용, 페이지 헤더로는 흡수 안 함 | 단순화, Plan-G1 SettingsSection의 `<h2>` 단일 패턴 일관 |
+| **G2** | Q3 actions 슬롯 | **(c) 자유** — `title` + `actions: ReactNode` + optional `fileName: string` | 11 호출처 중 8개가 우측 actions 보유, 자유 prop이 패턴 흡수에 충분 |
+| **G2** | Q4 max-width | **(c) 의도 보존** — `maxWidth?: "md" \| "lg"` prop, default 없음 | max-w-3xl/4xl의 디자인 의도가 다름 (AccountList 4xl vs 나머지 3xl). 강제 통일은 의도 훼손 |
+| **G2** | Q5 main vs section | **(a) `<main>` 통일** — AccountList/Detail/Edit의 `<section>` → `<main>` 정정 | landmark 표준화, a11y 측면 `<main>`이 페이지 유일 main 역할 |
+| **G3** (tracking) | Q9 | **(a) 별도 plan** | Plan-G3 = tracking 토큰화 단일 plan |
+| **G4** (PasswordField) | Q10 | **(b) Plan-G4 단일 PR 흡수** | 2 호출처 단일 PR 충분, brainstorm 불필요 |
+| **G5** (TagChip/FieldCard) | Q11 | **(b) Plan-G5 단일 PR 흡수** | 호출처 적고 sub-decisions 명확, brainstorm 불필요 |
 
 ## 10. Current Decision State
 

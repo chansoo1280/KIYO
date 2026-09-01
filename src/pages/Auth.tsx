@@ -13,6 +13,7 @@ import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
 import { Input } from "@/components/inputs";
+import { PageShell } from "@/components/PageShell";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -147,9 +148,8 @@ const Auth = () => {
   };
 
   return (
-    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
-        <header className="flex items-center gap-4">
+    <PageShell maxWidth="sm">
+      <header className="flex items-center gap-4">
           <Button
             type="button"
             variant="ghost"
@@ -259,8 +259,7 @@ const Auth = () => {
             />
           </div>
         </section>
-      </div>
-    </main>
+    </PageShell>
   );
 };
 

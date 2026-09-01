@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const AccountDetail = () => {
 
   if (!account) {
     return (
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
+      <PageShell>
         <div className="flex justify-start">
           <Button
             type="button"
@@ -61,7 +62,7 @@ const AccountDetail = () => {
           />
         </div>
         <p className="mt-4 text-[var(--color-text)]">계정 정보를 찾을 수 없습니다.</p>
-      </section>
+      </PageShell>
     );
   }
 
@@ -92,7 +93,7 @@ const AccountDetail = () => {
 
   return (
     <>
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
+      <PageShell>
         <div className="flex items-center justify-between">
           <Button
             type="button"
@@ -160,7 +161,7 @@ const AccountDetail = () => {
             ))}
           </div>
         </article>
-      </section>
+      </PageShell>
 
       <ConfirmDialog
         open={showDeleteConfirm}
