@@ -11,6 +11,7 @@ import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
 import WebsiteSelector from "./components/WebsiteSelector";
 import { PasswordGenerator } from "./components/PasswordGenerator";
+import ErrorMessage from "@/components/feedback/ErrorMessage";
 
 const AccountEdit = () => {
   const navigate = useNavigate();
@@ -239,32 +240,29 @@ const AccountEdit = () => {
 
   return (
     <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => navigate(-1)}
-          disabled={isSaving}
-          label="← 취소"
-        />
-        <Button
-          type="button"
-          variant="primary"
-          onClick={handleSave}
-          loading={isSaving}
-          label={isSaving ? "저장 중..." : "저장"}
-        />
-      </div>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
+          {isNew ? "새 계정" : "계정 수정"}
+        </h1>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+            label="← 취소"
+          />
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSave}
+            loading={isSaving}
+            label={isSaving ? "저장 중..." : "저장"}
+          />
+        </div>
+      </header>
 
-      {saveError && (
-        <p
-          className="mt-4 rounded-md border border-[var(--color-error)]/20 bg-[var(--color-error)]/10 px-3 py-2 text-sm font-medium text-[var(--color-error)]"
-          role="alert"
-          data-testid="account-edit-error"
-        >
-          {saveError}
-        </p>
-      )}
+      <ErrorMessage items={saveError} testId="account-edit-error" />
 
       <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
         <AccountTitleSection

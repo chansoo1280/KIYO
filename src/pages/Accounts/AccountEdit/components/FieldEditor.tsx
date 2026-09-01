@@ -159,7 +159,7 @@ export function FieldEditor({
           <button
             type="button"
             onClick={() => onRemove(field.id)}
-            className="rounded-full border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--error)] hover:bg-[var(--error)]/10 dark:border-[var(--border)]/30"
+            className="rounded-full border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--color-error)] hover:bg-[var(--color-error)]/10 dark:border-[var(--border)]/30"
           >
             삭제
           </button>

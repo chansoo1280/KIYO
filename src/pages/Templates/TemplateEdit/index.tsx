@@ -8,6 +8,7 @@ import { Input } from "@/components/inputs";
 import IconPicker from "./components/IconPicker";
 import { TemplateFieldEditor } from "./components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
+import ErrorMessage from "@/components/feedback/ErrorMessage";
 
 const TemplateEdit = () => {
   const navigate = useNavigate();
@@ -201,15 +202,7 @@ const TemplateEdit = () => {
             </div>
           </header>
 
-          {errors.length > 0 && (
-            <div className="rounded-2xl border border-[var(--error)]/20 bg-[var(--error)]/10 p-4 dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20">
-              <ul className="space-y-1 text-sm text-[var(--error)] dark:text-[var(--error)]">
-                {errors.map((err, i) => (
-                  <li key={i}>• {err}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ErrorMessage items={errors} testId="template-edit-error" />
 
           {/* 기본 정보 섹션 */}
           <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">

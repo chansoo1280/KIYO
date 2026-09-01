@@ -303,7 +303,7 @@ export const AutofillSection: React.FC = () => {
       )}
 
       {error && (
-        <div className="rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)] dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]">
+        <div className="rounded-xl border border-[var(--color-error)]/20 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)] dark:border-[var(--color-error)]/40 dark:bg-[var(--color-error)]/20 dark:text-[var(--color-error)]">
           {error}
         </div>
       )}

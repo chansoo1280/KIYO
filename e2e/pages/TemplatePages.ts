@@ -96,7 +96,7 @@ export class TemplateEditPage {
     this.deleteButton = page.getByRole('button', { name: '삭제' }).first();
     this.deleteConfirmModal = page.getByRole('dialog').filter({ hasText: '템플릿 삭제' });
     this.confirmDeleteButton = this.deleteConfirmModal.getByRole('button', { name: '삭제' });
-    this.errorMessages = page.locator('ul.text-red-600 li, ul.text-red-400 li');
+    this.errorMessages = page.locator('[data-testid="template-edit-error"] li');
     // TemplateFieldEditor 각각의 컨테이너: "필드 삭제" 버튼(✕)을 가진 div
     this.fieldEditors = page.locator('div.space-y-3 > div').filter({ has: page.getByRole('button', { name: '필드 삭제' }) });
   }

@@ -199,7 +199,7 @@ const Auth = () => {
 
           {error && (
                       <div
-                        className="mt-4 p-3 rounded-lg border border-[var(--error)]/20 bg-[var(--error)]/10 text-[var(--error)] text-sm dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20 dark:text-[var(--error)]"
+                        className="mt-4 p-3 rounded-lg border border-[var(--color-error)]/20 bg-[var(--color-error)]/10 text-[var(--color-error)] text-sm dark:border-[var(--color-error)]/40 dark:bg-[var(--color-error)]/20 dark:text-[var(--color-error)]"
                         role="alert"
                       >
                         {error}
