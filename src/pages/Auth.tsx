@@ -85,10 +85,6 @@ const Auth = () => {
         return;
       }
 
-      // 언락으로 cryptoKey가 생겼으므로 암호화 레코드를 복호화해 스토어를 다시 로드한다
-      // (App 마운트 시점엔 키가 없어 레코드가 빈 스텁으로 로드됨)
-      await initializeStores();
-
       // Navigate to list page
       navigate("/accounts", { replace: true });
     } catch (err) {

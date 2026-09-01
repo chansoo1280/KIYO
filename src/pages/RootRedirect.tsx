@@ -7,6 +7,7 @@ import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { fileTable } from "@/database/fileTable";
 import type { ActiveFileInfo } from "@/database/fileTable";
+import { initializeStores } from "@/database/fileStorage";
 
 /**
  * `/` 진입점 — 세션 + 파일 상태에 따라 분기:
@@ -120,26 +121,9 @@ export function RootRedirect() {
       });
       try {
         await Promise.race([
-          Promise.all([loadAccounts(), loadTemplates()]),
+          initializeStores(),
           timeoutPromise,
         ]);
-        // Dexie close race 보호 (Plan-D PR 1 회귀 수정):
-        // loadAccounts/loadTemplates가 resolve했지만 store의 isLoading/initialized가
-        // set되지 않은 케이스 — AccountList 진입 시 "계정을 불러오는 중..." Spinner가
-        // 영원히 표시되는 회귀. Dexie close race가 store의 setState를 누락한 것으로 추정.
-        // store state 동기 확인 — 비정상이면 reject로 처리하여 retry 경로 또는 ErrorScreen 표시.
-        const accountState = useAccountStore.getState();
-        const templateState = useTemplateStore.getState();
-        if (accountState.isLoading || !accountState.initialized) {
-          throw new Error(
-            `account store not ready after preload: isLoading=${accountState.isLoading} initialized=${accountState.initialized}`,
-          );
-        }
-        if (templateState.isLoading || !templateState.initialized) {
-          throw new Error(
-            `template store not ready after preload: isLoading=${templateState.isLoading} initialized=${templateState.initialized}`,
-          );
-        }
         return { ok: true };
       } catch (error) {
         return { ok: false, error };

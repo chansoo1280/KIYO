@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage, devtools } from "zustand/middleware";
 import { fromBase64 } from "@/crypto/crypto.utils";
 import { importKey } from "@/crypto/encryption";
+import { fileTable } from "@/database/fileTable";
 
 // Web Crypto API types (available globally in browser environments)
 type CryptoKey = globalThis.CryptoKey;
@@ -117,7 +118,6 @@ if (import.meta.env.DEV) {
       };
     },
     getFiles: async () => {
-      const { fileTable } = await import("@/database/fileTable");
       const all = await fileTable.getAllFiles();
       return all.map((f) => ({ fileName: f.fileName, id: f.id, encrypted: f.encrypted }));
     },

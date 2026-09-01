@@ -55,6 +55,29 @@
   <body>
     <div id="splash" aria-hidden="true">kiyo</div>
     <div id="root"></div>
+    <script>
+      // React 마운트 후 splash DOM 정리 - 모든 라우트에서 동작하도록
+      // React root가 마운트되면 splash를 제거
+      (function () {
+        var checkSplash = function () {
+          var splash = document.getElementById("splash");
+          var root = document.getElementById("root");
+          // root에 자식이 생기면(React 마운트 완료) splash 제거
+          if (splash && root && root.firstChild) {
+            splash.remove();
+          } else if (splash) {
+            // 아직 마운트 안 됐으면 다시 체크
+            setTimeout(checkSplash, 50);
+          }
+        };
+        // DOMContentLoaded 이후 체크 시작
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", checkSplash);
+        } else {
+          checkSplash();
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

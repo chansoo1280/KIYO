@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  initializeStores,
  isKiyoFile,
  openImportedDataFile,
 } from "@/database/fileStorage";
@@ -15,7 +16,7 @@ import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
-import type { FileRecord } from "@/database/db";
+import { replaceDatabaseData, type FileRecord } from "@/database/db";
 import { Trash2 } from "lucide-react";
 
 const Home = () => {
@@ -38,18 +39,21 @@ const Home = () => {
   }, []);
 
   const handleSelectFile = async (fileName: string) => {
-    await useSessionStore.getState().clearSession();
     const info = await fileTable.getFileInfo(fileName);
     if (!info.activeFileName) {
       throw new Error(`File not found: ${fileName}`);
     }
+    await setupVaultSession({ fileName });
     if (info.encrypted) {
-      // cryptoKey 없이 active만 설정 → /auth로 이동하여 unlock
-      await setupVaultSession({ fileName });
+      // /auth로 이동하여 unlock
       navigate("/auth", { replace: true });
     } else {
-      // plaintext — active 설정 + store reload
-      await setupVaultSession({ fileName, loadStores: true });
+      // plaintext 
+      await replaceDatabaseData({
+        data: info.fileData,
+        fileName,
+      });
+      await initializeStores();
       navigate("/accounts", { replace: true });
     }
   };

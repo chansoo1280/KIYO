@@ -92,37 +92,7 @@ export const decryptVaultData = async (
 };
 
 /**
- * 3.5단계: 세션 설정 후 Store들 초기화 (계정/템플릿 로드)
- * setupVaultSession 호출 후 사용
- *
- * 다른 vault로의 import/change 후 호출 시 store의 `initialized=true` 잔존 상태를
- * 명시적으로 reset한 뒤 다시 load한다. 그렇지 않으면 store-side guard(`if
- * (get().initialized) return;`)가 이전 vault의 데이터를 그대로 보존시켜
- * 새 vault 데이터가 화면에 반영되지 않는 회귀가 발생.
- */
-export const initializeStores = async (): Promise<void> => {
-  useAccountStore.setState({ initialized: false });
-  useTemplateStore.setState({ initialized: false });
-  await useAccountStore.getState().loadAccounts();
-  await useTemplateStore.getState().loadTemplates();
-};
-
-/**
- * 2단계: 볼트 데이터를 FileRecord로 변환해 DB에 저장
- */
-export const persistVaultRecord = async (
-  fileName: string,
-  vaultData: KiyoVaultData | EncryptedKiyoVaultData
-): Promise<void> => {
-  await fileTable.upsertFileRecord(fileName, vaultData);
-};
-
-/**
  * 3단계: 세션 스토어에 볼트 정보 저장 (cryptoKey, salt, fileName)
- *
- * `loadStores: true`로 호출하면 plaintext 경로에서 store를 즉시 reload한다.
- * encrypted 경로에서는 unlock 후 caller(예: Auth)가 initializeStores()를
- * 명시적으로 호출하므로 loadStores를 켜지 않는다.
  */
 /**
  * Note: Autofill 토큰 동기화는 더 이상 사용되지 않음.
@@ -132,19 +102,38 @@ export const setupVaultSession = async ({
   fileName,
   cryptoKey,
   salt,
-  loadStores = false,
 }: {
   fileName: string;
   cryptoKey?: CryptoKey;
   salt?: Uint8Array;
-  loadStores?: boolean;
 }): Promise<void> => {
   await useSessionStore.getState().setSession({ fileName, cryptoKey, salt });
-  if (loadStores && !cryptoKey) {
-    // plaintext 경로: Home active 전환 시 store reload
-    await initializeStores();
-  }
   // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
+};
+
+/**
+ * 3.5단계: 세션 설정 후 Store들 초기화 (계정/템플릿 로드)
+ * setupVaultSession 및 replaceDatabaseData 호출 후 사용
+ *
+ * 다른 vault로의 import/change 후 호출 시 store의 `initialized=true` 잔존 상태를
+ * 명시적으로 reset한 뒤 다시 load한다. 그렇지 않으면 store-side guard(`if
+ * (get().initialized) return;`)가 이전 vault의 데이터를 그대로 보존시켜
+ * 새 vault 데이터가 화면에 반영되지 않는 회귀가 발생.
+ */
+export const initializeStores = async (): Promise<void> => {
+  useAccountStore.setState({ initialized: false });
+  useTemplateStore.setState({ initialized: false });
+  await Promise.all([useAccountStore.getState().loadAccounts(), useTemplateStore.getState().loadTemplates()])
+};
+
+/**
+ * 4단계: 볼트 데이터를 FileRecord로 변환해 DB에 저장 또는 replaceDatabaseData
+ */
+export const persistVaultRecord = async (
+  fileName: string,
+  vaultData: KiyoVaultData | EncryptedKiyoVaultData
+): Promise<void> => {
+  await fileTable.upsertFileRecord(fileName, vaultData);
 };
 
 /**
@@ -224,11 +213,8 @@ export const lockDataFile = async (): Promise<void> => {
 };
 
 export const unlockFile = async (
-
   fileName: string,
-
   pin: string
-
 ): Promise<KiyoVaultData | null> => {
   if (!fileName) {
     throw new Error("File name is required for unlock");
@@ -242,7 +228,7 @@ export const unlockFile = async (
     if (!salt) {
       throw new Error(`Salt missing for encrypted file: ${fileName}`);
     }
-        const { decryptedVaultData: decrypted, cryptoKey } = await decryptVaultData(
+    const { decryptedVaultData: decrypted, cryptoKey } = await decryptVaultData(
       fileData,
       pin,
       salt
@@ -253,9 +239,24 @@ export const unlockFile = async (
     decryptedData = fileData;
     // No cryptoKey or salt for plaintext
   }
-  // Set up session
+  // Set up session with cryptoKey/salt so replaceDatabaseData can encrypt records
+  await setupVaultSession({ fileName, cryptoKey: useSessionStore.getState().cryptoKey ?? undefined, salt: salt ?? undefined });
+  // Persist decrypted data to IndexedDB (accounts/templates/metadata) so stores can load it
+  await replaceDatabaseData(
+    encrypted
+      ? {
+          data: decryptedData,
+          fileName,
+          cryptoKey: useSessionStore.getState().cryptoKey!,
+          encryptedFileData: fileData,
+        }
+      : {
+          data: decryptedData,
+          fileName,
+        }
+  );
+  await initializeStores();
   return decryptedData;
-
 };
 
 
@@ -398,7 +399,6 @@ export const openImportedDataFile = async (
     }
     // Pipeline for plaintext: persist → session → replaceDatabaseData → initialize
     try {
-      await persistVaultRecord(resolvedFileName, parsedData);
       await setupVaultSession({ fileName: resolvedFileName });
       // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
       await replaceDatabaseData({
@@ -456,7 +456,6 @@ export const openImportedDataFile = async (
 
   // Pipeline for encrypted: persist encrypted file data → session with key → replaceDatabaseData → initialize
   try {
-    await persistVaultRecord(resolvedFileName, parsedData);
     await setupVaultSession({ fileName: resolvedFileName, cryptoKey: key, salt });
     // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
     // Save decrypted data to DB - 암호화된 파일 데이터(parsedData)를 그대로 전달
@@ -504,8 +503,6 @@ export const changePin = async (fileName: string, newPin: string): Promise<void>
 
   // 데이터 암호화
   const encryptedData = await encryptData(fileData, newKey, newSalt);
-
-  // replaceDatabaseData가 files 테이블까지 처리하므로 별도 persistVaultRecord 불필요
   await replaceDatabaseData({
     data: fileData,
     fileName,

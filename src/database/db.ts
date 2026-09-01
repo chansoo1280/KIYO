@@ -130,6 +130,9 @@ export const persistVaultSnapshot = async (params: SyncDatabaseParams): Promise<
 
     if (!cryptoKey) {
       await fileTable.upsertFileRecord(activeFileName, data);
+
+      // Clear any previous sync error on success
+      clearSyncError?.();
       // 평문 볼트는 자동 백업 안 함
       return;
     }
