@@ -3,6 +3,7 @@ import type { TemplateField } from "@/models/template";
 import type { FieldType } from "@/models/fieldTypes";
 import { FIELD_TYPE_OPTIONS, getFieldTypePlaceholder } from "@/models/fieldTypes";
 import { Input } from "@/components/inputs";
+import { FieldCard } from "@/components/FieldCard";
 
 interface TemplateFieldEditorProps {
   field: TemplateField;
@@ -43,7 +44,7 @@ export const TemplateFieldEditor = ({
   const fixedPlaceholder = getFieldTypePlaceholder(field.type);
 
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-4">
+    <FieldCard density="comfy">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1">
           <button
@@ -157,6 +158,6 @@ export const TemplateFieldEditor = ({
           <p className="text-xs text-[var(--color-error)]">중복된 항목 이름입니다</p>
         )}
       </div>
-    </div>
+    </FieldCard>
   );
 };

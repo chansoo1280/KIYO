@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
 import { mapError } from "@/utils/mapError";
@@ -174,13 +176,11 @@ const TemplateEdit = () => {
 
   return (
     <>
-      <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <header className="flex items-center justify-between gap-3">
-            <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
-              {isEdit ? "템플릿 수정" : "새 템플릿"}
-            </h1>
-            <div className="flex items-center gap-2">
+      <PageShell maxWidth="lg" withBottomTabs>
+        <PageHeader
+          title={isEdit ? "템플릿 수정" : "새 템플릿"}
+          actions={
+            <>
               {isEdit && (
                 <Button
                   variant="ghost"
@@ -199,8 +199,9 @@ const TemplateEdit = () => {
                 onClick={handleSave}
                 label="저장"
               />
-            </div>
-          </header>
+            </>
+          }
+        />
 
           <ErrorMessage items={errors} testId="template-edit-error" />
 
@@ -271,8 +272,7 @@ const TemplateEdit = () => {
               ))}
             </div>
           </section>
-        </div>
-      </main>
+      </PageShell>
 
       <ConfirmDialog
         open={showDeleteConfirm}

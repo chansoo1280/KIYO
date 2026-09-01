@@ -13,6 +13,7 @@ import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
 import { Input } from "@/components/inputs";
+import { PageShell } from "@/components/PageShell";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -147,9 +148,8 @@ const Auth = () => {
   };
 
   return (
-    <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
-        <header className="flex items-center gap-4">
+    <PageShell maxWidth="sm">
+      <header className="flex items-center gap-4">
           <Button
             type="button"
             variant="ghost"
@@ -164,7 +164,7 @@ const Auth = () => {
             K
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               Security
             </p>
             <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
@@ -174,7 +174,7 @@ const Auth = () => {
         </header>
 
         <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
             KIYO 잠금 해제
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-[var(--color-text-h)]">
@@ -259,8 +259,7 @@ const Auth = () => {
             />
           </div>
         </section>
-      </div>
-    </main>
+    </PageShell>
   );
 };
 

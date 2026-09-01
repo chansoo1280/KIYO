@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
-import { PasswordFieldView } from "./components/PasswordFieldView";
+import { PasswordField } from "@/components/PasswordField";
+import { FieldCard } from "@/components/FieldCard";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -28,7 +30,8 @@ const AccountDetail = () => {
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
       return (
-        <PasswordFieldView
+        <PasswordField
+          mode="view"
           value={field.value}
         />
       );
@@ -51,7 +54,7 @@ const AccountDetail = () => {
 
   if (!account) {
     return (
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
+      <PageShell>
         <div className="flex justify-start">
           <Button
             type="button"
@@ -61,7 +64,7 @@ const AccountDetail = () => {
           />
         </div>
         <p className="mt-4 text-[var(--color-text)]">계정 정보를 찾을 수 없습니다.</p>
-      </section>
+      </PageShell>
     );
   }
 
@@ -92,7 +95,7 @@ const AccountDetail = () => {
 
   return (
     <>
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
+      <PageShell>
         <div className="flex items-center justify-between">
           <Button
             type="button"
@@ -126,7 +129,7 @@ const AccountDetail = () => {
                 {account.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]"
+                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-chip text-[var(--color-accent)]"
                   >
                     {tag}
                   </span>
@@ -148,19 +151,13 @@ const AccountDetail = () => {
 
           <div className="mt-6 space-y-3">
             {sortedFields.map((field) => (
-              <div
-                key={field.id}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text)]">
-                  {field.label}
-                </p>
-                <div className="mt-1">{renderFieldValue(field)}</div>
-              </div>
+              <FieldCard key={field.id} label={field.label}>
+                {renderFieldValue(field)}
+              </FieldCard>
             ))}
           </div>
         </article>
-      </section>
+      </PageShell>
 
       <ConfirmDialog
         open={showDeleteConfirm}

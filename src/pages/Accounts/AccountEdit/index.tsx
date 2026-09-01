@@ -7,6 +7,8 @@ import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
 import WebsiteSelector from "./components/WebsiteSelector";
@@ -239,28 +241,28 @@ const AccountEdit = () => {
   ]);
 
   return (
-    <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
-          {isNew ? "새 계정" : "계정 수정"}
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            disabled={isSaving}
-            label="← 취소"
-          />
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSave}
-            loading={isSaving}
-            label={isSaving ? "저장 중..." : "저장"}
-          />
-        </div>
-      </header>
+    <PageShell>
+      <PageHeader
+        title={isNew ? "새 계정" : "계정 수정"}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              disabled={isSaving}
+              label="← 취소"
+            />
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleSave}
+              loading={isSaving}
+              label={isSaving ? "저장 중..." : "저장"}
+            />
+          </>
+        }
+      />
 
       <ErrorMessage items={saveError} testId="account-edit-error" />
 
@@ -304,7 +306,7 @@ const AccountEdit = () => {
         onClose={() => setPasswordGeneratorOpen(null)}
         onApply={handlePasswordGenerated}
       />
-    </section>
+    </PageShell>
   );
 };
 

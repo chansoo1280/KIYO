@@ -19,6 +19,12 @@
   --text-size-sm: 14px;
   --text-size-base: 16px;
   --text-size-lg: 18px;
+
+  /* Plan-G3: tracking tokens (visual spacing scale) */
+  --tracking-chip: 0.08em;     /* 미니 라벨 (AccountList tag, AccountDetail tag, PasswordFieldView 복사) */
+  --tracking-label: 0.16em;    /* 서브 라벨 (AccountDetail field, TemplatePicker) */
+  --tracking-section: 0.18em;  /* 섹션 헤더 (SettingsSection h2) */
+  --tracking-eyebrow: 0.24em;   /* 페이지 eyebrow (Home, Auth, CreateVault, Accounts, AutofillTestLogin) */
 }
 
 @utility text-size-sm {

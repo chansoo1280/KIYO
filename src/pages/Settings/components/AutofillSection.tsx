@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 import Button from "@/components/Button";
+import { SettingsSection } from "@/components/SettingsSection";
+import { SettingsRow } from "@/components/SettingsRow";
 import {
   KiyoAutofill,
   type AutofillStatus,
@@ -164,14 +166,13 @@ export const AutofillSection: React.FC = () => {
 
   if (Capacitor.getPlatform() !== "android") {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <span>자동완성 서비스</span>
+      <SettingsSection title="Autofill">
+        <SettingsRow label="자동완성 서비스">
           <span className="text-xs text-[var(--color-text-muted)]">
             Android에서만 사용 가능
           </span>
-        </div>
-      </div>
+        </SettingsRow>
+      </SettingsSection>
     );
   }
 
@@ -197,19 +198,19 @@ export const AutofillSection: React.FC = () => {
   const showAutofillToggle = Capacitor.getPlatform() === "android";
 
   return (
-    <div className="space-y-3">
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-text)]">
-        Autofill
-      </h3>
+    <SettingsSection title="Autofill">
       {/* App-level Autofill Toggle */}
       {showAutofillToggle && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-          <div className="flex flex-col gap-1">
-            <span className="font-medium">자동완성 사용</span>
-            <span className="text-xs text-[var(--color-text-muted)]">
-              앱에서 자동완성 기능 사용 여부
-            </span>
-          </div>
+        <SettingsRow
+          label={
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">자동완성 사용</span>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                앱에서 자동완성 기능 사용 여부
+              </span>
+            </div>
+          }
+        >
           <button
             type="button"
             role="switch"
@@ -230,23 +231,26 @@ export const AutofillSection: React.FC = () => {
               <span className="block w-5 h-5 rounded-full bg-white shadow" />
             </span>
           </button>
-        </div>
+        </SettingsRow>
       )}
       {/* Autofill settings - only show when autofillEnabled is true */}
       {autofillEnabled && (
         <>
           {/* Autofill Service Status */}
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium">자동완성 서비스</span>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {isOurService
-                  ? "KIYO 자동완성 활성화됨"
-                  : isEnabled
-                    ? "다른 자동완성 서비스 사용 중"
-                    : "자동완성이 비활성화되어 있습니다."}
-              </span>
-            </div>
+          <SettingsRow
+            label={
+              <div className="flex flex-col gap-1">
+                <span className="font-medium">자동완성 서비스</span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {isOurService
+                    ? "KIYO 자동완성 활성화됨"
+                    : isEnabled
+                      ? "다른 자동완성 서비스 사용 중"
+                      : "자동완성이 비활성화되어 있습니다."}
+                </span>
+              </div>
+            }
+          >
             <div className="flex items-center gap-2">
               <span
                 className={`w-2 h-2 rounded-full ${isEnabled ? "bg-[var(--color-success)]" : isOurService ? "bg-[var(--color-warning)]" : "bg-[var(--color-border)]"}`}
@@ -268,29 +272,35 @@ export const AutofillSection: React.FC = () => {
                 />
               )}
             </div>
-          </div>
+          </SettingsRow>
 
           {/* Account Count */}
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium">저장된 계정 수</span>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                KIYO 앱: {accounts.length}개 / 자동완성 DB: {accountCount}개
-              </span>
-            </div>
+          <SettingsRow
+            label={
+              <div className="flex flex-col gap-1">
+                <span className="font-medium">저장된 계정 수</span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  KIYO 앱: {accounts.length}개 / 자동완성 DB: {accountCount}개
+                </span>
+              </div>
+            }
+          >
             <span className="text-lg font-bold text-[var(--color-accent)]">
               {accountCount}
             </span>
-          </div>
+          </SettingsRow>
 
           {/* Last Sync Time */}
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium">마지막 동기화</span>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {formatTime(lastSyncTime)}
-              </span>
-            </div>
+          <SettingsRow
+            label={
+              <div className="flex flex-col gap-1">
+                <span className="font-medium">마지막 동기화</span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {formatTime(lastSyncTime)}
+                </span>
+              </div>
+            }
+          >
             <Button
               variant="ghost"
               onClick={syncAccounts}
@@ -298,7 +308,7 @@ export const AutofillSection: React.FC = () => {
               disabled={syncing || loading}
               label={syncing ? "동기화 중..." : "동기화"}
             />
-          </div>
+          </SettingsRow>
         </>
       )}
 
@@ -311,7 +321,7 @@ export const AutofillSection: React.FC = () => {
       {message && (
         <p className="text-sm font-medium text-[var(--color-accent)]">{message}</p>
       )}
-    </div>
+    </SettingsSection>
   );
 };
 

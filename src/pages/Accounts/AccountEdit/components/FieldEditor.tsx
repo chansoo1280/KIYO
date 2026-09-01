@@ -1,4 +1,4 @@
-import { PasswordFieldEdit } from "./PasswordFieldEdit";
+import { PasswordField } from "@/components/PasswordField";
 import type { AccountField, FieldType } from "@/models/account";
 import { getFieldTypePlaceholder, FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
 import { Input } from "@/components/inputs";
@@ -37,7 +37,8 @@ export function FieldEditor({
 
       case "password":
         return (
-          <PasswordFieldEdit
+          <PasswordField
+            mode="edit"
             value={field.value}
             onChange={(v) => onUpdate(field.id, { value: v })}
             onGenerate={onGeneratePassword ? () => onGeneratePassword(field.id) : undefined}
