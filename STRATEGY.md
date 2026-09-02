@@ -1,7 +1,7 @@
 # KIYO Strategy
 
 name: "KIYO"
-last_updated: "2026-09-01"
+last_updated: "2026-09-02"
 
 ---
 
@@ -57,8 +57,8 @@ last_updated: "2026-09-01"
 
 1. **클라우드 동기화/계정 시스템/서버 인프라 도입 안 함** — 네트워크 권한 추가는 프라이버시 모델 붕괴
 2. **플랫폼 확장은 안드로이드·iOS·웹(볼트 관리만)만 고려** — 자동완성은 네이티브 자동완성 API + 하드웨어 키 보호가 있는 환경(Android AutofillService+Keystore, iOS Password AutoFill+Secure Enclave)에서만 지원. 웹은 볼트 관리(조회/편집)용 웹 앱만 제공, 자동완성은 미지원. 그 외 플랫폼(Windows/macOS/브라우저 확장)은 현재 범위 밖.
-3. **암호화 알고리즘/키 관리 약화 안 함** — PBKDF2 100k, AES-GCM, 하드웨어 키 보호(Keystore/Secure Enclave/TPM)는 협상 불가
-4. **비밀번호 공유/가족 요금제/조직 기능 안 만듦** — 단일 사용자·단일 볼트 모델 유지 (멀티 볼트는 로컬 파일 단위로만)
+3. **암호화 알고리즘/키 관리 약화 안 함** — PBKDF2 100k, AES-GCM, 하드웨어 키 보호(Keystore/Secure Enclave/TPM)는 협상 불가. **snapshot 통째로 한 번 암호화** (이전 record-by-record 이중 암호화 제거, 2026-09-02 PR 1 files-only vault)
+4. **비밀번호 공유/가족 요금제/조직 기능 안 만듦** — 단일 사용자·단일 볼트 모델 유지 (멀티 볼트는 로컬 파일 단위로만, **단일 vault의 source of truth도 `db.files.fileData` JSON 단일**, 2026-09-02 PR 1)
 5. **광고/분석/텔레메트리/크래시 리포팅 수집 안 함** — 완전 오프라인, 데이터 잔존 0
 6. **자동완성 품질 저하로 핵심 보안(암호화/키 보호/오프라인 모델) 훼손 안 함** — 자동완성은 편의 기능, 품질 이슈는 허용하되 보안 모델 침범은 금지
 
@@ -105,14 +105,14 @@ last_updated: "2026-09-01"
 - **파일 자동 저장(autosave) 지원** — 계정/템플릿 변경 시 즉시 암호화 저장, 수동 저장 불필요
 - **볼트 암호화 강화: 숫자 PIN(6자리) → 텍스트 패스프레이즈 지원** — PBKDF2 100k 유지, 엔트로피 실시간 측정·표시(zxcvbn 등), 최소 강도 가이드라인 적용
 - **크로스플랫폼 볼트 파일 포맷 표준화** — 플랫폼 간 내보내기/가져오기 호환성
-- **진척 (2026-08-30):** 6개 요구사항 중 4개 완료, 1개 보류 (Q6 §3.4), 1개 후속 결정 보류
-  - ✅ Plan-1 — `changePin` atomicity — [`2026-08-29-changePin-atomicity.md`](.hermes/plans/2026-08-29-changePin-atomicity.md): `replaceDatabaseData`(`db.ts:213-232`)가 단일 Dexie 트랜잭션으로 원자적 처리 확인 → **강화 불필요**, 코드 변경 0, 기존 7개 invariant 테스트로 충분
+- **진척 (2026-09-02 갱신):** PR 1 (Files-Only Vault) 추가 — `db.accounts`/`db.templates`/`db.metadata`/`db.settings` 4 테이블 drop (Dexie v15) + `accountTable`/`templateTable`/`syncQueue`/`recordEncryption` 7 모듈 삭제 + 단일 진입점 `loadVaultToStores`/`activatePlaintextVault`/`saveStoresToFile` + store API `init(data)`/`getAll()` + `metadataStore` 신규 + `KiyoVaultData` JSON 스키마 4 필드 불변 (hard constraint). PR 1 plan+브레인스토밍 → [`docs/plans/2026-09-02-files-only-vault-pr1.md`](docs/plans/2026-09-02-files-only-vault-pr1.md). +470 / -4706 LOC 압축, **이전 진척 (Plan-1 ~ Plan-6)의 `replaceDatabaseData`/`syncQueue` 의존 작업은 PR 1에서 흡수/대체됨** (Plan-1 변경 → PR 1의 `changePin`이 `saveStoresToFile`로 단순화; Plan-6 변경 → `syncQueue` 제거, `saveStoresToFile`이 await chain으로 자연 직렬화).
+  - ✅ Plan-1 — `changePin` atomicity — [`2026-08-29-changePin-atomicity.md`](.hermes/plans/2026-08-29-changePin-atomicity.md): `replaceDatabaseData`가 단일 Dexie 트랜잭션으로 원자적 처리 확인 → **PR 1에서 함수 자체 삭제됨**. `changePin`은 현재 `saveStoresToFile`로 단순화 (메모리 store + 새 키/새 salt로 재암호화, 단일 await). 7개 invariant 테스트는 PR 2 jsonCompat test로 흡수.
   - ✅ Plan-4 — PIN 정책 완화 + zxcvbn strength meter — [`2026-08-30-pin-policy-relaxation.md`](docs/plans/2026-08-30-pin-policy-relaxation.md): 4~20자 mixed 허용 + zxcvbn 실시간 강도 표시 + secure context 가드 + FormDialog 에러 통합 (커밋 `ba4928a0`)
-  - ✅ Plan-5 — SAF 영구 URI 자동 백업 — [`2026-08-30-saf-persistent-uri-auto-backup.md`](docs/plans/2026-08-30-saf-persistent-uri-auto-backup.md): Settings "자동 백업 위치" 토글 + `ACTION_OPEN_DOCUMENT_TREE` 폴더 선택 + `takePersistableUriPermission` 영구 권한 + `persistVaultSnapshot` 성공 시 동일 스냅샷 URI 미러링 (커밋 `058e6369`)
-  - ✅ Plan-6 — autosave 안정화 & 동시성 — [`2026-08-29-autosave-stability-concurrency.md`](.hermes/plans/2026-08-29-autosave-stability-concurrency.md): `src/database/syncQueue.ts` 직렬화 큐 신규 + `accountStore`/`templateStore` → `enqueuePersistVaultSnapshot(getParamsFn)` 연결 + race/lock→unlock/연속 mutation 시나리오 4건 추가 + Android `AutosaveE2ETest` + 호스트 스크립트 `run-autosave-e2e.ps1` (커밋 `179368fc`)
-  - ⏸️ Plan-3 — 크로스플랫폼 볼트 파일 포맷 표준화 — **보류** (brainstorm §3.4 Q6): v2 트리거(KDF 변경, 레코드 필드 추가, iOS/Web 확장 결정) 발생 시 별도 brainstorm. 현 v1 hardcoding은 안전
+  - ✅ Plan-5 — SAF 영구 URI 자동 백업 — [`2026-08-30-saf-persistent-uri-auto-backup.md`](docs/plans/2026-08-30-saf-persistent-uri-auto-backup.md): Settings "자동 백업 위치" 토글 + `ACTION_OPEN_DOCUMENT_TREE` 폴더 선택 + `takePersistableUriPermission` 영구 권한 + `persistVaultSnapshot` 성공 시 동일 스냅샷 URI 미러링 (커밋 `058e6369`). PR 1 후에도 signature 무변경 (호출 경로만 `saveStoresToFile`로 흡수).
+  - ✅ Plan-6 — autosave 안정화 & 동시성 — [`2026-08-29-autosave-stability-concurrency.md`](.hermes/plans/2026-08-29-autosave-stability-concurrency.md): `src/database/syncQueue.ts` 직렬화 큐 신규 + race/lock→unlock/연속 mutation 시나리오 4건 추가. **PR 1에서 `syncQueue` 자체 삭제됨** — JS 단일 스레드 + `saveStoresToFile` await chain으로 자연 직렬화 (Q2=a 사용자 확정). Android `AutosaveE2ETest` 무영향 (React 사이드 `db.files` upsert는 `saveStoresToFile` 경로로 그대로).
+  - ⏸️ Plan-3 — 크로스플랫폼 볼트 파일 포맷 표준화 — **보류** (brainstorm §3.4 Q6): v2 트리거(KDF 변경, 레코드 필드 추가, iOS/Web 확장 결정) 발생 시 별도 brainstorm. 현 v1 hardcoding은 안전 (PR 1에서도 `KiyoVaultData` JSON 스키마 불변 유지)
   - ❓ Plan-2 — SAF picker 취소 분기 회귀 테스트 — **보류** (brainstorm §11 Q7): 5줄 삼항 분기의 메시지 문자열 검증 가치가 좁고 native/E2E 회귀는 커버 못함. 재방문 트리거 기반 (brainstorm §11.6)
-- **최근 신호:** sync flow 리팩터 + SAF 백업/복원, changePin 파이프라인 순서 수정, fileStorage pipeline 리팩터, autosave 직렬화 큐, PIN 정책 완화, SAF 영구 URI 자동 백업
+- **최근 신호:** PR 1 files-only vault (source of truth 단일화, +470/-4706 LOC), sync flow 리팩터 + SAF 백업/복원, changePin 파이프라인 순서 수정, fileStorage pipeline 리팩터, autosave 직렬화 큐, PIN 정책 완화, SAF 영구 URI 자동 백업
 
 ### 3. UX·접근성·인터랙션 품질 (UX & Accessibility)
 - 로딩 상태/스켈레톤 UI — 암호화/복호화·동기화·파일 I/O 중 시각적 피드백

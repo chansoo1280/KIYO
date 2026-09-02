@@ -25,7 +25,7 @@ const AccountDetail = () => {
   const { deleteAccount, updateAccount } = useAccountStore();
 
   // 파일/인증 상태 체크 (훅으로 분리)
-  useFileAuthGuard({ skipRedirect: false });
+  useFileAuthGuard();
 
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {

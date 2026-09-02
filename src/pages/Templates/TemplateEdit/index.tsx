@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
@@ -16,14 +16,16 @@ const TemplateEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
-  const { templates, initialized, loadTemplates, createTemplate, updateTemplate, deleteTemplate, getTemplate } =
+  // PR 1: initialized/loadTemplates 제거 → useSessionStore.initialized로 통합
+  // createTemplate → addTemplate (PR 1: store API 이름 일관성)
+  const { templates, addTemplate, updateTemplate, deleteTemplate, getTemplate } =
     useTemplateStore();
 
   const [form, setForm] = useState<
     Omit<Template, "id" | "createdAt" | "updatedAt">
   >(() => {
-    // Lazy initializer: derive initial form from template if editing and template is already loaded
-    if (isEdit && id && initialized) {
+    // Lazy initializer: derive initial form from template if editing
+    if (isEdit && id) {
       const template = getTemplate(id);
       if (template) {
         return {
@@ -47,12 +49,6 @@ const TemplateEdit = () => {
   const [errors, setErrors] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!initialized) {
-      loadTemplates();
-    }
-  }, [initialized, loadTemplates]);
 
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
@@ -88,7 +84,7 @@ const TemplateEdit = () => {
       if (isEdit && id) {
         await updateTemplate(id, form);
       } else {
-        await createTemplate(form);
+        await addTemplate(form);
       }
       navigate("/templates");
     } catch (error) {

@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { SplashScreen } from "@/components/SplashScreen";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { useSessionStore } from "@/store/sessionStore";
-import { useAccountStore } from "@/store/accountStore";
-import { useTemplateStore } from "@/store/templateStore";
 import { fileTable } from "@/database/fileTable";
 import type { ActiveFileInfo } from "@/database/fileTable";
-import { initializeStores } from "@/database/fileStorage";
+import { loadVaultToStores } from "@/database/fileStorage";
+import type { KiyoVaultData } from "@/models/vault";
 
 /**
  * `/` 진입점 — 세션 + 파일 상태에 따라 분기:
@@ -16,11 +15,11 @@ import { initializeStores } from "@/database/fileStorage";
  *   - activeFileName !== null, encrypted === true, cryptoKey === null
  *                                   → /auth navigate (PIN 입력)
  *   - activeFileName !== null, encrypted === true, cryptoKey !== null
- *                                   → Splash 표시하며 loadAccounts + loadTemplates 병렬 await
+ *                                   → Splash 표시하며 loadVaultToStores 병렬 await
  *                                       ├─ 성공 → /accounts navigate (replace)
  *                                       └─ 실패 → ErrorScreen 표시
  *   - activeFileName !== null, encrypted === false
- *                                   → Splash 표시하며 loadAccounts + loadTemplates 병렬 await
+ *                                   → Splash 표시하며 loadVaultToStores 병렬 await
  *                                       ├─ 성공 → /accounts navigate (replace)
  *                                       └─ 실패 → ErrorScreen 표시
  *
@@ -44,8 +43,6 @@ export function RootRedirect() {
   // Zustand selector — 컴포넌트가 activeFileName/cryptoKey에 의존함을 React에 선언
   const activeFileName = useSessionStore((s) => s.activeFileName);
   const cryptoKey = useSessionStore((s) => s.cryptoKey);
-  const loadAccounts = useAccountStore((s) => s.loadAccounts);
-  const loadTemplates = useTemplateStore((s) => s.loadTemplates);
 
   const [status, setStatus] = useState<Status>({ kind: "checking" });
   // info === null: activeFileName 없거나 getFileInfo 미실행.
@@ -121,7 +118,7 @@ export function RootRedirect() {
       });
       try {
         await Promise.race([
-          initializeStores(),
+          loadVaultToStores(info!.fileData as KiyoVaultData),
           timeoutPromise,
         ]);
         return { ok: true };
@@ -163,7 +160,7 @@ export function RootRedirect() {
     return () => {
       cancelled = true;
     };
-  }, [status.kind, loadAccounts, loadTemplates]);
+  }, [status.kind]);
 
   // 4. redirecting 상태일 때 navigate 실행.
   useEffect(() => {

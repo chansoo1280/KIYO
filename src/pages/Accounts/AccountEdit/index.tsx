@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import type { Account, AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
@@ -23,20 +23,13 @@ const AccountEdit = () => {
   const updateAccount = useAccountStore((state) => state.updateAccount);
   const addAccount = useAccountStore((state) => state.addAccount);
   const templates = useTemplateStore((state) => state.templates);
-  const loadTemplates = useTemplateStore((state) => state.loadTemplates);
+  // loadTemplates selector 제거 — Q16: sessionStore.initialized로 단일화
 
   const templateIdFromState = location.state?.templateId as string | undefined;
   const isNew = !accountId;
 
   // 파일/인증 상태 체크 (훅으로 분리)
-  useFileAuthGuard({ skipRedirect: false });
-
-  // Load templates when templateId comes from state
-  useEffect(() => {
-    if (templateIdFromState) {
-      loadTemplates();
-    }
-  }, [templateIdFromState, loadTemplates]);
+  useFileAuthGuard();
 
   // Get stored account
   const storedAccount = useAccountStore((state) =>

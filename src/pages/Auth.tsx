@@ -5,7 +5,8 @@ import { useSessionStore } from "@/store/sessionStore";
 import {
   unlockFile,
   closeDataFile,
-  initializeStores,
+  loadVaultToStores,
+  decryptVaultData,
 } from "@/database/fileStorage";
 import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
@@ -14,6 +15,7 @@ import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
 import { Input } from "@/components/inputs";
 import { PageShell } from "@/components/PageShell";
+import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -119,7 +121,16 @@ const Auth = () => {
 
       // 언락으로 cryptoKey가 생겼으므로 암호화 레코드를 복호화해 스토어를 다시 로드한다
       // (App 마운트 시점엔 키가 없어 레코드가 빈 스텁으로 로드됨)
-      await initializeStores();
+      const { fileData } = await fileTable.getFileInfo(useSessionStore.getState().activeFileName!);
+      if (!fileData) {
+        throw new Error("File not found after biometric unlock");
+      }
+      const { decryptedVaultData: decrypted } = await decryptVaultData(
+        fileData as EncryptedKiyoVaultData,
+        "",  // PIN not needed - we already have the key via biometric
+        salt
+      );
+      await loadVaultToStores(decrypted);
 
       navigate("/accounts", { replace: true });
     } catch (err) {

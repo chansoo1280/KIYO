@@ -5,20 +5,17 @@ import { PageShell } from "@/components/PageShell";
 import { PageHeader } from "@/components/PageHeader";
 import { useTemplateStore } from "@/store/templateStore";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { useSessionStore } from "@/store/sessionStore";
 
 const TemplateList = () => {
   const navigate = useNavigate();
-  const { templates, isLoading, loadTemplates } = useTemplateStore();
+  const templates = useTemplateStore((state) => state.templates);
+  // Q16: initialized는 sessionStore로 통합, isLoading 삭제
+  const initialized = useSessionStore((state) => state.initialized);
 
   // 파일/인증 상태 체크 (훅으로 분리). 통과 시점에 self-load.
   // store-side initialized 가드가 RootRedirect 경로와 중복 호출을 흡수.
-  useFileAuthGuard({
-    onInitialized: () => {
-      loadTemplates().catch(() => {
-        // loadTemplates 실패 시 Spinner가 계속 보이도록 silent swallow.
-      });
-    },
-  });
+  useFileAuthGuard();
 
   const handleNewTemplate = () => {
     navigate("/templates/new");
@@ -28,7 +25,7 @@ const TemplateList = () => {
     navigate(`/templates/${id}/edit`);
   };
 
-  if (isLoading) {
+  if (!initialized) {
     return (
       <PageShell maxWidth="lg" withBottomTabs>
         <PageHeader title="템플릿 관리" />
@@ -94,8 +91,8 @@ const TemplateList = () => {
         )}
 
         <BottomTabs />
-    </PageShell>
-  );
-};
+      </PageShell>
+    );
+  };
 
 export default TemplateList;

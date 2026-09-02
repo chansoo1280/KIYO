@@ -14,9 +14,9 @@ import Button from "@/components/Button";
 const AccountList = () => {
   const navigate = useNavigate();
   const accounts = useAccountStore((state) => state.accounts);
-  const isLoading = useAccountStore((state) => state.isLoading);
-  const initialized = useAccountStore((state) => state.initialized);
-  const loadAccounts = useAccountStore((state) => state.loadAccounts);
+  // Q16: initialized는 sessionStore로 통합
+  const initialized = useSessionStore((state) => state.initialized);
+  // loadAccounts selector 제거 — Q16: sessionStore.initialized로 단일화
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -27,14 +27,7 @@ const AccountList = () => {
   // 파일/인증 상태 체크 (훅으로 분리). 통과 시점(activeFileName 있고
   // plaintext || cryptoKey 있음)에 self-load. store-side initialized 가드가
   // RootRedirect 경로와 중복 호출을 흡수.
-  useFileAuthGuard({
-    onInitialized: () => {
-      loadAccounts().catch(() => {
-        // loadAccounts 실패 시 RootRedirect가 rethrow를 처리하지만 self-load
-        // 경로에서는 Spinner가 계속 보이도록 silent swallow.
-      });
-    },
-  });
+  useFileAuthGuard();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -123,7 +116,7 @@ const AccountList = () => {
 
   const { copy } = useClipboard();
 
-  if (!initialized || isLoading) {
+  if (!initialized) {
     return (
       <PageShell maxWidth="xl" withBottomTabs>
         <div className="flex items-center justify-between gap-3">

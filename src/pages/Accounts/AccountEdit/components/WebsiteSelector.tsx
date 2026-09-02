@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { FormDialog } from "@/components/dialogs/FormDialog";
 import PresetIcon from "@/components/PresetIcon";
 import type { WebsitePreset } from "@/models/websitePreset";
-import { searchPresets, getPresetsByCategory } from "@/data/websitePresets";
+import { searchPresets, getPresetsByCategory } from "@/constants/websitePresets";
 
 interface WebsiteSelectorProps {
   open: boolean;

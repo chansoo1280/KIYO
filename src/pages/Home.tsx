@@ -1,23 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  initializeStores,
- isKiyoFile,
- openImportedDataFile,
+  isKiyoFile,
+  openImportedDataFile,
 } from "@/database/fileStorage";
-import { fileTable } from "@/database/fileTable";
+import { fileTable, type FileRecord } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
 import {
- FileStorageErrorCode,
- isFileStorageError,
+  FileStorageErrorCode,
+  isFileStorageError,
 } from "@/errors/FileStorageError";
 import { setupVaultSession } from "@/database/fileStorage";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
-import { replaceDatabaseData, type FileRecord } from "@/database/db";
 import { Trash2 } from "lucide-react";
+import { activatePlaintextVault } from "@/database/fileStorage";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -49,11 +48,7 @@ const Home = () => {
       navigate("/auth", { replace: true });
     } else {
       // plaintext 
-      await replaceDatabaseData({
-        data: info.fileData,
-        fileName,
-      });
-      await initializeStores();
+      await activatePlaintextVault(fileName);
       navigate("/accounts", { replace: true });
     }
   };

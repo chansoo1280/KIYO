@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "@/components/Button";
 import { SettingsSection } from "@/components/SettingsSection";
 import { SettingsRow } from "@/components/SettingsRow";
-import { backupDataFile, openImportedDataFile, isKiyoFile } from "@/database/fileStorage";
+import { backupDataFile, openImportedDataFile, isKiyoFile, saveStoresToFile } from "@/database/fileStorage";
 import { pickBackupFolder } from "@/database/fileExport";
 import FileCreateDialog from "@/components/dialogs/FileCreateDialog";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
@@ -99,13 +99,11 @@ export function DataSection() {
       await setAutoBackupUri(result.uri);
       await setAutoBackupEnabled(true);
       setDataMessage("자동 백업 위치가 설정되었습니다.");
-      // 즉시 첫 백업 수행
+      // 즉시 첫 백업 수행 (PR 1: persistVaultSnapshot → saveStoresToFile로 대체)
       try {
-        const { persistVaultSnapshot } = await import("@/database/db");
-        const { useSessionStore } = await import("@/store/sessionStore");
         const { activeFileName, cryptoKey, salt } = useSessionStore.getState();
         if (activeFileName && cryptoKey && salt) {
-          await persistVaultSnapshot({ activeFileName, cryptoKey, salt });
+          await saveStoresToFile();
           setDataMessage("자동 백업 위치가 설정되고 첫 백업이 완료되었습니다.");
         }
       } catch (e) {
