@@ -67,6 +67,7 @@ describe("useAutoLock - Edge Cases", () => {
       activeFileName: null,
       cryptoKey: createMockCryptoKey(),
       salt: null,
+      initialized: false,
       lastSyncError: null,
       lastSyncErrorTime: null,
       lastSyncTime: null,

@@ -77,43 +77,43 @@ export const exportBackupFile = async (
 /**
  * Import vault data from backup file via SAF (Android) or file picker (web)
  */
-export const importBackupFile = async (): Promise<{
-  success: boolean;
-  data?: string;
-  uri?: string;
-}> => {
-  if (!isNativeFileStorageAvailable()) {
-    // Web: cannot programmatically open file picker from here
-    // Caller should use <input type="file"> and pass data directly
-    throw FileStorageError.create(
-      FileStorageErrorCode.FILE_READ_FAILED,
-      "Web import requires file input element",
-      { operation: "importBackupFile" },
-    );
-  }
+// export const importBackupFile = async (): Promise<{
+//   success: boolean;
+//   data?: string;
+//   uri?: string;
+// }> => {
+//   if (!isNativeFileStorageAvailable()) {
+//     // Web: cannot programmatically open file picker from here
+//     // Caller should use <input type="file"> and pass data directly
+//     throw FileStorageError.create(
+//       FileStorageErrorCode.FILE_READ_FAILED,
+//       "Web import requires file input element",
+//       { operation: "importBackupFile" },
+//     );
+//   }
 
-  try {
-    const result = await KiyoFile.openFile({
-      mimeType: "application/json",
-    });
+//   try {
+//     const result = await KiyoFile.openFile({
+//       mimeType: "application/json",
+//     });
 
-    if (!result.success) {
-      return { success: false, uri: result.uri };
-    }
+//     if (!result.success) {
+//       return { success: false, uri: result.uri };
+//     }
 
-    return { success: true, data: result.data, uri: result.uri };
-  } catch (error) {
-    console.error("importBackupFile: openFile failed", error instanceof Error ? error.message : String(error));
-    throw FileStorageError.create(
-      FileStorageErrorCode.FILE_READ_FAILED,
-      "Failed to open backup file",
-      {
-        originalError: error instanceof Error ? error : undefined,
-        operation: "importBackupFile",
-      },
-    );
-  }
-};
+//     return { success: true, data: result.data, uri: result.uri };
+//   } catch (error) {
+//     console.error("importBackupFile: openFile failed", error instanceof Error ? error.message : String(error));
+//     throw FileStorageError.create(
+//       FileStorageErrorCode.FILE_READ_FAILED,
+//       "Failed to open backup file",
+//       {
+//         originalError: error instanceof Error ? error : undefined,
+//         operation: "importBackupFile",
+//       },
+//     );
+//   }
+// };
 
 /**
  * Write to existing SAF URI (for auto-backup)

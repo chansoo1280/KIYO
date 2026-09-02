@@ -3,7 +3,17 @@ import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { KiyoVaultData } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
-import type { FileRecord } from "@/database/db";
+
+export interface FileRecord {
+  id: string; // PK = fileName (v14)
+  fileName: string;
+  fileData: string; // JSON string of KiyoVaultData (encrypted or plain)
+  encrypted: boolean;
+  salt?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 import { normalizeDataFileName } from "@/database/fileExport";
 
 export type ActiveFileInfo =
@@ -11,10 +21,6 @@ export type ActiveFileInfo =
   | { encrypted: false; fileData: KiyoVaultData; salt: null; activeFileName: string }
   | { encrypted: false; fileData: null; salt: null; activeFileName: null };
 
-
-export const parseFileData = (json: string): KiyoVaultData | EncryptedKiyoVaultData => {
-  return JSON.parse(json);
-}
 
 export const fileTable = {
   /**

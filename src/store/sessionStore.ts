@@ -11,6 +11,7 @@ export interface SessionState {
   activeFileName: string | null;
   cryptoKey: CryptoKey | null;
   salt: Uint8Array | null;
+  initialized: boolean;
   lastSyncError: string | null;
   lastSyncErrorTime: number | null;
   lastSyncTime: number | null;
@@ -41,6 +42,7 @@ export const useSessionStore = create<SessionState>()(
         activeFileName: null,
         cryptoKey: null,
         salt: null,
+        initialized: false,
         lastSyncError: null,
         lastSyncErrorTime: null,
         lastSyncTime: null,
@@ -69,7 +71,7 @@ export const useSessionStore = create<SessionState>()(
         },
 
         clearSession: async () => {
-          set({ activeFileName: null, cryptoKey: null, salt: null });
+          set({ activeFileName: null, cryptoKey: null, salt: null, initialized: false });
         },
 
         setSyncError: (error: string | null) => {
@@ -109,12 +111,14 @@ export const useSessionStore = create<SessionState>()(
 // Dev/테스트 환경에서 Zustand store 디버그용 노출
 if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__KIYO_DEBUG__ = {
+    ...((window as unknown as Record<string, unknown>).__KIYO_DEBUG__ ?? {}),
     getSession: () => {
       const state = useSessionStore.getState();
       return {
         activeFileName: state.activeFileName,
         hasCryptoKey: !!state.cryptoKey,
         hasSalt: !!state.salt,
+        initialized: state.initialized,
       };
     },
     getFiles: async () => {

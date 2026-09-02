@@ -1,6 +1,11 @@
 import type { Account } from "@/models/account";
 import type { Template } from "@/models/template";
-import type { FileMetadata } from "@/models/account";
+
+export interface FileMetadata {
+  id: number;
+  version: string;
+  createdAt: number;
+}
 
 export interface KiyoVaultData {
   version: 1;

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { fileTable } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
+import { activatePlaintextVault } from "@/database/fileStorage";
 
 export interface FileAuthStatus {
   activeFileName: string | null;
@@ -16,18 +17,9 @@ export interface FileAuthStatus {
  *   - activeFileName 없음        → / 리다이렉트
  *   - activeFileName 있고 encrypted && cryptoKey 없음 → /auth 리다이렉트
  *   - 통과 (activeFileName 있고 (plaintext || cryptoKey 있음))
- *                                 → onInitialized 콜백 호출
- *
- * onInitialized는 self-load 진입점에서 사용. store-side initialized 가드와
- * 결합하면 RootRedirect 경로(preload)와 self-load 경로가 동일 store를 공유해도
- * 중복 호출이 흡수됨.
  */
-export function useFileAuthGuard(options: {
-  onInitialized?: () => void;
-  skipRedirect?: boolean;
-} = {}) {
+export function useFileAuthGuard() {
   const navigate = useNavigate();
-  const { onInitialized, skipRedirect = false } = options;
 
   useEffect(() => {
     let mounted = true;
@@ -40,21 +32,20 @@ export function useFileAuthGuard(options: {
         if (!mounted) return;
 
         if (!sessionActiveFileName) {
-          if (!skipRedirect) {
-            navigate("/", { replace: true });
-          }
+          navigate("/", { replace: true });
           return;
         }
         const { encrypted } = await fileTable.getFileInfo(sessionActiveFileName);
         if (!mounted) return; // unmount 후 결과 도착 시 navigate 방지
-        if (encrypted && !cryptoKey) {
-          if (!skipRedirect) {
+        if (encrypted) {
+          if(!cryptoKey) {
             navigate("/auth", { replace: true });
+            return;
           }
-          return;
+        } else {
+          await activatePlaintextVault(sessionActiveFileName);
         }
-        // 통과 — onInitialized 콜백 호출
-        onInitialized?.();
+          
       } catch (error) {
         console.error("useFileAuthGuard: getFileInfo failed:", error instanceof Error ? error.message : String(error), error);
         // Error is handled gracefully - don't redirect
@@ -66,5 +57,5 @@ export function useFileAuthGuard(options: {
     return () => {
       mounted = false;
     };
-  }, [navigate, onInitialized, skipRedirect]);
+  }, [navigate]);
 }
