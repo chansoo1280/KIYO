@@ -147,7 +147,7 @@ Since schema v14, the `files` table PK is the fileName itself. `fileTable.resolv
 ## devAccounts Seeding
 
 ```typescript
-import { devAccounts } from "@/data/devAccounts";
+import { devAccounts } from "@/constants/devAccounts";
 // ...
 const initialAccounts: Account[] = devAccounts;
 ```

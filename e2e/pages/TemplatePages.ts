@@ -97,29 +97,24 @@ export class TemplateEditPage {
     this.deleteConfirmModal = page.getByRole('dialog').filter({ hasText: '템플릿 삭제' });
     this.confirmDeleteButton = this.deleteConfirmModal.getByRole('button', { name: '삭제' });
     this.errorMessages = page.locator('[data-testid="template-edit-error"] li');
-    // TemplateFieldEditor 각각의 컨테이너: "필드 삭제" 버튼(✕)을 가진 div
-    // Removed: fieldEditors dead code (Plan-X: E2E Selector Hardening)
+    // Plan-X: 항목 selector는 data-testid 기반 (`template-field-editor`).
+    // 컨테이너(`template-field-editor-list`) 대신 항목 selector를 쓰면 nth(index) 매핑이 안정적.
+    this.fieldEditors = page.locator('[data-testid="template-field-editor"]');
   }
 
   async gotoNew(): Promise<void> {
-    // BottomTabs의 Templates 탭 → 새 템플릿 생성 버튼으로 client-side navigation
-    const templatesTab = this.page.locator('button[aria-label="Templates"]').first();
-    await templatesTab.waitFor({ state: 'visible', timeout: 10000 });
-    await templatesTab.click();
-    await this.page.waitForLoadState('networkidle');
-    await this.newTemplateButton.waitFor({ state: 'visible', timeout: 5000 });
-    await this.newTemplateButton.click();
-    await this.page.waitForURL('**/templates/new', { timeout: 5000 });
-    await this.page.waitForLoadState('networkidle');
+    // BottomTabs의 Templates 탭 → TemplateListPage로 client-side navigation 후 새 템플릿 생성
+    // (TemplateListPage의 newTemplateButton 사용)
+    const list = new TemplateListPage(this.page);
+    await list.goto();
+    await list.createTemplate();
   }
 
   async gotoEdit(id: string): Promise<void> {
-    // BottomTabs의 Templates 탭 → 템플릿 리스트에서 client-side navigation
-    const templatesTab = this.page.locator('button[aria-label="Templates"]').first();
-    await templatesTab.waitFor({ state: 'visible', timeout: 10000 });
-    await templatesTab.click();
-    await this.page.waitForLoadState('networkidle');
-    await this.clickTemplate(id); // clickTemplate가 내부에서 이동 처리
+    // TemplateListPage 경유 → 기존 템플릿의 수정 버튼 클릭
+    const list = new TemplateListPage(this.page);
+    await list.goto();
+    await list.clickTemplate(id);
   }
 
   async setName(name: string): Promise<void> {

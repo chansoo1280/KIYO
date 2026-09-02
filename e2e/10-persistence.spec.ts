@@ -224,57 +224,69 @@ test.describe('데이터 지속성 (Persistence after Reload)', () => {
     // 6. 계정 리스트가 로드될 때까지 대기 (플로팅 액션 버튼 확인)
     await accountListPage.addAccountButton.waitFor({ state: 'visible', timeout: 10000 });
 
-    // 7. IndexedDB에서 데이터 확인 (파일 메타데이터 및 계정 데이터가 정확히 저장됨)
+    // 7. IndexedDB에서 데이터 확인 (PR 1 v15 model: 모든 vault 데이터는 db.files.fileData JSON에 snapshot으로 저장됨)
     const indexedDBInfo = await page.evaluate(async () => {
-      return new Promise((resolve) => {
-        // DB 이름이 "kiyo-db"로 고정됨 (src/database/db.ts:34)
+      return new Promise<{
+        files?: Array<{ id: string; fileName: string; fileData: string; encrypted: boolean }>;
+        dbVersion?: number;
+        error?: string;
+        stores?: string[];
+      }>((resolve) => {
+        // DB 이름이 "kiyo-db"로 고정됨 (src/database/db.ts:33)
         const dbName = 'kiyo-db';
-        
+
         const request = indexedDB.open(dbName);
-        request.onsuccess = (event) => {
-          const db = event.target.result;
+        request.onsuccess = (event: Event) => {
+          const target = event.target as IDBOpenDBRequest | null;
+          if (!target) {
+            resolve({ error: 'no target' });
+            return;
+          }
+          const db = target.result;
           if (!db.objectStoreNames.contains('files')) {
             resolve({ error: 'files store not found', stores: Array.from(db.objectStoreNames) });
             db.close();
             return;
           }
-          const transaction = db.transaction(['files', 'accounts'], 'readonly');
-          
+          const transaction = db.transaction(['files'], 'readonly');
+
           const filesStore = transaction.objectStore('files');
-          const accountsStore = transaction.objectStore('accounts');
-          
+
           const filesRequest = filesStore.getAll();
-          const accountsRequest = accountsStore.getAll();
-          
-          Promise.all([
-            new Promise(resolve => { filesRequest.onsuccess = () => resolve(filesRequest.result); }),
-            new Promise(resolve => { accountsRequest.onsuccess = () => resolve(accountsRequest.result); }),
-          ]).then(([files, accounts]) => {
-            resolve({ files, accounts, dbVersion: db.version });
-            db.close();
-          });
+
+          new Promise<unknown>((resolve) => {
+            filesRequest.onsuccess = () => resolve(filesRequest.result);
+          })
+            .then((files) => {
+              resolve({ files: files as Array<{ id: string; fileName: string; fileData: string; encrypted: boolean }>, dbVersion: db.version });
+              db.close();
+            });
         };
-        request.onerror = () => resolve({ error: request.error });
+        request.onerror = () => resolve({ error: request.error?.message ?? 'unknown' });
       });
     });
 
     // 8. 파일 메타데이터 확인
     expect(indexedDBInfo.files).toBeDefined();
     expect(Array.isArray(indexedDBInfo.files)).toBe(true);
-    expect(indexedDBInfo.files.length).toBeGreaterThan(0);
-    
-    const activeFile = indexedDBInfo.files.find(
-      (f: { id: string }) => f.id === "test-indexeddb-persistence.json",
+    const files = indexedDBInfo.files!;
+    expect(files.length).toBeGreaterThan(0);
+
+    const activeFile = files.find(
+      (f) => f.id === "test-indexeddb-persistence.json",
     );
     expect(activeFile).toBeDefined();
-    expect(activeFile.fileName).toBe('test-indexeddb-persistence.json');
-    expect(activeFile.encrypted).toBe(true);
+    const file = activeFile!;
+    expect(file.fileName).toBe('test-indexeddb-persistence.json');
+    expect(file.encrypted).toBe(true);
 
-    // 9. 계정 데이터 확인 (암호화되어 저장됨 - 복호화 키 없이 접근 시 길이만 확인)
-    expect(indexedDBInfo.accounts).toBeDefined();
-    expect(Array.isArray(indexedDBInfo.accounts)).toBe(true);
-    // 계정 데이터는 암호화되어 저장되므로 cryptoKey 없이 직접 조회 시 필드 구조가 다름
-    // 단순히 레코드가 존재하는지만 확인
-    expect(indexedDBInfo.accounts.length).toBeGreaterThanOrEqual(0);
+    // 9. v15: vault 데이터는 files.fileData에 암호화 JSON snapshot으로 저장됨.
+    // cryptoKey 없이 직접 read 가능 (fileData 자체가 EncryptedKiyoVaultData JSON),
+    // 단 accounts 필드는 ciphertext 보호 영역이라 길이/스키마 확인만 가능.
+    expect(typeof file.fileData).toBe('string');
+    const parsedSnapshot = JSON.parse(file.fileData);
+    expect(parsedSnapshot.encrypted).toBe(true);
+    expect(typeof parsedSnapshot.ciphertext).toBe('string');
+    expect(parsedSnapshot.ciphertext.length).toBeGreaterThan(0);
   });
 });

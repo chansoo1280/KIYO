@@ -41,8 +41,8 @@ export const test = base.extend<AuthFixtures>({
   },
 
   // 완전히 깨끗한 상태 (IndexedDB, localStorage 모두 비워짐)
-  freshPage: async (_: FixtureContext, cb: (page: Page) => Promise<void>) => {
-    const context = await base.newContext({ storageState: undefined });
+  freshPage: async ({ browser }: FixtureContext, cb: (page: Page) => Promise<void>) => {
+    const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     // 페이지 로드 후 IndexedDB 정리
     await page.goto('/');
