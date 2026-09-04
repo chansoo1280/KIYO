@@ -1,6 +1,9 @@
 import { Capacitor } from "@capacitor/core";
 import { KiyoFile } from "@/plugins/kiyofile";
-import { FileStorageError, FileStorageErrorCode } from "@/errors/FileStorageError";
+import {
+  FileExportError,
+  FileExportErrorCode,
+} from "./fileExport.error";
 import type { KiyoVaultData } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
 
@@ -21,10 +24,10 @@ export const exportBackupFile = async (
 ): Promise<{ success: boolean; uri?: string }> => {
   if (!fileName) {
     console.error("exportBackupFile: fileName is empty");
-    throw FileStorageError.create(
-      FileStorageErrorCode.INVALID_FORMAT,
+    throw FileExportError.create(
+      FileExportErrorCode.INVALID_FILE_NAME,
       "fileName is empty",
-      { operation: "exportBackupFile" },
+      { operation: "exportBackupFile", fileName },
     );
   }
   const normalizedFileName = normalizeDataFileName(fileName);
@@ -51,8 +54,8 @@ export const exportBackupFile = async (
     });
 
     if (!result.success) {
-      throw FileStorageError.create(
-        FileStorageErrorCode.WRITE_FAILED,
+      throw FileExportError.create(
+        FileExportErrorCode.WRITE_FAILED,
         result.cancelled ? "User cancelled backup" : "Failed to save backup file",
         { operation: "exportBackupFile", fileName: normalizedFileName },
       );
@@ -60,10 +63,10 @@ export const exportBackupFile = async (
 
     return { success: true, uri: result.uri };
   } catch (error) {
-    if (error instanceof FileStorageError) throw error;
+    if (error instanceof FileExportError) throw error;
     console.error("exportBackupFile: saveFile failed", error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : "");
-    throw FileStorageError.create(
-      FileStorageErrorCode.WRITE_FAILED,
+    throw FileExportError.create(
+      FileExportErrorCode.WRITE_FAILED,
       "Failed to write backup file",
       {
         originalError: error instanceof Error ? error : undefined,
@@ -85,27 +88,27 @@ export const exportBackupFile = async (
 //   if (!isNativeFileStorageAvailable()) {
 //     // Web: cannot programmatically open file picker from here
 //     // Caller should use <input type="file"> and pass data directly
-//     throw FileStorageError.create(
-//       FileStorageErrorCode.FILE_READ_FAILED,
+//     throw FileExportError.create(
+//       FileExportErrorCode.READ_FAILED,
 //       "Web import requires file input element",
 //       { operation: "importBackupFile" },
 //     );
 //   }
-
+//
 //   try {
 //     const result = await KiyoFile.openFile({
 //       mimeType: "application/json",
 //     });
-
+//
 //     if (!result.success) {
 //       return { success: false, uri: result.uri };
 //     }
-
+//
 //     return { success: true, data: result.data, uri: result.uri };
 //   } catch (error) {
 //     console.error("importBackupFile: openFile failed", error instanceof Error ? error.message : String(error));
-//     throw FileStorageError.create(
-//       FileStorageErrorCode.FILE_READ_FAILED,
+//     throw FileExportError.create(
+//       FileExportErrorCode.READ_FAILED,
 //       "Failed to open backup file",
 //       {
 //         originalError: error instanceof Error ? error : undefined,

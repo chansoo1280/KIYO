@@ -1,7 +1,7 @@
 import {
   FileStorageErrorCode,
   isFileStorageError,
-} from "@/errors/FileStorageError";
+} from "@/database/fileStorage.error";
 
 /**
  * 에러를 사용자 가시 한국어 메시지로 변환.
@@ -23,26 +23,18 @@ export function mapError(err: unknown): string {
     switch (err.code) {
       case FileStorageErrorCode.FILE_NOT_FOUND:
         return "파일을 찾을 수 없습니다.";
-      case FileStorageErrorCode.FILE_READ_ERROR:
       case FileStorageErrorCode.FILE_READ_FAILED:
         return "파일을 읽을 수 없습니다.";
-      case FileStorageErrorCode.FILE_WRITE_ERROR:
       case FileStorageErrorCode.FILE_WRITE_FAILED:
-      case FileStorageErrorCode.WRITE_FAILED:
         return "파일을 저장할 수 없습니다.";
       case FileStorageErrorCode.FILE_DELETE_ERROR:
         return "파일을 삭제할 수 없습니다.";
       case FileStorageErrorCode.FILE_ALREADY_EXISTS:
         return "같은 이름의 파일이 이미 존재합니다.";
       case FileStorageErrorCode.INVALID_FILE_FORMAT:
-      case FileStorageErrorCode.INVALID_JSON:
-      case FileStorageErrorCode.INVALID_FORMAT:
-      case FileStorageErrorCode.INVALID_DATA_FORMAT:
         return "파일 형식이 올바르지 않습니다.";
-      case FileStorageErrorCode.ENCRYPTION_ERROR:
       case FileStorageErrorCode.ENCRYPTION_FAILED:
         return "데이터 암호화에 실패했습니다.";
-      case FileStorageErrorCode.DECRYPTION_ERROR:
       case FileStorageErrorCode.DECRYPTION_FAILED:
         return "데이터 복호화에 실패했습니다.";
       case FileStorageErrorCode.INVALID_PIN:
@@ -59,8 +51,6 @@ export function mapError(err: unknown): string {
       case FileStorageErrorCode.PERMISSION_DENIED:
         return "권한이 없어 작업을 완료할 수 없습니다.";
       case FileStorageErrorCode.DATABASE_ERROR:
-      case FileStorageErrorCode.DATABASE_CONNECTION_FAILED:
-      case FileStorageErrorCode.DATABASE_QUERY_FAILED:
         return "데이터베이스 오류가 발생했습니다.";
       case FileStorageErrorCode.FILE_CORRUPTED:
         return "파일이 손상되었습니다.";

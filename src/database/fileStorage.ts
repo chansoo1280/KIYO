@@ -15,7 +15,7 @@ import {
   FileStorageError,
   FileStorageErrorCode,
   isFileStorageError,
-} from "@/errors/FileStorageError";
+} from "./fileStorage.error";
 import { devAccounts } from "@/constants/devAccounts";
 import { BUILTIN_TEMPLATES } from "@/constants/builtinTemplates";
 import type { KiyoVaultData, FileMetadata } from "@/models/vault";
@@ -279,7 +279,7 @@ export const openImportedDataFile = async (
     parsedData = JSON.parse(data);
   } catch (error) {
     throw FileStorageError.create(
-      FileStorageErrorCode.INVALID_JSON,
+      FileStorageErrorCode.INVALID_FILE_FORMAT,
       "JSON 파싱 실패",
       { operation: "openImportedDataFile", originalError: error instanceof Error ? error : undefined }
     );
@@ -348,10 +348,10 @@ export const openImportedDataFile = async (
     salt
   );
 
-  // isKiyoFile 검증 실패는 INVALID_DATA_FORMAT으로 별도 처리
+  // isKiyoFile 검증 실패는 INVALID_FILE_FORMAT으로 별도 처리
   if (!isKiyoFile(decrypted)) {
     throw FileStorageError.create(
-      FileStorageErrorCode.INVALID_DATA_FORMAT,
+      FileStorageErrorCode.INVALID_FILE_FORMAT,
       "is not KiyoFile",
       { operation: "openImportedDataFile" }
     );
