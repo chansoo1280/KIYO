@@ -7,6 +7,17 @@ import { fileTable } from "@/database/fileTable";
 // Web Crypto API types (available globally in browser environments)
 type CryptoKey = globalThis.CryptoKey;
 
+// Migration: lastAutofillAccountCount → lastSyncedAutofillCount
+const migrateLastAutofillCount = (state: unknown): unknown => {
+  if (!state || typeof state !== "object") return state;
+  const s = state as Record<string, unknown>;
+  if ("lastAutofillAccountCount" in s && !("lastSyncedAutofillCount" in s)) {
+    s.lastSyncedAutofillCount = s.lastAutofillAccountCount;
+    delete s.lastAutofillAccountCount;
+  }
+  return state;
+};
+
 export interface SessionState {
   activeFileName: string | null;
   cryptoKey: CryptoKey | null;
@@ -15,7 +26,7 @@ export interface SessionState {
   lastSyncError: string | null;
   lastSyncErrorTime: number | null;
   lastSyncTime: number | null;
-  lastAutofillAccountCount: number | null;
+  lastSyncedAutofillCount: number | null;
   setSession: ({
     fileName,
     cryptoKey,
@@ -32,7 +43,7 @@ export interface SessionState {
   setSyncError: (error: string | null) => void;
   clearSyncError: () => void;
   setLastSyncTime: (time: number | null) => void;
-  setLastAutofillAccountCount: (count: number | null) => void;
+  setLastSyncedAutofillCount: (count: number | null) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -46,7 +57,7 @@ export const useSessionStore = create<SessionState>()(
         lastSyncError: null,
         lastSyncErrorTime: null,
         lastSyncTime: null,
-        lastAutofillAccountCount: null,
+        lastSyncedAutofillCount: null,
 
         setSession: async ({ fileName, cryptoKey, salt }) => {
           set((state) => ({
@@ -89,10 +100,11 @@ export const useSessionStore = create<SessionState>()(
           set({ lastSyncTime: time });
         },
 
-        setLastAutofillAccountCount: (count: number | null) => {
-          set({ lastAutofillAccountCount: count });
+        setLastSyncedAutofillCount: (count: number | null) => {
+          set({ lastSyncedAutofillCount: count });
         },
       }),
+
       {
         name: "kiyo-session",
         storage: createJSONStorage(() => localStorage),
@@ -100,8 +112,9 @@ export const useSessionStore = create<SessionState>()(
           activeFileName: state.activeFileName,
           salt: state.salt,
           lastSyncTime: state.lastSyncTime,
-          lastAutofillAccountCount: state.lastAutofillAccountCount,
+          lastSyncedAutofillCount: state.lastSyncedAutofillCount,
         }),
+        migrate: migrateLastAutofillCount,
       },
     ),
     { name: "session-store" },

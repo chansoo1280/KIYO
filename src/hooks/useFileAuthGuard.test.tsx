@@ -40,7 +40,7 @@ const createMockSessionState = (overrides: Partial<SessionState> = {}): SessionS
   lastSyncError: null,
   lastSyncErrorTime: null,
   lastSyncTime: null,
-  lastAutofillAccountCount: null,
+  lastSyncedAutofillCount: null,
   setSession: vi.fn(),
   setCryptoKey: vi.fn(),
   setCryptoKeyFromBase64: vi.fn(),
@@ -49,7 +49,7 @@ const createMockSessionState = (overrides: Partial<SessionState> = {}): SessionS
   setSyncError: vi.fn(),
   clearSyncError: vi.fn(),
   setLastSyncTime: vi.fn(),
-  setLastAutofillAccountCount: vi.fn(),
+  setLastSyncedAutofillCount: vi.fn(),
   ...overrides,
 });
 

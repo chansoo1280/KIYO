@@ -24,6 +24,7 @@ import org.json.JSONObject
 /**
  * Biometric authentication helper using CryptoObject pattern.
  * Both encryption and decryption require user authentication via BiometricPrompt.
+ * Manages a single global biometric-protected key (not per-vault).
  */
 class BiometricAuthHelper internal constructor(
     private val context: Context,
@@ -41,9 +42,9 @@ class BiometricAuthHelper internal constructor(
 
     /**
      * Store the cryptoKey encrypted with Keystore master key, bound to biometric authentication.
-     * Uses CryptoObject pattern: Cipher.init(ENCRYPT_MODE) → CryptoObject → BiometricPrompt.authenticate()
+     * Uses non-crypto prompt + init+doFinal (see storeKey comments for why CryptoObject not used).
      */
-    suspend fun storeKey(vaultId: String, cryptoKeyBase64: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun storeKey(cryptoKeyBase64: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val masterKey = getOrCreateMasterKey()
             val plainKeyBytes = Base64.decode(cryptoKeyBase64, Base64.NO_WRAP)
@@ -56,7 +57,7 @@ class BiometricAuthHelper internal constructor(
             //   doFinal이 auth-required 키를 강제하므로 보안 등가이다 (유효창 닫히면 UNAE).
             authenticateWithPrompt(
                 title = "생체인증 등록",
-                subtitle = "$vaultId 볼트의 암호화 키를 생체인증으로 보호합니다",
+                subtitle = "암호화 키를 생체인증으로 보호합니다",
             ) {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 cipher.init(Cipher.ENCRYPT_MODE, masterKey)
@@ -72,12 +73,12 @@ class BiometricAuthHelper internal constructor(
 
     /**
      * Unlock (decrypt) the cryptoKey using biometric authentication.
-     * Uses CryptoObject pattern: Cipher.init(DECRYPT_MODE, IV) → CryptoObject → BiometricPrompt.authenticate()
+     * Uses non-crypto prompt + init+doFinal; auth-required 키라 doFinal이 인증을 강제한다.
      */
-    suspend fun unlockKeyWithBiometric(vaultId: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun unlockKeyWithBiometric(): Result<String> = withContext(Dispatchers.IO) {
         try {
             val masterKey = getOrCreateMasterKey()
-            
+
             // 1. Read encrypted key from DataStore
             val encryptedKey = readEncryptedKeyFromDataStore()
             val spec = GCMParameterSpec(GCM_TAG_LENGTH * 8, encryptedKey.iv)
@@ -86,7 +87,7 @@ class BiometricAuthHelper internal constructor(
             // non-crypto 인증 후 init+doFinal; auth-required 키라 doFinal이 인증을 강제한다.
             val plainKeyBytes = authenticateWithPrompt(
                 title = "생체인증으로 로그인",
-                subtitle = "$vaultId 볼트 잠금 해제",
+                subtitle = "볼트 잠금 해제",
             ) {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 cipher.init(Cipher.DECRYPT_MODE, masterKey, spec)
@@ -156,9 +157,9 @@ class BiometricAuthHelper internal constructor(
     }
 
     /**
-     * Check if biometric key exists for the vault.
+     * Check if biometric key exists.
      */
-    suspend fun hasKey(vaultId: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun hasKey(): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val prefs = context.getSharedPreferences(DATASTORE_NAME, Context.MODE_PRIVATE)
             val json = prefs.getString(ENCRYPTED_KEY_KEY, null)
@@ -172,7 +173,7 @@ class BiometricAuthHelper internal constructor(
     /**
      * Delete the stored biometric key.
      */
-    suspend fun deleteKey(vaultId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun deleteKey(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val prefs = context.getSharedPreferences(DATASTORE_NAME, Context.MODE_PRIVATE)
             prefs.edit().remove(ENCRYPTED_KEY_KEY).apply()
@@ -190,7 +191,7 @@ class BiometricAuthHelper internal constructor(
         try {
             val biometricManager = BiometricManager.from(context)
             val authResult = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            
+
             when (authResult) {
                 BiometricManager.BIOMETRIC_SUCCESS -> {
                     // Check which biometric type is available
@@ -221,7 +222,7 @@ class BiometricAuthHelper internal constructor(
     private fun getOrCreateMasterKey(): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
-        
+
         if (!keyStore.containsAlias(KEY_ALIAS)) {
             val keyGenerator = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES,
@@ -244,7 +245,7 @@ class BiometricAuthHelper internal constructor(
             keyGenerator.init(spec)
             keyGenerator.generateKey()
         }
-        
+
         val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry
         return entry.secretKey
     }
@@ -264,7 +265,7 @@ class BiometricAuthHelper internal constructor(
         val prefs = context.getSharedPreferences(DATASTORE_NAME, Context.MODE_PRIVATE)
         val jsonString = prefs.getString(ENCRYPTED_KEY_KEY, null)
             ?: throw IllegalStateException("No encrypted key found in DataStore")
-        
+
         val json = JSONObject(jsonString)
         val iv = Base64.decode(json.getString("iv"), Base64.NO_WRAP)
         val ciphertext = Base64.decode(json.getString("ciphertext"), Base64.NO_WRAP)

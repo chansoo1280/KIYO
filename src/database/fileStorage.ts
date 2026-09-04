@@ -22,6 +22,7 @@ import type { KiyoVaultData, FileMetadata } from "@/models/vault";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import { exportBackupFile, normalizeDataFileName } from "./fileExport";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
+import { SecureKey } from "@/plugins/kiyosecurekey";
 import { APP_VERSION } from "@/constants/appVersion";
 
 
@@ -160,6 +161,7 @@ export const closeDataFile = async (): Promise<void> => {
   useMetadataStore.getState().clearMetadata();
   if (Capacitor.getPlatform() === "android") {
     try { await KiyoAutofill.clearAllAccounts(); } catch { /* ignore */ }
+    try { await SecureKey.deleteKey(); } catch { /* ignore */ }
   }
 };
 

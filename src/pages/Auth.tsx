@@ -42,7 +42,7 @@ const Auth = () => {
       // Check if biometric key exists and biometry is available
       if (encrypted) {
         try {
-          const hasKeyResult = await SecureKey.hasKey({ vaultId: activeFileName });
+          const hasKeyResult = await SecureKey.hasKey();
           if (hasKeyResult.exists) {
             const bioResult = await SecureKey.isBiometryAvailable();
             if (bioResult.available) {
@@ -107,7 +107,7 @@ const Auth = () => {
     setError("");
 
     try {
-      const result = await SecureKey.unlockKeyWithBiometric({ vaultId: fileName });
+      const result = await SecureKey.unlockKeyWithBiometric();
       const cryptoKeyBase64 = result.key;
 
       // Get the salt from the file

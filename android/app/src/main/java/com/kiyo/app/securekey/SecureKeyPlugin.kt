@@ -41,11 +41,10 @@ class SecureKeyPlugin : Plugin() {
     fun storeKey(call: PluginCall) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val vaultId = call.getString("vaultId") ?: return@launch call.reject("vaultId is required")
                 val key = call.getString("key") ?: return@launch call.reject("key is required")
 
                 val helper = ensureBiometricHelper()
-                val result = helper.storeKey(vaultId, key).getOrThrow()
+                val result = helper.storeKey(key).getOrThrow()
 
                 call.resolve(JSObject().apply {
                     put("success", true)
@@ -67,10 +66,8 @@ class SecureKeyPlugin : Plugin() {
     fun unlockKeyWithBiometric(call: PluginCall) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val vaultId = call.getString("vaultId") ?: return@launch call.reject("vaultId is required")
-
                 val helper = ensureBiometricHelper()
-                val cryptoKeyBase64 = helper.unlockKeyWithBiometric(vaultId).getOrThrow()
+                val cryptoKeyBase64 = helper.unlockKeyWithBiometric().getOrThrow()
 
                 call.resolve(JSObject().apply {
                     put("key", cryptoKeyBase64)
@@ -98,10 +95,8 @@ class SecureKeyPlugin : Plugin() {
     fun deleteKey(call: PluginCall) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val vaultId = call.getString("vaultId") ?: return@launch call.reject("vaultId is required")
-
                 val helper = ensureBiometricHelper()
-                helper.deleteKey(vaultId).getOrThrow()
+                helper.deleteKey().getOrThrow()
 
                 call.resolve(JSObject().apply {
                     put("success", true)
@@ -117,10 +112,8 @@ class SecureKeyPlugin : Plugin() {
     fun hasKey(call: PluginCall) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val vaultId = call.getString("vaultId") ?: return@launch call.reject("vaultId is required")
-
                 val helper = ensureBiometricHelper()
-                val exists = helper.hasKey(vaultId).getOrThrow()
+                val exists = helper.hasKey().getOrThrow()
 
                 call.resolve(JSObject().apply {
                     put("exists", exists)

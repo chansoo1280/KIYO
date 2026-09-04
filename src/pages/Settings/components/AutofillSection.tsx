@@ -25,14 +25,14 @@ export const AutofillSection: React.FC = () => {
   const {
     lastSyncTime: sessionLastSyncTime,
     setLastSyncTime: setSessionLastSyncTime,
-    lastAutofillAccountCount,
-    setLastAutofillAccountCount,
+    lastSyncedAutofillCount,
+    setLastSyncedAutofillCount,
   } = useSessionStore();
   const { autofillEnabled, setAutofillEnabled } = useSettingsStore();
 
   // Use session store values directly
   const lastSyncTime = sessionLastSyncTime;
-  const accountCount = lastAutofillAccountCount ?? 0;
+  const accountCount = lastSyncedAutofillCount ?? 0;
 
   const showMessage = useCallback((text: string) => {
     setMessage(text);
@@ -90,7 +90,7 @@ export const AutofillSection: React.FC = () => {
       if (result.success) {
         const now = Date.now();
         setSessionLastSyncTime(now); // Also save to session store
-        setLastAutofillAccountCount(result.syncedCount); // Store autofill DB account count
+        setLastSyncedAutofillCount(result.syncedCount); // Store autofill DB account count
         showMessage(`자동완성 계정 ${result.syncedCount}개 동기화 완료`);
       } else if (result.securityDowngrade) {
         // 기기 잠금화면 제거로 보안 키 무효화 - 사용자의 재클릭으로 초기화 후 재동기화됨
@@ -115,7 +115,7 @@ export const AutofillSection: React.FC = () => {
     checkStatus,
     showMessage,
     setSessionLastSyncTime,
-    setLastAutofillAccountCount,
+    setLastSyncedAutofillCount,
   ]);
 
   const openAutofillSettings = useCallback(async () => {
@@ -143,7 +143,7 @@ export const AutofillSection: React.FC = () => {
           showMessage(`자동완성 데이터 ${result.deletedCount}개 삭제 완료`);
           // Also clear last sync time and stored autofill account count
           setSessionLastSyncTime(null);
-          setLastAutofillAccountCount(null);
+          setLastSyncedAutofillCount(null);
         } else {
           showMessage("자동완성 데이터 삭제 실패");
         }
@@ -156,7 +156,7 @@ export const AutofillSection: React.FC = () => {
       // Enabling autofill - just update status
       await checkStatus();
     }
-  }, [autofillEnabled, setAutofillEnabled, showMessage, checkStatus, setSessionLastSyncTime, setLastAutofillAccountCount]);
+  }, [autofillEnabled, setAutofillEnabled, showMessage, checkStatus, setSessionLastSyncTime, setLastSyncedAutofillCount]);
 
   // Initial load - intentional side effect on mount to check autofill status
   useEffect(() => {

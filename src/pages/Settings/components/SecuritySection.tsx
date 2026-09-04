@@ -92,16 +92,13 @@ export function SecuritySection() {
       setShowBiometricSetupDialog(true);
     } else {
       // Disable biometric - delete stored key
-      const activeFileName = useSessionStore.getState().activeFileName;
-      if (activeFileName) {
-        try {
-          await SecureKey.deleteKey({ vaultId: activeFileName });
-          await setBiometricEnabled(false);
-          setSecurityMessage("생체인증이 비활성화되었습니다. 저장된 키가 삭제되었습니다.");
-        } catch (err) {
-          console.error("Failed to delete biometric key:", err instanceof Error ? err.message : String(err), err);
-          setSecurityMessage("생체인증 비활성화에 실패했습니다.");
-        }
+      try {
+        await SecureKey.deleteKey();
+        await setBiometricEnabled(false);
+        setSecurityMessage("생체인증이 비활성화되었습니다. 저장된 키가 삭제되었습니다.");
+      } catch (err) {
+        console.error("Failed to delete biometric key:", err instanceof Error ? err.message : String(err), err);
+        setSecurityMessage("생체인증 비활성화에 실패했습니다.");
       }
     }
   }, [isEncrypted, checkBiometryAvailability, setBiometricEnabled]);
@@ -126,7 +123,7 @@ export function SecuritySection() {
       const keyBase64 = toBase64(keyData);
 
       // Store with biometric protection
-      await SecureKey.storeKey({ vaultId: activeFileName, key: keyBase64 });
+      await SecureKey.storeKey({ key: keyBase64 });
       await setBiometricEnabled(true);
       setSecurityMessage("생체인증이 활성화되었습니다.");
     } catch (err) {

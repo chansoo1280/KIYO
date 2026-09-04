@@ -82,5 +82,17 @@ vi.mock("@/plugins/kiyautofill", () => ({
       .mockResolvedValue({ success: true, syncedCount: 0, errorCount: 0 }),
   },
 }));
+
+// Mock SecureKey plugin
+vi.mock("@/plugins/kiyosecurekey", () => ({
+  SecureKey: {
+    storeKey: vi.fn().mockResolvedValue(undefined),
+    unlockKeyWithBiometric: vi.fn().mockResolvedValue({ key: "mock-key" }),
+    deleteKey: vi.fn().mockResolvedValue(undefined),
+    hasKey: vi.fn().mockResolvedValue({ exists: false }),
+    isBiometryAvailable: vi.fn().mockResolvedValue({ available: false, type: "none" }),
+  },
+}));
+
 // Export mock for use in tests
 export {};
