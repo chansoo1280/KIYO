@@ -115,9 +115,6 @@ const AccountDetail = () => {
         <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-semibold text-[var(--color-text-h)]">
-                {account.title}
-              </h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {account.tags.map((tag) => (
                   <span
