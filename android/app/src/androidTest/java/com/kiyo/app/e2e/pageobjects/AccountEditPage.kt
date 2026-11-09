@@ -124,8 +124,8 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
         val currentTitle = helper.getPageTitle()
         log("Current page after save: $currentTitle")
         
-        // Account Detail 페이지("← 뒤로 가기", "수정", "삭제" 버튼)인지 확인 (로그/소스 검증됨)
-        val isDetailPage = helper.waitForText("← 뒤로 가기", 3000)
+        // Account Detail 페이지(뒤로가기 버튼 aria-label="뒤로 가기", "수정", "삭제" 버튼)인지 확인
+        val isDetailPage = helper.waitForElement("//*[@aria-label='뒤로 가기']", 3000)
             || helper.waitForText("수정", 3000)
             || helper.waitForText("삭제", 3000)
 
@@ -135,10 +135,9 @@ class AccountEditPage(helper: WebViewTestHelper) : BasePage(helper) {
 
         if (isDetailPage) {
             log("On Account Detail page, navigating back to Accounts list...")
-            // 뒤로 가기 버튼 클릭 (소스 검증됨: AccountDetail "← 뒤로 가기", AccountEdit "← 취소")
-            val backClicked = helper.clickByText("← 뒤로 가기", "back button (AccountDetail)")
-                ?: helper.clickByText("← 취소", "back button (AccountEdit)")
-                ?: helper.clickByXPath("//button[contains(., '←')]", "back button")
+            // 뒤로 가기 버튼 클릭 (BackButton aria-label="뒤로 가기")
+            val backClicked = helper.clickByAriaLabel("뒤로 가기", "back button (AccountDetail)")
+                ?: helper.clickByXPath("//*[@aria-label='뒤로 가기']", "back button (aria-label fallback)")
 
             if (!backClicked) {
                 // goBack()으로 네이티브 백 버튼 누르기

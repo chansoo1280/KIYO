@@ -80,8 +80,14 @@ class SettingsPage(helper: WebViewTestHelper, private val nativeAuthPrompt: Nati
             if (helper.waitForText("사용 중", 2000)) {
                 log("Biometric already enabled ('사용 중' button) — disabling for re-enrollment")
                 assertTrue(helper.clickByText("사용 중", "biometric disable button"))
-                if (!helper.waitForTextContains("저장된 키가 삭제되었습니다", 10000)) {
-                    throw AssertionError("Existing biometric key delete failed during re-enrollment")
+                // 비활성화 결과 판정: 성공 메시지 vs 실패 메시지
+                val deleted = helper.waitForTextContains("저장된 키가 삭제되었습니다", 10000)
+                val failed = helper.waitForTextContains("생체인증 비활성화에 실패했습니다", 10000)
+                if (failed) {
+                    throw AssertionError("Existing biometric key delete failed during re-enrollment: SecureKey.deleteKey() failed")
+                }
+                if (!deleted) {
+                    throw AssertionError("Existing biometric key delete failed during re-enrollment: no confirmation message")
                 }
                 if (!helper.waitForText("사용 안 함", 8000)) {
                     throw AssertionError("'사용 안 함' button not shown after biometric disable")

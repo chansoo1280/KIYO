@@ -133,6 +133,7 @@ class BiometricAuthHelper internal constructor(
         val deferred = CompletableDeferred<T>()
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                Log.e(TAG, "onAuthenticationSucceeded")
                 try {
                     deferred.complete(block())
                 } catch (e: Exception) {
@@ -142,10 +143,12 @@ class BiometricAuthHelper internal constructor(
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                Log.e(TAG, "onAuthenticationError: code=$errorCode, msg=$errString")
                 deferred.completeExceptionally(BiometricAuthException(errorCode, errString.toString()))
             }
 
             override fun onAuthenticationFailed() {
+                Log.e(TAG, "onAuthenticationFailed")
                 deferred.completeExceptionally(BiometricAuthException(-1, "Biometric authentication failed"))
             }
         }
