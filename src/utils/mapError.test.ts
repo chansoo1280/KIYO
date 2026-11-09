@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mapError } from "@/utils/mapError";
-import { FileStorageError } from "@/errors/FileStorageError";
+import { FileStorageError } from "@/database/fileStorage.error";
 
 describe("mapError (Plan-A1)", () => {
   it("① null → fallback 메시지", () => {

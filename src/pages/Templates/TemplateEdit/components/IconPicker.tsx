@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ICON_OPTIONS } from "@/data/icons";
+import { ICON_OPTIONS } from "@/constants/icons";
 
 interface IconPickerProps {
   value: string;

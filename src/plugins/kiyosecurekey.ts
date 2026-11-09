@@ -1,7 +1,6 @@
 import { registerPlugin } from "@capacitor/core";
 
 export interface StoreKeyOptions {
-  vaultId: string;
   key: string;
 }
 
@@ -20,9 +19,9 @@ export interface BiometryAvailability {
 
 export interface SecureKeyPlugin {
   storeKey(options: StoreKeyOptions): Promise<void>;
-  unlockKeyWithBiometric(options: { vaultId: string }): Promise<UnlockKeyResult>;
-  deleteKey(options: { vaultId: string }): Promise<void>;
-  hasKey(options: { vaultId: string }): Promise<HasKeyResult>;
+  unlockKeyWithBiometric(): Promise<UnlockKeyResult>;
+  deleteKey(): Promise<void>;
+  hasKey(): Promise<HasKeyResult>;
   isBiometryAvailable(): Promise<BiometryAvailability>;
 }
 

@@ -45,7 +45,7 @@ export const TemplateFieldEditor = ({
   const isDuplicateLabel = allLabels.filter((l) => l === field.label).length > 1;
 
   return (
-    <FieldCard density="comfy" data-testid={testId}>
+    <FieldCard density="comfy" testId={testId}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1">
           <button

@@ -126,10 +126,11 @@ test.describe('백업 내보내기 / 가져오기 (Import/Export)', () => {
       // 파일 이름 입력 - 암호화 체크박스 해제 (테스트용)
       const dialog = page.getByRole('dialog').filter({ hasText: '백업 파일 저장' });
       await dialog.locator('input[type="checkbox"]').uncheck();
-      await dialog.getByRole('button', { name: '저장' }).click();
 
-      // 다운로드 대기
+      // 다운로드 대기는 클릭 전에 setup (race condition 방지: download가 동기 fire되면
+      // post-click setup으로는 event를 놓침)
       const downloadPromise = page.waitForEvent('download');
+      await dialog.getByRole('button', { name: '저장' }).click();
       await downloadPromise;
 
       // 성공 메시지 확인

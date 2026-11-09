@@ -1,23 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  initializeStores,
- isKiyoFile,
- openImportedDataFile,
+  isKiyoFile,
+  openImportedDataFile,
 } from "@/database/fileStorage";
-import { fileTable } from "@/database/fileTable";
+import { fileTable, type FileRecord } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
 import {
- FileStorageErrorCode,
- isFileStorageError,
-} from "@/errors/FileStorageError";
+  FileStorageErrorCode,
+  isFileStorageError,
+} from "@/database/fileStorage.error";
 import { setupVaultSession } from "@/database/fileStorage";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
-import { replaceDatabaseData, type FileRecord } from "@/database/db";
 import { Trash2 } from "lucide-react";
+import { activatePlaintextVault } from "@/database/fileStorage";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -49,11 +48,7 @@ const Home = () => {
       navigate("/auth", { replace: true });
     } else {
       // plaintext 
-      await replaceDatabaseData({
-        data: info.fileData,
-        fileName,
-      });
-      await initializeStores();
+      await activatePlaintextVault(fileName);
       navigate("/accounts", { replace: true });
     }
   };
@@ -93,11 +88,14 @@ const Home = () => {
     } catch (error) {
       if (isFileStorageError(error)) {
         switch (error.code) {
-          case FileStorageErrorCode.INVALID_JSON:
-            throw new Error("파일 형식이 올바르지 않습니다. (JSON 파싱 오류)", {
-              cause: error,
-            });
-          case FileStorageErrorCode.INVALID_FORMAT:
+          case FileStorageErrorCode.INVALID_FILE_FORMAT:
+            // INVALID_JSON, INVALID_FORMAT 등이 INVALID_FILE_FORMAT으로 통합됨
+            // 에러 메시지로 구분 가능: "JSON 파싱 실패" vs "is not KiyoFile" vs "fileName is empty"
+            if (error.message.includes("JSON")) {
+              throw new Error("파일 형식이 올바르지 않습니다. (JSON 파싱 오류)", {
+                cause: error,
+              });
+            }
             throw new Error("지원하지 않는 파일 형식입니다.", { cause: error });
           case FileStorageErrorCode.INVALID_PIN:
             throw new Error("PIN 번호가 올바르지 않습니다.", { cause: error });

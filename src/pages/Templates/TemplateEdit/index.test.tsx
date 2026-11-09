@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { FileStorageError, FileStorageErrorCode } from "@/errors/FileStorageError";
+import { FileStorageError, FileStorageErrorCode } from "@/database/fileStorage.error";
 import TemplateEdit from "./index";
 
 // mock fn은 외부, vi.mock factory는 literal (AccountDetail 패턴 일관)

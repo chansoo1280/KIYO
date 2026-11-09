@@ -1,9 +1,8 @@
 // src/test/fixtures/databaseFixtures.ts
 
-import type { KiyoVaultData } from "@/models/vault";
+import type { KiyoVaultData, FileMetadata } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { FileRecord } from "@/database/db";
-import type { FileMetadata } from "@/models/account";
 import { createTestAccounts } from "@/test/fixtures/accountFixtures";
 import { createTestTemplates } from "@/test/fixtures/templateFixtures";
 

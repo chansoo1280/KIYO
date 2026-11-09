@@ -1,5 +1,5 @@
 import { type Page } from '@playwright/test';
-import { TEST_PIN } from './test-data';
+import { TEST_PIN } from '../fixtures/test-data';
 import { createVault } from './vault-creation';
 
 /**

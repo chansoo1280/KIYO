@@ -1,32 +1,25 @@
+import { BaseError } from "@/errors/base.error";
+import type { BaseErrorDetails } from "@/errors/base.error";
+
 export const FileStorageErrorCode = {
   FILE_NOT_FOUND: "FILE_NOT_FOUND",
-  FILE_READ_ERROR: "FILE_READ_ERROR",
-  FILE_WRITE_ERROR: "FILE_WRITE_ERROR",
+  FILE_READ_FAILED: "FILE_READ_FAILED",
+  FILE_WRITE_FAILED: "FILE_WRITE_FAILED",
   FILE_DELETE_ERROR: "FILE_DELETE_ERROR",
   FILE_ALREADY_EXISTS: "FILE_ALREADY_EXISTS",
   INVALID_FILE_FORMAT: "INVALID_FILE_FORMAT",
-  INVALID_JSON: "INVALID_JSON",
-  INVALID_FORMAT: "INVALID_FORMAT",
-  ENCRYPTION_ERROR: "ENCRYPTION_ERROR",
-  DECRYPTION_ERROR: "DECRYPTION_ERROR",
+  ENCRYPTION_FAILED: "ENCRYPTION_FAILED",
+  DECRYPTION_FAILED: "DECRYPTION_FAILED",
   INVALID_PIN: "INVALID_PIN",
+  PIN_MISMATCH: "PIN_MISMATCH",
   INVALID_SALT: "INVALID_SALT",
+  SALT_MISMATCH: "SALT_MISMATCH",
   INVALID_KEY: "INVALID_KEY",
+  KEY_DERIVATION_FAILED: "KEY_DERIVATION_FAILED",
   STORAGE_UNAVAILABLE: "STORAGE_UNAVAILABLE",
   PERMISSION_DENIED: "PERMISSION_DENIED",
   DATABASE_ERROR: "DATABASE_ERROR",
-  INVALID_DATA_FORMAT: "INVALID_DATA_FORMAT",
   FILE_CORRUPTED: "FILE_CORRUPTED",
-  PIN_MISMATCH: "PIN_MISMATCH",
-  SALT_MISMATCH: "SALT_MISMATCH",
-  KEY_DERIVATION_FAILED: "KEY_DERIVATION_FAILED",
-  ENCRYPTION_FAILED: "ENCRYPTION_FAILED",
-  DECRYPTION_FAILED: "DECRYPTION_FAILED",
-  FILE_WRITE_FAILED: "FILE_WRITE_FAILED",
-  WRITE_FAILED: "WRITE_FAILED",
-  FILE_READ_FAILED: "FILE_READ_FAILED",
-  DATABASE_CONNECTION_FAILED: "DATABASE_CONNECTION_FAILED",
-  DATABASE_QUERY_FAILED: "DATABASE_QUERY_FAILED",
   INVALID_FILE_NAME: "INVALID_FILE_NAME",
   FILE_TOO_LARGE: "FILE_TOO_LARGE",
   STORAGE_QUOTA_EXCEEDED: "STORAGE_QUOTA_EXCEEDED",
@@ -35,35 +28,16 @@ export const FileStorageErrorCode = {
 
 export type FileStorageErrorCode = (typeof FileStorageErrorCode)[keyof typeof FileStorageErrorCode];
 
-export interface FileStorageErrorDetails {
+export interface FileStorageErrorDetails extends BaseErrorDetails {
   code: FileStorageErrorCode;
-  message: string;
-  originalError?: Error;
-  fileName?: string;
-  operation?: string;
-  timestamp: number;
 }
 
-export class FileStorageError extends Error {
+export class FileStorageError extends BaseError {
   public readonly code: FileStorageErrorCode;
-  public readonly originalError?: Error;
-  public readonly fileName?: string;
-  public readonly operation?: string;
-  public readonly timestamp: number;
 
   constructor(details: FileStorageErrorDetails) {
-    super(details.message);
-    this.name = "FileStorageError";
+    super(details);
     this.code = details.code;
-    this.originalError = details.originalError;
-    this.fileName = details.fileName;
-    this.operation = details.operation;
-    this.timestamp = details.timestamp;
-
-    // Maintains proper stack trace in V8 environments
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, FileStorageError);
-    }
   }
 
   static create(
@@ -95,7 +69,7 @@ export class FileStorageError extends Error {
 
   static fileReadError(fileName: string, originalError?: Error): FileStorageError {
     return FileStorageError.create(
-      FileStorageErrorCode.FILE_READ_ERROR,
+      FileStorageErrorCode.FILE_READ_FAILED,
       `Failed to read file: ${fileName}`,
       { originalError, fileName, operation: "read" }
     );
@@ -103,7 +77,7 @@ export class FileStorageError extends Error {
 
   static fileWriteError(fileName: string, originalError?: Error): FileStorageError {
     return FileStorageError.create(
-      FileStorageErrorCode.FILE_WRITE_ERROR,
+      FileStorageErrorCode.FILE_WRITE_FAILED,
       `Failed to write file: ${fileName}`,
       { originalError, fileName, operation: "write" }
     );
@@ -135,7 +109,7 @@ export class FileStorageError extends Error {
 
   static encryptionError(message: string, originalError?: Error): FileStorageError {
     return FileStorageError.create(
-      FileStorageErrorCode.ENCRYPTION_ERROR,
+      FileStorageErrorCode.ENCRYPTION_FAILED,
       `Encryption failed: ${message}`,
       { originalError, operation: "encrypt" }
     );
@@ -143,7 +117,7 @@ export class FileStorageError extends Error {
 
   static decryptionError(message: string, originalError?: Error): FileStorageError {
     return FileStorageError.create(
-      FileStorageErrorCode.DECRYPTION_ERROR,
+      FileStorageErrorCode.DECRYPTION_FAILED,
       `Decryption failed: ${message}`,
       { originalError, operation: "decrypt" }
     );
@@ -197,14 +171,6 @@ export class FileStorageError extends Error {
     );
   }
 
-  static invalidDataFormat(message: string, originalError?: Error): FileStorageError {
-    return FileStorageError.create(
-      FileStorageErrorCode.INVALID_DATA_FORMAT,
-      `Invalid data format: ${message}`,
-      { originalError, operation: "parse" }
-    );
-  }
-
   static fileCorrupted(fileName: string, originalError?: Error): FileStorageError {
     return FileStorageError.create(
       FileStorageErrorCode.FILE_CORRUPTED,
@@ -237,51 +203,11 @@ export class FileStorageError extends Error {
     );
   }
 
-  static encryptionFailed(originalError?: Error): FileStorageError {
-    return FileStorageError.create(
-      FileStorageErrorCode.ENCRYPTION_FAILED,
-      "Encryption failed",
-      { originalError, operation: "encrypt" }
-    );
-  }
-
-  static decryptionFailed(originalError?: Error): FileStorageError {
-    return FileStorageError.create(
-      FileStorageErrorCode.DECRYPTION_FAILED,
-      "Decryption failed",
-      { originalError, operation: "decrypt" }
-    );
-  }
-
-  static fileWriteFailed(fileName: string, originalError?: Error): FileStorageError {
-    return FileStorageError.create(
-      FileStorageErrorCode.FILE_WRITE_FAILED,
-      `Failed to write file: ${fileName}`,
-      { originalError, fileName, operation: "write" }
-    );
-  }
-
   static fileReadFailed(fileName: string, originalError?: Error): FileStorageError {
     return FileStorageError.create(
       FileStorageErrorCode.FILE_READ_FAILED,
       `Failed to read file: ${fileName}`,
       { originalError, fileName, operation: "read" }
-    );
-  }
-
-  static databaseConnectionFailed(originalError?: Error): FileStorageError {
-    return FileStorageError.create(
-      FileStorageErrorCode.DATABASE_CONNECTION_FAILED,
-      "Database connection failed",
-      { originalError, operation: "database_connect" }
-    );
-  }
-
-  static databaseQueryFailed(query: string, originalError?: Error): FileStorageError {
-    return FileStorageError.create(
-      FileStorageErrorCode.DATABASE_QUERY_FAILED,
-      `Database query failed: ${query}`,
-      { originalError, operation: "database_query" }
     );
   }
 
@@ -315,19 +241,6 @@ export class FileStorageError extends Error {
       `Unknown error: ${message}`,
       { originalError, operation: "unknown" }
     );
-  }
-
-  toJSON(): object {
-    return {
-      name: this.name,
-      message: this.message,
-      code: this.code,
-      fileName: this.fileName,
-      operation: this.operation,
-      timestamp: this.timestamp,
-      originalError: this.originalError?.message,
-      stack: this.stack,
-    };
   }
 }
 

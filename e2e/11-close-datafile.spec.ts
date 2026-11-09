@@ -1,6 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { clearIndexedDB } from './fixtures/indexeddb.fixture';
-import { TEST_PIN } from './fixtures/test-data';
 import { createVault } from './utils/vault-creation';
 import { expectDbFilesContain, expectStoresReset } from './utils/db-helpers';
 
@@ -102,7 +101,8 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
 
       // 3. Home으로 이동
       // pathname predicate — replace navigate의 history 이벤트 미발생 케이스 흡수.
-      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
+      // PR 1: RootRedirect가 `/`를 점유하므로 closeDataFile → /home 으로 navigate (activeFileName=null 분기).
+      await page.waitForURL((url) => url.pathname === '/home', { timeout: 5000 });
       await page.waitForLoadState('networkidle');
 
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
@@ -127,7 +127,8 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await page.waitForURL('**/auth', { timeout: 10000 });
 
       await page.getByRole('button', { name: '첫 화면으로 돌아가기' }).click();
-      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
+      // PR 1: RootRedirect가 `/`를 점유하므로 closeDataFile → /home 으로 navigate.
+      await page.waitForURL((url) => url.pathname === '/home', { timeout: 5000 });
       await expect(page.getByText('파일을 선택하세요')).toBeVisible({ timeout: 5000 });
 
       // 3. multi-vault: 이전 vault 행 보존 확인

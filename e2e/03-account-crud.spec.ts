@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { clearIndexedDB } from './fixtures/indexeddb.fixture';
-import { TEST_PIN } from './fixtures/test-data';
 import { createVault } from './utils/vault-creation';
 
 // 헬퍼: 라벨 텍스트로 동적 필드의 값 입력란 찾기

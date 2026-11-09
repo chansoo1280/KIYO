@@ -2,8 +2,6 @@ import { useTemplateStore } from "@/store/templateStore";
 import type { Template } from "@/models/template";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { X } from "lucide-react";
 
 interface TemplatePickerProps {
   open: boolean;
@@ -23,12 +21,8 @@ const DEFAULT_TEMPLATE: Template = {
 };
 
 const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
-  const { templates, loadTemplates } = useTemplateStore();
+  const { templates } = useTemplateStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
 
   if (!open) return null;
 
@@ -75,7 +69,7 @@ const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
             className="rounded-full p-2 text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"
             aria-label="템플릿 선택 닫기"
           >
-            <X className="h-5 w-5" />
+            ✕
           </button>
         </div>
 

@@ -3,19 +3,17 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AccountList from "./index";
 
-// Store mock — isLoading/initialized 제어
+// PR 1: isLoading/initialized는 useSessionStore.initialized로 통합
 const mockAccountStoreState = {
   accounts: [] as Array<{ id: number; title: string; tags: string[]; fields: Array<{ label: string; type: string; value: string }>; favorite: boolean; websiteUrl?: string; domain?: string }>,
-  isLoading: false,
-  initialized: false,
-  loadAccounts: vi.fn(),
+  init: vi.fn(),
+  getAll: vi.fn(() => []),
   addAccount: vi.fn(),
   updateAccount: vi.fn(),
   deleteAccount: vi.fn(),
   getAccountById: vi.fn(),
   clearAccounts: vi.fn(),
   syncToAutofill: vi.fn(),
-  _persistAccounts: vi.fn(),
   getAutofillAccounts: vi.fn(),
 };
 
@@ -28,6 +26,7 @@ const mockSessionState = {
   activeFileName: "test.json",
   cryptoKey: null,
   salt: null,
+  initialized: false,
 };
 
 vi.mock("@/store/sessionStore", () => ({
@@ -50,34 +49,30 @@ const renderList = () =>
     </MemoryRouter>,
   );
 
-describe("AccountList (Plan-A2)", () => {
+describe("AccountList (PR 1: useSessionStore.initialized 통합)", () => {
   beforeEach(() => {
     mockAccountStoreState.accounts = [];
-    mockAccountStoreState.isLoading = false;
-    mockAccountStoreState.initialized = false;
+    mockSessionState.initialized = false;
   });
 
-  it("① !initialized && isLoading=true → Spinner + '계정을 불러오는 중...' 표시", () => {
-    mockAccountStoreState.initialized = false;
-    mockAccountStoreState.isLoading = true;
+  it("① !initialized (session) → Spinner + '계정을 불러오는 중...' 표시", () => {
+    mockSessionState.initialized = false;
     renderList();
     expect(screen.getByTestId("accounts-loading")).toBeInTheDocument();
     expect(screen.getByTestId("spinner")).toBeInTheDocument();
     expect(screen.getByText("계정을 불러오는 중...")).toBeInTheDocument();
   });
 
-  it("② initialized=true && isLoading=false + accounts 비어있음 → list 본문 (빈 결과)", () => {
-    mockAccountStoreState.initialized = true;
-    mockAccountStoreState.isLoading = false;
+  it("② initialized=true (session) + accounts 비어있음 → list 본문 (빈 결과)", () => {
+    mockSessionState.initialized = true;
     mockAccountStoreState.accounts = [];
     renderList();
     expect(screen.queryByTestId("accounts-loading")).not.toBeInTheDocument();
     expect(screen.getByText("My accounts")).toBeInTheDocument();
   });
 
-  it("③ initialized=true && accounts 있음 → list 본문 렌더 (Spinner 없음)", () => {
-    mockAccountStoreState.initialized = true;
-    mockAccountStoreState.isLoading = false;
+  it("③ initialized=true (session) + accounts 있음 → list 본문 렌더 (Spinner 없음)", () => {
+    mockSessionState.initialized = true;
     mockAccountStoreState.accounts = [
       {
         id: 1,
@@ -90,13 +85,5 @@ describe("AccountList (Plan-A2)", () => {
     renderList();
     expect(screen.queryByTestId("accounts-loading")).not.toBeInTheDocument();
     expect(screen.getByText("Test")).toBeInTheDocument();
-  });
-
-  it("④ initialized=false && isLoading=false (초기 마운트 직전) → Spinner 표시", () => {
-    mockAccountStoreState.initialized = false;
-    mockAccountStoreState.isLoading = false;
-    renderList();
-    // 첫 마운트 시 !initialized면 Spinner (loadAccounts 호출 전)
-    expect(screen.getByTestId("accounts-loading")).toBeInTheDocument();
   });
 });
