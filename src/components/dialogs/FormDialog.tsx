@@ -1,6 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { BaseDialog } from "./BaseDialog";
 import type { ReactNode } from "react";
+import { mapError } from "@/utils/mapError";
+import Button from "@/components/Button";
 
 interface FormDialogProps {
   open: boolean;
@@ -31,8 +33,13 @@ export const FormDialog = ({
   errorMessage,
   className = "",
 }: FormDialogProps) => {
-  // Error is managed externally via errorMessage prop or cleared on submit
-  // No internal state needed - avoids useEffect setState lint issue
+  // 내부 에러 state: onSubmit에서 throw된 에러를 표시용으로 보관
+  const [internalError, setInternalError] = useState<string | null>(null);
+
+  const handleClose = () => {
+    setInternalError(null);
+    onClose();
+  };
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent) => {
@@ -41,50 +48,56 @@ export const FormDialog = ({
 
       try {
         await onSubmit(event);
+        // 성공 시 이전 에러 클림
+        setInternalError(null);
       } catch (error) {
-        // Error handling is expected to be done via errorMessage prop from parent
+        setInternalError(mapError(error));
         console.error("FormDialog submit error:", error);
       }
     },
     [disabled, isLoading, onSubmit]
   );
 
-  const displayError = errorMessage;
+  // 외부 prop 우선, 없으면 내부 catch된 에러 사용
+  const displayError = errorMessage ?? internalError;
 
   return (
     <BaseDialog
       open={open}
       title={title}
       description={description}
-      onClose={onClose}
+      onClose={handleClose}
       className={className}
     >
       <form onSubmit={handleSubmit}>
         {children}
 
         {displayError && (
-          <p className="mt-4 text-sm font-medium text-[var(--color-error)]">
+          <p
+            className="mt-4 text-sm font-medium text-[var(--color-error)]"
+            data-testid="form-dialog-error"
+            role="alert"
+          >
             {displayError}
           </p>
         )}
 
         <div className="mt-6 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
-            onClick={onClose}
+            variant="ghost"
+            onClick={handleClose}
             disabled={isLoading}
-            className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-code-bg)] disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
+            label={cancelLabel}
+          />
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            loading={isLoading}
             disabled={disabled || isLoading}
-            className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-accent)]/80 disabled:opacity-50"
-          >
-            {isLoading ? "처리 중..." : submitLabel}
-          </button>
+            label={isLoading ? "처리 중..." : submitLabel}
+          />
         </div>
       </form>
     </BaseDialog>

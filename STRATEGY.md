@@ -1,7 +1,7 @@
 # KIYO Strategy
 
 name: "KIYO"
-last_updated: "2026-08-29"
+last_updated: "2026-09-02"
 
 ---
 
@@ -57,8 +57,8 @@ last_updated: "2026-08-29"
 
 1. **클라우드 동기화/계정 시스템/서버 인프라 도입 안 함** — 네트워크 권한 추가는 프라이버시 모델 붕괴
 2. **플랫폼 확장은 안드로이드·iOS·웹(볼트 관리만)만 고려** — 자동완성은 네이티브 자동완성 API + 하드웨어 키 보호가 있는 환경(Android AutofillService+Keystore, iOS Password AutoFill+Secure Enclave)에서만 지원. 웹은 볼트 관리(조회/편집)용 웹 앱만 제공, 자동완성은 미지원. 그 외 플랫폼(Windows/macOS/브라우저 확장)은 현재 범위 밖.
-3. **암호화 알고리즘/키 관리 약화 안 함** — PBKDF2 100k, AES-GCM, 하드웨어 키 보호(Keystore/Secure Enclave/TPM)는 협상 불가
-4. **비밀번호 공유/가족 요금제/조직 기능 안 만듦** — 단일 사용자·단일 볼트 모델 유지 (멀티 볼트는 로컬 파일 단위로만)
+3. **암호화 알고리즘/키 관리 약화 안 함** — PBKDF2 100k, AES-GCM, 하드웨어 키 보호(Keystore/Secure Enclave/TPM)는 협상 불가. **snapshot 통째로 한 번 암호화** (이전 record-by-record 이중 암호화 제거, 2026-09-02 PR 1 files-only vault)
+4. **비밀번호 공유/가족 요금제/조직 기능 안 만듦** — 단일 사용자·단일 볼트 모델 유지 (멀티 볼트는 로컬 파일 단위로만, **단일 vault의 source of truth도 `db.files.fileData` JSON 단일**, 2026-09-02 PR 1)
 5. **광고/분석/텔레메트리/크래시 리포팅 수집 안 함** — 완전 오프라인, 데이터 잔존 0
 6. **자동완성 품질 저하로 핵심 보안(암호화/키 보호/오프라인 모델) 훼손 안 함** — 자동완성은 편의 기능, 품질 이슈는 허용하되 보안 모델 침범은 금지
 
@@ -105,7 +105,14 @@ last_updated: "2026-08-29"
 - **파일 자동 저장(autosave) 지원** — 계정/템플릿 변경 시 즉시 암호화 저장, 수동 저장 불필요
 - **볼트 암호화 강화: 숫자 PIN(6자리) → 텍스트 패스프레이즈 지원** — PBKDF2 100k 유지, 엔트로피 실시간 측정·표시(zxcvbn 등), 최소 강도 가이드라인 적용
 - **크로스플랫폼 볼트 파일 포맷 표준화** — 플랫폼 간 내보내기/가져오기 호환성
-- **최근 신호:** sync flow 리팩터 + SAF 백업/복원, changePin 파이프라인 순서 수정, fileStorage pipeline 리팩터
+- **진척 (2026-09-02 갱신):** PR 1 (Files-Only Vault) 추가 — `db.accounts`/`db.templates`/`db.metadata`/`db.settings` 4 테이블 drop (Dexie v15) + `accountTable`/`templateTable`/`syncQueue`/`recordEncryption` 7 모듈 삭제 + 단일 진입점 `loadVaultToStores`/`activatePlaintextVault`/`saveStoresToFile` + store API `init(data)`/`getAll()` + `metadataStore` 신규 + `KiyoVaultData` JSON 스키마 4 필드 불변 (hard constraint). PR 1 plan+브레인스토밍 → [`docs/plans/2026-09-02-files-only-vault-pr1.md`](docs/plans/2026-09-02-files-only-vault-pr1.md). +470 / -4706 LOC 압축, **이전 진척 (Plan-1 ~ Plan-6)의 `replaceDatabaseData`/`syncQueue` 의존 작업은 PR 1에서 흡수/대체됨** (Plan-1 변경 → PR 1의 `changePin`이 `saveStoresToFile`로 단순화; Plan-6 변경 → `syncQueue` 제거, `saveStoresToFile`이 await chain으로 자연 직렬화).
+  - ✅ Plan-1 — `changePin` atomicity — [`2026-08-29-changePin-atomicity.md`](.hermes/plans/2026-08-29-changePin-atomicity.md): `replaceDatabaseData`가 단일 Dexie 트랜잭션으로 원자적 처리 확인 → **PR 1에서 함수 자체 삭제됨**. `changePin`은 현재 `saveStoresToFile`로 단순화 (메모리 store + 새 키/새 salt로 재암호화, 단일 await). 7개 invariant 테스트는 PR 2 jsonCompat test로 흡수.
+  - ✅ Plan-4 — PIN 정책 완화 + zxcvbn strength meter — [`2026-08-30-pin-policy-relaxation.md`](docs/plans/2026-08-30-pin-policy-relaxation.md): 4~20자 mixed 허용 + zxcvbn 실시간 강도 표시 + secure context 가드 + FormDialog 에러 통합 (커밋 `ba4928a0`)
+  - ✅ Plan-5 — SAF 영구 URI 자동 백업 — [`2026-08-30-saf-persistent-uri-auto-backup.md`](docs/plans/2026-08-30-saf-persistent-uri-auto-backup.md): Settings "자동 백업 위치" 토글 + `ACTION_OPEN_DOCUMENT_TREE` 폴더 선택 + `takePersistableUriPermission` 영구 권한 + `persistVaultSnapshot` 성공 시 동일 스냅샷 URI 미러링 (커밋 `058e6369`). PR 1 후에도 signature 무변경 (호출 경로만 `saveStoresToFile`로 흡수).
+  - ✅ Plan-6 — autosave 안정화 & 동시성 — [`2026-08-29-autosave-stability-concurrency.md`](.hermes/plans/2026-08-29-autosave-stability-concurrency.md): `src/database/syncQueue.ts` 직렬화 큐 신규 + race/lock→unlock/연속 mutation 시나리오 4건 추가. **PR 1에서 `syncQueue` 자체 삭제됨** — JS 단일 스레드 + `saveStoresToFile` await chain으로 자연 직렬화 (Q2=a 사용자 확정). Android `AutosaveE2ETest` 무영향 (React 사이드 `db.files` upsert는 `saveStoresToFile` 경로로 그대로).
+  - ⏸️ Plan-3 — 크로스플랫폼 볼트 파일 포맷 표준화 — **보류** (brainstorm §3.4 Q6): v2 트리거(KDF 변경, 레코드 필드 추가, iOS/Web 확장 결정) 발생 시 별도 brainstorm. 현 v1 hardcoding은 안전 (PR 1에서도 `KiyoVaultData` JSON 스키마 불변 유지)
+  - ❓ Plan-2 — SAF picker 취소 분기 회귀 테스트 — **보류** (brainstorm §11 Q7): 5줄 삼항 분기의 메시지 문자열 검증 가치가 좁고 native/E2E 회귀는 커버 못함. 재방문 트리거 기반 (brainstorm §11.6)
+- **최근 신호:** PR 1 files-only vault (source of truth 단일화, +470/-4706 LOC), sync flow 리팩터 + SAF 백업/복원, changePin 파이프라인 순서 수정, fileStorage pipeline 리팩터, autosave 직렬화 큐, PIN 정책 완화, SAF 영구 URI 자동 백업
 
 ### 3. UX·접근성·인터랙션 품질 (UX & Accessibility)
 - 로딩 상태/스켈레톤 UI — 암호화/복호화·동기화·파일 I/O 중 시각적 피드백
@@ -113,7 +120,22 @@ last_updated: "2026-08-29"
 - 키보드 네비게이션/포커스 순서 — 웹·데스크톱 확장 대비, 스크린리더 대응
 - 에러 토스트/인라인 에러 — 네이티브/브리지 에러를 사용자 언어로 매핑
 - 다크/라이트 테마 전환 시 깜빡임 없음, 시스템 설정 연동
-- **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재
+- **후속 후보 — Plan-7a: 파일 생성 모달 → 다단계 페이지 분리** ([brainstorm](docs/brainstorms/2026-08-30-track3-ux-accessibility.md) §7 E, [plan](docs/plans/2026-08-30-plan-7a-create-vault-multistep.md)) — 2단계 (이름 → PIN) 단일 라우트(`/create-vault`) 흐름. Progress bar + 단계 라벨 Stepper. **Plan-7a/7b 분리 결정 (2026-08-30)**: 폴더 선택 + 자동 백업 통합은 **Plan-7b로 분리** (STRATEGY §2 후속, 별도 brainstorm). 모든 새 파일은 암호화 (체크박스 제거, Plan-4 정책 통일)
+- **진척 (2026-08-31 갱신):** 6개 항목 중 **5개 완료** (Plan-7a / Plan-A1 / Plan-A2 / Plan-B-1 / Plan-B-2 / Plan-B-3, 8개 PR/PR-series 머지 — Multi-Vault + Plan-7a + Plan-7a-android-e2e + Plan-A1 + Plan-A2 + Plan-B-1 + Plan-B-2 + Plan-B-3 + Plan-D PR 1, **Plan-B-3은 commit + push 완료, PR 미개설**), 1개 미구현 (a11y audit). Plan-D PR 1(FOUC 가드) 완료, PR 2(시스템 연동) 보류. **선행 의존성 해소**: Multi-Vault Support ✅ 완료 (2026-08-30) — [plan](docs/plans/2026-08-30-multi-vault-support.md)
+  - ✅ Multi-Vault Support — 완료, Post-Implementation Dead Code Cleanup 62줄 정리. Home 파일 리스트 UI 전제 해소
+  - ✅ Plan-7a: 다단계 페이지 — 완료 (2026-08-30, PR `e878f85b`). `/create-vault` 2단계 라우트 + Stepper + NameStep/PinStep + 4개 단위 테스트. 후속(2026-08-30): Android E2E pageobject `VaultCreateDialog.kt` → `CreateVaultPage.kt` 페이지 기반 재작성 + 사용자 E2E 직접 실행으로 `BiometricUnlockE2ETest` 포함 Android E2E 전부 성공 확인
+  - ✅ Plan-A1: 에러 가시화 — 완료 (2026-08-30, PR `19341aec`). `mapError()` (네이티브/Dexie/Web Crypto → 한국어) + `SyncErrorBanner` + 호출처 8곳 try/catch + `CreateVaultPage` 인라인 정식 전환. 토스트 없음 (Q1). 후속 plan 공통 전제 해소 — [plan](docs/plans/2026-08-30-plan-a1-error-visibility.md)
+  - ✅ Plan-A2: Spinner — 완료 (2026-08-30, PR `f1dcc638`). `<Spinner>` 공통 컴포넌트 + Accounts 페이지 spinner. **범위 축소**: Templates/AccountDetail 미적용 (Q7 사용자 결정 대기). **a11y 보강 한정**: `<Spinner label>` 적용만, `accounts-loading` 컨테이너의 `role="status"` / `aria-busy="true"` 명시 적용은 미완 — [plan](docs/plans/2026-08-30-plan-a2-spinner-loading.md)
+  - ✅ Plan-B-1: Button 인프라 — 완료 (2026-08-30, PR `cebf14ca`). `Button.tsx` 보강 (`loading`/`disabled`/`aria-busy`) + `<Spinner>` 통합 + `FormDialog`/`ConfirmDialog` inline → `<Button>` + 4+ 단위 테스트
+  - ✅ Plan-B-2: 자주 쓰는 페이지 — 완료 (PR `e3a4c1ae`). Accounts/AccountDetail/AccountEdit/Home/Auth/CreateVault inline → `<Button>`. 후속 PR `e99ec404`로 `Spinner aria-hidden` 보강
+  - ✅ Plan-B-3: 나머지 페이지 — 완료 (2026-08-30, 커밋 `93e007ed`, PR 미개설, [plan](docs/plans/2026-08-30-plan-b3-settings-templates-buttons.md)). Templates/index (3개) / TemplateEdit (4개) / Settings/index (2개) / AutofillSection (3개) / DataSection (5개) / SecuritySection (4개) = **21개 inline `<button>` → `<Button>` 마이그레이션**. Toggle switch(`AutofillSection` line 213) 제외, `DataSection.tsx:180`의 `FileCreateDialog` 잔존은 Q4-a 보류 유지. `TemplateEdit/index.test.tsx` 신규 (3 테스트, Plan-A1 catch 결합 회귀 가드). 회귀 게이트: typecheck/lint(신규 0)/test 444/444/build/Android compile+unitTest/Playwright React E2E 44/44 모두 ✓. **origin HEAD = `b148855f` (Plan-B-3은 ancestor) — push 완료, PR은 GitHub REST API로 0개 확인 — 단독 PR 개설 사용자 결정 대기**
+  - ✅ **Plan-D PR 1** — 완료 (2026-08-31, 커밋 `15e2e870`+보완 `325a3b2f`+문서 `b148855f`). `index.html` inline splash CSS + script (FOUC 가드) + `SplashScreen` + `RootRedirect` (4-state 머신 + Dexie close race 3s timeout + 1회 재시도 + stale 감지) + `ErrorScreen` (variant='stale'/'generic') + `App.tsx` useEffect 5개 제거 + `Home` → `/home` 이동 + `settingsStore.initializeXxx` 5개 제거. 보완에서 `e2e/10-persistence.spec.ts` 회귀 흡수 — **self-load 패턴** (페이지 단위 load 책임 + `useFileAuthGuard.onInitialized` 단일 콜백 + store-side `if (get().initialized) return;` 가드 + `initializeStores` 명시 reset). **`e2e/11-close-datafile.spec.ts` 7건** `waitForURL('/')` → `waitForURL((url) => url.pathname === '/')` 교체 (React Router `history.replaceState`의 pushstate/popstate 부재). 회귀 게이트: `typecheck` ✓, `lint` (우리 변경 파일 0) ✓, `test` 470/470 ✓, `e2e/10-persistence.spec.ts` 3건 ✓ (사용자 직접 실행). 4개 knowledge 캡처: ① 페이지 단위 self-load 원칙, ② store-side 가드의 transition 책임, ③ React Router replace navigate + Playwright waitForURL flake, ④ useFileAuthGuard 콜백 YAGNI. **Q6 결정 변경** — 실측 대신 inline script로 FOUC 사전 차단
+  - 📋 **Plan-D PR 2** — **⏸️ 보류** (2026-08-31 사용자 결정: inline script + 매치미디어 폴백으로 충분). `themeMode: "light" | "dark" | "system"` 추가 + `setThemeMode` + `matchMedia` 리스너 + UISection 3-way 토글. 트리거 발생 시 진행 (다중 디바이스/OS 테마 토글 시 자동 동기화 요구 등)
+  - 📋 a11y audit plan — 미착수. axe-core CI + 키보드 Playwright + remediation. Plan-B-3/D 완료 후 또는 트리거 시 (Q5-a)
+  - 📋 Plan-7b: 폴더 선택 + 자동 백업 통합 — 미착수. SAF `pickBackupFolder` + `autoBackupUri` + `useAutoBackup` hook + Dexie v15. STRATEGY §2 분류, 별도 brainstorm 예정
+- **최근 신호:** Tailwind CSS 4, Ionic 컴포넌트 기반, AutoLockIndicator 등 상태 표시 컴포넌트 존재, `FileCreateDialog`가 `Home.tsx` (생성) + `DataSection.tsx:180` (백업) 양쪽에서 사용 — Q4-a "완전 제거"는 호출처 100% 마이그레이션 후 (Plan-7a 1차 PR 잔존, 2차 PR에서 제거)
+- **상태:** Brainstorm 단계 ([docs/brainstorms/2026-08-30-track3-ux-accessibility.md](docs/brainstorms/2026-08-30-track3-ux-accessibility.md)) — **8개 plan commit 완료 / 8개 push 완료 / 7개 PR 머지 + Plan-B-3 PR 미개설 + Plan-D PR 2 보류** (2026-08-31 갱신). 다음 단계는 a11y audit → Plan-7a 2차 PR (Q4-a, 보류) → Plan-7b (별도 brainstorm)
+- **진행 순서 (2026-08-31 갱신):** ~~Multi-Vault~~ ✅ → ~~Plan-7a~~ ✅ → ~~Plan-A1~~ ✅ → ~~Plan-A2~~ ✅ → ~~Plan-B-1~~ ✅ → ~~Plan-B-2~~ ✅ → **Plan-B-3** ✅ (commit + push 완료, PR 미개설 — 사용자 결정 대기) → **Plan-D PR 1** ✅ (커밋 `15e2e870`+`325a3b2f`+`b148855f`, origin HEAD) → **Plan-D PR 2** ⏸️ 보류 → **a11y audit plan** → **Plan-7a 2차 PR (Q4-a, 보류)** → **Plan-7b** (별도 brainstorm)
 
 ### 4. 세션·자동잠금 보안 (Session & Auto-lock Security)
 - 자동잠금 4단계(none/1m/10m/30m) + 활동 감지 리셋
@@ -127,7 +149,14 @@ last_updated: "2026-08-29"
 - 릴리스 서명·ProGuard/R8·버저닝·네트워크 권한 0 검증
 - CI: typecheck/lint/단위통합/Playwright E2E/안드로이드 E2E(수동) 게이트
 - **멀티플랫폼 빌드/릴리스 파이프라인 기반** — 향후 iOS/데스크톱 확장 시 재사용
-- **최근 신호:** CI 워크플로, Playwright E2E 39개 구현, 로드맵 Phase 0~4
+- **E2E selector 안정성 (User-Centric Selectors)** — 컴포넌트 리팩터링이 e2e 회귀를 만들지 않도록 selector 전략 유지
+  - **선호 셀렉터 (사용자 인지 가능)**: `getByRole` (button/link/heading/textbox), `getByText`, `getByPlaceholder`, `getByLabel`, `aria-label`
+  - **금지 셀렉터 (구조 의존)**: 태그+클래스 (`div.group.rounded-2xl.border`), 부모 셀렉터 + `> div` 깊은 결합, 클래스명 해시 (`button.rounded-full.px-3.py-1.5`)
+  - **`data-testid` 비선호** — `aria-label`/`role`이 본질적으로 부여 가능한 경우 testid 추가 안 함. 컴포넌트에 의미적 라벨이 부족하면 먼저 라벨 부여 우선, testid는 최후 수단 (복수 호출처·aria 부재 시 한정)
+  - **허용 예외**: `<main className="min-h-svh">`처럼 의도가 명확한 wrapper — 디자인 시스템 변경 시 같이 갱신
+  - **진척 (2026-09-01):** [`2026-09-01-e2e-selector-hardening.md`](docs/brainstorms/2026-09-01-e2e-selector-hardening.md) — PR #58 머지 직후 wrapper `<section>` → `<main>` 변경으로 회귀 5건 발생, selector 5건 정정(44/44 통과). 위험 selector 6건 식별 (`div.group ...` 카드, `div.space-y-3 > div` 필드 래퍼, `button.rounded-full.px-3.py-1.5` tag 버튼) — 후속 plan에서 마이그레이션 결정 대기 (Q1)
+  - **부수 발견**: PR #58 이후 `Encountered two children with the same key, 0` 콘솔 경고 — FieldCard/PageShell 영향 가능성, 실패로 이어지지 않음, 별도 추적 (Q3)
+- **최근 신호:** CI 워크플로, Playwright E2E 39→44 구현, 로드맵 Phase 0~4
 
 ---
 

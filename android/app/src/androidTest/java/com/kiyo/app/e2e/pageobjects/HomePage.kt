@@ -18,14 +18,14 @@ class HomePage(helper: WebViewTestHelper) : BasePage(helper) {
         const val CREATE_FILE_MARKER = "파일 생성"
     }
 
-    /** "파일 생성" 버튼 클릭 -> 볼트 생성 다이얼로그 열기 */
-    fun clickCreateVaultButton(): VaultCreateDialog {
+    /** "파일 생성" 버튼 클릭 -> /create-vault 페이지로 이동 후 CreateVaultPage 반환 */
+    fun clickCreateVaultButton(): CreateVaultPage {
         log("Clicking '파일 생성' button")
         val clicked = helper.clickByText("파일 생성", "create vault button") ||
             helper.clickByAriaLabel("파일 생성", "create vault button")
         if (!clicked) throw AssertionError("Could not find '파일 생성' button")
-        log("'파일 생성' button clicked, returning VaultCreateDialog")
-        return VaultCreateDialog(helper)
+        log("'파일 생성' button clicked, returning CreateVaultPage")
+        return CreateVaultPage(helper)
     }
 
     /** 홈 화면 로드 대기 */

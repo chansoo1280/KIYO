@@ -2,9 +2,16 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
-import { PasswordFieldView } from "./components/PasswordFieldView";
+import { PasswordField } from "@/components/PasswordField";
+import { FieldCard } from "@/components/FieldCard";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { mapError } from "@/utils/mapError";
+import { BackButton } from "@/components/BackButton";
+import { DeleteButton } from "@/components/DeleteButton";
+import Button from "@/components/Button";
+import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -17,15 +24,17 @@ const AccountDetail = () => {
   );
   const account = storedAccount;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { deleteAccount, updateAccount } = useAccountStore();
 
   // 파일/인증 상태 체크 (훅으로 분리)
-  useFileAuthGuard({ skipRedirect: false });
+  useFileAuthGuard();
 
   const renderFieldValue = (field: AccountField) => {
     if (field.type === "password") {
       return (
-        <PasswordFieldView
+        <PasswordField
+          mode="view"
           value={field.value}
         />
       );
@@ -48,18 +57,12 @@ const AccountDetail = () => {
 
   if (!account) {
     return (
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
+      <PageShell>
         <div className="flex justify-start">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-          >
-            ← 뒤로 가기
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
         </div>
         <p className="mt-4 text-[var(--color-text)]">계정 정보를 찾을 수 없습니다.</p>
-      </section>
+      </PageShell>
     );
   }
 
@@ -68,8 +71,19 @@ const AccountDetail = () => {
   );
 
   const handleDelete = async () => {
-    await deleteAccount(account.id);
-    navigate("/accounts");
+    try {
+      await deleteAccount(account.id);
+      setDeleteError(null);
+      setShowDeleteConfirm(false);
+      navigate("/accounts");
+    } catch (err) {
+      // 모달을 닫지 않고 에러만 표시 (Plan-A1 결정)
+      setDeleteError(mapError(err));
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteError(null);
     setShowDeleteConfirm(false);
   };
 
@@ -79,87 +93,71 @@ const AccountDetail = () => {
 
   return (
     <>
-      <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-          >
-            ← 뒤로 가기
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(`/accounts/${account.id}/edit`)}
-              className="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-            >
-              수정
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text-h)] shadow-sm"
-            >
-              삭제
-            </button>
-          </div>
-        </div>
+      <PageShell>
+        <PageHeader
+          title={account.title}
+          leftActions={
+            <BackButton onClick={handleBack} />
+          }
+          actions={
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => navigate(`/accounts/${account.id}/edit`)}
+                label="수정"
+              />
+              <DeleteButton onClick={() => setShowDeleteConfirm(true)} />
+            </div>
+          }
+        />
 
         <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-semibold text-[var(--color-text-h)]">
-                {account.title}
-              </h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {account.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]"
+                    className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-chip text-[var(--color-accent)]"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => void updateAccount({ ...account, favorite: !account.favorite })}
-              className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
+              className={
                 account.favorite
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)]"
-              }`}
-            >
-              {account.favorite ? "★ Favorite" : "☆ Favorite"}
-            </button>
+                  ? "!rounded-full !border !border-[var(--color-accent)] !bg-[var(--color-accent-bg)] !px-3 !py-1 !text-sm !text-[var(--color-accent)]"
+                  : "!rounded-full !border !border-[var(--color-border)] !bg-[var(--color-bg)] !px-3 !py-1 !text-sm !text-[var(--color-text-h)]"
+              }
+              label={account.favorite ? "★ Favorite" : "☆ Favorite"}
+            />
           </div>
 
           <div className="mt-6 space-y-3">
             {sortedFields.map((field) => (
-              <div
-                key={field.id}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text)]">
-                  {field.label}
-                </p>
-                <div className="mt-1">{renderFieldValue(field)}</div>
-              </div>
+              <FieldCard key={field.id} label={field.label}>
+                {renderFieldValue(field)}
+              </FieldCard>
             ))}
           </div>
         </article>
-      </section>
+      </PageShell>
 
       <ConfirmDialog
         open={showDeleteConfirm}
         title="계정 삭제"
         message={"\"" + account.title + "\" 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
-        onClose={() => setShowDeleteConfirm(false)}
+        onClose={handleDeleteDialogClose}
         onConfirm={handleDelete}
         confirmLabel="삭제"
         variant="danger"
+        error={deleteError}
       />
     </>
   );

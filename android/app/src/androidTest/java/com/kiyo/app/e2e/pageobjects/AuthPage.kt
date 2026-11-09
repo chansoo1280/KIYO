@@ -52,7 +52,7 @@ class AuthPage(helper: WebViewTestHelper) : BasePage(helper) {
 
         // 네이티브 프롬프트 렌더링 대기 후 콜백 (호스트 finger touch 주입)
         log("Waiting for native BiometricPrompt to render...")
-        Thread.sleep(4000)
+        Thread.sleep(1000)
         onPromptVisible()
     }
 

@@ -30,25 +30,4 @@ export interface Account {
 }
 
 export type FontSize = "small" | "medium" | "large";
-
-// App-wide settings (stored in DB settings table, NOT in data files)
-export interface AppSettings {
-  theme: "light" | "dark";
-  autoLockTime: number;
-  lockEnabled: boolean;
-  fontSize: FontSize;
-  biometricEnabled: boolean; // Whether to use biometric authentication for autofill
-}
-
-// Alias for backward compatibility with tests
-export type Setting = AppSettings;
-
-// File-specific metadata (stored in DB settings table)
-export interface FileMetadata {
-  id: number;
-  version: string;
-  createdAt: number;
-}
-
-// Alias for backward compatibility with tests
-export type Metadata = FileMetadata;
+// PR 1: AppSettings/Setting dead types removed (db.settings drop, settingsStore는 zustand localStorage).

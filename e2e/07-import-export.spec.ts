@@ -23,7 +23,7 @@ async function fillDynamicField(page: import('@playwright/test').Page, labelText
     throw new Error(`Label input with text "${labelText}" not found`);
   }
 
-  const fieldContainer = targetLabelInput.locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+  const fieldContainer = targetLabelInput.locator('xpath=ancestor::*[@data-testid="account-field-editor"][1]');
 
   let valueInput: import('@playwright/test').Locator;
   if (labelText === '메모') {
@@ -73,7 +73,7 @@ async function createAccount(page: import('@playwright/test').Page, account: {
   await page.waitForLoadState('networkidle');
 
   // 리스트로 돌아가기
-  await page.getByRole('button', { name: '← 뒤로 가기' }).click();
+  await page.getByRole('button', { name: '뒤로 가기' }).click();
   await page.waitForURL('**/accounts', { timeout: 5000 });
   await page.waitForLoadState('networkidle');
 }
@@ -126,10 +126,11 @@ test.describe('백업 내보내기 / 가져오기 (Import/Export)', () => {
       // 파일 이름 입력 - 암호화 체크박스 해제 (테스트용)
       const dialog = page.getByRole('dialog').filter({ hasText: '백업 파일 저장' });
       await dialog.locator('input[type="checkbox"]').uncheck();
-      await dialog.getByRole('button', { name: '저장' }).click();
 
-      // 다운로드 대기
+      // 다운로드 대기는 클릭 전에 setup (race condition 방지: download가 동기 fire되면
+      // post-click setup으로는 event를 놓침)
       const downloadPromise = page.waitForEvent('download');
+      await dialog.getByRole('button', { name: '저장' }).click();
       await downloadPromise;
 
       // 성공 메시지 확인

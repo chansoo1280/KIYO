@@ -2,7 +2,6 @@ import { useTemplateStore } from "@/store/templateStore";
 import type { Template } from "@/models/template";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 
 interface TemplatePickerProps {
   open: boolean;
@@ -22,12 +21,8 @@ const DEFAULT_TEMPLATE: Template = {
 };
 
 const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
-  const { templates, loadTemplates } = useTemplateStore();
+  const { templates } = useTemplateStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
 
   if (!open) return null;
 
@@ -55,7 +50,7 @@ const TemplatePicker = ({ open, onClose }: TemplatePickerProps) => {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-label text-[var(--color-accent)]">
               새 계정
             </p>
             <h2

@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { FormDialog } from "./FormDialog";
+import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
+import { Input } from "@/components/inputs";
 
 interface FileOpenDialogProps {
   open: boolean;
@@ -20,7 +22,7 @@ const FileOpenDialog = ({
   const [pin, setPin] = useState("");
   const [encrypted, setEncrypted] = useState(false);
 
-  const confirmDisabled = !file;
+  const confirmDisabled = !file || (encrypted && pin.length < MIN_PIN_LENGTH);
 
   const handleClose = () => {
     setFile(null);
@@ -38,8 +40,8 @@ const FileOpenDialog = ({
       throw new Error("파일을 선택해주세요.");
     }
 
-    if (encrypted && !pin) {
-      throw new Error("PIN 번호를 입력해주세요.");
+    if (encrypted && pin.length < MIN_PIN_LENGTH) {
+      throw new Error(`PIN은 ${MIN_PIN_LENGTH}자 이상 입력해주세요.`);
     }
 
     await onConfirm({
@@ -116,15 +118,17 @@ const FileOpenDialog = ({
         <div className="mt-5">
           <label className="text-sm font-medium text-[var(--color-text)]">PIN 번호</label>
 
-          <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value)}
-                      placeholder="6자리 PIN"
-                      className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-4 py-3 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-                    />
+          <Input
+                  type="password"
+                  inputMode="text"
+                  maxLength={20}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="4~20자 PIN"
+                  className="mt-2"
+                />
+          {/* PIN 강도 표시는 의도적으로 생략 — 이 다이얼로그는 기존 PIN 인증용이며
+              강도 평가는 신규/변경 PIN 입력에서만 의미 있음 (CreateVaultPage, PinChangeDialog). */}
         </div>
       )}
     </FormDialog>

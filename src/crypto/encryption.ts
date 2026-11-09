@@ -1,5 +1,5 @@
 import type { KiyoVaultData } from "@/models/vault";
-import { fromBase64, toBase64 } from "@/crypto/crypto.utils";
+import { fromBase64, toBase64, assertCryptoAvailable } from "@/crypto/crypto.utils";
 
 // Web Crypto API types (available globally in browser environments)
 type CryptoKey = globalThis.CryptoKey;
@@ -34,6 +34,9 @@ export const isEncryptedKiyoVaultData = (
 
 // PIN → CryptoKey 생성
 export async function createCryptoKey(pin: string, salt?: Uint8Array) {
+  // secure context 가드: 비-HTTPS/비-localhost에서 crypto.subtle undefined 방지
+  assertCryptoAvailable();
+
   const keySalt = salt ?? crypto.getRandomValues(new Uint8Array(16));
 
   const keyMaterial = await crypto.subtle.importKey(
@@ -72,6 +75,8 @@ export const encryptData = async (
   key: CryptoKey,
   salt: Uint8Array,
 ): Promise<EncryptedKiyoVaultData> => {
+  assertCryptoAvailable();
+
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
   const encrypted = await crypto.subtle.encrypt(
@@ -97,6 +102,8 @@ export const decryptData = async (
   encrypted: EncryptedKiyoVaultData,
   key: CryptoKey,
 ): Promise<KiyoVaultData> => {
+  assertCryptoAvailable();
+
   const decrypted = await crypto.subtle.decrypt(
     {
       name: "AES-GCM",
@@ -139,11 +146,13 @@ export const importKey = async (
   algorithm: string,
   usages: KeyUsage[]
 ): Promise<CryptoKey> => {
+  assertCryptoAvailable();
   return crypto.subtle.importKey("raw", keyData.buffer as ArrayBuffer, { name: algorithm }, true, usages);
 };
 
 // CryptoKey를 raw bytes로 export
 export const exportKey = async (key: CryptoKey): Promise<Uint8Array> => {
+  assertCryptoAvailable();
   const exported = await crypto.subtle.exportKey("raw", key);
   return new Uint8Array(exported as ArrayBuffer);
 };

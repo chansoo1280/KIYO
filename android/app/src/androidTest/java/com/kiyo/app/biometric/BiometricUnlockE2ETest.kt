@@ -211,7 +211,7 @@ class BiometricUnlockE2ETest {
             if (!helper.waitForText(AccountsPage.MARKER_TEXT, 30000)) {
                 throw AssertionError("Accounts list did not load after fingerprint unlock")
             }
-            if (!helper.waitForText(account.title, 10000)) {
+            if (!helper.waitForText(account.title, 1000)) {
                 // 언락 직후에는 Espresso-Web 컨텍스트 재부착/하이드레이션 지연으로
                 // 렌더가 늦을 수 있다 (검증됨 2026-08-28: 화면엔 값이 이미 표시됨).
                 // WebView 재부착 후 1회 재시도한다.

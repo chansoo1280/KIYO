@@ -9,7 +9,7 @@ export class TemplateListPage {
   constructor(page: Page) {
     this.page = page;
     this.newTemplateButton = page.getByRole('button', { name: '+ 템플릿 생성' });
-    this.templateCards = page.locator('div.group.rounded-2xl.border').filter({ has: page.getByRole('button', { name: '수정' }) });
+    this.templateCards = page.locator('[data-testid="template-card"]').filter({ has: page.getByRole('button', { name: '수정' }) });
     this.emptyState = page.getByText('등록된 템플릿이 없습니다.');  // 마침표 추가
   }
 
@@ -25,7 +25,7 @@ export class TemplateListPage {
     await this.page.waitForLoadState('networkidle');
     // 템플릿 카드 또는 빈 상태가 나타날 때까지 대기
     await Promise.race([
-      this.page.waitForSelector('div.group.rounded-2xl.border', { timeout: 10000 }),
+      this.page.waitForSelector('[data-testid="template-card"]', { timeout: 10000 }),
       this.page.waitForSelector('text=등록된 템플릿이 없습니다', { timeout: 10000 }),
     ]);
   }
@@ -38,7 +38,7 @@ export class TemplateListPage {
 
   async clickTemplate(name: string): Promise<void> {
     // 템플릿 카드들을 모두 가져와서 이름으로 찾기
-    const cards = this.page.locator('div.group.rounded-2xl.border');
+    const cards = this.page.locator('[data-testid="template-card"]');
     const count = await cards.count();
     
     for (let i = 0; i < count; i++) {
@@ -55,7 +55,7 @@ export class TemplateListPage {
   }
 
   async getTemplateNames(): Promise<string[]> {
-    const items = await this.page.locator('div.group h3.font-semibold').all();
+    const items = await this.page.locator('[data-testid="template-card"] h3').all();
     const names: string[] = [];
     for (const item of items) {
       const text = await item.textContent();
@@ -92,34 +92,29 @@ export class TemplateEditPage {
     this.descriptionInput = page.locator('textarea[placeholder="이 템플릿에 대한 설명을 입력하세요."]');
     this.addFieldButton = page.getByRole('button', { name: '+ 필드 추가' });
     this.saveButton = page.getByRole('button', { name: '저장' });
-    this.cancelButton = page.getByRole('button', { name: '취소' });
+    this.cancelButton = page.getByRole('button', { name: '뒤로 가기' });
     this.deleteButton = page.getByRole('button', { name: '삭제' }).first();
     this.deleteConfirmModal = page.getByRole('dialog').filter({ hasText: '템플릿 삭제' });
     this.confirmDeleteButton = this.deleteConfirmModal.getByRole('button', { name: '삭제' });
-    this.errorMessages = page.locator('ul.text-red-600 li, ul.text-red-400 li');
-    // TemplateFieldEditor 각각의 컨테이너: "필드 삭제" 버튼(✕)을 가진 div
-    this.fieldEditors = page.locator('div.space-y-3 > div').filter({ has: page.getByRole('button', { name: '필드 삭제' }) });
+    this.errorMessages = page.locator('[data-testid="template-edit-error"] li');
+    // Plan-X: 항목 selector는 data-testid 기반 (`template-field-editor`).
+    // 컨테이너(`template-field-editor-list`) 대신 항목 selector를 쓰면 nth(index) 매핑이 안정적.
+    this.fieldEditors = page.locator('[data-testid="template-field-editor"]');
   }
 
   async gotoNew(): Promise<void> {
-    // BottomTabs의 Templates 탭 → 새 템플릿 생성 버튼으로 client-side navigation
-    const templatesTab = this.page.locator('button[aria-label="Templates"]').first();
-    await templatesTab.waitFor({ state: 'visible', timeout: 10000 });
-    await templatesTab.click();
-    await this.page.waitForLoadState('networkidle');
-    await this.newTemplateButton.waitFor({ state: 'visible', timeout: 5000 });
-    await this.newTemplateButton.click();
-    await this.page.waitForURL('**/templates/new', { timeout: 5000 });
-    await this.page.waitForLoadState('networkidle');
+    // BottomTabs의 Templates 탭 → TemplateListPage로 client-side navigation 후 새 템플릿 생성
+    // (TemplateListPage의 newTemplateButton 사용)
+    const list = new TemplateListPage(this.page);
+    await list.goto();
+    await list.createTemplate();
   }
 
   async gotoEdit(id: string): Promise<void> {
-    // BottomTabs의 Templates 탭 → 템플릿 리스트에서 client-side navigation
-    const templatesTab = this.page.locator('button[aria-label="Templates"]').first();
-    await templatesTab.waitFor({ state: 'visible', timeout: 10000 });
-    await templatesTab.click();
-    await this.page.waitForLoadState('networkidle');
-    await this.clickTemplate(id); // clickTemplate가 내부에서 이동 처리
+    // TemplateListPage 경유 → 기존 템플릿의 수정 버튼 클릭
+    const list = new TemplateListPage(this.page);
+    await list.goto();
+    await list.clickTemplate(id);
   }
 
   async setName(name: string): Promise<void> {
@@ -220,7 +215,7 @@ export class TemplateEditPage {
     await this.page.waitForLoadState('networkidle');
     // 템플릿 리스트가 로드될 때까지 추가 대기 (빈 상태 또는 카드 중 하나)
     await Promise.race([
-      this.page.waitForSelector('div.group.rounded-2xl.border', { timeout: 10000 }),
+      this.page.waitForSelector('[data-testid="template-card"]', { timeout: 10000 }),
       this.page.waitForSelector('text=등록된 템플릿이 없습니다', { timeout: 10000 }),
     ]);
   }

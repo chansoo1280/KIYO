@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { TemplateField } from "@/models/template";
 import type { FieldType } from "@/models/fieldTypes";
-import { FIELD_TYPE_OPTIONS, getFieldTypePlaceholder } from "@/models/fieldTypes";
+import { FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
+import { Input } from "@/components/inputs";
+import { FieldCard } from "@/components/FieldCard";
+import { ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 
 interface TemplateFieldEditorProps {
   field: TemplateField;
@@ -11,6 +14,8 @@ interface TemplateFieldEditorProps {
   onMoveDown: (index: number) => void;
   onDelete: (index: number) => void;
   allLabels: string[];
+  /** data-testid for e2e selector (Plan-X: E2E Selector Hardening) */
+  testId?: string;
 }
 
 export const TemplateFieldEditor = ({
@@ -21,6 +26,7 @@ export const TemplateFieldEditor = ({
   onMoveDown,
   onDelete,
   allLabels,
+  testId,
 }: TemplateFieldEditorProps) => {
   const [optionsText, setOptionsText] = useState(field.options?.join("\n") || "");
   const [showOptions, setShowOptions] = useState(field.type === "select");
@@ -38,11 +44,8 @@ export const TemplateFieldEditor = ({
 
   const isDuplicateLabel = allLabels.filter((l) => l === field.label).length > 1;
 
-  // 타입별 고정 플레이스홀더 표시용 (수정 불가)
-  const fixedPlaceholder = getFieldTypePlaceholder(field.type);
-
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-4">
+    <FieldCard density="comfy" testId={testId}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1">
           <button
@@ -52,7 +55,7 @@ export const TemplateFieldEditor = ({
             className="p-2 rounded-xl bg-[var(--color-bg)] text-[var(--color-text)] hover:bg-[var(--color-border)] disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="위로 이동"
           >
-            ↑
+            <ArrowUp className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -60,15 +63,15 @@ export const TemplateFieldEditor = ({
             className="p-2 rounded-xl bg-[var(--color-bg)] text-[var(--color-text)] hover:bg-[var(--color-border)]"
             aria-label="아래로 이동"
           >
-            ↓
+            <ArrowDown className="h-4 w-4" />
           </button>
-          <input
+          <Input
             value={field.label}
             onChange={(e) => onChange(index, { label: e.target.value })}
             placeholder="항목 이름"
-            className={`flex-1 rounded-2xl border px-3 py-2 text-sm text-[var(--color-text-h)] bg-[var(--color-bg)] outline-none focus:border-[var(--color-accent)] ${
-              isDuplicateLabel ? "border-[var(--color-error)]" : "border-[var(--color-border)]"
-            }`}
+            className="flex-1"
+            variant={isDuplicateLabel ? "error" : "default"}
+            errorId={isDuplicateLabel ? `field-${index}-label-error` : undefined}
           />
         </div>
         <button
@@ -77,52 +80,54 @@ export const TemplateFieldEditor = ({
           className="p-2 rounded-xl bg-[var(--color-error)]/10 text-[var(--color-error)] hover:bg-[var(--color-error)]/20 dark:bg-[var(--color-error)]/20 dark:hover:bg-[var(--color-error)]/30"
           aria-label="필드 삭제"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <Trash2 size={16} strokeWidth={2} />
         </button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+        <div className="flex flex-col items-start">
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
             타입
           </label>
-          <select
+          <Input
+            as="select"
             value={field.type}
             onChange={(e) => handleTypeChange(e.target.value as FieldType)}
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
           >
             {FIELD_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
-          </select>
+          </Input>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-            플레이스홀더 (자동 설정)
-          </label>
-          <input
-            value={fixedPlaceholder}
-            readOnly
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] px-3 py-2 text-sm text-[var(--color-text-muted)] outline-none"
-            title="필드 타입에 따라 자동으로 설정됩니다"
-          />
-        </div>
-
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-2 flex flex-col items-start">
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
             기본값
           </label>
-          <input
-            value={field.defaultValue || ""}
-            onChange={(e) => onChange(index, { defaultValue: e.target.value })}
-            placeholder="기본값 (선택)"
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
-          />
+          {field.type === "date" ? (
+            <Input
+              type="date"
+              value={field.defaultValue || ""}
+              onChange={(e) => onChange(index, { defaultValue: e.target.value })}
+            />
+          ) : field.type === "textarea" ? (
+            <Input
+              as="textarea"
+              value={field.defaultValue || ""}
+              onChange={(e) => onChange(index, { defaultValue: e.target.value })}
+              placeholder="내용을 입력하세요"
+              rows={3}
+              className="resize-none"
+            />
+          ) : (
+            <Input
+              value={field.defaultValue || ""}
+              onChange={(e) => onChange(index, { defaultValue: e.target.value })}
+              placeholder="기본값 (선택)"
+            />
+          )}
         </div>
 
         {showOptions && (
@@ -142,12 +147,13 @@ export const TemplateFieldEditor = ({
                 옵션 제거
               </button>
             </div>
-            <textarea
+            <Input
+              as="textarea"
               value={optionsText}
               onChange={(e) => handleOptionsChange(e.target.value)}
               rows={3}
               placeholder="옵션1\n옵션2\n옵션3"
-              className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
+              className="resize-none"
             />
           </div>
         )}
@@ -156,6 +162,6 @@ export const TemplateFieldEditor = ({
           <p className="text-xs text-[var(--color-error)]">중복된 항목 이름입니다</p>
         )}
       </div>
-    </div>
+    </FieldCard>
   );
 };

@@ -51,26 +51,27 @@ describe("useAutoLock - Edge Cases", () => {
       autoLockTimeout: "1m",
       biometricEnabled: false,
       autofillEnabled: false,
+      autoBackupEnabled: false,
+      autoBackupUri: null,
       setBiometricEnabled: vi.fn(),
       setTheme: vi.fn(),
       toggleTheme: vi.fn(),
       setFontSize: vi.fn(),
       setAutoLockTimeout: vi.fn(),
       setAutofillEnabled: vi.fn(),
-      initializeTheme: vi.fn(),
-      initializeFontSize: vi.fn(),
-      initializeAutoLockTimeout: vi.fn(),
-      initializeAutofillEnabled: vi.fn(),
+      setAutoBackupEnabled: vi.fn(),
+      setAutoBackupUri: vi.fn(),
     };
 
     mockSessionState = {
       activeFileName: null,
       cryptoKey: createMockCryptoKey(),
       salt: null,
+      initialized: false,
       lastSyncError: null,
       lastSyncErrorTime: null,
       lastSyncTime: null,
-      lastAutofillAccountCount: null,
+      lastSyncedAutofillCount: null,
       setSession: vi.fn(),
       setCryptoKey: vi.fn(),
       setCryptoKeyFromBase64: vi.fn(),
@@ -79,7 +80,7 @@ describe("useAutoLock - Edge Cases", () => {
       setSyncError: vi.fn(),
       clearSyncError: vi.fn(),
       setLastSyncTime: vi.fn(),
-      setLastAutofillAccountCount: vi.fn(),
+      setLastSyncedAutofillCount: vi.fn(),
     };
 
     mockUseSettingsStore.mockImplementation((selector) => selector(mockSettingsState));

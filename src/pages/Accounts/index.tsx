@@ -1,16 +1,23 @@
 import { useState, useMemo } from "react";
+import { Search, ArrowUp, ArrowDown, ArrowUpDown, Star, Plus, Copy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Account } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import BottomTabs from "@/components/BottomTabs";
+import { PageShell } from "@/components/PageShell";
 import { useSessionStore } from "@/store/sessionStore";
 import TemplatePicker from "./components/TemplatePicker";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { Spinner } from "@/components/feedback/Spinner";
+import Button from "@/components/Button";
 
 const AccountList = () => {
   const navigate = useNavigate();
   const accounts = useAccountStore((state) => state.accounts);
+  // Q16: initialized는 sessionStore로 통합
+  const initialized = useSessionStore((state) => state.initialized);
+  // loadAccounts selector 제거 — Q16: sessionStore.initialized로 단일화
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -18,8 +25,10 @@ const AccountList = () => {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { activeFileName: fileName } = useSessionStore((state) => state);
 
-  // 파일/인증 상태 체크 (훅으로 분리)
-  useFileAuthGuard({ skipRedirect: false });
+  // 파일/인증 상태 체크 (훅으로 분리). 통과 시점(activeFileName 있고
+  // plaintext || cryptoKey 있음)에 self-load. store-side initialized 가드가
+  // RootRedirect 경로와 중복 호출을 흡수.
+  useFileAuthGuard();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -108,12 +117,43 @@ const AccountList = () => {
 
   const { copy } = useClipboard();
 
-  return (
-    <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+  if (!initialized) {
+    return (
+      <PageShell maxWidth="xl" withBottomTabs>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
+              Accounts
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
+              My accounts
+            </h2>
+            {fileName && (
+              <p className="mt-1 text-sm text-[var(--color-text)]">
+                {fileName}
+              </p>
+            )}
+          </div>
+        </div>
+        <div
+          className="flex flex-col items-center justify-center gap-3 py-16"
+          data-testid="accounts-loading"
+        >
+          <Spinner size="lg" label="계정을 불러오는 중..." />
+          <p className="text-sm text-[var(--color-text-muted)]">
+            계정을 불러오는 중...
+          </p>
+        </div>
+        <BottomTabs />
+      </PageShell>
+    );
+  }
+
+  return (
+    <PageShell maxWidth="xl" withBottomTabs>
+      <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               Accounts
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-[var(--color-text-h)]">
@@ -127,26 +167,24 @@ const AccountList = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant={showSearch ? "secondary" : "ghost"}
               onClick={() => {
                 if (showSearch) {
-                  // Closing search - clear search query
                   setSearchQuery("");
                 }
                 setShowSearch(!showSearch);
               }}
-              className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg shadow-sm transition ${
-                showSearch
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-h)] hover:bg-[var(--color-code-bg)]"
-              }`}
+              className="!h-11 !w-11 !rounded-2xl !p-0 !text-lg"
+              label={<Search className="h-5 w-5" />}
               aria-label="Search"
-            >
-              🔍
-            </button>
-            <button
+            />
+            <Button
               type="button"
+              size="sm"
+              variant={sortOrder ? "secondary" : "ghost"}
               onClick={() => {
                 setSortOrder((prev) => {
                   if (prev === null) return "asc";
@@ -154,15 +192,17 @@ const AccountList = () => {
                   return null;
                 });
               }}
-              className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg shadow-sm transition ${
-                sortOrder
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-h)] hover:bg-[var(--color-code-bg)]"
-              }`}
+              className="!h-11 !w-11 !rounded-2xl !p-0 !text-lg"
+              label={
+                sortOrder === "asc" ? (
+                  <ArrowUp className="h-5 w-5" />
+                ) : sortOrder === "desc" ? (
+                  <ArrowDown className="h-5 w-5" />
+                ) : (
+                  <ArrowUpDown className="h-5 w-5" />
+                )}
               aria-label="Sort"
-            >
-              {sortOrder === "asc" ? "↑" : sortOrder === "desc" ? "↓" : "↕"}
-            </button>
+            />
           </div>
         </div>
 
@@ -178,14 +218,15 @@ const AccountList = () => {
               autoFocus
             />
             {searchQuery && (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="ghost"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text)] hover:text-[var(--color-text-h)]"
+                className="!absolute !right-3 !top-1/2 !-translate-y-1/2 !text-[var(--color-text)] hover:!text-[var(--color-text-h)]"
+                label="✕"
                 aria-label="Clear search"
-              >
-                ✕
-              </button>
+              />
             )}
           </div>
         )}
@@ -198,7 +239,9 @@ const AccountList = () => {
                 key={tag}
                 type="button"
                 onClick={() => toggleTag(tag)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition ${
+                aria-label={`태그 필터: ${tag}`}
+                aria-pressed={selectedTags.includes(tag)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-chip transition ${
                   selectedTags.includes(tag)
                     ? "bg-[var(--color-accent)] text-white"
                     : "bg-[var(--color-accent-bg)] text-[var(--color-accent)] hover:bg-[var(--color-accent-bg)]/80"
@@ -235,7 +278,7 @@ const AccountList = () => {
                       {account.title}
                     </p>
                     {account.favorite && (
-                      <span className="text-[var(--color-warning)] text-sm">★</span>
+                      <Star className="text-[var(--color-warning)] text-sm" />
                     )}
                   </div>
                   <p className="truncate text-sm text-[var(--color-text)]">
@@ -251,8 +294,10 @@ const AccountList = () => {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="secondary"
                 onClick={(event) => {
                   event.stopPropagation();
                   const passwordField = account.fields.find(
@@ -262,33 +307,31 @@ const AccountList = () => {
                     copy(passwordField.value);
                   }
                 }}
-                className="rounded-full bg-[var(--color-accent-bg)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)] transition hover:bg-[var(--color-accent-bg)]/80"
-                aria-label="Copy password"
-              >
-                복사
-              </button>
+                className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-chip !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
+                label={<Copy size={14} strokeWidth={2} />}
+                aria-label="비밀번호 복사"
+              />
             </article>
           ))}
         </div>
-      </div>
 
       <div className="fixed right-5 bottom-28 z-20 flex flex-col gap-3">
-        <button
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-accent)] text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-[var(--color-accent)]/80"
+        <Button
           type="button"
-          aria-label="Add account"
+          variant="primary"
           onClick={() => setShowTemplatePicker(true)}
-        >
-          +
-        </button>
-        <button
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-bg)] text-xl shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-[var(--color-code-bg)]"
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-accent)] !text-white !shadow-md hover:!bg-[var(--color-accent)]/80"
+          label={<Plus className="h-6 w-6" />}
+          aria-label="Add account"
+        />
+        <Button
           type="button"
-          aria-label="Scroll to top"
+          variant="ghost"
           onClick={scrollToTop}
-        >
-          ⬆
-        </button>
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-bg)] !text-xl !shadow-md hover:!bg-[var(--color-code-bg)]"
+          label={<ArrowUp className="h-6 w-6" />}
+          aria-label="Scroll to top"
+        />
       </div>
 
       {showTemplatePicker && (
@@ -299,7 +342,7 @@ const AccountList = () => {
       )}
 
       <BottomTabs />
-    </section>
+    </PageShell>
   );
 };
 

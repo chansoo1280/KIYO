@@ -1,63 +1,42 @@
 ---
-type: detail
-title: CI/CD Pipeline
-description: GitHub Actions workflow for continuous integration including typecheck, lint, test, and build.
-tags: [operations, ci-cd, github-actions]
+type: reference
+title: CI/CD
+description: GitHub Actions workflows — ci.yml (lint, typecheck, test, build) and openwiki-update.yml (wiki sync).
+tags: [operations, ci, github-actions, openwiki]
 ---
 
-# CI/CD Pipeline
+# CI/CD
 
-KIYO uses GitHub Actions for continuous integration. The workflow runs on every push and pull request to main branches.
+KIYO uses two GitHub Actions workflows under `.github/workflows/`.
 
-## Workflow File
+## ci.yml — Continuous Integration
 
-- **Location**: `/.github/workflows/ci.yml`
+**Triggers**: `push` to `main`/`develop`/`v2` and `pull_request` to those branches.
 
-## Trigger Events
+**Steps**:
+1. `actions/checkout@v5`
+2. `actions/setup-node@v5` (Node 22)
+3. `npm ci`
+5. `npm run typecheck`
+6. `npm run lint`
+7. `npm run test`
+8. `npm run build`
 
-- Push to branches: `main`, `develop`, `v2`
-- Pull requests to branches: `main`, `develop`, `v2`
+The `test` step also runs Android Robolectric/JUnit tests on Ubuntu. The `android` build steps are not part of `ci.yml` (they require macOS for full SDK); instead, they run on developer machines via `npm run android:build`.
 
-## Jobs
+## openwiki-update.yml — Wiki Sync Automation
 
-### Test Job
+**Triggers**: `workflow_dispatch` (manual run only).
 
-Runs on `ubuntu-latest` with Node.js 22 and npm caching.
+**Steps**:
+1. Checkout with `fetch-depth: 0` (full history so `openwiki code --update` can diff HEAD against the last documented commit).
+2. Install OpenWiki (`npm install --global openwiki@0.3.3` + mermaid + jsdom).
+3. Run `openwiki code --update --print` with the configured `OPENWIKI_PROVIDER=nvidia` + `NVIDIA_API_KEY` + `OPENWIKI_MODEL_ID`.
+4. `peter-evans/create-pull-request@v7` opens a PR with the wiki updates.
 
-| Step | Command | Purpose |
-|------|---------|---------|
-| Checkout | `actions/checkout@v4` | Clone repository |
-| Setup Node.js | `actions/setup-node@v4` | Install Node.js 22 with npm cache |
-| Install dependencies | `npm ci` | Clean install of exact package versions |
-| Type checking | `npm run typecheck` | Run TypeScript compiler validation |
-| Linting | `npm run lint` | Run ESLint for code quality |
-| Tests | `npm run test` | Run Vitest unit/integration tests |
-| Build | `npm run build` | Vite production build |
+This is the workflow that regenerates `/openwiki/` on demand. The scheduled cron (`0 8 * * *`) is commented out to keep the workflow manual.
 
-## Commands Reference
+## Source Anchors
 
-| Command | Description |
-|---------|-------------|
-| `npm run typecheck` | TypeScript compiler check (`tsc --noEmit`) |
-| `npm run lint` | ESLint check (`eslint .`) |
-| `npm run test` | Vitest test runner |
-| `npm run build` | Vite production build to `/dist` |
-
-## Local Development
-
-Run CI checks locally before pushing:
-
-```bash
-npm run typecheck && npm run lint && npm run test && npm run build
-```
-
-## Branch Protection
-
-Configure branch protection rules in GitHub to require:
-- Status checks to pass (CI workflow)
-- PR reviews before merge
-- Up-to-date branches before merge
-
----
-
-*Added based on commit 0adb420e*
+- `ci.yml` — `/.github/workflows/ci.yml`
+- `openwiki-update.yml` — `/.github/workflows/openwiki-update.yml`

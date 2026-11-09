@@ -15,11 +15,19 @@ export interface OpenFileResult {
 
 export interface WriteToUriResult {
   success: boolean;
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 export interface ReadFromUriResult {
   success: boolean;
   data: string;
+}
+
+export interface PickBackupFolderResult {
+  success: boolean;
+  uri?: string;
+  cancelled?: boolean;
 }
 
 export interface KiyoFilePlugin {
@@ -41,6 +49,8 @@ export interface KiyoFilePlugin {
   readFromUri(options: {
     uri: string;
   }): Promise<ReadFromUriResult>;
+
+  pickBackupFolder(): Promise<PickBackupFolderResult>;
 }
 
 const KiyoFile = registerPlugin<KiyoFilePlugin>("KiyoFile", {

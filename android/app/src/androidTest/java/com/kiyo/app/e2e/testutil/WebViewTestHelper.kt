@@ -119,14 +119,28 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
         return typeByLabelFieldValueAttribute(labelText, text, description)
     }
 
-    /** data-field-value="true" 속성을 가진 입력 필드 찾아 텍스트 입력 (React data-field-value 속성 사용 - 고정 필드용) */
+/** data-field-value="true" 속성을 가진 입력 필드 찾아 텍스트 입력 (React data-field-value 속성 사용 - 고정 필드용) */
     private fun typeByLabelFieldValueAttribute(labelText: String, text: String, description: String): Boolean {
-        // label[text] 내부 또는 형제의 data-field-value="true" 요소 찾기
-        return typeByXPath(
-            "//label[contains(text(), '$labelText')]//*[@data-field-value='true']",
-            text,
-            description
+        // 현재 마크업: <div><label htmlFor="X">제목</label><input id="X" data-field-value="true" /></div>
+        // label과 input은 형제 — wrapper 구조 비의존으로 label htmlFor 또는 input id 직접 매칭
+        // (Plan-X: E2E Selector Hardening — following-sibling 의존 제거)
+        val inputId = idForLabel(labelText)
+        return trySelectorChain(
+            { typeByXPath("//input[@id='$inputId' and @data-field-value='true']", text, description) },
+            // 폴백 1: label 내부 nested 패턴
+            { typeByXPath("//label[contains(text(), '$labelText')]//*[@data-field-value='true']", text, description) },
+            // 폴백 2: 옛 following-sibling (구 마크업 호환)
+            { typeByXPath("//label[contains(text(), '$labelText')]/following-sibling::*[@data-field-value='true']", text, description) }
         )
+    }
+
+    /** labelText → Input id 추정 (AccountTitleSection 라벨 → id 매핑) */
+    private fun idForLabel(labelText: String): String = when (labelText) {
+        "제목" -> "account-title"
+        "웹사이트 URL (자동완성용)" -> "account-website-url"
+        "안드로이드 패키지명 (자동완성용)" -> "account-package-name"
+        "태그" -> "account-tag"
+        else -> "account-$labelText"
     }
 
     /** 필드 라벨 값(placeholder="항목 이름"인 input의 값)으로 동적 필드의 값 입력란 찾아 텍스트 입력 */
@@ -138,8 +152,9 @@ class WebViewTestHelper(private val tag: String = "WebViewTestHelper") {
     /** data-field-value="true" 속성을 가진 입력 필드 찾아 텍스트 입력 (React data-field-value 속성 사용) */
     private fun typeByFieldValueAttribute(fieldLabel: String, text: String, description: String): Boolean {
         // 라벨 input으로 FieldEditor 컨테이너 찾고, 그 안의 data-field-value="true" 요소에 입력
+        // data-testid 기반 (Plan-X: E2E Selector Hardening)
         return typeByXPath(
-            "//input[@placeholder='항목 이름' and @value='$fieldLabel']/ancestor::div[contains(@class, 'rounded-2xl')]//*[@data-field-value='true']",
+            "//input[@placeholder='항목 이름' and @value='$fieldLabel']/ancestor::*[@data-testid='account-field-editor'][1]//*[@data-field-value='true']",
             text,
             description
         )

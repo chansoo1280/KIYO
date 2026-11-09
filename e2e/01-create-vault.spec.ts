@@ -2,7 +2,12 @@ import { test, expect } from '@playwright/test';
 import { clearIndexedDB } from './fixtures/indexeddb.fixture';
 import { TEST_PIN } from './fixtures/test-data';
 
-test.describe('볼트 생성 (Vault Creation)', () => {
+/**
+ * Plan-7a: 볼트 생성 흐름 (Vault Creation)
+ * 모달 → /create-vault 단일 라우트 페이지로 전환됨
+ * Step 1 (이름) → 다음 → Step 2 (PIN) → 생성 → /accounts
+ */
+test.describe('볼트 생성 (Vault Creation) — Plan-7a 페이지 기반', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
@@ -11,130 +16,146 @@ test.describe('볼트 생성 (Vault Creation)', () => {
     await page.evaluate(() => localStorage.clear());
   });
 
-  test('최초 실행 시 암호화 볼트 생성 후 바로 계정 리스트(/accounts)로 이동한다', async ({ page }) => {
-    // 1. 앱 최초 실행 - Home 페이지에서 파일 생성 다이얼로그 열기
-    await expect(page.getByRole('button', { name: '파일 생성' })).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    
-    // 2. 파일 생성 다이얼로그 확인 (role="dialog"인 div)
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('heading', { name: '새 파일 생성' })).toBeVisible();
-    
-    // 3. 파일 이름 입력
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-vault');
-    
-    // 4. 암호화 체크박스 확인 (기본값이 true)
-    const encryptedCheckbox = page.getByRole('dialog').locator('input[type="checkbox"]');
-    await expect(encryptedCheckbox).toBeChecked();
-    
-    // 5. PIN 입력
-    const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
+  test('암호화 볼트 생성 2단계 흐름', async ({ page }) => {
+    // 1. Home에서 "파일 생성" 클릭 → /create-vault 페이지로 이동
+    await page.getByTestId('create-vault-link').click();
+    await page.waitForURL('**/create-vault', { timeout: 10000 });
+
+    // 2. Stepper 1단계 표시 확인
+    await expect(page.getByTestId('create-vault-stepper')).toBeVisible();
+    const stepper = page.getByTestId('create-vault-stepper');
+    await expect(stepper.getByText('이름')).toBeVisible();
+    await expect(stepper.getByText('PIN')).toBeVisible();
+
+    // 3. Step 1: 파일 이름 입력
+    const nameInput = page.getByTestId('create-vault-name-input');
+    await expect(nameInput).toBeVisible();
+    await nameInput.fill('test-vault');
+
+    // 4. "다음" 버튼 클릭
+    await page.getByTestId('create-vault-next').click();
+
+    // 5. Step 2: PIN 입력 필드 표시
+    const pinInput = page.getByTestId('create-vault-pin-input');
     await expect(pinInput).toBeVisible();
     await pinInput.fill(TEST_PIN);
-    
-    // 6. 생성 버튼 클릭
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-    
-    // 7. 암호화 볼트 최초 생성 시 바로 /accounts로 이동 (세션이 이미 설정되어 있음)
+
+    // 6. Step 2에 파일명 표시 확인 (D3-a)
+    await expect(page.getByTestId('create-vault-target-name')).toContainText(
+      'test-vault.json',
+    );
+
+    // 7. "생성" 버튼 클릭
+    await page.getByTestId('create-vault-submit').click();
+
+    // 8. /accounts로 이동 확인
     await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
-    
-    // 9. 계정 리스트 페이지 확인 (테스트 모드에서는 빈 리스트)
-    const accountListContainer = page.locator('section.min-h-svh').first();
-    await expect(accountListContainer).toBeVisible({ timeout: 5000 });
-    
-    // 10. 계정 리스트가 비어있음 (dev 계정 생성 안 함)
-    const accountItems = page.locator('article[role="button"]');
-    await expect(await accountItems.count()).toBe(0);
+    await expect(page).toHaveURL(/\/accounts$/);
   });
 
-  test('비암호화 볼트 생성 시 PIN 없이 바로 계정 리스트로 이동', async ({ page }) => {
-    // 파일 생성 다이얼로그 열기
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('heading', { name: '새 파일 생성' })).toBeVisible();
-    
-    // 파일 이름 입력
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-vault-unencrypted');
-    
-    // 암호화 체크박스 해제
-    const encryptedCheckbox = page.getByRole('dialog').locator('input[type="checkbox"]');
-    await expect(encryptedCheckbox).toBeChecked();
-    await encryptedCheckbox.uncheck();
-    
-    // PIN 입력 필드가 사라져야 함
-    await expect(page.getByRole('dialog').locator('input[type="password"]')).not.toBeVisible({ timeout: 5000 });
-    
-    // 생성 버튼 클릭
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-    
-    // 바로 /accounts로 이동 (인증 페이지 거치지 않음)
-    await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
-    
-    // 계정 리스트 페이지 확인
-    const accountListContainer = page.locator('section.min-h-svh').first();
-    await expect(accountListContainer).toBeVisible({ timeout: 5000 });
+  test('이전 버튼 + PIN 클리어 (Q17-b)', async ({ page }) => {
+    // Step 1 → Step 2
+    await page.getByTestId('create-vault-link').click();
+    await page.getByTestId('create-vault-name-input').fill('test-back');
+    await page.getByTestId('create-vault-next').click();
+
+    // PIN 입력
+    const pinInput = page.getByTestId('create-vault-pin-input');
+    await pinInput.fill('1234');
+
+    // "이전" 클릭 → Step 1
+    await page.getByTestId('create-vault-back').click();
+
+    // 파일명 유지, Step 1으로 돌아옴
+    await expect(page.getByTestId('create-vault-name-input')).toHaveValue('test-back');
+
+    // 다시 Step 2로
+    await page.getByTestId('create-vault-next').click();
+
+    // PIN이 클리어되었는지 확인
+    await expect(page.getByTestId('create-vault-pin-input')).toHaveValue('');
   });
 
-  test('잘못된 PIN으로 암호화 볼트 열기 시도 시 에러 발생', async ({ page }) => {
-    // 1. 암호화 볼트 생성
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-vault-wrong-pin');
-    
-    const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-    await expect(pinInput).toBeVisible();
-    await pinInput.fill(TEST_PIN);
-    
-    await page.getByRole('dialog').getByRole('button', { name: '생성' }).click();
-    
-    // 2. 바로 /accounts로 이동 확인 (최초 생성 시)
-    await page.waitForURL('**/accounts', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
-    
-    // 3. 페이지 새로고침 (cryptoKey는 localStorage에 persist되지 않으므로 /auth로 이동)
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    
-    // 4. 세션의 cryptoKey가 없어서 /auth로 리다이렉트됨 (보안상 올바른 동작)
-    await page.waitForURL('**/auth', { timeout: 10000 });
-    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('PIN 번호', { exact: true })).toBeVisible();
-    
-    // 5. 잘못된 PIN 입력 시 에러 메시지
-    await page.fill('input[type="password"]', 'wrong-pin');
-    await page.getByRole('button', { name: '확인' }).click();
-    
-    // 에러 메시지 표시 확인 (catch 블록에서 "PIN verification failed"로 감싸서 표시됨)
-    await expect(page.locator('[role="alert"]').filter({ hasText: 'PIN 불일치' })).toBeVisible({ timeout: 5000 });
+  test('빈 파일명: 다음 버튼 enabled, 누르면 defaultValue 적용', async ({ page }) => {
+    await page.getByTestId('create-vault-link').click();
+
+    // 입력 비움 — 다음 버튼은 enabled (defaultValue로 채움)
+    const nextButton = page.getByTestId('create-vault-next');
+    await expect(nextButton).toBeEnabled();
+
+    // 에러 메시지 visible하지 않음
+    await expect(page.getByTestId('create-vault-name-error')).not.toBeVisible();
+
+    // 다음 클릭 → Step 2로 이동
+    await nextButton.click();
+    await expect(page).toHaveURL(/\/create-vault/);
+    // Step 2의 target name이 defaultValue "my-accounts"로 설정됨
+    await expect(page.getByTestId('create-vault-target-name')).toContainText(
+      'my-accounts.json',
+    );
   });
 
-  test('PIN 입력 없이 암호화 볼트 생성 시도 시 에러 메시지', async ({ page }) => {
-    // 파일 생성 다이얼로그 열기
-    await page.getByRole('button', { name: '파일 생성' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-    
-    // 파일 이름 입력
-    const fileNameInput = page.getByRole('dialog').locator('input[type="text"], input:not([type="password"]):not([type="checkbox"])').first();
-    await expect(fileNameInput).toBeVisible();
-    await fileNameInput.fill('test-vault-no-pin');
-    
-    // PIN 입력하지 않음 (암호화 체크된 상태)
-    // 생성 버튼이 비활성화되어 있어야 함
-    const createButton = page.getByRole('dialog').getByRole('button', { name: '생성' });
-    await expect(createButton).toBeDisabled();
-    
-    // PIN 입력 후 버튼 활성화 확인
-    const pinInput = page.getByRole('dialog').locator('input[type="password"]').first();
-    await expect(pinInput).toBeVisible();
-    await pinInput.fill(TEST_PIN);
-    await expect(createButton).toBeEnabled();
+  test('위험 문자: 인라인 에러 + 다음 버튼 disabled (Q11-c, Q12-a)', async ({ page }) => {
+    await page.getByTestId('create-vault-link').click();
+    const nameInput = page.getByTestId('create-vault-name-input');
+    await nameInput.fill('test/file');
+
+    // 에러 메시지 visible
+    await expect(page.getByTestId('create-vault-name-error')).toBeVisible();
+    await expect(page.getByTestId('create-vault-name-error')).toContainText(
+      '문자를 사용할 수 없습니다',
+    );
+
+    // 다음 버튼 disabled
+    await expect(page.getByTestId('create-vault-next')).toBeDisabled();
+  });
+
+  test('길이 초과 (51자): 인라인 에러 + 다음 버튼 disabled', async ({ page }) => {
+    await page.getByTestId('create-vault-link').click();
+    const nameInput = page.getByTestId('create-vault-name-input');
+    await nameInput.fill('a'.repeat(51));
+
+    await expect(page.getByTestId('create-vault-name-error')).toBeVisible();
+    await expect(page.getByTestId('create-vault-name-error')).toContainText(
+      '50자 이하',
+    );
+    await expect(page.getByTestId('create-vault-next')).toBeDisabled();
+  });
+
+  test('입력 수정 시 에러 자동 클리어 (Q16-a)', async ({ page }) => {
+    await page.getByTestId('create-vault-link').click();
+    const nameInput = page.getByTestId('create-vault-name-input');
+    await nameInput.fill('test/bad');
+
+    // 에러 visible
+    await expect(page.getByTestId('create-vault-name-error')).toBeVisible();
+
+    // 정상 문자로 수정
+    await nameInput.fill('test-good');
+
+    // 에러 사라짐
+    await expect(page.getByTestId('create-vault-name-error')).not.toBeVisible();
+    // 다음 버튼 활성화
+    await expect(page.getByTestId('create-vault-next')).toBeEnabled();
+  });
+
+  test('PIN 4자 미만: 생성 버튼 disabled (Q13-b, Q14-1)', async ({ page }) => {
+    await page.getByTestId('create-vault-link').click();
+    await page.getByTestId('create-vault-name-input').fill('test-pin');
+    await page.getByTestId('create-vault-next').click();
+
+    const pinInput = page.getByTestId('create-vault-pin-input');
+    await pinInput.fill('123'); // 3자
+
+    await expect(page.getByTestId('create-vault-submit')).toBeDisabled();
+  });
+
+  test('취소: 홈으로 버튼 (←) → / 이동', async ({ page }) => {
+    await page.getByTestId('create-vault-link').click();
+    await page.waitForURL('**/create-vault');
+
+    // ← 버튼 클릭
+    await page.getByRole('button', { name: '홈으로' }).click();
+    await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
   });
 });

@@ -207,4 +207,57 @@ describe("FileCreateDialog - Component Tests", () => {
     fireEvent.click(screen.getByLabelText("닫기"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("PIN 3자리 입력 시 '생성' 버튼 disabled", () => {
+    render(
+      <FileCreateDialog
+        open={true}
+        title="파일 생성"
+        description="설명"
+        defaultValue="new.json"
+        confirmLabel="생성"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    const createBtn = screen.getByRole("button", { name: "생성" });
+    // 초기 상태: PIN 없음 → disabled
+    expect(createBtn).toBeDisabled();
+
+    // PIN input은 type="password"이고 라벨에 htmlFor 없음 → querySelector로 탐색
+    const pwdInputs = document.querySelectorAll('input[type="password"]');
+    expect(pwdInputs.length).toBeGreaterThanOrEqual(1);
+    const pin = pwdInputs[0] as HTMLInputElement;
+
+    // 3자리 입력 → 여전히 disabled (MIN=4 미만)
+    fireEvent.change(pin, { target: { value: "123" } });
+    expect(createBtn).toBeDisabled();
+
+    // 4자리 입력 → enabled
+    fireEvent.change(pin, { target: { value: "1234" } });
+    expect(createBtn).not.toBeDisabled();
+  });
+
+  it("암호화 비활성화 시 PIN 길이와 무관하게 '생성' 버튼 enabled", () => {
+    render(
+      <FileCreateDialog
+        open={true}
+        title="파일 생성"
+        description="설명"
+        defaultValue="new.json"
+        confirmLabel="생성"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    // 암호화 체크박스 해제
+    const checkbox = screen.getByRole("checkbox", { name: "파일 암호화 사용" });
+    fireEvent.click(checkbox);
+
+    const createBtn = screen.getByRole("button", { name: "생성" });
+    // PIN 없어도 (체크박스 해제 → PIN 입력 안 함) enabled
+    expect(createBtn).not.toBeDisabled();
+  });
 });

@@ -41,7 +41,7 @@ test.describe('수동 잠금 / 자동 잠금 (Manual Lock / Auto Lock)', () => {
       await page.waitForLoadState('networkidle');
 
       // 6. 계정 리스트 페이지 확인
-      const accountListContainer = page.locator('section.min-h-svh').first();
+      const accountListContainer = page.locator('main.min-h-svh').first();
       await expect(accountListContainer).toBeVisible({ timeout: 5000 });
     });
   });

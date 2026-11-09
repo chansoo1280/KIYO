@@ -50,7 +50,7 @@ test.describe('템플릿으로 계정 생성 (Template to Account)', () => {
     await page.waitForSelector('input[placeholder="항목 이름"]', { timeout: 15000 });
 
     // 4. 템플릿 기반 폼 자동 생성 확인 (4개 필드, 순서대로 표시)
-    const fieldEditors = page.locator('div.mt-3.space-y-3 > div.rounded-2xl.border').filter({ has: page.getByRole('button', { name: '삭제' }) });
+    const fieldEditors = page.locator('[data-testid="account-field-editor"]').filter({ has: page.getByRole('button', { name: '삭제' }) });
     await expect(fieldEditors).toHaveCount(4);
     await expect(fieldEditors.nth(0).locator('input[placeholder="항목 이름"]')).toHaveValue('카드번호');
     await expect(fieldEditors.nth(1).locator('input[placeholder="항목 이름"]')).toHaveValue('만료일');
@@ -74,7 +74,7 @@ test.describe('템플릿으로 계정 생성 (Template to Account)', () => {
     await page.waitForLoadState('networkidle');
 
     // 6. 리스트로 돌아가서 계정 확인
-    await page.getByRole('button', { name: '← 뒤로 가기' }).click();
+    await page.getByRole('button', { name: '뒤로 가기' }).click();
     await page.waitForURL('**/accounts', { timeout: 5000 });
     await page.waitForLoadState('networkidle');
     await accountListPage.expectAccountCount(1);

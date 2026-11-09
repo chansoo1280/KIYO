@@ -1,14 +1,20 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import type { Account, AccountField } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
+import { mapError } from "@/utils/mapError";
+import { BackButton } from "@/components/BackButton";
+import { SaveButton } from "@/components/SaveButton";
+import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 import { AccountTitleSection } from "./components/AccountTitleSection";
 import { AccountFieldsSection } from "./components/AccountFieldsSection";
 import WebsiteSelector from "./components/WebsiteSelector";
 import { PasswordGenerator } from "./components/PasswordGenerator";
+import ErrorMessage from "@/components/feedback/ErrorMessage";
 
 const AccountEdit = () => {
   const navigate = useNavigate();
@@ -18,20 +24,13 @@ const AccountEdit = () => {
   const updateAccount = useAccountStore((state) => state.updateAccount);
   const addAccount = useAccountStore((state) => state.addAccount);
   const templates = useTemplateStore((state) => state.templates);
-  const loadTemplates = useTemplateStore((state) => state.loadTemplates);
+  // loadTemplates selector 제거 — Q16: sessionStore.initialized로 단일화
 
   const templateIdFromState = location.state?.templateId as string | undefined;
   const isNew = !accountId;
 
   // 파일/인증 상태 체크 (훅으로 분리)
-  useFileAuthGuard({ skipRedirect: false });
-
-  // Load templates when templateId comes from state
-  useEffect(() => {
-    if (templateIdFromState) {
-      loadTemplates();
-    }
-  }, [templateIdFromState, loadTemplates]);
+  useFileAuthGuard();
 
   // Get stored account
   const storedAccount = useAccountStore((state) =>
@@ -109,6 +108,8 @@ const AccountEdit = () => {
   const [selectedPreset, setSelectedPreset] = useState<
     import("@/models/websitePreset").WebsitePreset | null
   >(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const tagInput = useMemo(() => tags.join(", "), [tags]);
 
@@ -205,13 +206,20 @@ const AccountEdit = () => {
 
     let savedAccount = updatedAccount;
 
-    if (isNew) {
-      savedAccount = await addAccount(updatedAccount);
-    } else {
-      await updateAccount(updatedAccount);
-    }
+    setIsSaving(true);
+    try {
+      if (isNew) {
+        savedAccount = await addAccount(updatedAccount);
+      } else {
+        await updateAccount(updatedAccount);
+      }
 
-    navigate(`/accounts/${savedAccount.id}`);
+      navigate(`/accounts/${savedAccount.id}`);
+    } catch (err) {
+      setSaveError(mapError(err));
+    } finally {
+      setIsSaving(false);
+    }
   }, [
     fields,
     title,
@@ -227,23 +235,24 @@ const AccountEdit = () => {
   ]);
 
   return (
-    <section className="min-h-svh bg-[var(--color-bg)] px-5 py-8">
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm"
-        >
-          ← 취소
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-        >
-          저장
-        </button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title={isNew ? "새 계정" : "계정 수정"}
+        leftActions={
+          <BackButton
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+          />
+        }
+        actions={
+          <SaveButton
+            onClick={handleSave}
+            loading={isSaving}
+          />
+        }
+      />
+
+      <ErrorMessage items={saveError} testId="account-edit-error" />
 
       <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
         <AccountTitleSection
@@ -285,7 +294,7 @@ const AccountEdit = () => {
         onClose={() => setPasswordGeneratorOpen(null)}
         onApply={handlePasswordGenerated}
       />
-    </section>
+    </PageShell>
   );
 };
 

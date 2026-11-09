@@ -109,7 +109,7 @@ test.describe('비밀번호 생성기 (Password Generator)', () => {
     await page.waitForLoadState('networkidle');
 
     // 리스트로 돌아가기
-    await page.getByRole('button', { name: '← 뒤로 가기' }).click();
+    await page.getByRole('button', { name: '뒤로 가기' }).click();
     await page.waitForURL('**/accounts', { timeout: 5000 });
     await page.waitForLoadState('networkidle');
 

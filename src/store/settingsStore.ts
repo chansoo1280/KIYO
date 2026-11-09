@@ -10,16 +10,16 @@ export interface SettingsState {
   autoLockTimeout: AutoLockTimeout;
   biometricEnabled: boolean;
   autofillEnabled: boolean;
+  autoBackupEnabled: boolean;
+  autoBackupUri: string | null;
   setTheme: (theme: "light" | "dark") => Promise<void>;
   toggleTheme: () => Promise<void>;
   setFontSize: (fontSize: FontSize) => Promise<void>;
   setAutoLockTimeout: (timeout: AutoLockTimeout) => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
   setAutofillEnabled: (enabled: boolean) => Promise<void>;
-  initializeTheme: () => Promise<void>;
-  initializeFontSize: () => Promise<void>;
-  initializeAutoLockTimeout: () => Promise<void>;
-  initializeAutofillEnabled: () => Promise<void>;
+  setAutoBackupEnabled: (enabled: boolean) => Promise<void>;
+  setAutoBackupUri: (uri: string | null) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -31,6 +31,8 @@ export const useSettingsStore = create<SettingsState>()(
         autoLockTimeout: "none" as AutoLockTimeout,
         biometricEnabled: false,
         autofillEnabled: false,
+        autoBackupEnabled: false,
+        autoBackupUri: null,
 
         setTheme: async (theme: "light" | "dark") => {
           set({ theme });
@@ -77,52 +79,46 @@ export const useSettingsStore = create<SettingsState>()(
           set({ autofillEnabled: enabled });
         },
 
-        initializeTheme: async () => {
-          // Theme is loaded from localStorage via zustand persist middleware
-          const theme = get().theme;
-          // Apply theme to document
-          if (theme === "dark") {
-            document.documentElement.classList.add("dark");
-            document.documentElement.classList.remove("light");
-          } else {
-            document.documentElement.classList.add("light");
-            document.documentElement.classList.remove("dark");
-          }
+        setAutoBackupEnabled: async (enabled: boolean) => {
+          set({ autoBackupEnabled: enabled });
         },
 
-        initializeFontSize: async () => {
-          // Font size is loaded from localStorage via zustand persist middleware
-          const fontSize = get().fontSize;
-          // Apply font size to document
-          const fontSizeClass =
-            fontSize === "small" ? "sm" : fontSize === "medium" ? "base" : "lg";
-          document.documentElement.classList.remove(
-            "text-size-sm",
-            "text-size-base",
-            "text-size-lg",
-          );
-          document.documentElement.classList.add(`text-size-${fontSizeClass}`);
-        },
-
-        initializeAutoLockTimeout: async () => {
-          // Auto lock timeout is loaded from localStorage via zustand persist middleware
-          // No side effects needed, just ensure it's loaded
-        },
-
-        initializeAutofillEnabled: async () => {
-          // Autofill enabled is loaded from localStorage via zustand persist middleware
-          // No side effects needed, just ensure it's loaded
+        setAutoBackupUri: async (uri: string | null) => {
+          set({ autoBackupUri: uri });
         },
       }),
       {
         name: "kiyo-settings",
         storage: createJSONStorage(() => localStorage),
+        onRehydrateStorage: () => (state) => {
+          // persist hydrate 직후 1회 호출 — <html>에 font-size 클래스 적용
+          // App.tsx의 useEffect initializeFontSize() 이관 (Plan-D PR 1)
+          if (state) {
+            const fontSize = state.fontSize;
+            const fontSizeClass =
+              fontSize === "small"
+                ? "sm"
+                : fontSize === "medium"
+                  ? "base"
+                  : "lg";
+            document.documentElement.classList.remove(
+              "text-size-sm",
+              "text-size-base",
+              "text-size-lg",
+            );
+            document.documentElement.classList.add(
+              `text-size-${fontSizeClass}`,
+            );
+          }
+        },
         partialize: (state) => ({
           theme: state.theme,
           fontSize: state.fontSize,
           autoLockTimeout: state.autoLockTimeout,
           biometricEnabled: state.biometricEnabled,
           autofillEnabled: state.autofillEnabled,
+          autoBackupEnabled: state.autoBackupEnabled,
+          autoBackupUri: state.autoBackupUri,
         }),
       },
     ),

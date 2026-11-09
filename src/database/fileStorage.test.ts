@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { normalizeDataFileName } from "@/database/fileExport";
 import { isKiyoFile } from "@/database/fileStorage";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
@@ -6,6 +6,25 @@ import {
   createTestKiyoDataFile,
   createTestEncryptedFile,
 } from "@/test/fixtures/databaseFixtures";
+
+// Mock Capacitor globally for these tests
+vi.mock("@capacitor/core", () => ({
+  Capacitor: {
+    isNativePlatform: vi.fn(() => false),
+  },
+}));
+
+vi.mock("@/plugins/kiyofile", () => ({
+  KiyoFile: {
+    pickBackupFolder: vi.fn(),
+    writeToUri: vi.fn(),
+    readFromUri: vi.fn(),
+  },
+}));
+
+import { Capacitor } from "@capacitor/core";
+import { KiyoFile } from "@/plugins/kiyofile";
+import { pickBackupFolder, writeBackupToUri } from "@/database/fileExport";
 
 describe("fileStorage - pure functions", () => {
   describe("normalizeDataFileName", () => {
@@ -309,6 +328,118 @@ describe("fileStorage - pure functions", () => {
         });
         expect(isEncryptedKiyoVaultData(validFile)).toBe(true);
       });
+    });
+  });
+});
+
+describe("fileExport - SAF auto-backup functions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("pickBackupFolder", () => {
+    it("네이티브가 아니면 success: false 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+      const result = await pickBackupFolder();
+      expect(result).toEqual({ success: false });
+    });
+
+    it("native일 때 cancelled면 success: false 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      vi.mocked(KiyoFile.pickBackupFolder).mockResolvedValue({
+        success: false,
+        cancelled: true,
+      });
+
+      const result = await pickBackupFolder();
+      expect(result).toEqual({ success: false });
+    });
+
+    it("native일 때 성공하면 uri 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      const testUri = "content://com.android.externalstorage.documents/tree/test%3Abackup";
+      vi.mocked(KiyoFile.pickBackupFolder).mockResolvedValue({
+        success: true,
+        uri: testUri,
+        cancelled: false,
+      });
+
+      const result = await pickBackupFolder();
+      expect(result).toEqual({ success: true, uri: testUri });
+    });
+
+    it("예외 발생 시 success: false 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      vi.mocked(KiyoFile.pickBackupFolder).mockRejectedValue(new Error("Native error"));
+
+      const result = await pickBackupFolder();
+      expect(result).toEqual({ success: false });
+    });
+  });
+
+  describe("writeBackupToUri", () => {
+    const testData = { version: 1 as const, fileName: "test.json", updatedAt: Date.now(), accounts: [], templates: [], metadata: [] };
+
+    it("네이티브가 아니면 에러 코드와 함께 false 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+      const result = await writeBackupToUri("test://uri", testData);
+      expect(result).toEqual({
+        success: false,
+        errorCode: "WEB_UNSUPPORTED",
+        errorMessage: "Persistent URI not available on web",
+      });
+    });
+
+    it("native일 때 성공하면 success: true 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      vi.mocked(KiyoFile.writeToUri).mockResolvedValue({
+        success: true,
+      });
+
+      const result = await writeBackupToUri("content://test/uri", testData);
+      expect(result).toEqual({ success: true });
+    });
+
+    it("native일 때 PERMISSION_REVOKED 에러 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      vi.mocked(KiyoFile.writeToUri).mockResolvedValue({
+        success: false,
+        errorCode: "PERMISSION_REVOKED",
+        errorMessage: "Permission revoked",
+      });
+
+      const result = await writeBackupToUri("content://test/uri", testData);
+      expect(result).toEqual({
+        success: false,
+        errorCode: "PERMISSION_REVOKED",
+        errorMessage: "Permission revoked",
+      });
+    });
+
+    it("native일 때 WRITE_FAILED 에러 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      vi.mocked(KiyoFile.writeToUri).mockResolvedValue({
+        success: false,
+        errorCode: "WRITE_FAILED",
+        errorMessage: "Write failed",
+      });
+
+      const result = await writeBackupToUri("content://test/uri", testData);
+      expect(result).toEqual({
+        success: false,
+        errorCode: "WRITE_FAILED",
+        errorMessage: "Write failed",
+      });
+    });
+
+    it("예외 발생 시 EXCEPTION 에러 코드 반환", async () => {
+      vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+      vi.mocked(KiyoFile.writeToUri).mockRejectedValue(new Error("Native exception"));
+
+      const result = await writeBackupToUri("content://test/uri", testData);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe("EXCEPTION");
+      expect(result.errorMessage).toBe("Native exception");
     });
   });
 });

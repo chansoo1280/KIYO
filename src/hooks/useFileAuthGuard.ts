@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { fileTable } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
+import { activatePlaintextVault } from "@/database/fileStorage";
 
 export interface FileAuthStatus {
   activeFileName: string | null;
@@ -9,39 +10,44 @@ export interface FileAuthStatus {
   cryptoKey: CryptoKey | null;
 }
 
-export function useFileAuthGuard(options: {
-  onNoFile?: () => void;
-  onLocked?: () => void;
-  skipRedirect?: boolean;
-} = {}) {
+/**
+ * 파일/인증 상태를 확인하고 다음 분기로 라우팅하는 가드.
+ *
+ * 분기:
+ *   - activeFileName 없음        → / 리다이렉트
+ *   - activeFileName 있고 encrypted && cryptoKey 없음 → /auth 리다이렉트
+ *   - 통과 (activeFileName 있고 (plaintext || cryptoKey 있음))
+ */
+export function useFileAuthGuard() {
   const navigate = useNavigate();
-  const { onNoFile, onLocked, skipRedirect = false } = options;
 
   useEffect(() => {
     let mounted = true;
 
     const checkFileAndNavigate = async () => {
       try {
-        const { activeFileName, encrypted } = await fileTable.getActiveFileInfo();
+        const sessionActiveFileName = useSessionStore.getState().activeFileName;
         const { cryptoKey } = useSessionStore.getState();
 
         if (!mounted) return;
 
-        if (!activeFileName) {
-          onNoFile?.();
-          if (!skipRedirect) {
-            navigate("/", { replace: true });
-          }
-          return;
-        } else if (encrypted && !cryptoKey) {
-          onLocked?.();
-          if (!skipRedirect) {
-            navigate("/auth", { replace: true });
-          }
+        if (!sessionActiveFileName) {
+          navigate("/", { replace: true });
           return;
         }
+        const { encrypted } = await fileTable.getFileInfo(sessionActiveFileName);
+        if (!mounted) return; // unmount 후 결과 도착 시 navigate 방지
+        if (encrypted) {
+          if(!cryptoKey) {
+            navigate("/auth", { replace: true });
+            return;
+          }
+        } else {
+          await activatePlaintextVault(sessionActiveFileName);
+        }
+          
       } catch (error) {
-        console.error("useFileAuthGuard: getActiveFileInfo failed:", error instanceof Error ? error.message : String(error), error);
+        console.error("useFileAuthGuard: getFileInfo failed:", error instanceof Error ? error.message : String(error), error);
         // Error is handled gracefully - don't redirect
       }
     };
@@ -51,5 +57,5 @@ export function useFileAuthGuard(options: {
     return () => {
       mounted = false;
     };
-  }, [navigate, onNoFile, onLocked, skipRedirect]);
+  }, [navigate]);
 }

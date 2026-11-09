@@ -2,12 +2,15 @@ import { useState } from "react";
 import { FormDialog } from "@/components/dialogs/FormDialog";
 import { fileTable } from "@/database/fileTable";
 import { verifyPin } from "@/crypto/encryption";
+import PinStrengthMeter from "@/components/inputs/PinStrengthMeter";
+import { Input } from "@/components/inputs";
 
 interface PinChangeDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (newPin: string) => Promise<void>;
   isEncrypted?: boolean;
+  fileName: string;
 }
 
 export const PinChangeDialog = ({
@@ -15,6 +18,7 @@ export const PinChangeDialog = ({
   onClose,
   onConfirm,
   isEncrypted = true,
+  fileName,
 }: PinChangeDialogProps) => {
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -39,12 +43,8 @@ export const PinChangeDialog = ({
       throw new Error("새 PIN을 입력하세요.");
     }
 
-    if (newPin.length < 4 || newPin.length > 6) {
-      throw new Error("PIN은 4~6자리 숫자여야 합니다.");
-    }
-
-    if (!/^\d+$/.test(newPin)) {
-      throw new Error("PIN은 숫자만 입력 가능합니다.");
+    if (newPin.length < 4 || newPin.length > 20) {
+      throw new Error("PIN은 4~20자로 입력해 주세요.");
     }
 
     if (newPin !== confirmPin) {
@@ -56,7 +56,7 @@ export const PinChangeDialog = ({
       throw new Error("현재 PIN과 다른 PIN을 입력하세요.");
     }
 
-    const { fileData } = await fileTable.getActiveFileInfo();
+    const { fileData } = await fileTable.getFileInfo(fileName);
     if (!fileData) {
       throw new Error("활성 데이터 파일이 없습니다.");
     }
@@ -90,12 +90,12 @@ export const PinChangeDialog = ({
             >
               현재 PIN
             </label>
-            <input
+            <Input
               id="currentPin"
               type="password"
               value={currentPin}
               onChange={(e) => setCurrentPin(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+              className="mt-1"
               placeholder="현재 PIN 입력"
               autoFocus
             />
@@ -109,20 +109,21 @@ export const PinChangeDialog = ({
           >
             {isEncrypted ? "새 PIN" : "PIN"}
           </label>
-          <input
+          <Input
             id="newPin"
             type="password"
             value={newPin}
             onChange={(e) => setNewPin(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+            className="mt-1"
             placeholder={
               isEncrypted
-                ? "새 PIN 입력 (4~6자리 숫자)"
-                : "PIN 입력 (4~6자리 숫자)"
+                ? "새 PIN 입력 (4~20자)"
+                : "PIN 입력 (4~20자)"
             }
-            maxLength={6}
+            maxLength={20}
             autoFocus={!isEncrypted}
           />
+          <PinStrengthMeter pin={newPin} className="mt-2" />
         </div>
 
         <div>
@@ -132,14 +133,14 @@ export const PinChangeDialog = ({
           >
             PIN 확인
           </label>
-          <input
+          <Input
             id="confirmPin"
             type="password"
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+            className="mt-1"
             placeholder={isEncrypted ? "새 PIN 재입력" : "PIN 재입력"}
-            maxLength={6}
+            maxLength={20}
           />
         </div>
       </div>

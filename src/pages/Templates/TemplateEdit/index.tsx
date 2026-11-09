@@ -1,23 +1,34 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Button from "@/components/Button";
+import { BackButton } from "@/components/BackButton";
+import { DeleteButton } from "@/components/DeleteButton";
+import { SaveButton } from "@/components/SaveButton";
+import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 import { useTemplateStore } from "@/store/templateStore";
 import type { Template, TemplateField } from "@/models/template";
+import { mapError } from "@/utils/mapError";
+import { Input } from "@/components/inputs";
 import IconPicker from "./components/IconPicker";
 import { TemplateFieldEditor } from "./components/TemplateFieldEditor";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
+import ErrorMessage from "@/components/feedback/ErrorMessage";
 
 const TemplateEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
-  const { templates, initialized, loadTemplates, createTemplate, updateTemplate, deleteTemplate, getTemplate } =
+  // PR 1: initialized/loadTemplates 제거 → useSessionStore.initialized로 통합
+  // createTemplate → addTemplate (PR 1: store API 이름 일관성)
+  const { templates, addTemplate, updateTemplate, deleteTemplate, getTemplate } =
     useTemplateStore();
 
   const [form, setForm] = useState<
     Omit<Template, "id" | "createdAt" | "updatedAt">
   >(() => {
-    // Lazy initializer: derive initial form from template if editing and template is already loaded
-    if (isEdit && id && initialized) {
+    // Lazy initializer: derive initial form from template if editing
+    if (isEdit && id) {
       const template = getTemplate(id);
       if (template) {
         return {
@@ -40,12 +51,7 @@ const TemplateEdit = () => {
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  useEffect(() => {
-    if (!initialized) {
-      loadTemplates();
-    }
-  }, [initialized, loadTemplates]);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
@@ -81,12 +87,12 @@ const TemplateEdit = () => {
       if (isEdit && id) {
         await updateTemplate(id, form);
       } else {
-        await createTemplate(form);
+        await addTemplate(form);
       }
       navigate("/templates");
     } catch (error) {
       console.error("템플릿 저장 실패:", error instanceof Error ? error.message : String(error), error);
-      setErrors(["템플릿 저장에 실패했습니다."]);
+      setErrors([mapError(error)]);
     }
   };
 
@@ -151,55 +157,43 @@ const TemplateEdit = () => {
 
   const handleDelete = async () => {
     if (!isEdit || !id) return;
-    await deleteTemplate(id);
-    navigate("/templates");
+    try {
+      await deleteTemplate(id);
+      setDeleteError(null);
+      setShowDeleteConfirm(false);
+      navigate("/templates");
+    } catch (err) {
+      // 모달을 닫지 않고 에러만 표시 (Plan-A1 결정)
+      setDeleteError(mapError(err));
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteError(null);
     setShowDeleteConfirm(false);
   };
 
   return (
     <>
-      <main className="min-h-svh bg-[var(--color-bg)] px-5 py-8 pb-28">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <header className="flex items-center justify-between gap-3">
-            <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">
-              {isEdit ? "템플릿 수정" : "새 템플릿"}
-            </h1>
-            <div className="flex items-center gap-2">
+      <PageShell maxWidth="lg" withBottomTabs>
+        <PageHeader
+          title={isEdit ? "템플릿 수정" : "새 템플릿"}
+          leftActions={
+            <BackButton onClick={handleCancel} />
+          }
+          actions={
+            <div className="flex items-center gap-1">
               {isEdit && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--error)] shadow-sm hover:bg-[var(--error)]/10 dark:border-[var(--border)]/30"
-                >
-                  삭제
-                </button>
+                <DeleteButton onClick={() => setShowDeleteConfirm(true)} />
               )}
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-border)]"
-              >
-                취소
-              </button>
-              <button
-                type="button"
+              <SaveButton
                 onClick={handleSave}
-                className="rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-accent)]/80"
-              >
-                저장
-              </button>
+              />
             </div>
-          </header>
+          }
+        />
 
-          {errors.length > 0 && (
-            <div className="rounded-2xl border border-[var(--error)]/20 bg-[var(--error)]/10 p-4 dark:border-[var(--error)]/40 dark:bg-[var(--error)]/20">
-              <ul className="space-y-1 text-sm text-[var(--error)] dark:text-[var(--error)]">
-                {errors.map((err, i) => (
-                  <li key={i}>• {err}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ErrorMessage items={errors} testId="template-edit-error" />
 
           {/* 기본 정보 섹션 */}
           <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
@@ -207,28 +201,25 @@ const TemplateEdit = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  템플릿 이름
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="템플릿 이름"
+                  id="template-name"
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="예: 로그인, API 키, 신용카드"
-                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  설명 (선택)
-                </label>
-                <textarea
+                <Input
+                  label="설명 (선택)"
+                  id="template-description"
+                  as="textarea"
                   value={form.description}
                   onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="이 템플릿에 대한 설명을 입력하세요."
                   rows={2}
-                  className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)] resize-none"
+                  className="resize-none"
                 />
               </div>
 
@@ -248,19 +239,19 @@ const TemplateEdit = () => {
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-[var(--color-text-h)]">필드 정의</h2>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={addField}
-                className="rounded-xl bg-[var(--color-accent-bg)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
-              >
-                + 필드 추가
-              </button>
+                label="+ 필드 추가"
+              />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="template-field-editor-list">
               {form.fields.map((field, index) => (
                 <TemplateFieldEditor
                   key={`${index}-${field.label}`}
+                  testId="template-field-editor"
                   field={field}
                   index={index}
                   onChange={updateField}
@@ -272,17 +263,17 @@ const TemplateEdit = () => {
               ))}
             </div>
           </section>
-        </div>
-      </main>
+      </PageShell>
 
       <ConfirmDialog
         open={showDeleteConfirm}
         title="템플릿 삭제"
         message={"\"" + form.name + "\" 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
-        onClose={() => setShowDeleteConfirm(false)}
+        onClose={handleDeleteDialogClose}
         onConfirm={handleDelete}
         confirmLabel="삭제"
         variant="danger"
+        error={deleteError}
       />
     </>
   );

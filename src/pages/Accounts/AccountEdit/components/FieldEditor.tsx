@@ -1,12 +1,16 @@
-import { PasswordFieldEdit } from "./PasswordFieldEdit";
+import { Trash2 } from "lucide-react";
+import { PasswordField } from "@/components/PasswordField";
 import type { AccountField, FieldType } from "@/models/account";
 import { getFieldTypePlaceholder, FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
+import { Input } from "@/components/inputs";
 
 interface FieldEditorProps {
   field: AccountField;
   onUpdate: (id: string, patch: Partial<AccountField>) => void;
   onRemove: (id: string) => void;
   onGeneratePassword?: (fieldId: string) => void;
+  /** data-testid for e2e selector (Plan-X: E2E Selector Hardening) */
+  testId?: string;
 }
 
 export function FieldEditor({
@@ -14,6 +18,7 @@ export function FieldEditor({
   onUpdate,
   onRemove,
   onGeneratePassword,
+  testId,
 }: FieldEditorProps) {
   const handleTypeChange = (newType: FieldType) => {
     onUpdate(field.id, { type: newType, value: "" });
@@ -23,11 +28,12 @@ export function FieldEditor({
     switch (field.type) {
       case "textarea":
         return (
-          <textarea
+          <Input
+            as="textarea"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             rows={4}
             data-field-value="true"
           />
@@ -35,7 +41,8 @@ export function FieldEditor({
 
       case "password":
         return (
-          <PasswordFieldEdit
+          <PasswordField
+            mode="edit"
             value={field.value}
             onChange={(v) => onUpdate(field.id, { value: v })}
             onGenerate={onGeneratePassword ? () => onGeneratePassword(field.id) : undefined}
@@ -44,57 +51,58 @@ export function FieldEditor({
 
       case "email":
         return (
-          <input
+          <Input
             type="email"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             data-field-value="true"
           />
         );
 
       case "url":
         return (
-          <input
+          <Input
             type="url"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             data-field-value="true"
           />
         );
 
       case "number":
         return (
-          <input
+          <Input
             type="number"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             data-field-value="true"
           />
         );
 
       case "date":
         return (
-          <input
+          <Input
             type="date"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             data-field-value="true"
           />
         );
 
       case "select":
         return (
-          <select
+          <Input
+            as="select"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             data-field-value="true"
           >
             {(field.options || []).map((opt, idx) => (
@@ -102,17 +110,17 @@ export function FieldEditor({
                 {opt}
               </option>
             ))}
-          </select>
+          </Input>
         );
 
       case "totp":
         return (
-          <input
+          <Input
             type="text"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             maxLength={6}
             inputMode="numeric"
             data-field-value="true"
@@ -121,12 +129,12 @@ export function FieldEditor({
 
       default:
         return (
-          <input
+          <Input
             type="text"
             value={field.value}
             onChange={(e) => onUpdate(field.id, { value: e.target.value })}
             placeholder={getFieldTypePlaceholder(field.type)}
-            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            className="mt-2"
             data-field-value="true"
           />
         );
@@ -134,32 +142,33 @@ export function FieldEditor({
   };
 
   return (
-    <div key={field.id} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-3">
+    <div key={field.id} data-testid={testId} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-code-bg)] p-3">
       <div className="flex items-center justify-between gap-3">
-        <input
+        <Input
           value={field.label}
           onChange={(e) => onUpdate(field.id, { label: e.target.value })}
           placeholder="항목 이름"
-          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
         />
         <div className="flex items-center gap-2">
-          <select
+          <Input
+            as="select"
             value={field.type}
             onChange={(e) => handleTypeChange(e.target.value as FieldType)}
-            className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text-h)] outline-none focus:border-[var(--color-accent)]"
+            width="100px"
           >
             {FIELD_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
-          </select>
+          </Input>
           <button
             type="button"
             onClick={() => onRemove(field.id)}
-            className="rounded-full border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--error)] hover:bg-[var(--error)]/10 dark:border-[var(--border)]/30"
+            className="rounded-md border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--color-error)] hover:bg-[var(--color-error)]/10 dark:border-[var(--border)]/30"
+            aria-label="필드 삭제"
           >
-            삭제
+            <Trash2 size={16} strokeWidth={2} />
           </button>
         </div>
       </div>

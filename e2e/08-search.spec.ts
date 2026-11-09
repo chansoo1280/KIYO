@@ -23,7 +23,7 @@ async function fillDynamicField(page: import('@playwright/test').Page, labelText
     throw new Error(`Label input with text "${labelText}" not found`);
   }
 
-  const fieldContainer = targetLabelInput.locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+  const fieldContainer = targetLabelInput.locator('xpath=ancestor::*[@data-testid="account-field-editor"][1]');
 
   let valueInput: import('@playwright/test').Locator;
   if (labelText === '메모') {
@@ -74,7 +74,7 @@ async function createAccount(page: import('@playwright/test').Page, account: {
   await page.waitForLoadState('networkidle');
 
   // 리스트로 돌아가기
-  await page.getByRole('button', { name: '← 뒤로 가기' }).click();
+  await page.getByRole('button', { name: '뒤로 가기' }).click();
   await page.waitForURL('**/accounts', { timeout: 5000 });
   await page.waitForLoadState('networkidle');
 }

@@ -35,7 +35,8 @@ object TestDataFactory {
     /** 유니크한 볼트 파일명 생성 (암호화/비암호화 구분 가능) */
     fun uniqueVaultName(encrypted: Boolean = true): String {
         val prefix = if (encrypted) "e2e-vault-enc" else "e2e-vault-plain"
-        // .json 제외 - FileCreateDialog에서 자동으로 붙여줌 (input에는 순수 이름만 입력)
+        // .json 제외 - CreateVaultPage(NameStep.tsx)가 입력값에 자동 부여 (input에는 순수 이름만 입력)
+        // Plan-7a: 구 FileCreateDialog도 동일 동작 — pageobject 시그니처 무변경
         return "$prefix-${nextId()}"
     }
 

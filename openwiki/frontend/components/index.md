@@ -1,6 +1,6 @@
 # Files
 
-- [Frontend Components Overview](overview.md) - Overview of the reusable UI components in the KIYO frontend.
+- [Components Overview](overview.md) - Shared React UI components — Button, PageHeader, BottomTabs, dialogs, inputs, feedback, icons.
 
 # Directories
 
