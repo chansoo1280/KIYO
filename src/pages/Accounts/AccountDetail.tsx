@@ -7,8 +7,11 @@ import { FieldCard } from "@/components/FieldCard";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
+import { BackButton } from "@/components/BackButton";
+import { DeleteButton } from "@/components/DeleteButton";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
+import { PageHeader } from "@/components/PageHeader";
 
 const AccountDetail = () => {
   const navigate = useNavigate();
@@ -56,12 +59,7 @@ const AccountDetail = () => {
     return (
       <PageShell>
         <div className="flex justify-start">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            label="← 뒤로 가기"
-          />
+          <BackButton onClick={() => navigate(-1)} />
         </div>
         <p className="mt-4 text-[var(--color-text)]">계정 정보를 찾을 수 없습니다.</p>
       </PageShell>
@@ -96,35 +94,27 @@ const AccountDetail = () => {
   return (
     <>
       <PageShell>
-        <div className="flex items-center justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleBack}
-            label="← 뒤로 가기"
-          />
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => navigate(`/accounts/${account.id}/edit`)}
-              label="수정"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowDeleteConfirm(true)}
-              label="삭제"
-            />
-          </div>
-        </div>
+        <PageHeader
+          title={account.title}
+          leftActions={
+            <BackButton onClick={handleBack} />
+          }
+          actions={
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => navigate(`/accounts/${account.id}/edit`)}
+                label="수정"
+              />
+              <DeleteButton onClick={() => setShowDeleteConfirm(true)} />
+            </div>
+          }
+        />
 
         <article className="mt-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-semibold text-[var(--color-text-h)]">
-                {account.title}
-              </h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {account.tags.map((tag) => (
                   <span

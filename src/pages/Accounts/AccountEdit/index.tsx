@@ -6,7 +6,8 @@ import { useTemplateStore } from "@/store/templateStore";
 import { DEFAULT_TEMPLATE_FIELDS } from "@/models/template";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { mapError } from "@/utils/mapError";
-import Button from "@/components/Button";
+import { BackButton } from "@/components/BackButton";
+import { SaveButton } from "@/components/SaveButton";
 import { PageShell } from "@/components/PageShell";
 import { PageHeader } from "@/components/PageHeader";
 import { AccountTitleSection } from "./components/AccountTitleSection";
@@ -237,23 +238,17 @@ const AccountEdit = () => {
     <PageShell>
       <PageHeader
         title={isNew ? "새 계정" : "계정 수정"}
+        leftActions={
+          <BackButton
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+          />
+        }
         actions={
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              disabled={isSaving}
-              label="← 취소"
-            />
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleSave}
-              loading={isSaving}
-              label={isSaving ? "저장 중..." : "저장"}
-            />
-          </>
+          <SaveButton
+            onClick={handleSave}
+            loading={isSaving}
+          />
         }
       />
 

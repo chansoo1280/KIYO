@@ -30,7 +30,7 @@ interface SettingsRowProps {
 export function SettingsRow({ label, children }: SettingsRowProps) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
-      <div>{label}</div>
+      <div className="whitespace-nowrap">{label}</div>
       {children}
     </div>
   );

@@ -8,6 +8,7 @@ interface BaseProps {
   as?: "input" | "select" | "textarea";
   size?: InputSize;
   variant?: InputVariant;
+  width?: string;
   label?: string;
   /**
    * 호출처가 별도 <p id={errorId}> error 메시지를 렌더링할 때 사용.
@@ -32,7 +33,7 @@ const variantStyles: Record<InputVariant, string> = {
 };
 
 const baseStyles =
-  "w-full rounded-lg border outline-none transition focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed";
+  "rounded-lg border outline-none transition focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed";
 
 /**
  * 단순 union — input/select/textarea의 HTML props를 모두 union으로 결합.
@@ -48,8 +49,8 @@ type InputProps =
   & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size">;
 
 export const Input = forwardRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, InputProps>(
-  ({ as = "input", size = "md", variant = "default", label, errorId, helperText, className = "", ...rest }, ref) => {
-    const cn = `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;
+  ({ as = "input", size = "md", variant = "default", width, label, errorId, helperText, className = "", ...rest }, ref) => {
+    const cn = `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${width ? `w-[${width}]` : "w-full"} ${className}`;
 
     const ariaProps: Record<string, unknown> = {};
     if (variant === "error") {

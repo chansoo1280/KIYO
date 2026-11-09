@@ -95,7 +95,7 @@ export function AccountTitleSection({
             <button
               type="button"
               onClick={onClearSelection}
-              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)] transition-colors"
+              className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)] transition-colors"
               aria-label="선택 취소"
               title="선택 취소"
             >

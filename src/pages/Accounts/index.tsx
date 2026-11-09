@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Search, ArrowUp, ArrowDown, ArrowUpDown, Star, Plus, Copy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Account } from "@/models/account";
 import { useAccountStore } from "@/store/accountStore";
@@ -177,7 +178,7 @@ const AccountList = () => {
                 setShowSearch(!showSearch);
               }}
               className="!h-11 !w-11 !rounded-2xl !p-0 !text-lg"
-              label="🔍"
+              label={<Search className="h-5 w-5" />}
               aria-label="Search"
             />
             <Button
@@ -192,7 +193,14 @@ const AccountList = () => {
                 });
               }}
               className="!h-11 !w-11 !rounded-2xl !p-0 !text-lg"
-              label={sortOrder === "asc" ? "↑" : sortOrder === "desc" ? "↓" : "↕"}
+              label={
+                sortOrder === "asc" ? (
+                  <ArrowUp className="h-5 w-5" />
+                ) : sortOrder === "desc" ? (
+                  <ArrowDown className="h-5 w-5" />
+                ) : (
+                  <ArrowUpDown className="h-5 w-5" />
+                )}
               aria-label="Sort"
             />
           </div>
@@ -270,7 +278,7 @@ const AccountList = () => {
                       {account.title}
                     </p>
                     {account.favorite && (
-                      <span className="text-[var(--color-warning)] text-sm">★</span>
+                      <Star className="text-[var(--color-warning)] text-sm" />
                     )}
                   </div>
                   <p className="truncate text-sm text-[var(--color-text)]">
@@ -300,8 +308,8 @@ const AccountList = () => {
                   }
                 }}
                 className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-chip !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
-                label="복사"
-                aria-label="Copy password"
+                label={<Copy size={14} strokeWidth={2} />}
+                aria-label="비밀번호 복사"
               />
             </article>
           ))}
@@ -312,16 +320,16 @@ const AccountList = () => {
           type="button"
           variant="primary"
           onClick={() => setShowTemplatePicker(true)}
-          className="!h-14 !w-14 !rounded-full !bg-[var(--color-accent)] !text-white !shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:!bg-[var(--color-accent)]/80"
-          label="+"
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-accent)] !text-white !shadow-md hover:!bg-[var(--color-accent)]/80"
+          label={<Plus className="h-6 w-6" />}
           aria-label="Add account"
         />
         <Button
           type="button"
           variant="ghost"
           onClick={scrollToTop}
-          className="!h-14 !w-14 !rounded-full !bg-[var(--color-bg)] !text-xl !shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:!bg-[var(--color-code-bg)]"
-          label="⬆"
+          className="!h-14 !w-14 !rounded-full !bg-[var(--color-bg)] !text-xl !shadow-md hover:!bg-[var(--color-code-bg)]"
+          label={<ArrowUp className="h-6 w-6" />}
           aria-label="Scroll to top"
         />
       </div>

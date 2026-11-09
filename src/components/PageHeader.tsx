@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 interface PageHeaderProps {
   title: string;
   /**
+   * 제목 왼쪽에 표시할 액션 슬롯 (예: 뒤로가기/취소 아이콘 버튼).
+   */
+  leftActions?: ReactNode;
+  /**
    * 우측 actions 슬롯 (0~3 buttons 자유).
    *
    * 결정 사항:
@@ -25,9 +29,10 @@ interface PageHeaderProps {
  *
  * Home.tsx는 Plan-G2 범위 밖 (eyebrow/h1 인라인 유지). Settings/Templates/TemplateEdit/AccountEdit 4 호출처만 마이그레이션.
  */
-export function PageHeader({ title, actions }: PageHeaderProps) {
+export function PageHeader({ title, leftActions, actions }: PageHeaderProps) {
   return (
     <header className="flex items-center justify-between gap-3">
+      {leftActions}
       <h1 className="text-3xl font-semibold text-[var(--color-text-h)]">{title}</h1>
       {actions}
     </header>

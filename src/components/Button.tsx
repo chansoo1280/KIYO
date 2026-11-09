@@ -13,13 +13,13 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]/80",
+    "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]",
   secondary:
-    "bg-[var(--color-accent-bg)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 border border-[var(--color-accent-border)]",
+    "bg-[var(--color-accent-bg)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] border border-[var(--color-accent-border)]",
   ghost:
     "bg-transparent text-[var(--color-text-h)] hover:bg-[var(--color-code-bg)]",
   danger:
-    "bg-[var(--color-error)] text-white hover:bg-[var(--color-error)]/80 border border-[var(--color-error)]",
+    "bg-[var(--color-error)] text-white hover:bg-[var(--color-error)] border border-[var(--color-error)]",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -39,7 +39,7 @@ const Button = ({
   ...props
 }: ButtonProps) => {
   const baseStyles =
-    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2";
+    "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2";
 
   return (
     <button

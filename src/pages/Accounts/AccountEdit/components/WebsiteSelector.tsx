@@ -198,7 +198,7 @@ const WebsiteSelector = ({
                   key={preset.id}
                   type="button"
                   onClick={() => handleSearchResultSelect(preset, onSelect, onClose)}
-                  className="w-full text-left rounded-2xl border p-3 transition-all border-[var(--color-border)] bg-[var(--color-code-bg)] hover:bg-[var(--color-border)]"
+                  className="w-full text-left rounded-2xl border p-3 transition-colors border-[var(--color-border)] bg-[var(--color-code-bg)] hover:bg-[var(--color-border)]"
                 >
                   <div className="flex items-center gap-3">
                     <PresetIcon preset={preset} size={28} className="flex-shrink-0" />
@@ -241,7 +241,7 @@ const WebsiteSelector = ({
                         key={preset.id}
                         type="button"
                         onClick={() => handlePresetSelect(preset)}
-                        className={`w-full text-left rounded-2xl border p-3 transition-all ${
+                        className={`w-full text-left rounded-2xl border p-3 transition-colors ${
                           selectedPreset?.id === preset.id
                             ? "border-[var(--color-accent)] bg-[var(--color-accent-bg)]"
                             : "border-[var(--color-border)] bg-[var(--color-code-bg)] hover:bg-[var(--color-border)]"

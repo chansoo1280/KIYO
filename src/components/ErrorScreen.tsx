@@ -22,7 +22,7 @@ export function ErrorScreen(props: ErrorScreenProps) {
         className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] px-5 py-8 text-[var(--color-text)]"
       >
         <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-error-bg)] text-[var(--color-error)]">
+          <div className="grid h-12 w-12 place-items-center rounded-md bg-[var(--color-error-bg)] text-[var(--color-error)]">
             !
           </div>
           <h1 className="text-xl font-semibold text-[var(--color-text-h)]">
@@ -57,7 +57,7 @@ export function ErrorScreen(props: ErrorScreenProps) {
       className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] px-5 py-8 text-[var(--color-text)]"
     >
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-error-bg)] text-[var(--color-error)]">
+        <div className="grid h-12 w-12 place-items-center rounded-md bg-[var(--color-error-bg)] text-[var(--color-error)]">
           !
         </div>
         <h1 className="text-xl font-semibold text-[var(--color-text-h)]">
