@@ -315,6 +315,7 @@ class KiyoFilePlugin : Plugin() {
                         outputStream.write(data.toByteArray())
                     }
 
+                    Log.i(TAG, "writeToUri succeeded: $uriString")
                     call.resolve(JSObject().apply {
                         put("success", true)
                     })

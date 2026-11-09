@@ -6,7 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
+import com.kiyo.app.e2e.pageobjects.AccountEditPage
+import com.kiyo.app.e2e.pageobjects.AccountsPage
 import com.kiyo.app.e2e.pageobjects.SettingsPage
+import com.kiyo.app.e2e.testutil.DeviceOpsHelper
 import com.kiyo.app.e2e.testutil.E2EEnv
 import com.kiyo.app.e2e.testutil.NativeAuthPromptHandler
 import com.kiyo.app.e2e.testutil.TestDataFactory
@@ -171,7 +174,7 @@ class AutosaveE2ETest {
             settingsPage.navigateToSettings()
 
             // DataSection "자동 백업" 섹션이 렌더링됐는지 확인
-            if (!helper.waitForText("자동 백업", 5000)) {
+            if (!helper.waitForText("자동 백업", 2000)) {
                 throw AssertionError("'자동 백업' status text not found on Settings > Data")
             }
             Log.i(TAG, "$scenario: Settings > Data rendered, '자동 백업' status visible")
@@ -182,7 +185,7 @@ class AutosaveE2ETest {
             // best-effort: 첫 백업 success 메시지
             val sawFirstBackupMsg = helper.waitForText(
                 "자동 백업 위치가 설정되고 첫 백업이 완료되었습니다.",
-                8000,
+                3000,
             )
             val sawUriOnlyMsg = helper.waitForText(
                 "자동 백업 위치가 설정되었습니다.",
@@ -191,16 +194,52 @@ class AutosaveE2ETest {
             if (sawFirstBackupMsg || sawUriOnlyMsg) {
                 Log.i(TAG, "$scenario: success message displayed (firstBackup=$sawFirstBackupMsg uriOnly=$sawUriOnlyMsg)")
             } else {
-                Log.w(
-                    TAG,
-                    "$scenario: success message not displayed (firstBackup=$sawFirstBackupMsg uriOnly=$sawUriOnlyMsg). " +
-                        "Toggle ON is confirmed — backup write may have completed silently or message was dismissed by subsequent UI change.",
-                )
+                throw AssertionError("success message not displayed")
             }
             assertTrue(sawFirstBackupMsg || sawUriOnlyMsg)
             Log.i(TAG, "$scenario: enableAutoBackup success — PASS")
+
+            // ===== 추가: 자동백업 활성화 후 계정리스트로 이동 → 계정 생성 → 자동백업 호출 로그 확인 =====
+            // Settings 탭에서 계정 리스트(List) 탭으로 이동 (BottomTabs aria-label="List")
+            if (!helper.clickByAriaLabel("List", "bottom tabs list tab")) {
+                throw AssertionError("Could not navigate to accounts list (List tab not clickable)")
+            }
+            val accountsPage = AccountsPage(helper)
+            accountsPage.waitForLoad()
+            Log.i(TAG, "$scenario: navigated to accounts list — PASS")
+
+            // 새 계정 생성: + FAB → 기본 템플릿 → 폼 작성 → 저장
+            accountsPage.clickAddAccount()
+                .selectDefaultTemplate()
+                .fillAccount(
+                    AccountEditPage.AccountData(
+                        title = "AutoBackup Test Account",
+                        websiteUrl = "https://autobackup.example.com",
+                        username = "autobackup-user",
+                        password = "AutobackupPass123!",
+                    ),
+                )
+                .save()
+
+            Log.i(TAG, "$scenario: account created and saved — 'AutoBackup Test Account'")
+
+            // logcat에서 자동백업 호출( KiyoFilePlugin.writeToUri success ) 확인
+            val logcat = DeviceOpsHelper.readLogcat(1000)
+            val sawAutoBackupLog = logcat.contains("writeToUri succeeded")
+            if (!sawAutoBackupLog) {
+                Log.w(TAG, "$scenario: writeToUri succeeded log NOT found in recent logcat")
+                helper.dumpViewHierarchy("autosave_no_writetouri_log")
+                helper.captureScreen("autosave_no_writetouri_log")
+            }
+            assertTrue(
+                "$scenario: writeToUri succeeded log not found — " +
+                    "automatic backup may not have been triggered after account creation",
+                sawAutoBackupLog,
+            )
+            Log.i(TAG, "$scenario: writeToUri succeeded confirmed in logcat — PASS")
         } finally {
             disableAutoBackupViaUi()
         }
     }
+
 }

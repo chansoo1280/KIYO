@@ -20,10 +20,11 @@ import { devAccounts } from "@/constants/devAccounts";
 import { BUILTIN_TEMPLATES } from "@/constants/builtinTemplates";
 import type { KiyoVaultData, FileMetadata } from "@/models/vault";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
-import { exportBackupFile, normalizeDataFileName } from "./fileExport";
+import { exportBackupFile, normalizeDataFileName, writeBackupToUri } from "./fileExport";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { APP_VERSION } from "@/constants/appVersion";
+import { useSettingsStore } from "@/store/settingsStore";
 
 
 export const isKiyoFile = (value: unknown): value is KiyoVaultData => {
@@ -146,11 +147,36 @@ export async function saveStoresToFile(): Promise<void> {
   const session = useSessionStore.getState();
   if (!session.activeFileName) return; // no-op
   const data = buildSnapshotFromStores(session.activeFileName);
+
+  let encrypted: EncryptedKiyoVaultData | KiyoVaultData;
   if (session.cryptoKey && session.salt) {
-    const encrypted = await encryptData(data, session.cryptoKey, session.salt);
+    encrypted = await encryptData(data, session.cryptoKey, session.salt);
     await fileTable.upsertFileRecord(session.activeFileName, encrypted);
   } else {
+    encrypted = data;
     await fileTable.upsertFileRecord(session.activeFileName, data);
+  }
+
+  // 자동백업: 암호화 볼트 + 사용자 선택 SAF URI가 있을 때만 미러링
+  const settings = useSettingsStore.getState();
+  if (
+    settings.autoBackupEnabled &&
+    settings.autoBackupUri &&
+    session.cryptoKey &&
+    session.salt &&
+    Capacitor.isNativePlatform()
+  ) {
+    try {
+      await writeBackupToUri(settings.autoBackupUri, encrypted);
+    } catch (error) {
+      console.warn("[autoBackup] writeBackupToUri failed:", error instanceof Error ? error.message : String(error));
+      if (
+        error instanceof Error &&
+        (error as { errorCode?: string }).errorCode === "PERMISSION_REVOKED"
+      ) {
+        await settings.setAutoBackupEnabled(false);
+      }
+    }
   }
 }
 
