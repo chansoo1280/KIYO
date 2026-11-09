@@ -74,7 +74,7 @@ test.describe('템플릿으로 계정 생성 (Template to Account)', () => {
     await page.waitForLoadState('networkidle');
 
     // 6. 리스트로 돌아가서 계정 확인
-    await page.getByRole('button', { name: '← 뒤로 가기' }).click();
+    await page.getByRole('button', { name: '뒤로 가기' }).click();
     await page.waitForURL('**/accounts', { timeout: 5000 });
     await page.waitForLoadState('networkidle');
     await accountListPage.expectAccountCount(1);

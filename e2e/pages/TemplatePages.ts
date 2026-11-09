@@ -92,7 +92,7 @@ export class TemplateEditPage {
     this.descriptionInput = page.locator('textarea[placeholder="이 템플릿에 대한 설명을 입력하세요."]');
     this.addFieldButton = page.getByRole('button', { name: '+ 필드 추가' });
     this.saveButton = page.getByRole('button', { name: '저장' });
-    this.cancelButton = page.getByRole('button', { name: '취소' });
+    this.cancelButton = page.getByRole('button', { name: '뒤로 가기' });
     this.deleteButton = page.getByRole('button', { name: '삭제' }).first();
     this.deleteConfirmModal = page.getByRole('dialog').filter({ hasText: '템플릿 삭제' });
     this.confirmDeleteButton = this.deleteConfirmModal.getByRole('button', { name: '삭제' });
