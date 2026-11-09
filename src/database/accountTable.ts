@@ -185,30 +185,32 @@ export const accountTable = {
     const count = await db.accounts.count();
     if (count > 0) return;
 
-    await db.transaction("rw", db.accounts, db.metadata, async () => {
-      const records = await Promise.all(
-        devAccounts.map(async (a) => {
-          if (cryptoKey) {
-            const encryptedRecord = await createEncryptedRecord(a, cryptoKey);
-            return {
-              id: a.id,
-              ...encryptedRecord,
-              createdAt: a.createdAt,
-              updatedAt: a.updatedAt,
-            };
-          } else {
-            // Plaintext record
-            const plaintextRecord = await createPlaintextRecord(a);
-            return {
-              id: a.id,
-              ...plaintextRecord,
-              createdAt: a.createdAt,
-              updatedAt: a.updatedAt,
-            };
-          }
-        })
-      );
+    // Dexie v4에서 트랜잭션 콜백 내 await가 이벤트 루프를 양보하면
+    // 트랜잭션이 조기 inactive 처리되어 bulkPut 시 TransactionInactiveError가 발생한다.
+    // 트랜잭션 밖에서 모든 레코드를 미리 생성하고, 트랜잭션 안에서는 bulkPut만 수행한다.
+    const records = await Promise.all(
+      devAccounts.map(async (a) => {
+        if (cryptoKey) {
+          const encryptedRecord = await createEncryptedRecord(a, cryptoKey);
+          return {
+            id: a.id,
+            ...encryptedRecord,
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt,
+          };
+        } else {
+          const plaintextRecord = await createPlaintextRecord(a);
+          return {
+            id: a.id,
+            ...plaintextRecord,
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt,
+          };
+        }
+      })
+    );
 
+    await db.transaction("rw", db.accounts, db.metadata, async () => {
       await db.accounts.bulkPut(records as AccountRecord[]);
     });
 
