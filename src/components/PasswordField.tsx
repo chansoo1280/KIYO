@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useClipboard } from "@/hooks/useClipboard";
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG, GENERATE_SVG } from "@/components/icons";
+import { Copy } from "lucide-react";
 
 interface PasswordFieldProps {
   /**
@@ -62,9 +63,10 @@ export function PasswordField({
           <button
             type="button"
             onClick={() => handleCopy(value)}
-            className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1.5 text-xs font-semibold uppercase tracking-chip text-[var(--color-accent)]"
+            className="rounded-md bg-[var(--color-accent-bg)] px-3 py-1.5"
+            aria-label="비밀번호 복사"
           >
-            복사
+            <Copy size={14} strokeWidth={2} />
           </button>
         </div>
       </div>

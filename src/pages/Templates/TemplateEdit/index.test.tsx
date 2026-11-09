@@ -94,7 +94,7 @@ describe("TemplateEdit (Plan-B-3 + Plan-A1 catch 회귀)", () => {
 
     // 라벨 검증 (label prop이 accessible name)
     expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "뒤로 가기" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "저장" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ 필드 추가" })).toBeInTheDocument();
   });

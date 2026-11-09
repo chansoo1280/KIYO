@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/Button";
+import { BackButton } from "@/components/BackButton";
+import { DeleteButton } from "@/components/DeleteButton";
+import { SaveButton } from "@/components/SaveButton";
 import { PageShell } from "@/components/PageShell";
 import { PageHeader } from "@/components/PageHeader";
 import { useTemplateStore } from "@/store/templateStore";
@@ -179,27 +182,18 @@ const TemplateEdit = () => {
       <PageShell maxWidth="lg" withBottomTabs>
         <PageHeader
           title={isEdit ? "템플릿 수정" : "새 템플릿"}
+          leftActions={
+            <BackButton onClick={handleCancel} />
+          }
           actions={
-            <>
+            <div className="flex items-center gap-1">
               {isEdit && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  label="삭제"
-                />
+                <DeleteButton onClick={() => setShowDeleteConfirm(true)} />
               )}
-              <Button
-                variant="ghost"
-                onClick={handleCancel}
-                label="취소"
-              />
-              <Button
-                variant="primary"
-                type="submit"
+              <SaveButton
                 onClick={handleSave}
-                label="저장"
               />
-            </>
+            </div>
           }
         />
 

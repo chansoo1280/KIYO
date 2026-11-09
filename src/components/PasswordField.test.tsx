@@ -8,7 +8,7 @@ describe("PasswordField (Plan-G4)", () => {
     // 초기 가려진 상태 → "••••••••"
     expect(screen.getByText("••••••••")).toBeInTheDocument();
     // 복사 버튼 존재
-    expect(screen.getByRole("button", { name: "복사" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "비밀번호 복사" })).toBeInTheDocument();
   });
 
   it("② mode='edit' 렌더 (input + Eye + onGenerate 있으면 생성 버튼)", () => {
@@ -40,7 +40,7 @@ describe("PasswordField (Plan-G4)", () => {
   it("④ 복사 버튼 클릭 → onCopy 콜백 호출 (view 모드)", () => {
     const onCopy = vi.fn();
     render(<PasswordField mode="view" value="copyMe" onCopy={onCopy} />);
-    fireEvent.click(screen.getByRole("button", { name: "복사" }));
+    fireEvent.click(screen.getByRole("button", { name: "비밀번호 복사" }));
     expect(onCopy).toHaveBeenCalledWith("copyMe");
   });
 

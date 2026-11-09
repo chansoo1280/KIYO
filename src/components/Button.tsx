@@ -13,13 +13,13 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]/80",
+    "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]",
   secondary:
-    "bg-[var(--color-accent-bg)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 border border-[var(--color-accent-border)]",
+    "bg-[var(--color-accent-bg)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] border border-[var(--color-accent-border)]",
   ghost:
     "bg-transparent text-[var(--color-text-h)] hover:bg-[var(--color-code-bg)]",
   danger:
-    "bg-[var(--color-error)] text-white hover:bg-[var(--color-error)]/80 border border-[var(--color-error)]",
+    "bg-[var(--color-error)] text-white hover:bg-[var(--color-error)] border border-[var(--color-error)]",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

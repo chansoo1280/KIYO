@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { PasswordField } from "@/components/PasswordField";
 import type { AccountField, FieldType } from "@/models/account";
 import { getFieldTypePlaceholder, FIELD_TYPE_OPTIONS } from "@/models/fieldTypes";
@@ -153,6 +154,7 @@ export function FieldEditor({
             as="select"
             value={field.type}
             onChange={(e) => handleTypeChange(e.target.value as FieldType)}
+            width="100px"
           >
             {FIELD_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>
@@ -164,8 +166,9 @@ export function FieldEditor({
             type="button"
             onClick={() => onRemove(field.id)}
             className="rounded-md border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--color-error)] hover:bg-[var(--color-error)]/10 dark:border-[var(--border)]/30"
+            aria-label="필드 삭제"
           >
-            삭제
+            <Trash2 size={16} strokeWidth={2} />
           </button>
         </div>
       </div>

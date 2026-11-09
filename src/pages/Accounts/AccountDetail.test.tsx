@@ -58,7 +58,7 @@ describe("AccountDetail (Plan-A1)", () => {
 
   it("① 본체 렌더: Gmail 제목 + 수정/삭제/Favorite 버튼 표시", () => {
     renderDetail();
-    expect(screen.getByText("Gmail")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Gmail" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "수정" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Favorite/ })).toBeInTheDocument();
