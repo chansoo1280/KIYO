@@ -90,6 +90,15 @@ export function DataSection() {
       await setAutoBackupEnabled(false);
     } else {
       await setAutoBackupEnabled(enabled);
+      // 이미 URI가 있는 상태에서 재활성화 시에도 첫 백업 수행
+      try {
+        const { activeFileName, cryptoKey, salt } = useSessionStore.getState();
+        if (activeFileName && cryptoKey && salt) {
+          await saveStoresToFile();
+        }
+      } catch (e) {
+        console.warn("Initial auto-backup failed:", e);
+      }
     }
   };
 

@@ -111,8 +111,7 @@ object E2EEnv {
             node.text?.trim()?.takeIf { it.isNotBlank() }
         }.map { fileName ->
             val stem = fileName.removeSuffix(".json")
-                .replace(" (1)", "")
-                .replace(" (2)", "")
+                .replace(Regex("""\s*\(\d+\)"""), "")
                 .trim()
             Log.i(TAG, "readActiveVaultFileNames: fileName='$fileName' -> stem='$stem'")
             stem

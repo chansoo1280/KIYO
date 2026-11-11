@@ -100,7 +100,7 @@ class AutosaveE2ETest {
         settingsPage = SettingsPage(helper, nativeAuth)
 
         vaultName = E2EEnv.requestedVaultName()
-            ?: TestDataFactory.uniqueVaultName(encrypted = true)
+            ?: "e2e-vault-autosave"
         account = TestDataFactory.accountForVault(vaultName)
 
         Log.i(TAG, "Setup complete, vault=$vaultName")
@@ -222,6 +222,10 @@ class AutosaveE2ETest {
                 .save()
 
             Log.i(TAG, "$scenario: account created and saved — 'AutoBackup Test Account'")
+
+            // writeToUri는 CoroutineScope(Dispatchers.IO).launch로 비동기 실행되므로
+            // 로그가 찍힐 시간을 확보한 후 logcat을 읽는다.
+            Thread.sleep(2000)
 
             // logcat에서 자동백업 호출( KiyoFilePlugin.writeToUri success ) 확인
             val logcat = DeviceOpsHelper.readLogcat(1000)

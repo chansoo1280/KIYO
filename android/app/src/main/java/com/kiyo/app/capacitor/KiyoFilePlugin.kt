@@ -265,6 +265,8 @@ class KiyoFilePlugin : Plugin() {
             val uriString = call.getString("uri") ?: return call.reject("URI is required")
             val data = call.getString("data") ?: return call.reject("Data is required")
 
+            Log.i(TAG, "writeToUri called: uri=$uriString dataLen=${data.length}")
+
             val uri = Uri.parse(uriString)
             val context = getContext() ?: return call.reject("Context is null")
 
