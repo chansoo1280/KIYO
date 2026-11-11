@@ -28,6 +28,7 @@ export function BackButton({
       disabled={disabled}
       label={<ArrowLeft size={iconSize} strokeWidth={2.5} />}
       aria-label={ariaLabel}
+      square
     />
   );
 }

@@ -17,9 +17,9 @@ const BottomTabs = () => {
     }
   })();
 
-  const templateTabClass = `flex-1 rounded-md px-4 py-3 text-sm font-semibold transition ${active === "templates" ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]" : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"}`;
-  const listTabClass = `flex-1 rounded-md px-4 py-3 text-sm font-semibold transition ${active === "list" ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]" : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"}`;
-  const settingsTabClass = `flex-1 rounded-md px-4 py-3 text-sm font-semibold transition ${active === "settings" ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]" : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"}`;
+  const templateTabClass = `flex-1 flex items-center justify-center rounded-md px-4 py-3 text-sm font-semibold transition ${active === "templates" ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]" : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"}`;
+  const listTabClass = `flex-1 flex items-center justify-center rounded-md px-4 py-3 text-sm font-semibold transition ${active === "list" ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]" : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"}`;
+  const settingsTabClass = `flex-1 flex items-center justify-center rounded-md px-4 py-3 text-sm font-semibold transition ${active === "settings" ? "bg-[var(--color-accent-bg)] text-[var(--color-accent)]" : "text-[var(--color-text)] hover:bg-[var(--color-code-bg)]"}`;
 
   return (
     <nav
