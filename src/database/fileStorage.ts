@@ -166,14 +166,10 @@ export async function saveStoresToFile(): Promise<void> {
     session.salt &&
     Capacitor.isNativePlatform()
   ) {
-    try {
-      await writeBackupToUri(settings.autoBackupUri, encrypted);
-    } catch (error) {
-      console.warn("[autoBackup] writeBackupToUri failed:", error instanceof Error ? error.message : String(error));
-      if (
-        error instanceof Error &&
-        (error as { errorCode?: string }).errorCode === "PERMISSION_REVOKED"
-      ) {
+    const result = await writeBackupToUri(settings.autoBackupUri, encrypted, session.activeFileName);
+    if (!result.success) {
+      console.warn("[autoBackup] writeBackupToUri failed:", result.errorMessage);
+      if (result.errorCode === "PERMISSION_REVOKED") {
         await settings.setAutoBackupEnabled(false);
       }
     }

@@ -123,7 +123,8 @@ export const exportBackupFile = async (
  */
 export const writeBackupToUri = async (
   uri: string,
-  data: EncryptedKiyoVaultData | KiyoVaultData
+  data: EncryptedKiyoVaultData | KiyoVaultData,
+  fileName?: string
 ): Promise<{ success: boolean; errorCode?: string; errorMessage?: string }> => {
   if (!isNativeFileStorageAvailable()) {
     // Web: no persistent URI support
@@ -134,6 +135,7 @@ export const writeBackupToUri = async (
     const result = await KiyoFile.writeToUri({
       uri,
       data: JSON.stringify(data, null, 2),
+      fileName,
     });
     return {
       success: result.success,

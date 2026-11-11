@@ -266,6 +266,7 @@ class KiyoFilePlugin : Plugin() {
             val data = call.getString("data") ?: return call.reject("Data is required")
 
             val uri = Uri.parse(uriString)
+            val fileName = call.getString("fileName") ?: "kiyo-autobackup-latest.json"
             val context = getContext() ?: return call.reject("Context is null")
 
             CoroutineScope(Dispatchers.IO).launch {
@@ -275,8 +276,8 @@ class KiyoFilePlugin : Plugin() {
                     // Check if URI is a tree/document URI (directory) - need to find/create file inside
                     val targetUri: Uri
                     if (DocumentsContract.isTreeUri(uri)) {
-                        // For auto-backup: find existing file or create new one with fixed name
-                        val displayName = "kiyo-autobackup-latest.json"
+                        // For auto-backup: find existing file or create new one with provided file name
+                        val displayName = fileName
                         val mimeType = "application/json"
 
                         // Get the document URI for the tree root (selected folder)
