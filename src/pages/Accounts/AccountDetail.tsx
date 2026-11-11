@@ -106,6 +106,7 @@ const AccountDetail = () => {
                 variant="primary"
                 onClick={() => navigate(`/accounts/${account.id}/edit`)}
                 label="수정"
+                className="min-w-[60px]"
               />
               <DeleteButton onClick={() => setShowDeleteConfirm(true)} />
             </div>

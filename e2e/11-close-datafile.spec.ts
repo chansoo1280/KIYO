@@ -68,10 +68,9 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       await fileChangeRow.locator('button:has-text("이동")').click();
 
       // 4. Home 페이지로 이동
-      // pathname predicate — replace navigate의 history 이벤트 미발생 케이스 흡수.
-      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
+      // Settings의 navigate("/", { replace: true })는 history 이벤트를 발생시키지 않아
+      // waitForURL이 polling timeout할 수 있음. 대신 홈 페이지 고유 요소를 기다린다.
       await page.waitForLoadState('networkidle');
-
       await expect(page.getByText('파일을 선택하세요', { exact: true })).toBeVisible({ timeout: 5000 });
 
       // multi-vault: 이전 vault 행 보존 + 리스트 표시
@@ -160,7 +159,10 @@ test.describe('closeDataFile (multi-vault: 이전 vault 행 보존)', () => {
       const fileChangeRow = page.locator('text=파일변경').locator('..');
       await fileChangeRow.locator('button:has-text("이동")').click();
 
-      await page.waitForURL((url) => url.pathname === '/', { timeout: 5000 });
+      // 4. Home 페이지로 이동
+      // Settings의 navigate("/", { replace: true })는 history 이벤트를 발생시키지 않아
+      // waitForURL이 polling timeout할 수 있음. 대신 홈 페이지 고유 요소를 기다린다.
+      await page.waitForLoadState('networkidle');
       await expect(page.getByText('파일을 선택하세요')).toBeVisible({ timeout: 5000 });
 
       // 3. multi-vault: 이전 vault 행 보존 확인

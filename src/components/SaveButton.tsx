@@ -28,6 +28,7 @@ export function SaveButton({
       disabled={disabled || loading}
       loading={loading}
       label={loading ? loadingLabel : label}
+      className="min-w-[60px]"
     />
   );
 }

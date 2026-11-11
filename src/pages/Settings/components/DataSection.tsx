@@ -90,6 +90,15 @@ export function DataSection() {
       await setAutoBackupEnabled(false);
     } else {
       await setAutoBackupEnabled(enabled);
+      // 이미 URI가 있는 상태에서 재활성화 시에도 첫 백업 수행
+      try {
+        const { activeFileName, cryptoKey, salt } = useSessionStore.getState();
+        if (activeFileName && cryptoKey && salt) {
+          await saveStoresToFile();
+        }
+      } catch (e) {
+        console.warn("Initial auto-backup failed:", e);
+      }
     }
   };
 
@@ -151,19 +160,23 @@ export function DataSection() {
     <>
       <SettingsSection title="Data">
         <SettingsRow label="백업">
-          <Button variant="primary" onClick={handleBackupClick} label="저장" />
+          <Button variant="primary" onClick={handleBackupClick} label="저장" className="min-w-[60px]" />
         </SettingsRow>
         <SettingsRow label="복원">
           <Button variant="ghost" onClick={handleRestoreClick} label="불러오기" />
         </SettingsRow>
-        <SettingsRow label={getAutoBackupStatus()}>
-          <Button
-            variant="ghost"
-            onClick={() => handleAutoBackupToggle(!autoBackupEnabled)}
-            disabled={!nativeAvailable || !isEncryptedVault}
-            label={autoBackupEnabled ? "해제" : "켜기"}
-          />
-        </SettingsRow>
+        {/* 자동 백업 상태: 경로가 길면 줄넘김 (SettingsRow 건드리지 않고 이 행만 예외 처리) */}
+        <div className="flex items-center justify-between gap-3 min-w-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 text-sm text-[var(--color-text)]">
+          <div className="break-words min-w-0 max-w-full">{getAutoBackupStatus()}</div>
+          <div className="flex-shrink-0">
+            <Button
+              variant="ghost"
+              onClick={() => handleAutoBackupToggle(!autoBackupEnabled)}
+              disabled={!nativeAvailable || !isEncryptedVault}
+              label={autoBackupEnabled ? "해제" : "켜기"}
+            />
+          </div>
+        </div>
       </SettingsSection>
       {dataMessage && (
         <p className="text-sm font-medium text-[var(--color-accent)]">

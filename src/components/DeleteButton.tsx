@@ -22,6 +22,7 @@ export function DeleteButton({
       onClick={onClick}
       disabled={disabled}
       label={label}
+      className="min-w-[60px]"
     />
   );
 }

@@ -50,8 +50,10 @@ describe("SettingsRow (Plan-G1)", () => {
     // children은 row div의 마지막 자식이어야 함 (라벨 <div> 다음)
     const row = control.closest("div.flex.items-center");
     expect(row).not.toBeNull();
-    // row의 마지막 자식이 control이어야 함
-    expect(row?.lastElementChild).toBe(control);
+    // row의 마지막 자식이 flex-shrink-0 wrapper이고 그 안에 control 버튼이 있음
+    const wrapper = row?.lastElementChild;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.querySelector("button")).toBe(control);
     // 라벨은 <div>로 감싸져서 첫 자식
     expect(row?.firstElementChild?.textContent).toContain("PIN");
   });
