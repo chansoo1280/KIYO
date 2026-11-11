@@ -25,7 +25,7 @@ import com.kiyo.app.e2e.testutil.TestSecurityInitializer
  *  - rewrapped 플래그는 전체 실행(같은 instrumentation 프로세스)에서 중복 방지 힌트일 뿐,
  *    단독 실행 시에는 판단 없이 항상 멱등 수행 (ensureRewrapped)
  *  - ensureBaseEnvironment은 sync를 하지 않는다. sync는 각 검증 시나리오의 소관
- *  - 화면 판별은 페이지 객체의 isCurrent()에 위임, UI 운전도 각 페이지가 담당 (2026-08-28)
+ *  - 화면 판별은 페이지 객체의 isCurrent에 위임, UI 운전도 각 페이지가 담당 (2026-08-28)
  */
 object E2EEnv {
 
@@ -76,7 +76,7 @@ object E2EEnv {
 
     fun consumeFreshVaultIfRequested(): Boolean {
         if (freshVaultConsumed) return false
-        synchronized(this) { 
+        synchronized(this) {
             if (freshVaultConsumed) return false
             val args = InstrumentationRegistry.getArguments()
             val requested = args?.getString("freshVault")?.equals("true", ignoreCase = true) == true
@@ -86,34 +86,39 @@ object E2EEnv {
     }
 
     /**
-     * 현재 화면에서 활성 볼트 파일명을 실측한다 (네비게이션 없음).
-     * 활성 볼트 파일명은 **Auth 잠금 화면**(파일 정보 카드)과 **계정 리스트 화면**에만
-     * 표시된다. 파일 선택 화면은 목록의 첫 파일명을 보여줄 뿐 "활성"이 아니므로 제외 —
-     * 이 화면에서는 null 반환 (구현 시 목록 표시 오독 방지, 2026-08-28).
+     * 현재 화면에 표시된 모든 볼트 파일명 stem 목록 반환 (중복 제거).
+     * 홈/계정 리스트/화면에 여러 파일이 나열될 수 있으므로 첫 번째만 보지 않고
+     * 전체를 순회해 대상 볼트와 일치 여부를 판단한다.
      *
-     * 반환값은 (N) suffix 없는 stem. fileTable의 중복 회피 정책(`(1)`, `(2)`)으로
-     * 부착된 suffix는 동일 stem + 순번 의미이므로 비교 시 무시한다.
      * 예: "vault-one.json" → "vault-one", "vault-one(1).json" → "vault-one"
      */
-    fun readActiveVaultFileName(env: BaseEnv): String? {
+    fun readActiveVaultFileNames(env: BaseEnv): List<String> {
         val device = env.device
         val onAuth = env.authPage.isCurrent()
         val onAccounts = env.accountsPage.isCurrent()
-        if (!onAuth && !onAccounts) {
-            Log.i(TAG, "readActiveVaultFileName: not on auth/accounts screen — no active vault")
-            return null
+        val onNone = env.homePage.isCurrent()
+        Log.i(TAG, "readActiveVaultFileNames: onAuth=$onAuth onAccounts=$onAccounts onNone=$onNone")
+        if (!onAuth && !onAccounts && !onNone) {
+            Log.i(TAG, "readActiveVaultFileNames: not on auth/accounts/home screen — no active vault")
+            return emptyList()
         }
-        val node = device.wait(Until.findObject(By.textContains(".json")), 5000)
-        val fileName = node?.text?.trim()
-        if (!fileName.isNullOrBlank()) {
+        val nodes = device.findObjects(By.textContains(".json"))
+        Log.i(TAG, "readActiveVaultFileNames: findObjects(.json) found ${nodes.size} nodes")
+        nodes.forEachIndexed { index, node ->
+            Log.i(TAG, "readActiveVaultFileNames: node[$index] text='${node.text}'")
+        }
+        val stems = nodes.mapNotNull { node ->
+            node.text?.trim()?.takeIf { it.isNotBlank() }
+        }.map { fileName ->
             val stem = fileName.removeSuffix(".json")
-                .replace(Regex("\\(\\d+\\)$"), "")
+                .replace(" (1)", "")
+                .replace(" (2)", "")
                 .trim()
-            Log.i(TAG, "Active vault file name observed (${if (onAuth) "auth" else "accounts"}): $fileName → stem=$stem")
-            return stem.ifBlank { null }
-        }
-        Log.i(TAG, "No active vault file name found on ${if (onAuth) "auth" else "accounts"} screen")
-        return null
+            Log.i(TAG, "readActiveVaultFileNames: fileName='$fileName' -> stem='$stem'")
+            stem
+        }.filter { it.isNotBlank() }.distinct()
+        Log.i(TAG, "Active vault file names observed (${if (onAuth) "auth" else if (onAccounts) "accounts" else "home"}): $stems")
+        return stems
     }
 
     /** page object 재바인딩 (화면 이동 없이 현재 상태로 반환) */
@@ -142,8 +147,6 @@ object E2EEnv {
             return bind(env)
         }
     }
-
-
 
     /** 앱 기동 시 화면 상태 (BasePage.isCurrent 조합으로 판별) */
     enum class ScreenState {
@@ -216,14 +219,28 @@ object E2EEnv {
         // 1. 기동 + 활성 상태 실측 (판별은 각 페이지 객체의 isCurrent에 위임)
         val bound = launchAppAndBind(env)
         val state = detectScreen(bound.homePage, bound.authPage, bound.accountsPage)
-        val activeVaultName = readActiveVaultFileName(bound)
-        Log.i(TAG, "App started: state=$state activeVault=$activeVaultName target=$vaultName encrypted=$encrypted")
+
+        // targetStem은 화면 상태에 관계없이 먼저 계산 (홈 화면에서도 사용)
+        val targetStem = vaultName.removeSuffix(".json").replace(" (1)", "").replace(" (2)", "").trim()
+
+        // 홈 화면(NONE)은 UIAutomator.findObjects가 WebView 내부 요소를 읽지 못하므로
+        // Espresso-Web 기반 helper.isTextPresent로 특정 볼트 파일명 존재 여부를 직접 확인
+        val activeVaultNames: List<String> = when (state) {
+            ScreenState.NONE -> {
+                val found = helper.isTextPresent(targetStem + ".json")
+                Log.i(TAG, "readActiveVaultFileNames (home via Espresso-Web): targetFile='$targetStem.json' found=$found")
+                if (found) listOf(targetStem) else emptyList()
+            }
+            else -> readActiveVaultFileNames(bound)
+        }
+        Log.i(TAG, "App started: state=$state activeVaults=$activeVaultNames target=$vaultName encrypted=$encrypted")
 
         // 2. 목표 볼트가 이미 활성이면 생성 생략 (freshVault 런은 재사용하지 않고 항상 새로 생성)
-        // 양쪽 stem 비교 — activeVaultName은 readActiveVaultFileName에서 (N) suffix 제거됨.
+        // 양쪽 stem 비교 — activeVaultNames는 readActiveVaultFileNames에서 (N) suffix 제거됨.
         // vaultName도 같은 정책으로 정규화해 사용자 입력 `vault-one(1)` 같은 경우도 매칭.
-        val targetStem = vaultName.removeSuffix(".json").replace(Regex("\\(\\d+\\)$"), "").trim()
-        val reuseActive = activeVaultName == targetStem && !consumeFreshVaultIfRequested()
+        val freshConsumed = consumeFreshVaultIfRequested()
+        val reuseActive = activeVaultNames.contains(targetStem) && !freshConsumed
+        Log.i(TAG, "reuseActive check: targetStem='$targetStem' activeVaultNames=$activeVaultNames contains=${activeVaultNames.contains(targetStem)} freshConsumed=$freshConsumed reuseActive=$reuseActive state=$state")
         if (reuseActive && state == ScreenState.PLAIN_ACTIVE) {
             Log.i(TAG, "Target vault '$vaultName' already active (plain), skipping creation")
             return bind(bound)
@@ -233,9 +250,24 @@ object E2EEnv {
             bound.authPage.unlockWithPin(TestDataFactory.TEST_PIN)
             return bind(bound)
         }
+        if (reuseActive && state == ScreenState.NONE) {
+            // 이미 홈 화면에 있고 대상 볼트가 있으면 기존 볼트 파일 클릭 후 재사용
+            Log.i(TAG, "Target vault '$vaultName' already active on home screen, reusing")
+            val opened = bound.homePage.openExistingVault("$vaultName.json")
+            if (!opened) {
+                throw AssertionError("Could not open existing vault '$vaultName.json' on home screen")
+            }
+            // 암호화 볼트인 경우 Auth 잠금 화면으로 이동했을 수 있으므로 상태 재확인 후 언락
+            val stateAfterOpen = detectScreen(bound.homePage, bound.authPage, bound.accountsPage)
+            if (stateAfterOpen == ScreenState.ENCRYPTED_LOCKED && encrypted) {
+                Log.i(TAG, "Target vault '$vaultName' opened to auth screen — unlocking with PIN")
+                bound.authPage.unlockWithPin(TestDataFactory.TEST_PIN)
+            }
+            return bind(bound)
+        }
 
         // 3. 활성 볼트가 있으면(요청과 무관하게) 파일 선택 화면까지 탈출 후 신규 생성.
-        //    ENCRYPTED_LOCKED + plain 요청인 경우도 여기서 Auth 뒤로가기로 탈출한다.
+        Log.i(TAG, "Not reusing — proceeding to new vault creation path")
         when (state) {
             ScreenState.NONE -> Log.i(TAG, "Already on file selection screen")
             else -> {
@@ -286,4 +318,4 @@ object E2EEnv {
         return bind(bound)
     }
 
-    }
+}
