@@ -1,22 +1,18 @@
 # KIYO
 
-**Offline-first, privacy-focused Android password manager with system-level autofill integration.**
+**Offline-first account information manager app.**
 
-KIYO는 사용자의 비밀번호를 로컬에만 저장하며, Android AutofillService를 통해 앱과 웹에서 시스템 레벨 자동완성을 제공합니다. 네트워크 권한이 없고 클라우드 동기화도 없습니다.
+KIYO는 오프라인에서 작동하는 계정정보 관리앱입니다. 사용자의 계정정보(비밀번호, 로그인 계정 등)를 로컬에만 저장합니다. 네트워크 권한이 없고 클라우드 동기화도 없습니다.
 
 ## Features
 
-- **로컬 암호화 저장** - PBKDF2(100,000회) + AES-GCM으로 PIN 기반 데이터 암호화
-- **Android Autofill 연동** - 시스템 자동완성 서비스(API 26+)로 앱/웹 로그인 폼 자동 채우기
+- **로컬 암호화 저장** - PBKDF2(100,000회) + AES-GCM으로 PIN 기반 데이터 암호화폼을 자동 채우고, 도메인과 앱 패키지명으로 계정을 자동 매칭합니다
 - **오프라인 퍼스트** - 네트워크 권한 없음, 클라우드 동기화 없음, 모든 데이터 로컬 저장
 - **다중 데이터 파일 (Files-only Vault)** - 여러 암호화된 볼트 생성/가져오기/백업/복원 지원
-- **도메인/패키지 매칭** - 웹사이트 도메인과 앱 패키지명으로 계정 자동 매칭
 - **비밀번호 생성기** - 길이, 문자 종류 커스터마이징 가능한 안전한 비밀번호 생성
 - **즐겨찾기·태그·템플릿** - 계정 분류와 자주 쓰는 필드 템플릿 관리
-- **안전한 세션 관리** - 암호화 키를 디스크에 저장하지 않고 메모리에만 보관
-- **Android Keystore 연동** - 자동완성용 DB 마스터 키(`kiyo_master_key`)와 생체인증 볼트 언락 키(`kiyo_secure_master_key`)를 각각 별도 Keystore 마스터 키로 보호
-- **자동완성 인증 캐싱** - Android Keystore를 통한 사용자 인증 캐싱 (30분, 프로세스 재시작 후 유지)
 - **자동 잠금 (Auto-lock)** - `none` / `1m` / `10m` / `30m` 4단계 설정
+- **자동완성 및 계정 매칭(Autofill)** - Android AutofillService(API 26+)로 앱/웹 로그인 
 - **생체인증 로그인 (Biometric Unlock)** - 지문/얼굴 인증으로 볼트 잠금 해제
 - **자동 백업 (Auto-backup)** - 설정 기반 자동 백업 트리거, 첫 백업 자동 실행
 
@@ -75,23 +71,23 @@ npm run android:build
 npm run android:run
 ```
 
-### E2E Tests (emulator required)
+### E2E Tests
 
 ```bash
-# Autofill E2E
+# React E2E (Playwright)
+npm run test:e2e
+
+# Autofill E2E (emulator required)
 npm run test:e2e:android
 npm run test:e2e:android:fast
 
-# Biometric Unlock E2E
+# Biometric Unlock E2E (emulator required)
 npm run test:e2e:biometric
 npm run test:e2e:biometric:fast
 
-# Autosave E2E
+# Autosave E2E (emulator required)
 npm run test:e2e:autosave
 npm run test:e2e:autosave:fast
-
-# React E2E (Playwright)
-npm run test:e2e
 ```
 
 ## Usage
