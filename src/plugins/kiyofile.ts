@@ -44,6 +44,7 @@ export interface KiyoFilePlugin {
   writeToUri(options: {
     uri: string;
     data: string;
+    fileName?: string;
   }): Promise<WriteToUriResult>;
 
   readFromUri(options: {

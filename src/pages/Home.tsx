@@ -10,6 +10,7 @@ import {
   FileStorageErrorCode,
   isFileStorageError,
 } from "@/database/fileStorage.error";
+import { mapError } from "@/utils/mapError";
 import { setupVaultSession } from "@/database/fileStorage";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
@@ -26,6 +27,7 @@ const Home = () => {
     string | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const refreshFiles = async () => {
     const all = await fileTable.getAllFiles();
@@ -60,12 +62,28 @@ const Home = () => {
   const handleConfirmDelete = async () => {
     if (!pendingDeleteFileName) return;
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       await fileTable.deleteFileRecord(pendingDeleteFileName);
       await refreshFiles();
+      setPendingDeleteFileName(null); // 성공 시에만 모달 닫기
+    } catch (error) {
+      const isFileErr = isFileStorageError(error);
+      if (isFileErr) {
+        console.error(
+          `[Home] 파일 삭제 실패 (${error.code}): ${pendingDeleteFileName}`,
+          error.originalError,
+        );
+      } else {
+        console.error(
+          `[Home] 파일 삭제 실패 (알 수 없는 오류): ${pendingDeleteFileName}`,
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
+      setDeleteError(mapError(error));
+      // 에러 발생 시 모달을 유지하고 다시 시도할 수 있도록 pending 유지
     } finally {
       setIsDeleting(false);
-      setPendingDeleteFileName(null);
     }
   };
 
@@ -211,6 +229,7 @@ const Home = () => {
         cancelLabel="취소"
         variant="danger"
         isLoading={isDeleting}
+        error={deleteError}
         onClose={() => {
           if (!isDeleting) setPendingDeleteFileName(null);
         }}

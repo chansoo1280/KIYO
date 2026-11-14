@@ -264,8 +264,9 @@ class KiyoFilePlugin : Plugin() {
         fun writeToUri(call: PluginCall) {
             val uriString = call.getString("uri") ?: return call.reject("URI is required")
             val data = call.getString("data") ?: return call.reject("Data is required")
+            val fileName = call.getString("fileName")
 
-            Log.i(TAG, "writeToUri called: uri=$uriString dataLen=${data.length}")
+            Log.i(TAG, "writeToUri called: uri=$uriString dataLen=${data.length} fileName=$fileName")
 
             val uri = Uri.parse(uriString)
             val context = getContext() ?: return call.reject("Context is null")
@@ -277,8 +278,8 @@ class KiyoFilePlugin : Plugin() {
                     // Check if URI is a tree/document URI (directory) - need to find/create file inside
                     val targetUri: Uri
                     if (DocumentsContract.isTreeUri(uri)) {
-                        // For auto-backup: find existing file or create new one with fixed name
-                        val displayName = "kiyo-autobackup-latest.json"
+                        // For auto-backup: find existing file or create new one with active vault file name
+                        val displayName = fileName?.takeIf { it.isNotBlank() } ?: "kiyo-autobackup-latest.json"
                         val mimeType = "application/json"
 
                         // Get the document URI for the tree root (selected folder)

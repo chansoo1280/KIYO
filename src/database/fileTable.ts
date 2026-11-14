@@ -3,6 +3,10 @@ import { toBase64, fromBase64 } from "@/crypto/crypto.utils";
 import { isEncryptedKiyoVaultData } from "@/crypto/encryption";
 import type { KiyoVaultData } from "@/models/vault";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
+import {
+  FileStorageError,
+  FileStorageErrorCode,
+} from "./fileStorage.error";
 
 export interface FileRecord {
   id: string; // PK = fileName (v14)
@@ -155,8 +159,68 @@ export const fileTable = {
   /**
    * Delete a file record by fileName. Caller is responsible for active state;
    * we do not gate deletes on the row being active.
+   *
+   * Throws:
+   * - FileStorageError with FILE_NOT_FOUND when no row matches fileName
+   * - FileStorageError with DATABASE_ERROR on IndexedDB failure (e.g. quota, lock)
+   * - Original error re-thrown for unexpected non-DOM exceptions
    */
   async deleteFileRecord(fileName: string): Promise<void> {
-    await db.files.where("id").equals(fileName).delete();
+    if (!fileName || typeof fileName !== "string") {
+      throw FileStorageError.create(
+        FileStorageErrorCode.INVALID_FILE_NAME,
+        "잘못된 파일 이름입니다.",
+        { operation: "delete", fileName },
+      );
+    }
+
+    let existing: FileRecord | null;
+    try {
+      existing = await db.files.get(fileName) ?? null;
+    } catch (dbError) {
+      const original =
+        dbError instanceof Error ? dbError : new Error(String(dbError));
+      console.error(
+        `[deleteFileRecord] IndexedDB read failed for "${fileName}":`,
+        original.message,
+      );
+      throw FileStorageError.create(
+        FileStorageErrorCode.DATABASE_ERROR,
+        `파일 조회 실패: ${fileName}`,
+        { originalError: original, fileName, operation: "delete" },
+      );
+    }
+
+    if (!existing) {
+      console.warn(
+        `[deleteFileRecord] No existing file record found for "${fileName}", skipping delete`,
+      );
+      throw FileStorageError.fileNotFound(fileName, undefined);
+    }
+
+    let deletedCount: number;
+    try {
+      deletedCount = await db.files.where("id").equals(fileName).delete();
+    } catch (dbError) {
+      const original =
+        dbError instanceof Error ? dbError : new Error(String(dbError));
+      console.error(
+        `[deleteFileRecord] IndexedDB delete failed for "${fileName}":`,
+        original.message,
+      );
+      throw FileStorageError.fileDeleteError(fileName, original);
+    }
+
+    if (deletedCount === 0) {
+      console.warn(
+        `[deleteFileRecord] Delete affected 0 rows for "${fileName}"`,
+      );
+      throw FileStorageError.fileDeleteError(
+        fileName,
+        new Error("no rows deleted"),
+      );
+    }
+
+    console.log(`[deleteFileRecord] Deleted file "${fileName}" (rows=${deletedCount})`);
   },
 };

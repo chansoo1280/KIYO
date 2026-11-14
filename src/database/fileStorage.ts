@@ -167,7 +167,7 @@ export async function saveStoresToFile(): Promise<void> {
     Capacitor.isNativePlatform()
   ) {
     try {
-      await writeBackupToUri(settings.autoBackupUri, encrypted);
+      await writeBackupToUri(settings.autoBackupUri, encrypted, session.activeFileName ?? undefined);
     } catch (error) {
       console.warn("[autoBackup] writeBackupToUri failed:", error instanceof Error ? error.message : String(error));
       if (
@@ -258,6 +258,8 @@ export const createDataFile = async (
     };
     const encryptedVaultData = await encryptData(baseData, cryptoKey, salt);
     await fileTable.upsertFileRecord(resolvedFileName, encryptedVaultData);
+    // 암호화 볼트 생성 직후 자동백업 수행 (autoBackupEnabled + autoBackupUri 조건 시)
+    await saveStoresToFile();
     return baseData;
   } else {
     // Plaintext case
@@ -337,6 +339,8 @@ export const openImportedDataFile = async (
       await setupVaultSession({ fileName: resolvedFileName });
       // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
       await loadVaultToStores(parsedData);
+      // DB에 파일 영구 저장 (불러온 후에도 홈에서 재확인 가능하도록)
+      await fileTable.upsertFileRecord(resolvedFileName, parsedData);
     } catch (error) {
       if (isFileStorageError(error)) throw error;
       throw FileStorageError.create(
@@ -388,6 +392,10 @@ export const openImportedDataFile = async (
     await setupVaultSession({ fileName: resolvedFileName, cryptoKey: key, salt });
     // Autofill 토큰 동기화는 제거됨 - Keystore 기반 인증 사용
     await loadVaultToStores(decrypted);
+    // DB에 파일 영구 저장 (불러온 후에도 홈에서 재확인 가능하도록)
+    await fileTable.upsertFileRecord(resolvedFileName, parsedData);
+    // 암호화 파일 불러오기 직후 자동백업 수행 (autoBackupEnabled + autoBackupUri 조건 시)
+    await saveStoresToFile();
   } catch (error) {
     if (isFileStorageError(error)) throw error;
     throw FileStorageError.create(
