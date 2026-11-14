@@ -9,9 +9,9 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: A single credential record (title + fields) inside a vault. Encrypted as part of the vault blob, never stored in plain Dexie rows. Distinct from **AutofillAccount** (the same record projected to the native SQLCipher DB for AutofillService).
 
 **Used in**:
-- `src/types/account.ts` — React-side Account type (encrypted record)
-- `src/store/accountStore.ts` — CRUD for accounts within an unlocked vault
-- `android/.../AutofillRepository.kt` — AutofillAccount projection for native DB
+- `src/models/account.ts:15` — React-side `Account` type (encrypted record)
+- `src/store/accountStore.ts:16-27` — CRUD for accounts within an unlocked vault
+- `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt` — AutofillAccount projection for native DB
 
 **Antipattern**: "Account" used to mean the native Autofill DB row — use `AutofillAccount` there.
 
@@ -24,8 +24,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: The native projection of an Account into the AutofillService SQLCipher database. Contains decrypted fields suitable for autofill matching/filling. Lives only in the native process.
 
 **Used in**:
-- `android/.../AutofillRepository.kt` — Table schema, insert/update/delete
-- `android/.../KiyoAutofillService.kt` — Query during autofill request
+- `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt` — Table schema, insert/update/delete
+- `android/app/src/main/java/com/kiyo/app/autofill/service/KiyoAutofillService.kt` — Query during autofill request
 
 **Antipattern**: Confusing with React-side `Account` (encrypted, inside vault blob).
 
@@ -38,8 +38,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Android system service running in a separate process. Has its own auth state. Does NOT share the React app's `cryptoKey`. Any "shared" data goes through the Capacitor bridge as encrypted blobs.
 
 **Used in**:
-- `android/.../KiyoAutofillService.kt` — Main service implementation
-- `android/.../AutofillRepository.kt` — Data access for autofill
+- `android/app/src/main/java/com/kiyo/app/autofill/service/KiyoAutofillService.kt` — Main service implementation
+- `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt` — Data access for autofill
 - `src/plugins/kiyautofill.ts` — Capacitor bridge TS wrapper
 
 **Antipattern**: Assuming React auth state (SecuritySession) is visible to AutofillService.
@@ -54,7 +54,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 **Used in**:
 - `src/plugins/kiyautofill.ts` — TS plugin definition
-- `android/.../KiyoAutofillPlugin.kt` — Native plugin implementation
+- `android/app/src/main/java/com/kiyo/app/capacitor/KiyoAutofillPlugin.kt` — Native plugin implementation
 
 **Antipattern**: Caching `AutofillRepository` across calls — each call must create fresh repository to pick up current key state.
 
@@ -67,9 +67,9 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: The PIN-derived AES-GCM key in the WebView process (React). Derived via PBKDF2 (100k iterations) from user PIN + vault salt. Used to encrypt/decrypt the vault blob and individual records. **Not the same** as the Keystore-wrapped DB key on the native side; never round-trip through Capacitor.
 
 **Used in**:
-- `src/crypto/encryption.ts:deriveKey` — Key derivation
-- `src/crypto/recordEncryption.ts` — Record-level encrypt/decrypt
-- `src/store/sessionStore.ts` — Held in SecuritySession (memory only)
+- `src/crypto/encryption.ts:36` — Key derivation via `createCryptoKey`
+- `src/crypto/encryption.ts:73, 101` — Record-level encrypt/decrypt via `encryptData`/`decryptData`
+- `src/store/sessionStore.ts:23` — Held in SecuritySession (memory only)
 
 **Antipattern**: Calling the native SQLCipher key "cryptoKey" — that is `dbKey`.
 
@@ -82,8 +82,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: The SQLCipher encryption key for the AutofillService database. Wrapped by `kiyo_master_key` in the Android Keystore. Lives only in native process.
 
 **Used in**:
-- `android/.../DatabaseKeyManager.kt` — wrap/unwrap DB key
-- `android/.../AutofillRepository.kt` — Open SQLCipher DB with this key
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` — wrap/unwrap DB key
+- `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt` — Open SQLCipher DB with this key
 
 **Antipattern**: Confusing with `cryptoKey` (React PIN-derived key) or `kiyo_master_key` (Keystore alias).
 
@@ -96,8 +96,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Android Keystore alias for the autofill DB-key wrapper (`dbKey`). Requires user authentication (PIN/pattern/biometric) to unwrap. Distinct from **kiyo_secure_master_key** (biometric vault wrapper) and **kiyo_index_key** (non-auth metadata DB).
 
 **Used in**:
-- `android/.../KeystoreManager.kt` — Create/retrieve keystore entry
-- `android/.../DatabaseKeyManager.kt` — Wrap/unwrap dbKey
+- `android/app/src/main/java/com/kiyo/app/security/KeystoreManager.kt:33` — `LEGACY_KEY_ALIAS = "kiyo_master_key"`; create/retrieve keystore entry
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` — Wrap/unwrap dbKey via KeystoreManager
 
 **Antipattern**: Using this alias for the biometric vault key — that is `kiyo_secure_master_key`.
 
@@ -110,8 +110,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Android Keystore alias for the biometric vault key wrapper. Protects the key that encrypts the secure vault (biometric-unlocked vault). Distinct from `kiyo_master_key` (autofill) and `kiyo_index_key` (non-auth).
 
 **Used in**:
-- `android/.../SecureKeyManager.kt` — Create/retrieve keystore entry
-- `android/.../BiometricAuthHelper.kt` — CryptoObject for biometric prompt
+- `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyManager.kt` — Create/retrieve keystore entry
+- `android/app/src/main/java/com/kiyo/app/securekey/BiometricAuthHelper.kt:36` — `KEY_ALIAS = "kiyo_secure_master_key"`; CryptoObject for biometric prompt
 
 **Antipattern**: Using this for autofill DB — that is `kiyo_master_key`.
 
@@ -124,7 +124,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Android Keystore alias for the non-authenticated metadata DB key wrapper. Used for vault index/metadata that doesn't require user auth. Distinct from `kiyo_master_key` and `kiyo_secure_master_key`.
 
 **Used in**:
-- `android/.../KeystoreManager.kt` — Non-auth key creation
+- `android/app/src/main/java/com/kiyo/app/security/KeystoreManager.kt:35` — `INDEX_KEY_ALIAS = "kiyo_index_key"`; non-auth key creation via `getOrCreateIndexKey()` (line 115)
 
 **Antipattern**: Using for any auth-required data.
 
@@ -137,9 +137,9 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: The user's secret string entered at vault unlock. Distinct from **password** (a field stored inside an Account) and **biometric token** (system auth, unlocks a separate secure vault).
 
 **Used in**:
-- `src/pages/Unlock.tsx` — PIN entry UI
-- `src/crypto/encryption.ts:deriveKey` — PBKDF2 input
-- `src/store/sessionStore.ts` — Session creation
+- `src/pages/Auth.tsx` — PIN entry UI (unlock form)
+- `src/crypto/encryption.ts:36` — PBKDF2 input via `createCryptoKey`
+- `src/store/sessionStore.ts` — Session creation via `setSession`/`setupVaultSession`
 
 **Antipattern**: Calling the vault encryption key "PIN" — PIN is the human input; the derived key is `cryptoKey`.
 
@@ -149,12 +149,12 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 ### SecuritySession
 
-**Definition**: The in-memory unlocked state: `cryptoKey` (AES derived from PIN via PBKDF2) + the active vault's decrypted contents. `fileName` and `salt` are the only persisted pieces (in Zustand + IndexedDB for session restore). Keys never persisted.
+**Definition**: The in-memory unlocked state: `cryptoKey` (AES derived from PIN via PBKDF2) + the active vault's decrypted contents. `fileName` and `salt` are the only persisted pieces (in Zustand + localStorage for session restore). Keys never persisted.
 
 **Used in**:
 - `src/store/sessionStore.ts` — Session state, actions (lock/unlock)
-- `src/pages/Vault.tsx` — Consumes session for vault operations
-- `src/hooks/useSecuritySession.ts` — React hook for session access
+- `src/database/fileStorage.ts` — Consumed by `setupVaultSession`, `lockDataFile`, `closeDataFile`, `unlockFile`
+- `src/pages/Auth.tsx` — Consumes session for biometric unlock flow
 
 **Antipattern**: Persisting `cryptoKey` to disk/IndexedDB — only `fileName` and `salt` persist.
 
@@ -167,7 +167,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Auto-lock trigger. Clears `cryptoKey` from session store (via `clearCryptoKey()`), keeping `activeFileName` and `salt` for unlock recovery. Called by `useAutoLock` when timer expires. Does NOT clear accounts/templates/metadata — those stay in memory until explicit `closeDataFile`.
 
 **Used in**:
-- `src/database/fileStorage.ts:168` — Implementation
+- `src/database/fileStorage.ts:194` — Implementation
 - `src/hooks/useAutoLock.ts:38` — Timer expiry callback
 
 **Antipattern**: Calling this expecting full vault close — it only locks (clears key). Use `closeDataFile` for full close.
@@ -181,7 +181,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Unlocks an encrypted vault file with PIN. Derives `cryptoKey` via PBKDF2, decrypts vault blob, populates stores (`accountStore`, `templateStore`, `metadataStore`), and sets up session via `setupVaultSession`. Returns decrypted `KiyoVaultData` or `null` on wrong PIN.
 
 **Used in**:
-- `src/database/fileStorage.ts:172` — Implementation
+- `src/database/fileStorage.ts:198` — Implementation
 - `src/pages/Auth.tsx:82` — PIN verification flow
 
 **Antipattern**: Calling without `fileName` + valid `salt` from fileTable.
@@ -196,7 +196,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 **Used in**:
 - `src/store/sessionStore.ts:80` — Implementation
-- `src/database/fileStorage.ts:169` — Called by `lockDataFile`
+- `src/database/fileStorage.ts:195` — Called by `lockDataFile`
 
 **Antipattern**: Expecting this to clear accounts/data — it only clears the key.
 
@@ -206,12 +206,12 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 ### clearSession
 
-**Definition**: Clears entire session state: `activeFileName`, `cryptoKey`, `salt`, `initialized = false`. Used by `closeDataFile` (user-initiated vault close) and `activatePlaintextVault` (plaintext vault setup). Does NOT clear stores — caller must clear accounts/templates/metadata separately.
+**Definition**: Clears entire session state: `activeFileName`, `cryptoKey`, `salt`, `initialized = false`. Used by `closeDataFile` (user-initiated vault close) and `activatePlaintextVault` (error path). Does NOT clear stores — caller must clear accounts/templates/metadata separately.
 
 **Used in**:
 - `src/store/sessionStore.ts:84` — Implementation
-- `src/database/fileStorage.ts:158` — Called by `closeDataFile`
-- `src/database/fileStorage.ts:124` — Called by `activatePlaintextVault` (error path)
+- `src/database/fileStorage.ts:184` — Called by `closeDataFile`
+- `src/database/fileStorage.ts:126` — Called by `activatePlaintextVault` (via `setSession`)
 
 **Antipattern**: Expecting this to clear stores or autofill data — it only clears session.
 
@@ -224,7 +224,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Internal `useRef` flag in `useAutoLock` that prevents timer restart after auto-lock has fired. Set to `true` when timer expires and `lockDataFile()` is called. Reset to `false` only by `closeDataFile` (via session clear) or explicit unlock flow.
 
 **Used in**:
-- `src/hooks/useAutoLock.ts:23, 36, 47, 75` — Guard checks
+- `src/hooks/useAutoLock.ts:23, 36, 47` — Guard checks
 
 **Antipattern**: Treating as persistent lock state — it's an in-memory ref only.
 
@@ -237,8 +237,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: A single encrypted JSON file in the Files table (Dexie + native). One PIN unlocks one vault. Distinct from **Account** (a record inside a vault) and **SecuritySession** (the in-memory unlocked state of one vault).
 
 **Used in**:
-- `src/database/fileStorage.ts` — Encrypted vault I/O (createEncryptedVault, persistVaultRecord, exportVaultFile)
-- `src/types/vault.ts` — VaultFile type (encrypted blob + metadata)
+- `src/database/fileStorage.ts` — Encrypted vault I/O (`createEncryptedVault` line 51, `backupDataFile` line 280)
+- `src/models/vault.ts:10` — `KiyoVaultData` type (encrypted blob + metadata)
 - `src/store/accountStore.ts` — Accounts live inside a vault
 
 **Antipattern**: "Vault" used to mean the unlocked in-memory state — that is `SecuritySession`.
@@ -252,8 +252,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Native Kotlin repository managing the AutofillService SQLCipher database. Handles AutofillAccount CRUD, DB key lifecycle (via DatabaseKeyManager), and query/match logic for autofill requests.
 
 **Used in**:
-- `android/.../AutofillRepository.kt` — Implementation
-- `android/.../KiyoAutofillService.kt` — Injected dependency
+- `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt` — Implementation
+- `android/app/src/main/java/com/kiyo/app/autofill/service/KiyoAutofillService.kt` — Injected dependency
 
 **Antipattern**: Confusing with React-side accountStore — different process, different data model, different encryption.
 
@@ -263,12 +263,12 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 ### DatabaseKeyManager
 
-**Definition**: Native Kotlin manager for the Autofill DB key (`dbKey`). Wraps/unwraps `dbKey` using `kiyo_master_key` from Keystore. Persists wrapped key to DataStore. Handles security upgrade (re-wrap), key invalidation reset (PIN/biometric change), security downgrade detection (lock screen removal), and index key (`kiyo_index_master_key` non-auth).
+**Definition**: Native Kotlin manager for the Autofill DB key (`dbKey`). Wraps/unwraps `dbKey` using `kiyo_master_key` from Keystore. Persists wrapped key to DataStore. Handles security upgrade (re-wrap), key invalidation reset (PIN/biometric change), security downgrade detection (lock screen removal), and index key (`kiyo_index_key` non-auth).
 
 **Used in**:
-- `android/.../DatabaseKeyManager.kt` — wrapKey, unwrapKey, getKey, rewrapDbKey, resetAutofillData, getIndexKey
-- `android/.../AutofillRepository.kt` — Called on DB open (via factory methods)
-- `android/.../KiyoAutofillService.kt` — Per-request repository creation
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt:99` — `getKey`, line 164 `rewrapDbKey`, line 250 `resetAutofillData`, line 308 `getIndexKey`
+- `android/app/src/main/java/com/kiyo/app/autofill/repository/AutofillRepository.kt` — Called on DB open (via factory methods)
+- `android/app/src/main/java/com/kiyo/app/autofill/service/KiyoAutofillService.kt` — Per-request repository creation
 
 **Antipattern**: Performing auth-dependent init in AutofillService.onCreate() — use lazy init per-request.
 
@@ -281,8 +281,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Simple utility object generating fresh 256-bit AES keys for DB_KEY and INDEX_KEY. Called by `DatabaseKeyManager.generateAndStoreKey` and `getIndexKey` (first call).
 
 **Used in**:
-- `android/.../DatabaseKeyGenerator.kt` — Implementation
-- `android/.../DatabaseKeyManager.kt:221, 318` — Called on first key creation
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyGenerator.kt` — Implementation (`generate()` at line 11)
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` — Called on first key creation
 
 **Antipattern**: Using for any key that needs user auth binding — this generates raw random keys only.
 
@@ -295,9 +295,9 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Native Kotlin manager for Android Keystore entries: `kiyo_master_key` (autofill, auth-required when lock screen enabled), `kiyo_index_key` (non-auth metadata DB), `kiyo_secure_master_key` (biometric vault, separate). Handles creation, retrieval, encryption/decryption of wrapping keys, security upgrade/downgrade checks. No caching — every call reads current Keystore state.
 
 **Used in**:
-- `android/.../KeystoreManager.kt` — createKey, getKey, deleteKey, encrypt, decrypt, needsSecurityUpgrade, isSecurityDowngrade
-- `android/.../DatabaseKeyManager.kt` — Uses KeystoreManager for kiyo_master_key and kiyo_index_key
-- `android/.../SecureKeyManager.kt` — Uses KeystoreManager for kiyo_secure_master_key
+- `android/app/src/main/java/com/kiyo/app/security/KeystoreManager.kt:62` — `createKey`, line 86 `getOrCreateKey`, line 286 `deleteKey`, lines 251/272 `encrypt`/`decrypt`, lines 123/131 `needsSecurityUpgrade`/`isSecurityDowngrade`
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` — Uses KeystoreManager for `kiyo_master_key` and `kiyo_index_key`
+- `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyManager.kt` — Uses KeystoreManager for `kiyo_secure_master_key`
 
 **Antipattern**: Direct Keystore API calls scattered — centralise here.
 
@@ -310,9 +310,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Interface for keystore operations (`getOrCreateKey`, `encrypt`, `decrypt`) to enable testing (mockk). Implemented by `KeystoreManager`.
 
 **Used in**:
-- `android/.../KeystoreProvider.kt` — Interface definition
-- `android/.../KeystoreManager.kt` — Implementation
-- `android/.../DatabaseKeyManagerTest.kt` — Mocked in tests
+- `android/app/src/main/java/com/kiyo/app/security/KeystoreProvider.kt` — Interface definition
+- `android/app/src/main/java/com/kiyo/app/security/KeystoreManager.kt` — Implementation
 
 **Antipattern**: Direct KeystoreManager static calls in testable code — depend on interface.
 
@@ -325,8 +324,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Native Kotlin manager for the biometric vault key lifecycle. Wraps/unwraps the secure vault key using `kiyo_secure_master_key` from Keystore. Works with BiometricAuthHelper for CryptoObject-based auth. Manages a **single global** biometric-protected key (not per-vault). Caches key in memory.
 
 **Used in**:
-- `android/.../SecureKeyManager.kt` — wrap/unwrap secure vault key
-- `android/.../BiometricAuthHelper.kt` — BiometricPrompt with CryptoObject
+- `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyManager.kt` — wrap/unwrap secure vault key
+- `android/app/src/main/java/com/kiyo/app/securekey/BiometricAuthHelper.kt` — BiometricPrompt with CryptoObject
 
 **Antipattern**: Confusing with DatabaseKeyManager — different key, different Keystore alias, different auth flow. Assuming per-vault keys — there is only one global biometric key.
 
@@ -340,8 +339,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 **Used in**:
 - `src/plugins/kiyosecurekey.ts` — TS plugin definition
-- `android/.../SecureKeyPlugin.kt` — Native plugin implementation
-- `android/.../BiometricAuthHelper.kt` — Called for biometric operations
+- `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyPlugin.kt` — Native plugin implementation
+- `android/app/src/main/java/com/kiyo/app/securekey/BiometricAuthHelper.kt` — Called for biometric operations
 
 **Antipattern**: Passing `vaultId` — biometric key is global (removed 2026-09-04).
 
@@ -354,8 +353,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Native Kotlin helper for biometric authentication using non-crypto prompt + init/doFinal pattern (CryptoObject causes Keystore2 crash). Handles BiometricPrompt, encryption/decryption of the cryptoKey bound to `kiyo_secure_master_key`. Manages a **single global** biometric-protected key (not per-vault). Stores encrypted key in SharedPreferences (`ENCRYPTED_KEY_KEY`).
 
 **Used in**:
-- `android/.../BiometricAuthHelper.kt` — authenticate(), storeKey, unlockKeyWithBiometric, deleteKey, hasKey, isBiometryAvailable
-- `android/.../SecureKeyPlugin.kt` — Capacitor bridge for biometric unlock
+- `android/app/src/main/java/com/kiyo/app/securekey/BiometricAuthHelper.kt` — `authenticate()`, `storeKey`, `unlockKeyWithBiometric`, `deleteKey`, `hasKey`, `isBiometryAvailable`
+- `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyPlugin.kt` — Capacitor bridge for biometric unlock
 
 **Antipattern**: Using for autofill auth — autofill uses `kiyo_master_key` with standard Keystore auth, not CryptoObject. Assuming per-vault keys — there is only one global biometric key.
 
@@ -368,8 +367,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Exception thrown by `BiometricAuthHelper.unlockKeyWithBiometric` when stored encrypted key data fails GCM tag verification (AEADBadTagException). Indicates stored key material is corrupted or from a previous enrollment cycle. UI must guide user to re-enroll biometric.
 
 **Used in**:
-- `android/.../BiometricAuthHelper.kt:112` — Exception definition
-- `android/.../BiometricAuthHelper.kt:101` — Thrown on AEADBadTagException
+- `android/app/src/main/java/com/kiyo/app/securekey/BiometricAuthHelper.kt:112` — Exception definition
+- `android/app/src/main/java/com/kiyo/app/securekey/BiometricAuthHelper.kt:101` — Thrown on AEADBadTagException
 
 **Antipattern**: Silently swallowing — user must be informed to re-enroll.
 
@@ -382,9 +381,9 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Data class holding IV + ciphertext (with GCM tag) for wrapped keys. Used by `KeystoreManager`, `SecureKeyManager`, `DatabaseKeyManager` for wrapping/unwrapping `dbKey`, `indexKey`, and secure vault key. JSON serializable with base64 encoding.
 
 **Used in**:
-- `android/.../KeystoreManager.kt:247` — EncryptedKey definition
-- `android/.../DatabaseKeyManager.kt` — DB_KEY wrapping
-- `android/.../SecureKeyManager.kt` — Secure vault key wrapping
+- `android/app/src/main/java/com/kiyo/app/security/EncryptedKey.kt:11` — `EncryptedKey` definition
+- `android/app/src/main/java/com/kiyo/app/security/DatabaseKeyManager.kt` — DB_KEY wrapping
+- `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyManager.kt` — Secure vault key wrapping
 
 **Antipattern**: Using raw ByteArray without IV — GCM requires IV for decryption.
 
@@ -398,8 +397,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 **Used in**:
 - `src/plugins/kiyautofill.ts` — TS plugin definition
-- `android/.../KiyoAutofillPlugin.kt` — Native plugin implementation
-- `src/plugins/secureKey.ts` / `android/.../SecureKeyPlugin.kt` — Biometric bridge
+- `android/app/src/main/java/com/kiyo/app/capacitor/KiyoAutofillPlugin.kt` — Native plugin implementation
+- `src/plugins/kiyosecurekey.ts` / `android/app/src/main/java/com/kiyo/app/securekey/SecureKeyPlugin.kt` — Biometric bridge
 
 **Antipattern**: Passing `cryptoKey` or `dbKey` across the bridge — keys never leave their process.
 
@@ -412,8 +411,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Former bridge call to sync React auth state to AutofillService. **Deprecated/no-op** — Autofill now uses pure Keystore-based auth only. Kept in glossary as a historical marker.
 
 **Used in**:
-- `src/plugins/kiyautofill.ts` — Marked deprecated
-- `android/.../KiyoAutofillPlugin.kt` — No-op implementation
+- `src/database/fileStorage.ts:94, 107, 338, 389` — Marked deprecated/no-op (comment only, call removed)
+- `android/app/src/main/java/com/kiyo/app/capacitor/KiyoAutofillPlugin.kt` — No-op implementation path
 
 **Antipattern**: Reviving this call — AutofillService must not depend on React process auth state.
 
@@ -427,7 +426,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 **Used in**:
 - `src/pages/AutofillTestLogin.tsx` — Page component
-- `src/App.tsx:8,39` — Route registration
+- `src/App.tsx:8, 39` — Route registration
 
 **Antipattern**: Including in production build — should be gated by `import.meta.env.DEV` or removed from release.
 
@@ -437,11 +436,11 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 ### buildSnapshotFromStores
 
-**Definition**: Read-only helper that composes a `KiyoVaultData` JSON from current in-memory stores (`accountStore`, `templateStore`, `metadataStore`) plus `fileName` + timestamp. Does NOT persist — caller decides where to write (fileTable, backup export, etc.). Used by `saveStoresToFile`, `exportVaultFile`, `backupDataFile`.
+**Definition**: Read-only helper that composes a `KiyoVaultData` JSON from current in-memory stores (`accountStore`, `templateStore`, `metadataStore`) plus `fileName` + timestamp. Does NOT persist — caller decides where to write (fileTable, backup export, etc.). Used by `saveStoresToFile`, `backupDataFile`.
 
 **Used in**:
-- `src/database/fileStorage.ts:132` — Implementation
-- `src/database/fileStorage.ts:148, 261` — Called by `saveStoresToFile`, `exportVaultFile`
+- `src/database/fileStorage.ts:133` — Implementation
+- `src/database/fileStorage.ts:149, 287` — Called by `saveStoresToFile`, `backupDataFile`
 
 **Antipattern**: Expecting this to save to disk — it only builds the JSON object.
 
@@ -454,8 +453,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Distributes a decrypted `KiyoVaultData` into the three stores (`accountStore.init`, `templateStore.init`, `metadataStore.init`) and sets `sessionStore.initialized = true`. Called after unlock/import/plaintext activation. Does NOT touch session cryptoKey/salt — caller must set up session first via `setupVaultSession`.
 
 **Used in**:
-- `src/database/fileStorage.ts:112` — Implementation
-- `src/database/fileStorage.ts:126, 193, 198, 313` — Called by `activatePlaintextVault`, `unlockFile`, `openImportedDataFile`
+- `src/database/fileStorage.ts:113` — Implementation
+- `src/database/fileStorage.ts:127, 219, 340, 390` — Called by `activatePlaintextVault`, `unlockFile`, `openImportedDataFile`
 
 **Antipattern**: Calling without session already set up — stores will have data but session won't have cryptoKey for encryption.
 
@@ -468,7 +467,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: Orchestration function: builds snapshot via `buildSnapshotFromStores`, encrypts if session has `cryptoKey`+`salt`, writes to `fileTable.upsertFileRecord`. Called automatically after account/template/metadata mutations. No-op if no active file.
 
 **Used in**:
-- `src/database/fileStorage.ts:145` — Implementation
+- `src/database/fileStorage.ts:146` — Implementation
 - `src/store/accountStore.ts:46, 57, 64, 71` — After add/update/delete/clear accounts
 
 **Antipattern**: Calling manually when stores haven't changed — creates unnecessary write.
@@ -477,31 +476,165 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 ---
 
-### exportVaultFile
+### backupDataFile
 
-**Definition**: Exports current vault as backup file (encrypted if PIN provided, plaintext if not). Uses `buildSnapshotFromStores` + `createEncryptedVault`/`exportBackupFile`. Returns the `KiyoVaultData` for confirmation.
+**Definition**: Exports the current vault as a user-initiated backup file. Uses `buildSnapshotFromStores` to compose vault data, optionally encrypts with `createEncryptedVault` if PIN provided, then writes via `exportBackupFile`. Returns the decrypted `KiyoVaultData` for confirmation. Distinct from `saveStoresToFile` (auto-save) and `exportVaultFile` (higher-level backup with UI integration).
 
 **Used in**:
-- `src/database/fileStorage.ts:258` — Implementation (exported as `exportVaultFile`)
-- `src/pages/Settings/components/DataSection.tsx` — Backup UI
+- `src/database/fileStorage.ts:280` — Implementation
+- `src/pages/Settings/components/DataSection.tsx:54` — Backup dialog confirm handler
 
-**Antipattern**: Confusing with `saveStoresToFile` — this is for user-initiated backup export, not auto-save.
+**Antipattern**: Confusing with `saveStoresToFile` (auto-save after mutations) or `exportVaultFile` (Settings UI backup flow — function does not exist in this codebase; backup is `backupDataFile`).
 
 **Origin**: Added 2026-09-04 (audit)
 
 ---
 
-### Files Table (Dexie)
+### BUILTIN_TEMPLATES
 
-**Definition**: The Dexie/IndexedDB table storing encrypted vault files. Each row = one vault file (encrypted blob + metadata: fileName, salt, version, createdAt). PK = fileName (string).
+**Definition**: Array of default templates seeded into every new vault. Includes common credential types (login, credit card, identity, etc.). Each template gets a deterministic ID (`String(i+1)`) and timestamps at vault creation.
 
 **Used in**:
-- `src/database/db.ts` — Dexie schema definition
-- `src/database/fileStorage.ts` — Pipeline functions (createEncryptedVault, exportVaultFile, etc.)
+- `src/database/fileStorage.ts:236` — Seeded in `createDataFile`
+- `src/constants/builtinTemplates.ts` — Template definitions
 
-**Antipattern**: Storing decrypted accounts as separate rows — accounts are encrypted inside the vault blob.
+**Antipattern**: Modifying built-in templates after vault creation — they are only seeds; user modifications create new templates in the vault.
 
-**Origin**: Seed glossary (2026-09-04)
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### changePin
+
+**Definition**: Re-encrypts the active vault with a new PIN. Derives new `cryptoKey` + `salt` from the new PIN, calls `setupVaultSession` to update in-memory session, then persists via `saveStoresToFile`. Works for both encrypted and plaintext vaults (plaintext → encrypted transition).
+
+**Used in**:
+- `src/database/fileStorage.ts:405` — Implementation
+- `src/pages/Settings/components/SecuritySection.tsx:53, 55` — PIN change UI
+
+**Antipattern**: Calling without active file — throws "활성 데이터 파일이 없습니다."
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### createDataFile
+
+**Definition**: Creates a new vault file (encrypted or plaintext). Normalizes file name, resolves collisions with `(1)`, `(2)` suffixes, initializes stores with built-in templates and optional dev seed accounts, sets up session via `setupVaultSession`, encrypts if PIN provided, writes to `fileTable`. Returns the created `KiyoVaultData`.
+
+**Used in**:
+- `src/database/fileStorage.ts:229` — Implementation
+- `src/pages/CreateVault/index.tsx` — Create vault page (lines 3, 55, 69)
+- `src/database/fileStorage.jsonCompat.integration.test.ts` — Integration tests
+
+**Antipattern**: Calling with empty fileName — throws "fileName is empty" via `normalizeDataFileName` guard.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### devAccounts
+
+**Definition**: Development-only seed accounts injected into new vaults when `import.meta.env.DEV && !import.meta.env.VITE_E2E`. Excluded from E2E tests and production builds. Provides sample data for manual testing.
+
+**Used in**:
+- `src/constants/devAccounts.ts` — Definition
+- `src/database/fileStorage.ts:238` — Injected in `createDataFile`
+
+**Antipattern**: Expecting dev accounts in E2E or production — they are explicitly gated out.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### exportBackupFile / importBackupFile / writeBackupToUri / readBackupFromUri / pickBackupFolder
+
+**Definition**: File export/import operations via SAF (Android) or download/picker (web).
+- `exportBackupFile`: Saves vault data (encrypted or plaintext) to user-chosen location.
+- `importBackupFile`: (Commented out) Reads backup file via SAF/file picker.
+- `writeBackupToUri` / `readBackupFromUri`: Persistent URI read/write for auto-backup.
+- `pickBackupFolder`: SAF folder picker for auto-backup destination.
+
+**Used in**:
+- `src/database/fileExport.ts` — All implementations (`exportBackupFile` line 21, `writeBackupToUri` line 124, `readBackupFromUri` line 152, `pickBackupFolder` line 169)
+- `src/pages/Settings/components/DataSection.tsx` — Backup/restore UI, auto-backup setup (line 9 `pickBackupFolder`)
+
+**Antipattern**: Calling web-incompatible functions (`pickBackupFolder`, `writeBackupToUri`) without `isNativeFileStorageAvailable()` guard.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### FileStorageError / FileStorageErrorCode
+
+**Definition**: Structured error type for all file storage operations. Carries `code` (from `FileStorageErrorCode` enum), `message`, `originalError`, `fileName`, `operation`, `timestamp`. Static factory methods for common cases (`fileNotFound`, `encryptionError`, `pinMismatch`, etc.). `isFileStorageError` / `getErrorCode` / `getErrorMessage` helpers for type narrowing.
+
+**Used in**:
+- `src/database/fileStorage.error.ts` — Definition and factories
+- `src/database/fileStorage.ts` — Thrown/caught in pipeline functions
+- `src/database/fileExport.ts` — Thrown/caught in export/import
+
+**Antipattern**: Throwing raw `Error` in storage layer — always wrap via `FileStorageError.create()` for consistent handling.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### normalizeDataFileName
+
+**Definition**: Normalizes vault file names: trims whitespace, defaults to `"kiyo-data"`, ensures `.json` suffix. Pure function, no side effects. Used by `createDataFile`, `exportBackupFile`, and import flows.
+
+**Used in**:
+- `src/database/fileExport.ts:12` — Implementation
+- `src/database/fileStorage.ts:233` — `createDataFile` input normalization
+- `src/database/fileExport.ts:33` — `exportBackupFile` input normalization
+
+**Antipattern**: Passing unnormalized names to `fileTable.upsertFileRecord` — PK collision or missing extension.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### openImportedDataFile
+
+**Definition**: Imports a vault from a JSON string (backup file). Parses JSON, validates via `isKiyoFile`, decrypts if encrypted (requires PIN), resolves file name collisions, loads data into stores via `loadVaultToStores`, sets up session via `setupVaultSession`, and persists to `fileTable`. Returns decrypted `KiyoVaultData` or `null` on wrong PIN.
+
+**Used in**:
+- `src/database/fileStorage.ts:298` — Implementation
+- `src/pages/Settings/components/DataSection.tsx:58` — Restore dialog confirm handler
+
+**Antipattern**: Calling without valid PIN for encrypted backups — returns `null`; caller must handle.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### isKiyoFile
+
+**Definition**: Type guard that validates an unknown value as `KiyoVaultData` (decrypted vault structure). Checks for version 1, string `fileName`, number `updatedAt`, and arrays for `accounts`, `templates`, `metadata`. Used to validate imported/decrypted data before loading into stores.
+
+**Used in**:
+- `src/database/fileStorage.ts:30` — Implementation
+- `src/database/fileStorage.ts:328, 378` — Called in `openImportedDataFile` and import flow
+- `src/database/fileStorage.test.ts:92` — Type guard tests
+
+**Antipattern**: Using as encryption format check — it validates decrypted structure only; use `isEncryptedKiyoVaultData` for on-disk format.
+
+**Origin**: Added 2026-09-04 (audit)
+
+---
+
+### vaultId (bridge) — DEPRECATED
+
+**Definition**: Former identifier used in Capacitor bridge calls (`SecureKey` plugin) to reference a vault file. **Removed** — biometric key is now global (single key for all vaults). The native `BiometricAuthHelper` uses a single `ENCRYPTED_KEY_KEY` in SharedPreferences regardless of vault.
+
+**Used in**:
+- *Removed from:* `src/plugins/kiyosecurekey.ts`, `src/pages/Auth.tsx`, `src/pages/Settings/components/SecuritySection.tsx`
+- *Removed from native:* `SecureKeyPlugin.kt`, `BiometricAuthHelper.kt`
+
+**Antipattern**: Assuming per-vault biometric keys — there is only one global biometric-protected key.
+
+**Origin**: Deprecated 2026-09-04 (global key design)
 
 ---
 
@@ -556,8 +689,8 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 **Used in**:
 - `src/database/db.ts:3` — Dexie schema definition (duplicated in fileTable.ts:7)
-- `src/database/fileTable.ts:7, 50, 99, 122` — CRUD methods, getFileRecord, getAllFiles
-- `src/database/fileStorage.ts` — upsertFileRecord calls
+- `src/database/fileTable.ts:7, 50, 99, 122` — CRUD methods, `getFileRecord`, `getAllFiles`
+- `src/database/fileStorage.ts` — `upsertFileRecord` calls
 - `src/pages/RootRedirect.test.tsx` — Test mocks
 
 **Antipattern**: Confusing with `FileMetadata` (inside vault blob) or `ActiveFileInfo` (parsed runtime type with Uint8Array salt). The `salt` field here is base64 string, not Uint8Array.
@@ -574,7 +707,7 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 - `src/database/fileTable.ts:19` — Type definition
 - `src/hooks/useFileAuthGuard.ts` — Guard logic
 - `src/pages/RootRedirect.tsx` — Routing decisions
-- `src/hooks/useFileAuthGuard.test.tsx`, `src/pages/RootRedirect.test.tsx`, `src/pages/Home.test.tsx` — Test mocks
+- `src/pages/RootRedirect.test.tsx`, `src/pages/Home.test.tsx` — Test mocks
 
 **Antipattern**: Confusing with `FileRecord` (raw DB row, salt is base64 string) or treating `activeFileName: null` as a valid file — it means stale/missing.
 
@@ -587,8 +720,9 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 **Definition**: The count of accounts in the native AutofillService SQLCipher DB, cached in React session store after a successful sync. Represents **native-side state** (AutofillRepository row count), not React account count. Persisted to localStorage via session store `partialize`.
 
 **Used in**:
-- `src/store/sessionStore.ts:18, 49, 93, 103` — State field, persisted
-- `src/pages/Settings/components/AutofillSection.tsx:28, 35, 93, 118, 146` — Displayed as "자동완성 DB: N개", updated on sync/clear
+- `src/store/sessionStore.ts:29` — State field, persisted
+- `src/store/sessionStore.ts:60, 103` — Initial value, `setLastSyncedAutofillCount`
+- `src/pages/Settings/components/AutofillSection.tsx:29, 35, 93, 146` — Displayed as "자동완성 DB: N개", updated on sync/clear
 
 **Antipattern**: Treating as React account count — React accounts = `useAccountStore().accounts.length`. Autofill DB may have different count due to sync errors, filtering, or native-only entries.
 
@@ -596,161 +730,58 @@ Canonical vocabulary for KIYO. One term = one meaning. Cross-process ambiguities
 
 ---
 
-### backupDataFile
+### Files Table (Dexie)
 
-**Definition**: Exports the current vault as a user-initiated backup file. Uses `buildSnapshotFromStores` to compose vault data, optionally encrypts with `createEncryptedVault` if PIN provided, then writes via `exportBackupFile`. Returns the decrypted `KiyoVaultData` for confirmation. Distinct from `saveStoresToFile` (auto-save) and `exportVaultFile` (higher-level backup with UI integration).
+**Definition**: The Dexie/IndexedDB table storing encrypted vault files. Each row = one vault file (encrypted blob + metadata: fileName, salt, version, createdAt). PK = fileName (string).
 
 **Used in**:
-- `src/database/fileStorage.ts:254` — Implementation
-- `src/pages/Settings/components/DataSection.tsx:54` — Backup dialog confirm handler
+- `src/database/db.ts:3` — Dexie schema definition
+- `src/database/fileTable.ts` — CRUD methods (`getFileRecord`, `getFileInfo`, `upsertFileRecord`, `getAllFiles`)
+- `src/database/fileStorage.ts` — `upsertFileRecord` calls
 
-**Antipattern**: Confusing with `saveStoresToFile` (auto-save after mutations) or `exportVaultFile` (Settings UI backup flow).
+**Antipattern**: Storing decrypted accounts as separate rows — accounts are encrypted inside the vault blob.
+
+**Origin**: Seed glossary (2026-09-04)
+
+---
+
+### setupVaultSession
+
+**Definition**: Stores vault info (`fileName`, `cryptoKey`, `salt`) into session store. Autofill token sync is no longer performed — AutofillService relies purely on Android Keystore-based auth.
+
+**Used in**:
+- `src/database/fileStorage.ts:97` — Implementation
+- `src/database/fileStorage.ts:218, 249, 264, 337, 388` — Called by `unlockFile`, `createDataFile`, `openImportedDataFile`
+
+**Antipattern**: Expecting this to sync auth state to AutofillService — that was `syncAutofillToken`, now removed.
 
 **Origin**: Added 2026-09-04 (audit)
 
 ---
 
-### BUILTIN_TEMPLATES
+### activatePlaintextVault
 
-**Definition**: Array of default templates seeded into every new vault. Includes common credential types (login, credit card, identity, etc.). Each template gets a deterministic ID (`String(i+1)`) and timestamps at vault creation.
+**Definition**: Activates a plaintext (unencrypted) vault file. Sets up session without cryptoKey/salt, loads data into stores via `loadVaultToStores`. Used by Home plaintext entry point.
 
 **Used in**:
-- `src/database/fileStorage.ts:210` — Seeded in `createDataFile`
-- `src/models/template.ts` — Template definitions
+- `src/database/fileStorage.ts:122` — Implementation
+- `src/hooks/useFileAuthGuard.ts:46` — Called for plaintext vault routing
+- `src/pages/Home.tsx:51` — Called when user selects plaintext file
 
-**Antipattern**: Modifying built-in templates after vault creation — they are only seeds; user modifications create new templates in the vault.
+**Antipattern**: Calling on an encrypted vault — throws "vault is encrypted, use unlockFile".
 
 **Origin**: Added 2026-09-04 (audit)
 
 ---
 
-### changePin
+### closeDataFile
 
-**Definition**: Re-encrypts the active vault with a new PIN. Derives new `cryptoKey` + `salt` from the new PIN, calls `setupVaultSession` to update in-memory session, then persists via `saveStoresToFile`. Works for both encrypted and plaintext vaults (plaintext → encrypted transition).
+**Definition**: Full vault close: clears entire session (`clearSession`), clears all stores (`clearAccounts`/`clearTemplates`/`clearMetadata`), and on Android clears autofill accounts + biometric key via Capacitor plugins.
 
 **Used in**:
-- `src/database/fileStorage.ts:379` — Implementation
-- `src/pages/Settings/components/SecuritySection.tsx:53,55` — PIN change UI
+- `src/database/fileStorage.ts:183` — Implementation
+- `src/pages/Auth.tsx:157` — Back to home handler
 
-**Antipattern**: Calling without active file — throws "활성 데이터 파일이 없습니다."
+**Antipattern**: Expecting this to only lock — it fully clears session and stores. Use `lockDataFile` for lock-only.
 
 **Origin**: Added 2026-09-04 (audit)
-
----
-
-### createDataFile
-
-**Definition**: Creates a new vault file (encrypted or plaintext). Normalizes file name, resolves collisions with `(1)`, `(2)` suffixes, initializes stores with built-in templates and optional dev seed accounts, sets up session via `setupVaultSession`, encrypts if PIN provided, writes to `fileTable`. Returns the created `KiyoVaultData`.
-
-**Used in**:
-- `src/database/fileStorage.ts:203` — Implementation
-- `src/pages/CreateVault/index.tsx` — Create vault page
-- `src/database/fileStorage.jsonCompat.integration.test.ts` — Integration tests
-
-**Antipattern**: Calling with empty fileName — throws "fileName is empty" via `normalizeDataFileName` guard.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### devAccounts
-
-**Definition**: Development-only seed accounts injected into new vaults when `import.meta.env.DEV && !import.meta.env.VITE_E2E`. Excluded from E2E tests and production builds. Provides sample data for manual testing.
-
-**Used in**:
-- `src/database/fileStorage.ts:212` — Injected in `createDataFile`
-
-**Antipattern**: Expecting dev accounts in E2E or production — they are explicitly gated out.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### exportBackupFile / importBackupFile / writeBackupToUri / readBackupFromUri / pickBackupFolder
-
-**Definition**: File export/import operations via SAF (Android) or download/picker (web).
-- `exportBackupFile`: Saves vault data (encrypted or plaintext) to user-chosen location.
-- `importBackupFile`: (Commented out) Reads backup file via SAF/file picker.
-- `writeBackupToUri` / `readBackupFromUri`: Persistent URI read/write for auto-backup.
-- `pickBackupFolder`: SAF folder picker for auto-backup destination.
-
-**Used in**:
-- `src/database/fileExport.ts` — All implementations
-- `src/pages/Settings/components/DataSection.tsx` — Backup/restore UI, auto-backup setup
-
-**Antipattern**: Calling web-incompatible functions (`pickBackupFolder`, `writeBackupToUri`) without `isNativeFileStorageAvailable()` guard.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### FileStorageError / FileStorageErrorCode
-
-**Definition**: Structured error type for all file storage operations. Carries `code` (from `FileStorageErrorCode` enum), `message`, `originalError`, `fileName`, `operation`, `timestamp`. Static factory methods for common cases (`fileNotFound`, `encryptionError`, `pinMismatch`, etc.). `isFileStorageError` / `getErrorCode` / `getErrorMessage` helpers for type narrowing.
-
-**Used in**:
-- `src/errors/FileStorageError.ts` — Definition and factories
-- `src/database/fileStorage.ts` — Thrown/caught in pipeline functions
-- `src/database/fileExport.ts` — Thrown/caught in export/import
-
-**Antipattern**: Throwing raw `Error` in storage layer — always wrap via `FileStorageError.create()` for consistent handling.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### normalizeDataFileName
-
-**Definition**: Normalizes vault file names: trims whitespace, defaults to `"kiyo-data"`, ensures `.json` suffix. Pure function, no side effects. Used by `createDataFile`, `exportBackupFile`, and import flows.
-
-**Used in**:
-- `src/database/fileExport.ts:9` — Implementation
-- `src/database/fileStorage.ts:207` — `createDataFile` input normalization
-- `src/database/fileExport.ts:30` — `exportBackupFile` input normalization
-
-**Antipattern**: Passing unnormalized names to `fileTable.upsertFileRecord` — PK collision or missing extension.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### openImportedDataFile
-
-**Definition**: Imports a vault from a JSON string (backup file). Parses JSON, validates via `isKiyoFile`, decrypts if encrypted (requires PIN), resolves file name collisions, loads data into stores via `loadVaultToStores`, sets up session via `setupVaultSession`, and persists to `fileTable`. Returns decrypted `KiyoVaultData` or `null` on wrong PIN.
-
-**Used in**:
-- `src/database/fileStorage.ts:272` — Implementation
-- `src/pages/Settings/components/DataSection.tsx:58` — Restore dialog confirm handler
-
-**Antipattern**: Calling without valid PIN for encrypted backups — returns `null`; caller must handle.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### isKiyoFile
-
-**Definition**: Type guard that validates an unknown value as `KiyoVaultData` (decrypted vault structure). Checks for version 1, string `fileName`, number `updatedAt`, and arrays for `accounts`, `templates`, `metadata`. Used to validate imported/decrypted data before loading into stores.
-
-**Used in**:
-- `src/database/fileStorage.ts:29` — Implementation
-- `src/database/fileStorage.ts:302, 352` — Called in `openImportedDataFile` and import flow
-- `src/database/fileStorage.test.ts:92` — Type guard tests
-
-**Antipattern**: Using as encryption format check — it validates decrypted structure only; use `isEncryptedKiyoVaultData` for on-disk format.
-
-**Origin**: Added 2026-09-04 (audit)
-
----
-
-### vaultId (bridge) — DEPRECATED
-
-**Definition**: Former identifier used in Capacitor bridge calls (`SecureKey` plugin) to reference a vault file. **Removed** — biometric key is now global (single key for all vaults). The native `BiometricAuthHelper` uses a single `ENCRYPTED_KEY_KEY` in SharedPreferences regardless of vault.
-
-**Used in**:
-- *Removed from:* `src/plugins/kiyosecurekey.ts`, `src/pages/Auth.tsx`, `src/pages/Settings/components/SecuritySection.tsx`
-- *Removed from native:* `SecureKeyPlugin.kt`, `BiometricAuthHelper.kt`
-
-**Antipattern**: Assuming per-vault biometric keys — there is only one global biometric-protected key.
-
-**Origin**: Deprecated 2026-09-04 (global key design)
