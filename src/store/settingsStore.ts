@@ -8,7 +8,6 @@ export interface SettingsState {
   theme: "light" | "dark";
   fontSize: FontSize;
   autoLockTimeout: AutoLockTimeout;
-  biometricEnabled: boolean;
   autofillEnabled: boolean;
   autoBackupEnabled: boolean;
   autoBackupUri: string | null;
@@ -16,7 +15,6 @@ export interface SettingsState {
   toggleTheme: () => Promise<void>;
   setFontSize: (fontSize: FontSize) => Promise<void>;
   setAutoLockTimeout: (timeout: AutoLockTimeout) => Promise<void>;
-  setBiometricEnabled: (enabled: boolean) => Promise<void>;
   setAutofillEnabled: (enabled: boolean) => Promise<void>;
   setAutoBackupEnabled: (enabled: boolean) => Promise<void>;
   setAutoBackupUri: (uri: string | null) => Promise<void>;
@@ -29,7 +27,6 @@ export const useSettingsStore = create<SettingsState>()(
         theme: "light" as "light" | "dark",
         fontSize: "medium" as FontSize,
         autoLockTimeout: "none" as AutoLockTimeout,
-        biometricEnabled: false,
         autofillEnabled: false,
         autoBackupEnabled: false,
         autoBackupUri: null,
@@ -69,10 +66,6 @@ export const useSettingsStore = create<SettingsState>()(
         setAutoLockTimeout: async (timeout: AutoLockTimeout) => {
           set({ autoLockTimeout: timeout });
           // Persist to localStorage via zustand persist middleware
-        },
-
-        setBiometricEnabled: async (enabled: boolean) => {
-          set({ biometricEnabled: enabled });
         },
 
         setAutofillEnabled: async (enabled: boolean) => {
@@ -115,7 +108,6 @@ export const useSettingsStore = create<SettingsState>()(
           theme: state.theme,
           fontSize: state.fontSize,
           autoLockTimeout: state.autoLockTimeout,
-          biometricEnabled: state.biometricEnabled,
           autofillEnabled: state.autofillEnabled,
           autoBackupEnabled: state.autoBackupEnabled,
           autoBackupUri: state.autoBackupUri,

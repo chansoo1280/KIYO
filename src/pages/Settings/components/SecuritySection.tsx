@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { AutoLockTimeout } from "@/store/settingsStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
@@ -17,8 +17,9 @@ export function SecuritySection() {
   const [securityMessage, setSecurityMessage] = useState("");
   const [showPinChangeDialog, setShowPinChangeDialog] = useState(false);
   const [showBiometricSetupDialog, setShowBiometricSetupDialog] = useState(false);
+  const [biometricKeyExists, setBiometricKeyExists] = useState(false);
   const { cryptoKey } = useSessionStore();
-  const { autoLockTimeout, setAutoLockTimeout, biometricEnabled, setBiometricEnabled } = useSettingsStore();
+  const { autoLockTimeout, setAutoLockTimeout } = useSettingsStore();
   const isEncrypted = !!cryptoKey;
 
   const handlePinChangeClick = () => {
@@ -74,6 +75,29 @@ export function SecuritySection() {
     }
   }, []);
 
+  const checkBiometricKeyExists = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await SecureKey.hasKey();
+      return result.exists;
+    } catch (err) {
+      console.warn("Biometric key check failed:", err instanceof Error ? err.message : String(err), err);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const exists = await checkBiometricKeyExists();
+      if (mounted) {
+        setBiometricKeyExists(exists);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [checkBiometricKeyExists]);
+
   const handleBiometricToggle = useCallback(async (enabled: boolean) => {
     if (!isEncrypted) {
       setSecurityMessage("암호화된 파일에서만 생체인증을 사용할 수 있습니다.");
@@ -94,14 +118,14 @@ export function SecuritySection() {
       // Disable biometric - delete stored key
       try {
         await SecureKey.deleteKey();
-        await setBiometricEnabled(false);
+        setBiometricKeyExists(false);
         setSecurityMessage("생체인증이 비활성화되었습니다. 저장된 키가 삭제되었습니다.");
       } catch (err) {
         console.error("Failed to delete biometric key:", err instanceof Error ? err.message : String(err), err);
         setSecurityMessage("생체인증 비활성화에 실패했습니다.");
       }
     }
-  }, [isEncrypted, checkBiometryAvailability, setBiometricEnabled]);
+  }, [isEncrypted, checkBiometryAvailability]);
 
   const handleBiometricSetupConfirm = useCallback(async () => {
     if (!cryptoKey) {
@@ -124,7 +148,7 @@ export function SecuritySection() {
 
       // Store with biometric protection
       await SecureKey.storeKey({ key: keyBase64 });
-      await setBiometricEnabled(true);
+      await setBiometricKeyExists(true);
       setSecurityMessage("생체인증이 활성화되었습니다.");
     } catch (err) {
       console.error("Biometric setup failed:", err instanceof Error ? err.message : String(err), err);
@@ -132,7 +156,7 @@ export function SecuritySection() {
     } finally {
       setShowBiometricSetupDialog(false);
     }
-  }, [cryptoKey, setBiometricEnabled]);
+  }, [cryptoKey]);
 
   return (
     <SettingsSection title="Security">
@@ -174,9 +198,9 @@ export function SecuritySection() {
         <SettingsRow label="생체인증 로그인">
           <Button
             variant="ghost"
-            onClick={() => handleBiometricToggle(!biometricEnabled)}
+            onClick={() => handleBiometricToggle(!biometricKeyExists)}
             disabled={!isEncrypted}
-            label={biometricEnabled ? "사용 중" : "사용 안 함"}
+            label={biometricKeyExists ? "사용 중" : "사용 안 함"}
           />
         </SettingsRow>
       </div>
