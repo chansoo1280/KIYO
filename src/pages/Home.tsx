@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { isKiyoFile } from "@/database/fileStorage";
 import { openImportedDataFile } from "@/persistence/vaultPersistence";
 import { fileTable, type FileRecord } from "@/database/fileTable";
-import { useSessionStore } from "@/store/sessionStore";
 import {
   FileStorageErrorCode,
   isFileStorageError,
@@ -180,8 +179,6 @@ const Home = () => {
             </p>
             <ul className="mt-4 flex flex-col gap-2" data-testid="file-list">
               {files.map((file) => {
-                const sessionActive = useSessionStore.getState().activeFileName;
-                const isActive = file.fileName === sessionActive;
                 return (
                   <li
                     key={file.id}
@@ -193,8 +190,8 @@ const Home = () => {
                       variant="ghost"
                       onClick={() => handleSelectFile(file.fileName)}
                       className="!flex-1 !justify-start !text-left !text-sm !font-medium !text-[var(--color-text-h)]"
-                      label={file.fileName + (isActive ? " active" : "")}
-                      aria-label={`${file.fileName} 활성화`}
+                      label={file.fileName}
+                      aria-label={`${file.fileName} 선택`}
                     />
                     <Button
                       type="button"
