@@ -129,39 +129,6 @@ export async function loadVault(
 }
 
 /**
- * 현재 볼트의 잠금을 해제한다. PIN 기반으로 키를 유도하여 메모리에 로드한다.
- */
-export async function unlockVault(
-  fileName: string,
-  pin: string
-): Promise<KiyoVaultData | null> {
-  const { encrypted, fileData, salt } = await fileTable.getFileInfo(fileName);
-  if (!fileData) {
-    throw new Error(`File not found: ${fileName}`);
-  }
-
-  if (encrypted) {
-    if (!salt) {
-      throw new Error(`Salt missing for encrypted file: ${fileName}`);
-    }
-    const { decryptedVaultData: decrypted, cryptoKey } = await decryptVaultData(
-      fileData,
-      pin,
-      salt
-    );
-    await useSessionStore.getState().setSession({
-      fileName,
-      cryptoKey,
-      salt,
-    });
-    return decrypted;
-  } else {
-    await useSessionStore.getState().setSession({ fileName });
-    return fileData as KiyoVaultData;
-  }
-}
-
-/**
  * 현재 볼트의 잠금을 설정한다. 암호화 키를 메모리에서 제거한다.
  */
 export async function lockVault(): Promise<void> {
@@ -196,7 +163,7 @@ export async function activatePlaintextVault(fileName: string): Promise<void> {
   const info = await fileTable.getFileInfo(fileName);
   if (!info.activeFileName) throw new Error(`File not found: ${fileName}`);
   if (info.encrypted)
-    throw new Error("activatePlaintextVault: vault is encrypted, use unlockFile");
+    throw new Error("activatePlaintextVault: vault is encrypted, use unlockVault");
   await useSessionStore.getState().setSession({ fileName });
   await loadVaultToStores(info.fileData);
 }
@@ -220,14 +187,11 @@ export const closeDataFile = async (): Promise<void> => {
   }
 };
 
-export const lockDataFile = async (): Promise<void> => {
-  await useSessionStore.getState().clearCryptoKey();
-};
 
-export const unlockFile = async (
+export async function unlockVault(
   fileName: string,
   pin: string
-): Promise<KiyoVaultData | null> => {
+): Promise<KiyoVaultData | null> {
   if (!fileName) {
     throw new Error("File name is required for unlock");
   }

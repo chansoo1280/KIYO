@@ -3,7 +3,7 @@ import { ArrowLeft, Fingerprint } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/sessionStore";
 import {
-  unlockFile,
+  unlockVault,
   closeDataFile,
   loadVaultToStores,
 } from "@/persistence/vaultPersistence";
@@ -79,7 +79,7 @@ const Auth = () => {
 
     try {
       // Unlock file with PIN - fileStorage handles session internally
-      const decrypted = await unlockFile(fileName, pin);
+      const decrypted = await unlockVault(fileName, pin);
 
       if (!decrypted) {
         setError("PIN 번호가 올바르지 않습니다.");

@@ -3,7 +3,7 @@ import { act } from "@testing-library/react";
 import { useAutoLock } from "@/hooks/useAutoLock";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
-import { lockDataFile } from "@/persistence/vaultPersistence";
+import { lockVault } from "@/persistence/vaultPersistence";
 import { renderHook } from "@testing-library/react";
 import type { SettingsState } from "@/store/settingsStore";
 import type { SessionState } from "@/store/sessionStore";
@@ -17,12 +17,12 @@ vi.mock("@/store/sessionStore", () => ({
 }));
 
 vi.mock("@/persistence/vaultPersistence", () => ({
-  lockDataFile: vi.fn(),
+  lockVault: vi.fn(),
 }));
 
 const mockUseSettingsStore = vi.mocked(useSettingsStore);
 const mockUseSessionStore = vi.mocked(useSessionStore);
-const mockLockDataFile = vi.mocked(lockDataFile);
+const mockLockVault = vi.mocked(lockVault);
 
 const createMockCryptoKey = (): CryptoKey => {
   return {} as CryptoKey;
@@ -113,7 +113,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
       result.current.startTimer();
     });
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
     expect(result.current.remainingSeconds).toBe(0);
   });
 
@@ -126,7 +126,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
       result.current.startTimer();
     });
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
     expect(result.current.remainingSeconds).toBe(0);
   });
 
@@ -168,7 +168,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     triggerTick();
 
     // 타임아웃에 도달하지 않았으므로 잠금 안 됨
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
     // 1초 이상 남아있어야 함 (1ms 오차 허용)
     expect(result.current.remainingSeconds).toBeGreaterThan(0);
   });
@@ -192,7 +192,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(30000);
     triggerTick();
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
   });
 
   it("활동 감지 시 touchstart 이벤트도 마지막 액션 시간을 갱신", () => {
@@ -214,7 +214,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(30000);
     triggerTick();
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
   });
 
   it("활동 감지 시 scroll 이벤트도 마지막 액션 시간을 갱신", () => {
@@ -236,7 +236,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(30000);
     triggerTick();
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
   });
 
   it("타임아웃 직전 (59,999ms)에는 잠금되지 않음", () => {
@@ -252,7 +252,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(59999);
     triggerTick();
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
     expect(result.current.remainingSeconds).toBe(1);
   });
 
@@ -269,7 +269,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(60000);
     triggerTick();
 
-    expect(mockLockDataFile).toHaveBeenCalled();
+    expect(mockLockVault).toHaveBeenCalled();
     expect(result.current.remainingSeconds).toBe(0);
   });
 
@@ -286,7 +286,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(61000);
     triggerTick();
 
-    expect(mockLockDataFile).toHaveBeenCalled();
+    expect(mockLockVault).toHaveBeenCalled();
     expect(result.current.remainingSeconds).toBe(0);
   });
 
@@ -303,14 +303,14 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(60000);
     triggerTick();
 
-    expect(mockLockDataFile).toHaveBeenCalledTimes(1);
+    expect(mockLockVault).toHaveBeenCalledTimes(1);
 
     // 추가 시간 경과 후 다시 tick
     advanceFakeTime(30000);
     triggerTick();
 
     // lockedRef가 true이므로 중복 호출되지 않음
-    expect(mockLockDataFile).toHaveBeenCalledTimes(1);
+    expect(mockLockVault).toHaveBeenCalledTimes(1);
   });
 
   it("stopTimer가 타이머를 정리하고 상태를 리셋", () => {
@@ -393,7 +393,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(60000);
     triggerTick();
 
-    expect(mockLockDataFile).toHaveBeenCalled();
+    expect(mockLockVault).toHaveBeenCalled();
 
     // 잠금 상태에서 startTimer 호출
     act(() => {
@@ -439,7 +439,7 @@ describe("useAutoLock - Absolute Time Comparison", () => {
       result.current.startTimer();
     });
 
-    expect(mockLockDataFile).not.toHaveBeenCalled();
+    expect(mockLockVault).not.toHaveBeenCalled();
     expect(result.current.remainingSeconds).toBe(0);
   });
 
@@ -459,10 +459,10 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     triggerTick();
 
     // now lastActivityTime이 설정되었으므로 잠금 실행
-    expect(mockLockDataFile).toHaveBeenCalledTimes(1);
+    expect(mockLockVault).toHaveBeenCalledTimes(1);
   });
 
-  it("lockDataFile 실패 시 lockedRef가 복구됨", async () => {
+  it("lockVault 실패 시 lockedRef가 복구됨", async () => {
     const { result } = renderHook(() => useAutoLock());
 
     act(() => {
@@ -472,14 +472,14 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     dispatchActivity();
 
     // lockDataFile이 에러를 던지도록 설정
-    mockLockDataFile.mockRejectedValueOnce(new Error("잠금 실패"));
+    mockLockVault.mockRejectedValueOnce(new Error("잠금 실패"));
 
     // 60초 경과
     advanceFakeTime(60000);
     triggerTick();
 
     // lockDataFile은 호출되었지만 에러 발생
-    expect(mockLockDataFile).toHaveBeenCalledTimes(1);
+    expect(mockLockVault).toHaveBeenCalledTimes(1);
 
     // .catch() 마이크로태스크가 실행될 때까지 대기 (lockedRef 복구)
     await Promise.resolve();
@@ -489,6 +489,6 @@ describe("useAutoLock - Absolute Time Comparison", () => {
     advanceFakeTime(1000);
     triggerTick();
 
-    expect(mockLockDataFile).toHaveBeenCalledTimes(2);
+    expect(mockLockVault).toHaveBeenCalledTimes(2);
   });
 });

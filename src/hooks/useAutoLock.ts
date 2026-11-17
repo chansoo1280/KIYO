@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
-import { lockDataFile } from "@/persistence/vaultPersistence";
+import { lockVault } from "@/persistence/vaultPersistence";
 import type { AutoLockTimeout } from "@/store/settingsStore";
 
 const TIMEOUT_MAP: Record<AutoLockTimeout, number> = {
@@ -42,7 +42,7 @@ export function useAutoLock() {
 
     if (elapsedMs >= timeoutMs) {
       lockedRef.current = true;
-      Promise.resolve(lockDataFile()).catch(() => {
+      Promise.resolve(lockVault()).catch(() => {
         lockedRef.current = false;
       });
     }

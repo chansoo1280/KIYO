@@ -10,7 +10,7 @@ import {
   buildSnapshotFromStores,
   loadVaultToStores,
   saveStoresToFile,
-  unlockFile,
+  unlockVault,
   closeDataFile,
   activatePlaintextVault,
 } from "@/persistence/vaultPersistence";
@@ -141,7 +141,7 @@ describe("fileStorage - JSON compat invariant (PR 1 hard constraint)", () => {
     });
 
     // Act
-    const decrypted = await unlockFile("encrypted.json", "1234");
+    const decrypted = await unlockVault("encrypted.json", "1234");
 
     // Assert
     expect(decrypted).toBeTruthy();
