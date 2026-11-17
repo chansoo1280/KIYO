@@ -65,6 +65,13 @@ Tasks 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 →
 - `npm run lint` — 수정한 파일에 새로운 lint 오류 없음 (기존 코드 에러는 제외)
 - `npm run test` — Vitest 단위/통합 테스트 모두 통과 (기존 행위 유지)
 
+## Converge (수렴 완료)
+
+- 구현 코드가 보안 스펙(`.hermes/specs/security/specification.md`)의 FR-4(자동 잠금)와 1:1 매핑됨
+- 헌법 §5 보안 규칙 (키 디스크 미Persist, PBKDF2 100k, 자동잠금, 네트워크 금지) 위반 사항 없음
+- 전체 검증 gates 모두 통과: typecheck ✅ / lint ✅ / test (422개) ✅
+- 수렴 선언 완료: `f406f7ab`
+
 ## Risks / Tradeoffs / Open Questions
 
 - **Risk**: `vi.useFakeTimers()` 환경에서 `Date.now()`도 fake될 수 있어, 절대 시간 비교 테스트 작성 시 `vi.setSystemTime()`으로 시간을 명시적으로 제어해야 함
