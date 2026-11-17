@@ -22,7 +22,7 @@
 |------|------|------|
 | Keystore 키 #1 | `kiyo_master_key` — Autofill SQLCipher DB의 DB_KEY 래핑/언래핑용 | `KeystoreManager.kt` `LEGACY_KEY_ALIAS` |
 | Keystore 키 #2 | `kiyo_secure_master_key` — 생체인증 볼트 키 보호용 | `BiometricAuthHelper.kt` `KEY_ALIAS` |
-| 인덱스 키 | `kiyo_index_key` — 비인증 인덱스 암호화용 (Keystore 비인증 키) | `KeystoreManager.kt` `INDEX_KEY_ALIAS` |
+| 인덱스 키 | `kiyo_index_master_key` — 비인증 인덱스 암호화용 (Keystore 비인증 키) | `KeystoreManager.kt` `INDEX_KEY_ALIAS` |
 | SQLCipher DB | Autofill 계정 저장, DB_KEY(AES-256)로 암호화 | `AutofillRepository.kt` |
 | 생체인증 키 | 단일 글로벌 키 (볼트별 키 아님), 메모리 캐시 | `SecureKeyManager.kt` |
 | 생체인증 흐름 | BiometricPrompt + CryptoObject, GCM 태그 검증 실패 시 재등록 유도 | `BiometricAuthHelper.kt` |
@@ -85,9 +85,9 @@
 
 ### AFR-7: 비인증 인덱스 키
 
-**Given** `kiyo_index_key`가 사용된다  
+**Given** `kiyo_index_master_key`가 사용된다  
 **When** 인덱스 검색이 필요하다  
-**Then** `kiyo_index_key`는 사용자 인증 없이 접근 가능한 비인증(non-auth) Keystore 키이어야 하며, 민감 데이터(계정 비밀번호 등) 보호에 사용되어서는 안 된다
+**Then** `kiyo_index_master_key`는 사용자 인증 없이 접근 가능한 비인증(non-auth) Keystore 키이어야 하며, 민감 데이터(계정 비밀번호 등) 보호에 사용되어서는 안 된다
 
 ### AFR-8: 네트워크 완전 차단
 
@@ -100,6 +100,12 @@
 **Given** Keystore 작업 또는 생체인증 과정에서 에러가 발생한다  
 **When** `Log.e`, `Log.d` 등의 로그 출력이 사용된다  
 **Then** 키 자료, PIN, ciphertext 등 민감 정보는 로그에 출력되지 않아야 한다 (에러 메시지/코드만 출력)
+
+### AFR-10: 기기 변경/초기화 시 Keystore 키 재생성
+
+**Given** 사용자가 기기를 변경하거나 공장 초기화를 수행한다  
+**When** 새 기기에서 기존 Keystore 키(`kiyo_master_key`, `kiyo_secure_master_key`)에 접근할 수 없다  
+**Then** 새로운 Keystore 키를 재생성하고, 사용자가 PIN/생체인증을 다시 설정하여 볼트에 접근할 수 있어야 한다. 기존 키 마이그레이션은 시도하지 않음.
 
 ---
 
@@ -139,7 +145,7 @@
 - [ ] **AC-4**: 생체인증 키는 단일 글로벌 키이며, 볼트별 키 미생성 (코드 리뷰)
 - [ ] **AC-5**: 생체인증 실패 시 재등록 안내, 키 자료 미잔류 (단위/통합 테스트)
 - [ ] **AC-6**: 키 래핑 시 AES-GCM 사용, GCM 태그 검증 실패 시 위조 데이터로 간주 (단위 테스트)
-- [ ] **AC-7**: `kiyo_index_key`는 비인증 Keystore 키이며 민감 데이터 보호에 미사용 (코드 리뷰)
+- [ ] **AC-7**: `kiyo_index_master_key`는 비인증 Keystore 키이며 민감 데이터 보호에 미사용 (코드 리뷰)
 - [ ] **AC-8**: AndroidManifest에 `android.permission.INTERNET` 선언 없음 (정적 분석)
 - [ ] **AC-9**: Keystore/생체인증 에러 로그에 키 자료/PIN/ciphertext 미노출 (코드 리뷰 + 테스트)
 - [ ] **AC-10**: `npm run check` 통과, Android 변경 시 `npx cap sync android` 실행
@@ -147,10 +153,9 @@
 
 ---
 
-## Open Questions (미결정 사항)
+### Open Questions (미결정 사항)
 
-1. 앱 프로세스 종료 시 SecureKeyManager 메모리 캐시 즉시 삭제 여부
-2. 기기 변경/초기화 시 Keystore 키 마이그레이션 또는 재생성 정책
+없음. 모든 항목 결정 완료.
 
 ---
 
