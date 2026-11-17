@@ -3,7 +3,7 @@ import type { AutoLockTimeout } from "@/store/settingsStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
-import { changePin } from "@/database/fileStorage";
+import { changePin } from "@/persistence/vaultPersistence";
 import Button from "@/components/Button";
 import { Input } from "@/components/inputs";
 import { SettingsSection } from "@/components/SettingsSection";

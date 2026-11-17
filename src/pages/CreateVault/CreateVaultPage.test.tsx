@@ -5,11 +5,11 @@ import { MemoryRouter } from "react-router-dom";
 import CreateVaultPage from "./index";
 
 // createDataFile 모킹
-vi.mock("@/database/fileStorage", () => ({
+vi.mock("@/persistence/vaultPersistence", () => ({
   createDataFile: vi.fn(),
 }));
 
-import { createDataFile } from "@/database/fileStorage";
+import { createDataFile } from "@/persistence/vaultPersistence";
 
 const mockedCreateDataFile = vi.mocked(createDataFile);
 

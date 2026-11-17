@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Account } from "@/models/account";
 import { useSessionStore } from "@/store/sessionStore";
-import { saveStoresToFile } from "@/database/fileStorage";
+import { requestSave } from "@/persistence/persistencePort";
 import { Capacitor } from "@capacitor/core";
 import { KiyoAutofill } from "@/plugins/kiyautofill";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -23,7 +23,14 @@ export interface AccountState {
   getAccountById: (id: number) => Account | undefined;
   clearAccounts: () => Promise<void>;
   syncToAutofill: () => Promise<void>;
-  getAutofillAccounts(): Promise<{ username: string; password: string; domain: string | null; title?: string; packageNames?: string[]; packageName?: string | null }[]>;
+  getAutofillAccounts(): Promise<{
+    username: string;
+    password: string;
+    domain: string | null;
+    title?: string;
+    packageNames?: string[];
+    packageName?: string | null;
+  }[]>;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -43,7 +50,7 @@ export const useAccountStore = create<AccountState>()(
           id: nextAccountId(get().accounts),
         };
         set((state) => ({ accounts: [newAccount, ...state.accounts] }));
-        await saveStoresToFile();
+        await requestSave();
         return newAccount;
       },
 
@@ -54,21 +61,21 @@ export const useAccountStore = create<AccountState>()(
             a.id === updatedAccount.id ? updatedAccount : a
           ),
         }));
-        await saveStoresToFile();
+        await requestSave();
       },
 
       deleteAccount: async (id) => {
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
         }));
-        await saveStoresToFile();
+        await requestSave();
       },
 
       getAccountById: (id) => get().accounts.find((a) => a.id === id),
 
       clearAccounts: async () => {
         set({ accounts: [] });
-        await saveStoresToFile();
+        await requestSave();
       },
 
       syncToAutofill: async () => {

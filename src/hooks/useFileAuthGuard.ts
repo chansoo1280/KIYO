@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { fileTable } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
-import { activatePlaintextVault } from "@/database/fileStorage";
+import { activatePlaintextVault } from "@/persistence/vaultPersistence";
 
 export interface FileAuthStatus {
   activeFileName: string | null;

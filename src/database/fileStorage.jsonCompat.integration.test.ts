@@ -13,7 +13,7 @@ import {
   unlockFile,
   closeDataFile,
   activatePlaintextVault,
-} from "@/database/fileStorage";
+} from "@/persistence/vaultPersistence";
 import { fileTable } from "@/database/fileTable";
 import { createTestAccounts } from "@/test/fixtures/accountFixtures";
 import { createTestTemplates } from "@/test/fixtures/templateFixtures";
@@ -78,7 +78,7 @@ describe("fileStorage - JSON compat invariant (PR 1 hard constraint)", () => {
     const data = await createDataFile("plain-test.json");
 
     // Assert — createDataFile 결과
-    expect(data.fileName).toMatch(/^plain-test(\(\d+\))?\.json$/);
+    expect(data.fileName).toMatch(/^plain-test(\\(\\d+\\))?\.json$/);
     expect(data.accounts.length).toBeGreaterThanOrEqual(0);
     expect(data.templates.length).toBeGreaterThan(0); // builtin templates
 

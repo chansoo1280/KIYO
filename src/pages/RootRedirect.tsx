@@ -5,7 +5,7 @@ import { ErrorScreen } from "@/components/ErrorScreen";
 import { useSessionStore } from "@/store/sessionStore";
 import { fileTable } from "@/database/fileTable";
 import type { ActiveFileInfo } from "@/database/fileTable";
-import { loadVaultToStores } from "@/database/fileStorage";
+import { loadVaultToStores } from "@/persistence/vaultPersistence";
 import type { KiyoVaultData } from "@/models/vault";
 
 /**

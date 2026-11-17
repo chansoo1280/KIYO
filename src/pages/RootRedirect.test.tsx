@@ -6,6 +6,7 @@ import { fileTable } from "@/database/fileTable";
 import type { ActiveFileInfo } from "@/database/fileTable";
 import type { EncryptedKiyoVaultData } from "@/models/vault";
 import type { KiyoVaultData } from "@/models/vault";
+import { useSessionStore } from "@/store/sessionStore";
 
 // PR 1: RootRedirect는 loadVaultToStores(info.fileData)를 직접 호출
 // loadAccounts/loadTemplates는 더 이상 RootRedirect에서 호출하지 않음
@@ -22,8 +23,10 @@ const hoisted = vi.hoisted(() => {
   return { mockLoadVaultToStores, mockActivatePlaintextVault };
 });
 
-vi.mock("@/database/fileStorage", async () => {
-  const actual = await vi.importActual<typeof import("@/database/fileStorage")>("@/database/fileStorage");
+vi.mock("@/persistence/vaultPersistence", async () => {
+  const actual = await vi.importActual<typeof import("@/persistence/vaultPersistence")>(
+    "@/persistence/vaultPersistence"
+  );
   return {
     ...actual,
     loadVaultToStores: hoisted.mockLoadVaultToStores,
@@ -36,7 +39,7 @@ const mockActivatePlaintextVault = hoisted.mockActivatePlaintextVault;
 
 const mockNavigate = vi.fn<NavigateFunction>();
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  const actual = await vi.importActual<typeof import("react-router-dom")>;
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -75,7 +78,6 @@ const createStaleInfo = (): ActiveFileInfo => ({
 });
 
 // Session state helper (via real zustand setState)
-import { useSessionStore } from "@/store/sessionStore";
 const setSessionState = (activeFileName: string | null, cryptoKey: CryptoKey | null) => {
   useSessionStore.setState({ activeFileName, cryptoKey });
 };

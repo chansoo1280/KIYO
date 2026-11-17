@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createDataFile } from "@/database/fileStorage";
+import { createDataFile } from "@/persistence/vaultPersistence";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";

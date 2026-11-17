@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  isKiyoFile,
-  openImportedDataFile,
-} from "@/database/fileStorage";
+import { isKiyoFile } from "@/database/fileStorage";
+import { openImportedDataFile } from "@/persistence/vaultPersistence";
 import { fileTable, type FileRecord } from "@/database/fileTable";
 import { useSessionStore } from "@/store/sessionStore";
 import {
@@ -11,13 +9,13 @@ import {
   isFileStorageError,
 } from "@/database/fileStorage.error";
 import { mapError } from "@/utils/mapError";
-import { setupVaultSession } from "@/database/fileStorage";
+import { setupVaultSession } from "@/persistence/vaultPersistence";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
 import { Trash2 } from "lucide-react";
-import { activatePlaintextVault } from "@/database/fileStorage";
+import { activatePlaintextVault } from "@/persistence/vaultPersistence";
 
 const Home = () => {
   const navigate = useNavigate();

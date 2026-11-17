@@ -3,7 +3,7 @@ import { act } from "@testing-library/react";
 import { useAutoLock } from "@/hooks/useAutoLock";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
-import { lockDataFile } from "@/database/fileStorage";
+import { lockDataFile } from "@/persistence/vaultPersistence";
 import { renderHook } from "@testing-library/react";
 import type { SettingsState } from "@/store/settingsStore";
 import type { SessionState } from "@/store/sessionStore";
@@ -17,7 +17,7 @@ vi.mock("@/store/sessionStore", () => ({
   useSessionStore: vi.fn(),
 }));
 
-vi.mock("@/database/fileStorage", () => ({
+vi.mock("@/persistence/vaultPersistence", () => ({
   lockDataFile: vi.fn(),
 }));
 

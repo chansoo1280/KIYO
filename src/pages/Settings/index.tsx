@@ -9,7 +9,7 @@ import { UISection } from "./components/UISection";
 import { DataSection } from "./components/DataSection";
 import { AutofillSection } from "./components/AutofillSection";
 import { AppInfoDialog } from "./components/AppInfoDialog";
-import { closeDataFile } from "@/database/fileStorage";
+import { closeDataFile } from "@/persistence/vaultPersistence";
 import { useNavigate } from "react-router-dom";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 

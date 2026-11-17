@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSessionStore } from "@/store/sessionStore";
-import { lockDataFile } from "@/database/fileStorage";
+import { lockDataFile } from "@/persistence/vaultPersistence";
 import type { AutoLockTimeout } from "@/store/settingsStore";
 
 const TIMEOUT_MAP: Record<AutoLockTimeout, number> = {

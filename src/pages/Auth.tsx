@@ -6,7 +6,7 @@ import {
   unlockFile,
   closeDataFile,
   loadVaultToStores,
-} from "@/database/fileStorage";
+} from "@/persistence/vaultPersistence";
 import { fileTable } from "@/database/fileTable";
 import { SecureKey } from "@/plugins/kiyosecurekey";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";

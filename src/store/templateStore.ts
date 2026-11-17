@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Template } from "@/models/template";
-import { saveStoresToFile } from "@/database/fileStorage";
+import { requestSave } from "@/persistence/persistencePort";
 
 export interface TemplateState {
   templates: Template[];
@@ -33,9 +33,11 @@ export const useTemplateStore = create<TemplateState>()(
           updatedAt: Date.now(),
         };
         set((state) => ({
-          templates: [...state.templates, newTemplate].sort((a, b) => a.sortOrder - b.sortOrder),
+          templates: [...state.templates, newTemplate].sort(
+            (a, b) => a.sortOrder - b.sortOrder
+          ),
         }));
-        await saveStoresToFile();
+        await requestSave();
         return newTemplate;
       },
 
@@ -44,10 +46,12 @@ export const useTemplateStore = create<TemplateState>()(
         if (template) {
           set((state) => ({
             templates: state.templates
-              .map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t))
+              .map((t) =>
+                t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t
+              )
               .sort((a, b) => a.sortOrder - b.sortOrder),
           }));
-          await saveStoresToFile();
+          await requestSave();
         }
       },
 
@@ -55,12 +59,12 @@ export const useTemplateStore = create<TemplateState>()(
         set((state) => ({
           templates: state.templates.filter((t) => t.id !== id),
         }));
-        await saveStoresToFile();
+        await requestSave();
       },
 
       clearTemplates: async () => {
         set({ templates: [] });
-        await saveStoresToFile();
+        await requestSave();
       },
 
       getTemplate: (id) => get().templates.find((t) => t.id === id),
