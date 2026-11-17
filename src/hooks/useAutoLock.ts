@@ -17,43 +17,48 @@ export function useAutoLock() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeoutRef = useRef<number>(0);
+  const lastActivityTime = useRef<number | null>(null);
   const isActiveRef = useRef(false);
   const startedRef = useRef(false);
   const lockedRef = useRef(false);
 
-  // interval callback
+  // 절대 시간 비교: 마지막 액션 이후 경과 시간이 타임아웃을 넘으면 잠금
   const tick = useCallback(() => {
-      timeoutRef.current -= 1;
+    if (lockedRef.current) return;
 
-      if (timeoutRef.current <= 0) {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        isActiveRef.current = false;
-        startedRef.current = false;
-        lockedRef.current = true;
-        setRemainingSeconds(0);
-        lockDataFile();
-        return;
-      }
+    const lastActivity = lastActivityTime.current;
+    if (lastActivity === null) return;
 
-      setRemainingSeconds(timeoutRef.current);
-    }, []);
+    const timeoutSeconds = TIMEOUT_MAP[autoLockTimeout];
+    const timeoutMs = timeoutSeconds * 1000;
+    const elapsedMs = Date.now() - lastActivity;
+
+    const remainingSeconds = Math.max(
+      0,
+      Math.ceil(timeoutSeconds - elapsedMs / 1000)
+    );
+
+    setRemainingSeconds(remainingSeconds);
+
+    if (elapsedMs >= timeoutMs) {
+      lockedRef.current = true;
+      Promise.resolve(lockDataFile()).catch(() => {
+        lockedRef.current = false;
+      });
+    }
+  }, [autoLockTimeout]);
 
   // 타이머 시작/재시작
   const startTimer = useCallback(() => {
     if (lockedRef.current) return;
-    
-    // 이미 실행 중인 타이머가 있으면 중복 방지
+
     if (startedRef.current && timerRef.current) return;
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
+
     const timeout = TIMEOUT_MAP[autoLockTimeout];
-    timeoutRef.current = timeout;
 
     if (timeout === 0 || !cryptoKey) {
       setRemainingSeconds(0);
@@ -69,29 +74,25 @@ export function useAutoLock() {
     timerRef.current = setInterval(tick, 1000);
   }, [autoLockTimeout, cryptoKey, tick]);
 
-  // 설정/세션 변경 시 타이머 재시작 (직접 값 감지)
+  // 설정/세션 변경 시 타이머 재시작
   useEffect(() => {
-    // 잠금 상태면 무시
     if (lockedRef.current) return;
-    
-    // 설정 변경 시 이전 타이머 정리하고 새로 시작
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    startedRef.current = false; // 재시작 허용
+    startedRef.current = false;
     startTimer();
   }, [autoLockTimeout, cryptoKey, startTimer]);
 
-  // 활동 감지 리셋
+  // 사용자 활동 감지 시 마지막 액션 시간 갱신
   useEffect(() => {
     if (!isActiveRef.current || autoLockTimeout === "none" || !cryptoKey) return;
 
     const handleActivity = () => {
-      if (isActiveRef.current && timeoutRef.current > 0) {
-        timeoutRef.current = TIMEOUT_MAP[autoLockTimeout];
-        setRemainingSeconds(timeoutRef.current);
-      }
+      if (lockedRef.current) return;
+      lastActivityTime.current = Date.now();
     };
 
     const events = ["click", "keydown", "touchstart", "scroll"];
@@ -106,7 +107,15 @@ export function useAutoLock() {
     };
   }, [autoLockTimeout, cryptoKey]);
 
-  // 정리
+  // 잠금 해제(복원) 시 마지막 액션 시간 초기화 및 잠금 플래그 리셋
+  useEffect(() => {
+    if (cryptoKey) {
+      lastActivityTime.current = Date.now();
+      lockedRef.current = false;
+    }
+  }, [cryptoKey]);
+
+  // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -116,13 +125,17 @@ export function useAutoLock() {
     };
   }, []);
 
-  return { remainingSeconds, startTimer, stopTimer: () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    isActiveRef.current = false;
-    startedRef.current = false;
-    setRemainingSeconds(0);
-  }};
+  return {
+    remainingSeconds,
+    startTimer,
+    stopTimer: () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      isActiveRef.current = false;
+      startedRef.current = false;
+      setRemainingSeconds(0);
+    },
+  };
 }
