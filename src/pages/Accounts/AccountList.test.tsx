@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AccountList from "./index";
 
@@ -85,5 +86,25 @@ describe("AccountList (PR 1: useSessionStore.initialized 통합)", () => {
     renderList();
     expect(screen.queryByTestId("accounts-loading")).not.toBeInTheDocument();
     expect(screen.getByText("Test")).toBeInTheDocument();
+  });
+
+  it("④ initialized=true + accounts 비어있음 + 검색 없음 → '계정이 없습니다' + '계정 추가' 버튼 표시", () => {
+    mockSessionState.initialized = true;
+    mockAccountStoreState.accounts = [];
+    renderList();
+    expect(screen.getByText("계정이 없습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /계정 추가/ })).toBeInTheDocument();
+  });
+
+  it("⑤ initialized=true + accounts 비어있음 + 검색 결과 없음 → '검색 결과가 없습니다' 표시", async () => {
+    mockSessionState.initialized = true;
+    mockAccountStoreState.accounts = [];
+    renderList();
+    const user = userEvent.setup();
+    // 검색 입력은 검색 버튼 클릭 후 나타나므로 먼저 버튼 클릭
+    await user.click(screen.getByRole("button", { name: /Search/ }));
+    const searchInput = screen.getByPlaceholderText(/제목이나 이메일로 검색/);
+    await user.type(searchInput, "존재하지않는사이트");
+    expect(screen.getByText("검색 결과가 없습니다.")).toBeInTheDocument();
   });
 });

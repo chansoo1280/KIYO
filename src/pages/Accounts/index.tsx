@@ -253,67 +253,94 @@ const AccountList = () => {
           </div>
         )}
 
-        <div className="grid gap-3">
-          {filteredAccounts.map((account) => (
-            <article
-              key={account.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleAccountClick(account)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  handleAccountClick(account);
-                }
-              }}
-              className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 shadow-sm transition hover:shadow-md"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-accent-bg)] text-[var(--color-accent)] font-semibold">
-                  {account.title.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1">
-                    <p className="truncate text-sm font-semibold text-[var(--color-text-h)]">
-                      {account.title}
-                    </p>
-                    {account.favorite && (
-                      <Star className="text-[var(--color-warning)] text-sm" />
-                    )}
-                  </div>
-                  <p className="truncate text-sm text-[var(--color-text)]">
-                    {account.fields.find(
-                      (field) => {
-                        const label = field.label.toLowerCase();
-                        return label === "email" || 
-                               label === "이메일" ||
-                               label === "아이디/이메일";
-                      }
-                    )?.value ?? "No email"}
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  const passwordField = account.fields.find(
-                    (field) => field.type === "password",
-                  );
-                  if (passwordField) {
-                    copy(passwordField.value);
+        {filteredAccounts.length > 0 ? (
+          <div className="grid gap-3">
+            {filteredAccounts.map((account) => (
+              <article
+                key={account.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleAccountClick(account)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleAccountClick(account);
                   }
                 }}
-                className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-chip !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
-                label={<Copy size={14} strokeWidth={2} />}
-                aria-label="비밀번호 복사"
-              />
-            </article>
-          ))}
-        </div>
+                className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 shadow-sm transition hover:shadow-md"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-accent-bg)] text-[var(--color-accent)] font-semibold">
+                    {account.title.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1">
+                      <p className="truncate text-sm font-semibold text-[var(--color-text-h)]">
+                        {account.title}
+                      </p>
+                      {account.favorite && (
+                        <Star className="text-[var(--color-warning)] text-sm" />
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-[var(--color-text)]">
+                      {account.fields.find(
+                        (field) => {
+                          const label = field.label.toLowerCase();
+                          return label === "email" || 
+                                 label === "이메일" || 
+                                 label === "아이디/이메일";
+                        }
+                      )?.value ?? "No email"}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const passwordField = account.fields.find(
+                      (field) => field.type === "password",
+                    );
+                    if (passwordField) {
+                      copy(passwordField.value);
+                    }
+                  }}
+                  className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-chip !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
+                  label={<Copy size={14} strokeWidth={2} />}
+                  aria-label="비밀번호 복사"
+                />
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-12 text-center">
+            {searchQuery.trim() ? (
+              <>
+                <p className="text-[var(--color-text-muted)] mb-4">
+                  검색 결과가 없습니다.
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  다른 키워드로 검색해보세요.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[var(--color-text-muted)] mb-4">
+                  계정이 없습니다.
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setShowTemplatePicker(true)}
+                  label="계정 추가"
+                />
+              </>
+            )}
+          </div>
+        )}
 
       <div className="fixed right-5 bottom-28 z-20 flex flex-col gap-3">
         <Button
