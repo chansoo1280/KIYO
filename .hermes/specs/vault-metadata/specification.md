@@ -49,7 +49,7 @@ KIYO 앱에서 볼트 메타데이터(FileMetadata)의 생성·조회·수정·�
 |----------|----------|---------------|
 | **보안** | 메타데이터는 볼트 전체 객체와 함께 암호화된다. 개별 암호화는 수행하지 않음 | `encryption.ts` 코드 리뷰 |
 | **오프라인 우선** | 네트워크 권한 미사용, 모든 메타데이터 기기 로컬 저장 | 정적 분석, 빌드 검증 |
-| **TypeScript strict** | ESM only, `@/` → `src/` import 경로 준수 | `npm run typecheck` |
+|| **TypeScript 개별 strict 플래그 준수** | ESM only, `@/` → `src/` import 경로 준수, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 준수 | `npm run typecheck` |
 | **테스트** | `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과 | CI 검증 |
 
 ## Out of Scope (명시적 제외)
@@ -75,7 +75,7 @@ KIYO 앱에서 볼트 메타데이터(FileMetadata)의 생성·조회·수정·�
 ## Acceptance Criteria
 이 spec이 완료됐다고 판단할 조건:
 
-1. **AC-1**: 메타데이터 모델(FileMetadata)이 `src/models/vault.ts`에 정의되고, TypeScript strict로 타입 안전성이 보장된다.
+1. **AC-1**: 메타데이터 모델(FileMetadata)이 `src/models/vault.ts`에 정의되고, 헌법 §3에 따라 개별 strict 플래그로 타입 안전성이 보장된다.
 2. **AC-2**: `useMetadataStore`가 `init`/`getAll`/`clearMetadata`를 제공한다.
 3. **AC-3**: Store는 FileStorage를 직접 import하지 않는다. (Persistence Coordinator 경유)
 4. **AC-4**: `npm run typecheck`, `npm run lint`, `npm run test`가 모두 통과한다.

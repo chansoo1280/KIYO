@@ -87,7 +87,7 @@ KIYO 앱의 앱 설정(테마, 폰트, 자동 잠금, 자동백업, Autofill 활
 |----------|----------|---------------|
 | **보안** | 설정에는 민감 정보(PIN, 키, 계정 데이터)를 포함하지 않는다 | 코드 리뷰 |
 | **오프라인 우선** | 네트워크 권한 미사용, 모든 설정 데이터 기기 로컬 저장 | 정적 분석, 빌드 검증 |
-| **TypeScript strict** | ESM only, `@/` → `src/` import 경로 준수 | `npm run typecheck` |
+|| **TypeScript 개별 strict 플래그 준수** | ESM only, `@/` → `src/` import 경로 준수, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 준수 | `npm run typecheck` |
 | **테스트** | `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과 | CI 검증 |
 
 ## Out of Scope (명시적 제외)
@@ -101,7 +101,7 @@ KIYO 앱의 앱 설정(테마, 폰트, 자동 잠금, 자동백업, Autofill 활
 ## Acceptance Criteria
 이 spec이 완료됐다고 판단할 조건:
 
-1. **AC-1**: 설정 모델(SettingsState)이 `src/store/settingsStore.ts`에 정의되고, TypeScript strict로 타입 안전성이 보장된다.
+1. **AC-1**: 설정 모델(SettingsState)이 `src/store/settingsStore.ts`에 정의되고, 헌법 §3에 따라 개별 strict 플래그로 타입 안전성이 보장된다.
 2. **AC-2**: `useSettingsStore`가 설정 조회/수정 연산을 모두 제공한다.
 3. **AC-3**: 설정 변경 시 localStorage에 평문으로 persist된다.
 4. **AC-4**: 자동백업 URI 권한 해지 시 `vaultPersistence.saveVault`가 자동 비활성화를 처리한다.

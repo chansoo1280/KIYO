@@ -58,7 +58,7 @@ KIYO 앱에서 암호화 볼트의 외부 파일 내보내기(Export)와 가져�
 | **보안** | 암호화 키는 내보내기/가져오기 파일에 포함되지 않는다 | 코드 리뷰 |
 | **보안** | 가져오기 시 잘못된 PIN은 구체적 실패 이유를 외부에 노출하지 않는다 (오라클 방지) | 코드 리뷰 + 테스트 |
 | **오프라인 우선** | 네트워크 권한 미사용, 모든 데이터 기기 로컬 저장 | 정적 분석, 빌드 검증 |
-| **TypeScript strict** | ESM only, `@/` → `src/` import 경로 준수 | `npm run typecheck` |
+|| **TypeScript 개별 strict 플래그 준수** | ESM only, `@/` → `src/` import 경로 준수, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 준수 | `npm run typecheck` |
 | **테스트** | `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과 | CI 검증 |
 
 ## Out of Scope (명시적 제외)

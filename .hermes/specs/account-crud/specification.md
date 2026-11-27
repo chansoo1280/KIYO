@@ -116,7 +116,7 @@ AccountField는 다음 필드를 가져야 한다.
 | **보안** | 계정 데이터는 볼트 전체 객체와 함께 PIN → PBKDF2(100,000 iterations, SHA-256) → AES-GCM-256로 암호화 | `encryption.ts` 코드 리뷰 + 단위 테스트 |
 | **보안** | 계정 단위 개별 암호화는 수행하지 않음 | `encryptData` 출력 형태 검증 |
 | **오프라인 우선** | 네트워크 권한 미사용, 모든 계정 데이터 기기 로컬 저장 | 정적 분석, 빌드 검증 |
-| **TypeScript strict** | ESM only, `@/` → `src/` import 경로, strict 모드 준수 | `npm run typecheck` |
+|| **TypeScript 개별 strict 플래그 준수** | ESM only, `@/` → `src/` import 경로, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 준수 | `npm run typecheck` |
 | **테스트** | `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과 | CI 검증 |
 | **성능** | 계정 목록 인메모리 배열 관리, 조회 연산 O(1)~O(n) | 측정 |
 
@@ -164,7 +164,7 @@ AccountField는 다음 필드를 가져야 한다.
 ## Acceptance Criteria
 이 spec이 완료됐다고 판단할 조건:
 
-1. **AC-1**: 계정 모델(Account)이 `src/models/account.ts`에 정의되고, TypeScript strict로 타입 안전성이 보장된다.
+1. **AC-1**: 계정 모델(Account)이 `src/models/account.ts`에 정의되고, 헌법 §3에 따라 개별 strict 플래그로 타입 안전성이 보장된다.
 2. **AC-2**: `useAccountStore`가 `init`/`getAll`/`getAccountById`/`addAccount`/`updateAccount`/`deleteAccount`/`clearAccounts`/`syncToAutofill`/`getAutofillAccounts`를 모두 제공한다.
 3. **AC-3**: 계정 생성·수정·삭제 후 자동 저장(requestSave → Persistence Coordinator → IndexedDB upsert)이 동작한다.
 4. **AC-4**: Store는 FileStorage(`fileStorage.ts` 등)를 직접 import하지 않는다. (Persistence Coordinator 경유)

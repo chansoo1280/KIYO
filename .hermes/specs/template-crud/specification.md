@@ -97,7 +97,7 @@ TemplateField는 다음 필드를 가져야 한다.
 
 - **보안**: 템플릿 데이터는 볼트 전체 객체와 함께 PIN → PBKDF2(100,000 iterations, SHA-256) → AES-GCM-256로 암호화된다. 템플릿 단위 개별 암호화는 수행하지 않는다.
 - **오프라인 우선**: 네트워크 권한을 사용하지 않으며, 모든 템플릿 데이터는 기기 로컬에만 저장된다.
-- **TypeScript strict**: ESM only, `@/` → `src/` import 경로, strict 모드를 준수한다.
+- **TypeScript 개별 strict 플래그 준수**: ESM only, `@/` → `src/` import 경로, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch`를 준수한다.
 - **테스트**: `npm run typecheck`, `npm run lint`, `npm run test`가 모두 통과해야 한다.
 - **성능**: 템플릿 목록은 인메모리 배열로 관리되므로 조회 연산은 O(1)~O(n) 수준이어야 한다.
 
@@ -150,7 +150,7 @@ TemplateField는 다음 필드를 가져야 한다.
 
 이 spec이 완료됐다고 판단할 조건:
 
-1. 템플릿 모델(Template, TemplateField)이 `src/models/template.ts`에 정의되고, TypeScript strict로 타입 안전성이 보장된다.
+1. 템플릿 모델(Template, TemplateField)이 `src/models/template.ts`에 정의되고, 헌법 §3에 따라 개별 strict 플래그로 타입 안전성이 보장된다.
 2. `useTemplateStore`가 `init`/`getAll`/`getTemplate`/`addTemplate`/`updateTemplate`/`deleteTemplate`/`clearTemplates`를 모두 제공한다.
 3. 템플릿 생성·수정·삭제 후 자동 저장(requestSave → Persistence Coordinator → IndexedDB upsert)이 동작한다.
 4. 내장 템플릿(`BUILTIN_TEMPLATES`)은 볼트 생성 시 초기 데이터로 주입되며, 실행 중에도 CRUD 대상이 될 수 있다. 내장 템플릿 식별 기능을 지원해야 한다.

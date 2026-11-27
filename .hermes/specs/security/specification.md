@@ -46,7 +46,7 @@ KIYO 앱의 모든 보안 규칙(키 관리, 암호화, 세션, 자동 잠금, �
 
 **Given** 사용자가 볼트를 잠금 해제(unlock)하여 `cryptoKey`가 메모리에 로드된 상태  
 **When** Zustand 세션이 localStorage에 persist된다  
-**Then** persist되는 상태에는 `cryptoKey`가 포함되지 않아야 하며, `fileName`과 `salt`만 포함되어야 한다
+**Then** persist되는 상태에는 `cryptoKey`가 포함되지 않아야 하며, `fileName`(activeFileName), `salt`, `lastSyncTime`, `lastSyncedAutofillCount`만 포함되어야 한다
 
 **Given** 앱이 재시작되어 localStorage에서 세션이 복원된다  
 **When** `cryptoKey`가 복원된 상태에서 확인한다  
@@ -147,7 +147,7 @@ KIYO 앱의 모든 보안 규칙(키 관리, 암호화, 세션, 자동 잠금, �
 
 본 스펙이 완료됐다고 판단하는 조건. 각 항목은 테스트로 검증 가능해야 한다.
 
-- [ ] **AC-1**: `sessionStore`의 `partialize`에서 `cryptoKey`가 제외되고 `fileName`/`salt`만 persist됨 (단위 테스트)
+- [ ] **AC-1**: `sessionStore`의 `partialize`에서 `cryptoKey`가 제외되고 `fileName`/`salt`/`lastSyncTime`/`lastSyncedAutofillCount`만 persist됨 (단위 테스트)
 - [ ] **AC-2**: 앱 재시작 시 `cryptoKey`는 `null`이며, 사용자가 PIN으로 재해제해야 볼트에 접근 가능 (통합 테스트)
 - [ ] **AC-3**: `createCryptoKey`의 PBKDF2 iterations가 100000 고정, hash SHA-256, AES-GCM-256 (단위 테스트)
 - [ ] **AC-4**: `encryptData` 결과는 `EncryptedKiyoVaultData` 단일 블록, 개별 레코드 이중 암호화 없음 (단위 테스트)

@@ -55,7 +55,7 @@ KIYO의 볼트 데이터는 다음 세 저장 공간에 분산되어 존재한�
 
 - **보안**: PIN → PBKDF2(100,000 iterations, SHA-256) → AES-GCM-256 키 유도를 준수해야 한다.
 - **오프라인 우선**: 네트워크 권한을 사용하지 않으며, 모든 데이터는 기기 로컬에만 저장된다.
-- **TypeScript**: strict 모드, ESM only, `@/` → `src/` import 경로를 준수해야 한다.
+- **TypeScript 개별 strict 플래그 준수**: ESM only, `@/` → `src/` import 경로를 준수해야 한다. (`noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch`)
 - **테스트**: `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과해야 한다.
 
 ## Out of Scope
@@ -107,7 +107,7 @@ Store–FileStorage 순환 의존 제거를 위해, Persistence Coordinator를 �
 2. Persistence Coordinator가 Store와 FileStorage 간의 모든 상호작용을 중재한다.
 3. 볼트 데이터 변경 시 자동 저장 기능이 Persistence Coordinator를 통해 동작한다.
 4. 암호화 키는 메모리에만 존재하며 디스크에 persist되지 않는다.
-5. `npm run typecheck`, `npm run lint`, `npm run test`가 모두 통과한다.
+5. 헌법 §3에 따라 개별 strict 플래그(`noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch`)를 준수하며, `npm run typecheck`, `npm run lint`, `npm run test`가 모두 통과한다.
 
 ## Open Questions
 

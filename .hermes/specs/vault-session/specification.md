@@ -76,7 +76,7 @@ KIYO 앱에서 암호화 볼트의 생성·잠금·해제·닫기 전 생명주�
 ### FR-6: 세션 상태 관리
 **Given** 세션이 구성된다  
 **When** 세션 상태를 확인한다  
-**Then** 세션 상태는 `activeFileName`, `salt`, `cryptoKey`, `initialized`를 포함한다. `cryptoKey`는 메모리만, 디스크에 persist되지 않는다. `activeFileName`과 `salt`만 localStorage에 persist될 수 있다 (Zustand `partialize`).
+**Then** 세션 상태는 `activeFileName`, `salt`, `cryptoKey`, `initialized`, `lastSyncTime`, `lastSyncedAutofillCount`를 포함한다. `cryptoKey`는 메모리만, 디스크에 persist되지 않는다. `activeFileName`, `salt`, `lastSyncTime`, `lastSyncedAutofillCount`만 localStorage에 persist될 수 있다 (Zustand `partialize`).
 
 **Given** 앱이 재시작되어 localStorage에서 세션이 복원된다  
 **When** `cryptoKey`가 복원된 상태에서 확인한다  
@@ -90,7 +90,7 @@ KIYO 앱에서 암호화 볼트의 생성·잠금·해제·닫기 전 생명주�
 | **보안** | PIN → PBKDF2(100k) → AES-GCM-256 키 유도 고정 | `encryption.ts` 코드 리뷰 + 단위 테스트 |
 | **보안** | 볼트 전체 객체 단일 AES-GCM 암호화 (개별 레코드 단위 아님) | `encryptData` 출력 형태 검증 |
 | **오프라인 우선** | 네트워크 권한 미사용, 모든 데이터 기기 로컬 저장 | 정적 분석, 빌드 검증 |
-| **TypeScript strict** | ESM only, `@/` → `src/` import 경로 준수 | `npm run typecheck` |
+|| **TypeScript 개별 strict 플래그 준수** | ESM only, `@/` → `src/` import 경로 준수, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 준수 | `npm run typecheck` |
 | **테스트** | `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과 | CI 검증 |
 | **성능** | PBKDF2 100k 실행 시 사용자 체감 지연 최소화 (unlock 시 1초 이내 완료 목표) | 측정 |
 
@@ -107,7 +107,7 @@ KIYO 앱에서 암호화 볼트의 생성·잠금·해제·닫기 전 생명주�
 이 spec이 완료됐다고 판단할 조건:
 
 1. **AC-1**: 볼트 생성·잠금 해제·잠금·닫기 전 생명주기가 정의되고, 각 단계의 상태 전이가 명확하다.
-2. **AC-2**: `sessionStore`의 `partialize`에서 `cryptoKey`가 제외되고 `activeFileName`/`salt`만 persist된다. (단위 테스트)
+- [ ] **AC-2**: `sessionStore`의 `partialize`에서 `cryptoKey`가 제외되고 `activeFileName`/`salt`/`lastSyncTime`/`lastSyncedAutofillCount`만 persist됨 (단위 테스트)
 3. **AC-3**: 앱 재시작 시 `cryptoKey`는 `null`이며, 사용자가 PIN으로 재해제해야 볼트에 접근 가능하다. (통합 테스트)
 4. **AC-4**: 자동 잠금 시간 경과 시 `cryptoKey`가 메모리에서 제거되고 앱이 잠금 화면으로 이동한다. (통합/E2E 테스트)
 5. **AC-5**: 활동 감지 시 자동 잠금 타이머가 리셋된다. (단위/통합 테스트)

@@ -144,7 +144,7 @@ KIYO는 React 19 + Zustand + Capacitor 기반 Android 앱으로, 다음과 같�
 | **보안** | 볼트 잠김 상태에서는 민감 데이터(계정 목록 등)가 화면에 표시되지 않아야 한다 | UI 코드 리뷰 |
 | **오프라인 우선** | 모든 UI 반응은 네트워크 없이 로컬에서 즉시 처리되어야 한다 | 네트워크 차단 테스트 |
 | **성능** | 로딩 상태 진입은 사용자 액션 후 100ms 이내, PBKDF2 키 유도(100k)는 1초 이내 완료되어야 한다 | 성능 측정 |
-| **TypeScript strict** | ESM only, `@/` → `src/`, strict 모드 준수 | `npm run typecheck` |
+|| **TypeScript 개별 strict 플래그 준수** | ESM only, `@/` → `src/`, `noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 준수 | `npm run typecheck` |
 | **테스트** | `npm run typecheck`, `npm run lint`, `npm run test` 모두 통과 | CI 검증 |
 
 ## Out of Scope (명시적 제외)
@@ -168,7 +168,7 @@ KIYO는 React 19 + Zustand + Capacitor 기반 Android 앱으로, 다음과 같�
 5. **AC-5**: 오류 메시지에서 암호화 키, PIN, 복호화 단계 등 민감 정보가 노출되지 않는다.
 6. **AC-6**: 입력 유효성 실패 시 입력 필드 근처에 즉각적인 안내 메시지가 표시되며, 오류 발생 시 사용자가 수정해야 할 입력으로 포커스가 이동해야 한다.
 7. **AC-7**: 계정 삭제 등 파괴적 액션 실행 전 확인 모달이 표시되어야 한다.
-8. **AC-8**: `npm run typecheck`, `npm run lint`, `npm run test`가 모두 통과한다.
+8. **AC-8**: 헌법 §3에 따라 개별 strict 플래그(`noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch`)를 준수하며, `npm run typecheck`, `npm run lint`, `npm run test`가 모두 통과한다.
 9. **AC-9**: 헌법 §8 위반 체크리스트 전 항목 통과.
 
 > **참고**: FR-4.1(볼트 잠금/잠금 해제 상태 안내)과 FR-4.2(암호화된 파일 vs 평문 파일 상태 안내)는 코드에 구현 완료됨 (`Auth.tsx`, `SecuritySection.tsx`, `useFileAuthGuard.ts`에서 `fileTable.getFileInfo`로 `encrypted` 상태 조회 후 아이콘/라벨 표시).
