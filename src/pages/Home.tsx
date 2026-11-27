@@ -212,7 +212,7 @@ const Home = () => {
                       type="button"
                       variant="ghost"
                       onClick={() => handleDeleteFile(file.fileName)}
-                      className="!grid !h-9 !w-9 !place-items-center !rounded-full !text-[var(--color-text-muted)] hover:!bg-[var(--color-destructive-bg)] hover:!text-[var(--color-destructive)]"
+                      className="!grid !h-9 !w-9 !place-items-center !rounded-full !text-[var(--color-text-muted)] hover:!bg-[var(--color-error-bg)] hover:!text-[var(--color-error)]"
                       label={<Trash2 className="h-4 w-4" />}
                       aria-label={`${file.fileName} 삭제`}
                     />
