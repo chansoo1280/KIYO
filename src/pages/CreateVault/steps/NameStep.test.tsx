@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { NameStep, validateName, NAME_MAX_LENGTH } from "./NameStep";
+import { NameStep } from "./NameStep";
+import { validateName, NAME_MAX_LENGTH } from "@/constants/fileName";
 
 describe("validateName", () => {
   it("빈 문자열은 null (조용히 disabled)", () => {

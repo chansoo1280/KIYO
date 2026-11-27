@@ -1,5 +1,6 @@
 import Button from "@/components/Button";
 import { Input } from "@/components/inputs";
+import { validateName } from "@/constants/fileName";
 
 interface NameStepProps {
   fileName: string;
@@ -7,25 +8,6 @@ interface NameStepProps {
   onFileNameChange: (value: string) => void;
   onNext: () => void;
 }
-
-export const NAME_MAX_LENGTH = 50;
-const NAME_FORBIDDEN = /[\/\\:*?"<>|\x00]/;
-
-/**
- * Validate the file name input. Returns null for empty input (silent disabled)
- * or a localized error message.
- */
-export const validateName = (name: string): string | null => {
-  const trimmed = name.trim();
-  if (!trimmed) return null;
-  if (trimmed.length > NAME_MAX_LENGTH) {
-    return `파일 이름은 ${NAME_MAX_LENGTH}자 이하로 입력해주세요.`;
-  }
-  if (NAME_FORBIDDEN.test(trimmed)) {
-    return "파일 이름에 다음 문자를 사용할 수 없습니다: / \\ : * ? \" < > |";
-  }
-  return null;
-};
 
 export const NameStep = ({
   fileName,

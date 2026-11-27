@@ -160,7 +160,7 @@ export function RootRedirect() {
     return () => {
       cancelled = true;
     };
-  }, [status.kind]);
+  }, [status.kind, info]);
 
   // 4. redirecting 상태일 때 navigate 실행.
   useEffect(() => {

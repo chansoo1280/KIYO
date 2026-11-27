@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { FormDialog } from "@/components/dialogs/FormDialog";
 import PresetIcon from "@/components/PresetIcon";
 import type { WebsitePreset } from "@/models/websitePreset";
@@ -26,11 +26,6 @@ const WebsiteSelector = ({
   const [searchQuery, setSearchQuery] = useState("");
   // Initialize from currentPreset so editing an existing account shows the right selection
   const [selectedPreset, setSelectedPreset] = useState<WebsitePreset | null>(currentPreset);
-
-  // Sync internal state when currentPreset changes (e.g., parent clears selection)
-  useEffect(() => {
-    setSelectedPreset(currentPreset);
-  }, [currentPreset]);
 
   const presetsByCategory = useMemo(() => getPresetsByCategory(), []);
 

@@ -2,25 +2,25 @@
  * PresetIcon — Renders the official brand logo for a WebsitePreset.
  * Uses SVGR via Vite to import SVGs as React components (?react suffix).
  */
-import { lazy, Suspense, type FC, type SVGProps } from "react";
+import { lazy, Suspense, type FC } from "react";
 import type { WebsitePreset } from "@/models/websitePreset";
 
 // Map preset.id → SVG component (lazy-loaded for code-splitting)
 // Note: Microsoft 아이콘은 저작권 문제로 제외됨 (TRADEMARK ENFORCEMENT)
-const ICON_LOADERS: Record<string, () => Promise<{ default: FC<SVGProps<SVGSVGElement> & { size?: number; className?: string }> }>> = {
-  google: () => import("@/assets/icons/google.svg?react"),
-  naver: () => import("@/assets/icons/naver.svg?react"),
-  kakao: () => import("@/assets/icons/kakaotalk.svg?react"),
-  apple: () => import("@/assets/icons/apple.svg?react"),
-  github: () => import("@/assets/icons/github.svg?react"),
-  discord: () => import("@/assets/icons/discord.svg?react"),
-  instagram: () => import("@/assets/icons/instagram.svg?react"),
-  facebook: () => import("@/assets/icons/facebook.svg?react"),
-  twitter: () => import("@/assets/icons/x.svg?react"),
-  netflix: () => import("@/assets/icons/netflix.svg?react"),
-  steam: () => import("@/assets/icons/steam.svg?react"),
-  amazon: () => import("@/assets/icons/amazon.svg?react"),
-  dropbox: () => import("@/assets/icons/dropbox.svg?react"),
+const ICON_COMPONENTS: Record<string, ReturnType<typeof lazy>> = {
+  google: lazy(() => import("@/assets/icons/google.svg?react")),
+  naver: lazy(() => import("@/assets/icons/naver.svg?react")),
+  kakao: lazy(() => import("@/assets/icons/kakaotalk.svg?react")),
+  apple: lazy(() => import("@/assets/icons/apple.svg?react")),
+  github: lazy(() => import("@/assets/icons/github.svg?react")),
+  discord: lazy(() => import("@/assets/icons/discord.svg?react")),
+  instagram: lazy(() => import("@/assets/icons/instagram.svg?react")),
+  facebook: lazy(() => import("@/assets/icons/facebook.svg?react")),
+  twitter: lazy(() => import("@/assets/icons/x.svg?react")),
+  netflix: lazy(() => import("@/assets/icons/netflix.svg?react")),
+  steam: lazy(() => import("@/assets/icons/steam.svg?react")),
+  amazon: lazy(() => import("@/assets/icons/amazon.svg?react")),
+  dropbox: lazy(() => import("@/assets/icons/dropbox.svg?react")),
 };
 
 interface PresetIconProps {
@@ -30,11 +30,9 @@ interface PresetIconProps {
 }
 
 const PresetIcon: FC<PresetIconProps> = ({ preset, size = 24, className }) => {
-  const loader = ICON_LOADERS[preset.id];
-  if (!loader) return <DefaultIcon size={size} className={className} />;
+  const Icon = ICON_COMPONENTS[preset.id];
+  if (!Icon) return <DefaultIcon size={size} className={className} />;
 
-  // Lazy component for code-splitting
-  const Icon = lazy(loader);
   return (
     <Suspense fallback={<DefaultIcon size={size} className={className} />}>
       {/* Apply width/height explicitly — SVGR components spread props to the inner <svg>.

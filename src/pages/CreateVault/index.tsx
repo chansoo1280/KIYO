@@ -5,7 +5,8 @@ import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
 import { Stepper } from "./components/Stepper";
-import { NameStep, validateName } from "./steps/NameStep";
+import { NameStep } from "./steps/NameStep";
+import { validateName } from "@/constants/fileName";
 import { PinStep } from "./steps/PinStep";
 
 const DEFAULT_FILE_NAME = "my-accounts";

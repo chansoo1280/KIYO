@@ -51,7 +51,8 @@ export class KiyoFileWeb extends WebPlugin implements KiyoFilePlugin {
     };
   }
 
-  async writeToUri(_options: { uri: string; data: string; fileName?: string }): Promise<WriteToUriResult> {
+  async writeToUri(options: { uri: string; data: string; fileName?: string }): Promise<WriteToUriResult> {
+    void options;
     console.warn("KiyoFile: writeToUri not available on web");
     return {
       success: false,

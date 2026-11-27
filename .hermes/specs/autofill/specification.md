@@ -1,9 +1,9 @@
 # Specification — Autofill (자동완성)
 
-**상태**: Draft (최초 작성)  
-**경로**: `.hermes/specs/autofill/specification.md`  
-**관련 헌법**: `CONSTITUTION.md` §5 보안 규칙, §8 헌법 위반 체크리스트  
-**연계 스펙**: `.hermes/specs/security/specification.md` (React 측 보안), `.hermes/specs/android-security/specification.md` (Android Keystore/생체인증)  
+**상태**: Draft (최초 작성)
+**경로**: `.hermes/specs/autofill/specification.md`
+**관련 헌법**: `CONSTITUTION.md` §5 보안 규칙, §8 헌법 위반 체크리스트
+**연계 스펙**: `.hermes/specs/security/specification.md` (React 측 보안), `.hermes/specs/android-security/specification.md` (Android Keystore/생체인증)
 **적용 범위**: `android/app/src/main/java/com/kiyo/app/autofill/`, `android/app/src/main/java/com/kiyo/app/capacitor/`, `src/plugins/kiyautofill.ts`, `src/plugins/kiyautofill.web.ts`
 
 ---
@@ -126,6 +126,24 @@ React WebView 측의 볼트 데이터와 Android 네이티브 측의 AutofillSer
 **When** `Log.e`, `Log.d` 등의 로그 출력이 사용된다  
 **Then** 키 자료, PIN, 계정 비밀번호, ciphertext 등 민감 정보는 로그에 출력되지 않아야 한다 (에러 메시지/코드만 출력)
 
+### AFR-11: 계정 저장 (onSaveRequest)
+
+**Given** 사용자가 앱 또는 웹의 로그인 폼에서 사용자명과 비밀번호를 입력하고 저장한다  
+**When** Android 시스템이 `onSaveRequest`를 호출한다  
+**Then** `KiyoAutofillService`가 사용자명/비밀번호 필드를 탐지하고, 자격 증명을 추출하여 SQLCipher DB에 계정을 upsert한 후 `callback.onSuccess()`를 호출해야 한다
+
+**Given** `onSaveRequest` 처리 중 `UserNotAuthenticatedException`이 발생한다  
+**When** DB_KEY 접근에 인증이 필요하다  
+**Then** `SaveCallback`은 auth UI를 지원하지 않으므로 `callback.onSuccess()`를 조용히 호출하고 인증 프롬프트를 표시하지 않아야 한다
+
+**Given** 사용자명 또는 비밀번호 중 하나를 추출할 수 없다  
+**When** `onSaveRequest`가 실행된다  
+**Then** 계정을 저장하지 않고 조용히 종료해야 한다
+
+**Given** 저장 대상 앱의 패키지명이 `com.kiyo.app` (KIYO 앱 자체)이다  
+**When** `onSaveRequest`가 실행된다  
+**Then** 저장 작업을 스킵하고 종료해야 한다
+
 ---
 
 ## Non-Functional Requirements (비기능적 요구사항)
@@ -193,7 +211,7 @@ React WebView 측의 볼트 데이터와 Android 네이티브 측의 AutofillSer
 
 | 경계 지점 | React 측 보안 스펙 | Android 네이티브 보안 스펙 | 본 Autofill 스펙 |
 |-----------|------------------|------------------------|----------------|
-| PIN → 키 유도 | PBKDF2 100k → AES-GCM (`cryptoKey`) | 미사용 | 미사용 (Keystore 키 직접 사용) |
+| PIN → 키 유도 | PBKDF2 100k → AES-GCM (`cryptoKey`) | 미사용 (Keystore 키 직접 사용) | 미사용 (Keystore 키 직접 사용) |
 | 키 저장 | 메모리만, 디스크 미persist | Android Keystore (하드웨어/TEE) | `kiyo_master_key`로 DB_KEY 래핑 |
 | 볼트 암호화 | 볼트 전체 단일 AES-GCM | SQLCipher DB AES-256 (DB_KEY) | SQLCipher DB 저장 |
 | 생체인증 | 미사용 | `kiyo_secure_master_key` 보호 | DB_KEY 접근 시 인증 프롬프트 트리거 |
@@ -212,5 +230,5 @@ Capacitor 브리지를 통해 키 자료가 React ↔ Android 간에 직접 전�
 | `syncAutofillToken()` | deprecated/no-op | 코드베이스에 전혀 존재하지 않음 (검색 결과 0건) | ✅ 해결됨 |
 | 네트워크 차단 | AndroidManifest 권한 없음 | 권한 제거 완료 (커밋 `c0ee0e45`) | ✅ 해결됨 |
 | AuthRequestHandler | plan 문서(`autofill-auth-ux.md`)에서 별도 컴포넌트 언급 | 실제 파일 없음, `KiyoAutofillService.onFillRequest`에 인라인 처리 | ⚠️ plan 문서와 구현 차이 (스펙 영향 없음) |
-| 계정 저장 (`onSaveRequest`) | 스펙 Out of Scope, **나중에 구현 예정** | `KiyoAutofillService.onSaveRequest()` 완전 구현됨 (사용자명/비밀번호 추출, 로그인 폼 판별, SQLCipher upsert) | ⚠️ 스펙 미반영 — 구현은 존재하나 스펙에는 미포함 (향후 AFR 추가 필요) |
+| 계정 저장 (`onSaveRequest`) | `onSaveRequest`로 사용자명/비밀번호 추출 → SQLCipher upsert | `KiyoAutofillService.onSaveRequest()` 완전 구현됨 (사용자명/비밀번호 추출, 로그인 폼 판별, SQLCipher upsert) | ✅ 해결됨 |
 | FillResponseBuilder / DatasetFactory | 스펙에서 참조 | 실제 파일 존재, `KiyoAutofillService`에서 사용 | ✅ 해결됨 |
