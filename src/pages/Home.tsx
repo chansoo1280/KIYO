@@ -13,7 +13,7 @@ import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
-import { Trash2 } from "lucide-react";
+import { Lock, LockOpen, Trash2 } from "lucide-react";
 import { activatePlaintextVault } from "@/persistence/vaultPersistence";
 
 const Home = () => {
@@ -185,6 +185,21 @@ const Home = () => {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3"
                     data-testid="file-list-item"
                   >
+                    {file.encrypted ? (
+                      <Lock
+                        className="h-4 w-4 text-[var(--color-text-muted)]"
+                        aria-label="잠금"
+                        aria-hidden={false}
+                        role="img"
+                      />
+                    ) : (
+                      <LockOpen
+                        className="h-4 w-4 text-[var(--color-text-muted)]"
+                        aria-label="잠금 해제됨"
+                        aria-hidden={false}
+                        role="img"
+                      />
+                    )}
                     <Button
                       type="button"
                       variant="ghost"

@@ -78,4 +78,42 @@ describe("Home (Plan-D PR 1)", () => {
     });
     expect(screen.queryByText("기존 파일")).not.toBeInTheDocument();
   });
+
+  it("④ 암호화된 파일은 잠금 아이콘 표시", async () => {
+    mockFileTable.getAllFiles.mockResolvedValue([
+      {
+        id: "encrypted-vault.json",
+        fileName: "encrypted-vault.json",
+        fileData: "{}",
+        encrypted: true,
+        salt: "base64salt",
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ]);
+    renderWithRouter(<Home />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("잠금")).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("잠금 해제됨")).not.toBeInTheDocument();
+  });
+
+  it("⑤ 평문 파일은 잠금 해제 아이콘 표시", async () => {
+    mockFileTable.getAllFiles.mockResolvedValue([
+      {
+        id: "plaintext-vault.json",
+        fileName: "plaintext-vault.json",
+        fileData: "{}",
+        encrypted: false,
+        salt: undefined,
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ]);
+    renderWithRouter(<Home />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("잠금 해제됨")).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("잠금")).not.toBeInTheDocument();
+  });
 });
