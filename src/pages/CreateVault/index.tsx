@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createDataFile } from "@/persistence/vaultPersistence";
 import { mapError } from "@/utils/mapError";
-import Button from "@/components/Button";
+import { BackButton } from "@/components/BackButton";
 import { PageShell } from "@/components/PageShell";
 import { Stepper } from "./components/Stepper";
 import { NameStep } from "./steps/NameStep";
@@ -80,14 +80,7 @@ const CreateVaultPage = () => {
   return (
     <PageShell maxWidth="md" data-testid="create-vault-page">
         <header className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => navigate("/")}
-            className="!h-10 !w-10 !rounded-full !p-0 !text-[var(--color-text-muted)] hover:!bg-[var(--color-code-bg)] hover:!text-[var(--color-text)]"
-            label="←"
-            aria-label="홈으로"
-          />
+          <BackButton onClick={() => navigate("/")} ariaLabel="홈으로" />
           <div>
             <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
               New vault
