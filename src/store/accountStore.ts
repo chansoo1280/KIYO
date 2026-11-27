@@ -31,12 +31,16 @@ export interface AccountState {
     packageNames?: string[];
     packageName?: string | null;
   }[]>;
+  syncStatus: "idle" | "syncing" | "synced" | "failed";
+  syncError: string | null;
 }
 
 export const useAccountStore = create<AccountState>()(
   devtools(
     (set, get) => ({
       accounts: [],
+      syncStatus: "idle",
+      syncError: null,
 
       init: (accounts: Account[]) => {
         set({ accounts });
@@ -49,34 +53,70 @@ export const useAccountStore = create<AccountState>()(
           ...account,
           id: nextAccountId(get().accounts),
         };
-        set((state) => ({ accounts: [newAccount, ...state.accounts] }));
-        await requestSave();
-        return newAccount;
+        set({ syncStatus: "syncing", syncError: null });
+        try {
+          set((state) => ({ accounts: [newAccount, ...state.accounts] }));
+          await requestSave();
+          set({ syncStatus: "synced", syncError: null });
+          return newAccount;
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+          set({ syncStatus: "failed", syncError: message });
+          throw error;
+        }
       },
 
       updateAccount: async (account) => {
         const updatedAccount = { ...account, updatedAt: Date.now() };
-        set((state) => ({
-          accounts: state.accounts.map((a) =>
-            a.id === updatedAccount.id ? updatedAccount : a
-          ),
-        }));
-        await requestSave();
+        set({ syncStatus: "syncing", syncError: null });
+        try {
+          set((state) => ({
+            accounts: state.accounts.map((a) =>
+              a.id === updatedAccount.id ? updatedAccount : a
+            ),
+          }));
+          await requestSave();
+          set({ syncStatus: "synced", syncError: null });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+          set({ syncStatus: "failed", syncError: message });
+          throw error;
+        }
       },
 
       deleteAccount: async (id) => {
-        set((state) => ({
-          accounts: state.accounts.filter((a) => a.id !== id),
-        }));
-        await requestSave();
+        set({ syncStatus: "syncing", syncError: null });
+        try {
+          set((state) => ({
+            accounts: state.accounts.filter((a) => a.id !== id),
+          }));
+          await requestSave();
+          set({ syncStatus: "synced", syncError: null });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+          set({ syncStatus: "failed", syncError: message });
+          throw error;
+        }
+      },
+
+      clearAccounts: async () => {
+        set({ syncStatus: "syncing", syncError: null });
+        try {
+          set({ accounts: [] });
+          await requestSave();
+          set({ syncStatus: "synced", syncError: null });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+          set({ syncStatus: "failed", syncError: message });
+          throw error;
+        }
       },
 
       getAccountById: (id) => get().accounts.find((a) => a.id === id),
-
-      clearAccounts: async () => {
-        set({ accounts: [] });
-        await requestSave();
-      },
 
       syncToAutofill: async () => {
         if (Capacitor.getPlatform() !== "android") {

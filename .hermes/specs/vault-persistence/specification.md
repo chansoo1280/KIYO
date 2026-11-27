@@ -111,6 +111,6 @@ Store–FileStorage 순환 의존 제거를 위해, Persistence Coordinator를 �
 
 ## Open Questions
 
-- Persistence Coordinator를 zustand subscribe 기반 자동 저장으로 구현할지, 명시적 함수 호출로 구현할지.
-- 볼트 스냅샷 구성을 Coordinator에서 담당할지, Store에서 넘겨받을지.
-- 기존 `saveStoresToFile` 함수 인터페이스를 유지할지 새로 설계할지.
+- Persistence Coordinator를 zustand subscribe 기반 자동 저장으로 구현할지, 명시적 함수 호출로 구현할지. → **결정 완료: 명시적 함수 호출** (`src/persistence/vaultPersistence.ts` 구현 완료)
+- 볼트 스냅샷 구성을 Coordinator에서 담당할지, Store에서 넘겨받을지. → **결정 완료: Coordinator** (`buildSnapshotFromStores`가 Coordinator에서 스냅샷 구성)
+- 기존 `saveStoresToFile` 함수 인터페이스를 유지할지 새로 설계할지. → **결정 완료: 유지** (`vaultPersistence.ts`에서 `saveStoresToFile` 인터페이스 유지)

@@ -16,6 +16,8 @@ const mockAccountStoreState = {
   clearAccounts: vi.fn(),
   syncToAutofill: vi.fn(),
   getAutofillAccounts: vi.fn(),
+  syncStatus: "idle" as "idle" | "syncing" | "synced" | "failed",
+  syncError: null as string | null,
 };
 
 vi.mock("@/store/accountStore", () => ({
@@ -33,6 +35,13 @@ const mockSessionState = {
 vi.mock("@/store/sessionStore", () => ({
   useSessionStore: (selector: (state: typeof mockSessionState) => unknown) =>
     selector(mockSessionState),
+}));
+
+const mockSettingsState = { autoBackupEnabled: false };
+
+vi.mock("@/store/settingsStore", () => ({
+  useSettingsStore: (selector: (state: typeof mockSettingsState) => unknown) =>
+    selector(mockSettingsState),
 }));
 
 vi.mock("@/hooks/useClipboard", () => ({
@@ -54,6 +63,9 @@ describe("AccountList (PR 1: useSessionStore.initialized 통합)", () => {
   beforeEach(() => {
     mockAccountStoreState.accounts = [];
     mockSessionState.initialized = false;
+    mockSettingsState.autoBackupEnabled = false;
+    mockAccountStoreState.syncStatus = "idle";
+    mockAccountStoreState.syncError = null;
   });
 
   it("① !initialized (session) → Spinner + '계정을 불러오는 중...' 표시", () => {
@@ -106,5 +118,42 @@ describe("AccountList (PR 1: useSessionStore.initialized 통합)", () => {
     const searchInput = screen.getByPlaceholderText(/제목이나 이메일로 검색/);
     await user.type(searchInput, "존재하지않는사이트");
     expect(screen.getByText("검색 결과가 없습니다.")).toBeInTheDocument();
+  });
+
+  it("⑥ autoBackupEnabled=false + syncStatus='synced' → 인라인 메시지 미표시", () => {
+    mockSessionState.initialized = true;
+    mockAccountStoreState.accounts = [];
+    mockAccountStoreState.syncStatus = "synced";
+    renderList();
+    expect(screen.queryByText("동기화됨")).not.toBeInTheDocument();
+  });
+
+  it("⑦ autoBackupEnabled=true + syncStatus='syncing' → '동기화중…' 인라인 메시지 표시", () => {
+    mockSessionState.initialized = true;
+    mockAccountStoreState.accounts = [];
+    mockAccountStoreState.syncStatus = "syncing";
+    mockSettingsState.autoBackupEnabled = true;
+    renderList();
+    expect(screen.getByText("동기화중…")).toBeInTheDocument();
+  });
+
+  it("⑧ autoBackupEnabled=true + syncStatus='synced' → '동기화됨' 인라인 메시지 표시", () => {
+    mockSessionState.initialized = true;
+    mockAccountStoreState.accounts = [];
+    mockAccountStoreState.syncStatus = "synced";
+    mockSettingsState.autoBackupEnabled = true;
+    renderList();
+    expect(screen.getByText("동기화됨")).toBeInTheDocument();
+  });
+
+  it("⑨ autoBackupEnabled=true + syncStatus='failed' → '동기화 실패' + '다시 시도' 버튼 표시", () => {
+    mockSessionState.initialized = true;
+    mockAccountStoreState.accounts = [];
+    mockAccountStoreState.syncStatus = "failed";
+    mockAccountStoreState.syncError = "저장에 실패했습니다.";
+    mockSettingsState.autoBackupEnabled = true;
+    renderList();
+    expect(screen.getByText("동기화 실패: 저장에 실패했습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /다시 시도/ })).toBeInTheDocument();
   });
 });

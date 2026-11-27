@@ -135,7 +135,7 @@ KIYO 앱의 모든 보안 규칙(키 관리, 암호화, 세션, 자동 잠금, �
 
 다음 항목은 본 보안 스펙의 범위에 포함하지 않는다. 별도 스펙으로 관리한다.
 
-1. **패스프레이즈(text passphrase) 도입**: PIN 기반 키 유도만 다룸. 패스프레이즈 지원은 STRATEGY.md §6 미결정 사항.
+1. **패스프레이즈(text passphrase) 도입**: **결정 완료: 구현 완료** (`src/crypto/pinStrength.ts` — PIN 정책 완화 4~20자 + zxcvbn 강도 평가, `PinStep.tsx`/`PinChangeDialog.tsx`에서 텍스트 PIN 입력 지원)
 2. **클라우드 동기화 / 백업 서버**: 모든 데이터는 기기 로컬에만 저장. 파일 기반 백업/복원은 별도 기능.
 3. **iOS / 데스크톱 / 웹 단독 실행**: 타겟은 Android만.
 4. **Autofill 토큰 기반 인증**: `syncAutofillToken()`은 deprecated/no-op이며, 순수 Keystore 기반 인증만 사용.

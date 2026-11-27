@@ -11,13 +11,18 @@ import { useClipboard } from "@/hooks/useClipboard";
 import { useFileAuthGuard } from "@/hooks/useFileAuthGuard";
 import { Spinner } from "@/components/feedback/Spinner";
 import Button from "@/components/Button";
+import { useSettingsStore } from "@/store/settingsStore";
 
 const AccountList = () => {
   const navigate = useNavigate();
   const accounts = useAccountStore((state) => state.accounts);
+  const syncStatus = useAccountStore((state) => state.syncStatus);
+  const syncError = useAccountStore((state) => state.syncError);
   // Q16: initialized는 sessionStore로 통합
   const initialized = useSessionStore((state) => state.initialized);
-  // loadAccounts selector 제거 — Q16: sessionStore.initialized로 단일화
+  const autoBackupEnabled = useSettingsStore(
+    (state) => state.autoBackupEnabled,
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -205,6 +210,25 @@ const AccountList = () => {
             />
           </div>
         </div>
+
+        {/* 자동 저장 상태 인라인 메시지 (autoBackupEnabled 활성화 시에만 표시) */}
+        {autoBackupEnabled && syncStatus === "syncing" && (
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] mb-2">
+            <Spinner size="sm" /> 동기화중…
+          </div>
+        )}
+        {autoBackupEnabled && syncStatus === "synced" && (
+          <div className="flex items-center gap-2 text-xs text-[var(--color-success)] mb-2">
+            동기화됨
+          </div>
+        )}
+        {autoBackupEnabled && syncStatus === "failed" && (
+          <div className="flex items-center gap-2 text-xs text-[var(--color-error)] mb-2">
+            동기화 실패: {syncError}
+            <Button size="sm" variant="ghost" label="다시 시도" onClick={() => {}}>
+            </Button>
+          </div>
+        )}
 
         {/* Search input */}
         {showSearch && (

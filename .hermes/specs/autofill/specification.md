@@ -201,9 +201,9 @@ React WebView 측의 볼트 데이터와 Android 네이티브 측의 AutofillSer
 
 | 항목 | 현황 |
 |------|------|
-| React → Android 동기화 트리거 시점 | 수동 트리거만 현재 지원. 자동 동기화 주기 또는 이벤트 기반 동기화 여부 미정 |
-| 웹/앱 통합 매칭 우선순위 | 도메인 매칭과 패키지명 매칭이 동시에 적용될 때의 우선순위 로직 미정 |
-| 다중 볼트 계정 동시 동기화 | 여러 볼트의 계정을 Android SQLCipher DB에 어떻게 병합/분리할지 미정 |
+| **React → Android 동기화 트리거 시점**: **결정 완료: 수동 트리거만** (자동 동기화 주기나 이벤트 기반 동기화 미사용) |
+| **웹/앱 통합 매칭 우선순위**: **결정 완료: 현재 구현대로** (도메인 정확 매치 100점, 패키지명 정확 매치 80점 등 점수 기반 통합 매칭 — `DomainMatcher.findBestMatch`) |
+| **다중 볼트 계정 동시 동기화**: **결정 완료: 현재 활성 볼트만 동기화** (여러 볼트의 병합/분리 미지원, 현재 활성 볼트 계정만 Android SQLCipher DB에 동기화) |
 
 ---
 
@@ -229,6 +229,5 @@ Capacitor 브리지를 통해 키 자료가 React ↔ Android 간에 직접 전�
 | fill 요청 추상화 미도입 | `onAutofillRequest`/`FillContext` 추상화 도입 안 함 | `KiyoAutofillService`가 직접 처리, 추상화 미도입 | ✅ 해결됨 |
 | `syncAutofillToken()` | deprecated/no-op | 코드베이스에 전혀 존재하지 않음 (검색 결과 0건) | ✅ 해결됨 |
 | 네트워크 차단 | AndroidManifest 권한 없음 | 권한 제거 완료 (커밋 `c0ee0e45`) | ✅ 해결됨 |
-| AuthRequestHandler | plan 문서(`autofill-auth-ux.md`)에서 별도 컴포넌트 언급 | 실제 파일 없음, `KiyoAutofillService.onFillRequest`에 인라인 처리 | ⚠️ plan 문서와 구현 차이 (스펙 영향 없음) |
 | 계정 저장 (`onSaveRequest`) | `onSaveRequest`로 사용자명/비밀번호 추출 → SQLCipher upsert | `KiyoAutofillService.onSaveRequest()` 완전 구현됨 (사용자명/비밀번호 추출, 로그인 폼 판별, SQLCipher upsert) | ✅ 해결됨 |
 | FillResponseBuilder / DatasetFactory | 스펙에서 참조 | 실제 파일 존재, `KiyoAutofillService`에서 사용 | ✅ 해결됨 |
