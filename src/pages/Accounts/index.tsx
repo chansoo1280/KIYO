@@ -18,6 +18,7 @@ const AccountList = () => {
   const accounts = useAccountStore((state) => state.accounts);
   const syncStatus = useAccountStore((state) => state.syncStatus);
   const syncError = useAccountStore((state) => state.syncError);
+  const syncToAutofill = useAccountStore((state) => state.syncToAutofill);
   // Q16: initialized는 sessionStore로 통합
   const initialized = useSessionStore((state) => state.initialized);
   const autoBackupEnabled = useSettingsStore(
@@ -225,7 +226,7 @@ const AccountList = () => {
         {autoBackupEnabled && syncStatus === "failed" && (
           <div className="flex items-center gap-2 text-xs text-[var(--color-error)] mb-2">
             동기화 실패: {syncError}
-            <Button size="sm" variant="ghost" label="다시 시도" onClick={() => {}}>
+            <Button size="sm" variant="ghost" label="다시 시도" onClick={syncToAutofill}>
             </Button>
           </div>
         )}
