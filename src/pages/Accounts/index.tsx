@@ -337,6 +337,26 @@ const AccountList = () => {
                   label={<Copy size={14} strokeWidth={2} />}
                   aria-label="비밀번호 복사"
                 />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const emailField = account.fields.find(
+                      (field) =>
+                        field.label.toLowerCase() === "email" ||
+                        field.label.toLowerCase() === "이메일" ||
+                        field.label.toLowerCase() === "아이디/이메일",
+                    );
+                    if (emailField) {
+                      copy(emailField.value);
+                    }
+                  }}
+                  className="!rounded-full !bg-[var(--color-accent-bg)] !px-3 !py-2 !text-[11px] !uppercase !tracking-chip !text-[var(--color-accent)] hover:!bg-[var(--color-accent-bg)]/80"
+                  label={<Copy size={14} strokeWidth={2} />}
+                  aria-label="이메일 복사"
+                />
               </article>
             ))}
           </div>
