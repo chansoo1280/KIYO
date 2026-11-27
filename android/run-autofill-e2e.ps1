@@ -74,7 +74,7 @@ if (-not (Test-Path $adb)) {
 Write-Log "Using adb: $adb"
 
 # Check device
-$devices = & $adb devices
+$devices = & $adb -s emulator-5554 devices
 $deviceLine = $devices | Where-Object { $_.Trim() -match "emulator-\d+\s+device" }
 if (-not $deviceLine) {
     Write-ErrorLog "No emulator device found. Run emulator first."
@@ -93,14 +93,14 @@ else { $targets += $ScenarioClass }   # full run
 if (-not $SkipSetup) {
     # Safety net: clear any existing PIN (tests manage PIN themselves now)
     Write-Log "Clearing existing PIN (safety net; tests manage their own PIN)..."
-    & $adb shell "locksettings clear --old $Pin 0" 2>$null
+    & $adb -s emulator-5554 shell "locksettings clear --old $Pin 0" 2>$null
 
     Write-Log "Waking up device..."
-    & $adb shell "input keyevent KEYCODE_WAKEUP"
+    & $adb -s emulator-5554 shell "input keyevent KEYCODE_WAKEUP"
     Start-Sleep -Milliseconds 1000
 
     Write-Log "Swiping up..."
-    & $adb shell "input swipe 300 1000 300 500"
+    & $adb -s emulator-5554 shell "input swipe 300 1000 300 500"
     Start-Sleep -Milliseconds 500
 }
 
@@ -148,7 +148,7 @@ try {
             }
 
             Write-Log "Running E2E: $classArg $($extraArgs -join ' ')"
-            & $adb shell am instrument -w @extraArgs `
+            & $adb -s emulator-5554 shell am instrument -w @extraArgs `
                 -e class $classArg `
                 "$TestPackage/$Runner"
             if ($LASTEXITCODE -ne 0) {
@@ -163,7 +163,7 @@ try {
 } finally {
     if (-not $SkipCleanup) {
         Write-Log "Cleaning up PIN (safety net)..."
-        & $adb shell "locksettings clear --old $Pin 0" 2>$null
+        & $adb -s emulator-5554 shell "locksettings clear --old $Pin 0" 2>$null
         Write-Success "PIN cleared"
     }
 }

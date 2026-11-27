@@ -57,7 +57,7 @@ if (-not (Test-Path $adb)) { $adb = "adb.exe" }
 Write-Log "Using adb: $adb"
 
 # Check emulator
-$devices = & $adb devices
+$devices = & $adb -s emulator-5554 devices
 $deviceLine = $devices | Where-Object { $_.Trim() -match "emulator-\d+\s+device" }
 if (-not $deviceLine) {
     Write-ErrorLog "No emulator device found. Run emulator first."
@@ -86,7 +86,7 @@ function Test-FingerprintEnrolled {
     # 주의: dumpsys의 count/accept/acquire는 "과거 등록 스캔 흔적"이라 현 등록 여부와 무관 —
     # 이걸 병행하면 clearPin 후 지문이 소멸했는데도 "등록 있음"으로 오판한다 (2026-08-28 실측).
     # clearPin 시 등록 지문도 함께 삭제되는 프레임워크 동작과 정확히 동기화되는 값은 이 키뿐.
-    $out = & $adb shell "settings get secure fingerprint_enrolled_user_keys" 2>$null
+    $out = & $adb -s emulator-5554 shell "settings get secure fingerprint_enrolled_user_keys" 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $out -or ($out.ToString().Trim() -in @("null", "", "0"))) {
         return $false
     }
@@ -96,7 +96,7 @@ function Test-FingerprintEnrolled {
 function Test-UiText([string[]]$Texts) {
     # 현재 화면 덤프에서 주어진 텍스트 중 하나라도 존재하면 true.
     # 좌표 하드코딩 대신 텍스트 매칭으로 UI를 운전한다 (Android 버전별 UI 차이 방지).
-    $dump = (& $adb exec-out uiautomator dump /dev/tty 2>$null | Out-String)
+    $dump = (& $adb -s emulator-5554 exec-out uiautomator dump /dev/tty 2>$null | Out-String)
     foreach ($t in $Texts) {
         if ($dump -match ('text="' + [regex]::Escape($t) + '"')) { return $true }
     }
@@ -107,14 +107,14 @@ function Invoke-TapButtonText([string[]]$Candidates, [int]$SettleMs = 1200) {
     # 후보 텍스트 중 화면에 있는 첫 번째를 찾아 bounds 중심을 탭한다. 못 찾으면 false.
     # 노드 전체(텍스트부터 bounds까지)를 매칭 — 속성 순서/중간 속성 유무 무관 (2026-08-28 수정:
     # text=...bounds= 인접 매칭은 실패 다이얼로그 버튼에서 빗나가 TRY AGAIN 탭이 동작하지 않았음)
-    $dump = (& $adb exec-out uiautomator dump /dev/tty 2>$null | Out-String)
+    $dump = (& $adb -s emulator-5554 exec-out uiautomator dump /dev/tty 2>$null | Out-String)
     foreach ($t in $Candidates) {
         $pattern = '<node[^>]*text="' + [regex]::Escape($t) + '"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"'
         if ($dump -match $pattern) {
             $x = ([int]$Matches[1] + [int]$Matches[3]) / 2
             $y = ([int]$Matches[2] + [int]$Matches[4]) / 2
             Write-Log "Tapping text '$t' at ($x, $y)"
-            & $adb shell "input tap $x $y" 2>$null | Out-Null
+            & $adb -s emulator-5554 shell "input tap $x $y" 2>$null | Out-Null
             Start-Sleep -Milliseconds $SettleMs
             return $true
         }
@@ -134,7 +134,7 @@ function Invoke-FingerprintEnrollment {
     Write-Log "Enrolling fingerprint on emulator (setup UI automation)..."
 
     # 등록 화면 직접 호출 → PIN 재확인
-    & $adb shell am start -a android.settings.FINGERPRINT_ENROLL 2>$null | Out-Null
+    & $adb -s emulator-5554 shell am start -a android.settings.FINGERPRINT_ENROLL 2>$null | Out-Null
     for ($i = 0; $i -lt 10; $i++) {
         Start-Sleep -Seconds 1
         if (Test-UiText @("Confirm your PIN", "Enter your device PIN", "PIN을 입력하세요", "Add fingerprint", "More", "계속")) { break }
@@ -142,15 +142,15 @@ function Invoke-FingerprintEnrollment {
 
     # PIN 재확인 화면(있다면): 텍스트 입력 + Enter
     if (Test-UiText @("Confirm your PIN", "Enter your device PIN", "PIN을 입력하세요")) {
-        & $adb shell "input text $Pin" 2>$null | Out-Null
-        & $adb shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
+        & $adb -s emulator-5554 shell "input text $Pin" 2>$null | Out-Null
+        & $adb -s emulator-5554 shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
         Start-Sleep -Seconds 2
         # 여전히 PIN 확인 화면이면 키코드로 재시도 (입력 방식 호환성)
         if (Test-UiText @("Confirm your PIN", "Enter your device PIN", "PIN을 입력하세요")) {
             foreach ($ch in $Pin.ToCharArray()) {
-                & $adb shell "input text $ch" 2>$null | Out-Null
+                & $adb -s emulator-5554 shell "input text $ch" 2>$null | Out-Null
             }
-            & $adb shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
+            & $adb -s emulator-5554 shell "input keyevent KEYCODE_ENTER" 2>$null | Out-Null
             Start-Sleep -Seconds 2
         }
     }
@@ -186,7 +186,7 @@ function Invoke-FingerprintEnrollment {
             $enrolled = $true
             break
         }
-        & $adb emu "finger touch $FingerId" 2>$null | Out-Null
+        & $adb -s emulator-5554 emu "finger touch $FingerId" 2>$null | Out-Null
         Start-Sleep -Milliseconds 1000
     }
 
@@ -198,7 +198,7 @@ function Invoke-FingerprintEnrollment {
         Invoke-TapButtonText @("DONE", "완료", "확인") | Out-Null
         Start-Sleep -Seconds 1
     } else {
-        & $adb exec-out uiautomator dump /dev/tty 2>$null | Out-File "$env:TEMP\fp_enroll_stuck.xml" -Encoding utf8
+        & $adb -s emulator-5554 exec-out uiautomator dump /dev/tty 2>$null | Out-File "$env:TEMP\fp_enroll_stuck.xml" -Encoding utf8
         Write-ErrorLog "Fingerprint enrollment did not complete after 30 touches — dump saved to %TEMP%\fp_enroll_stuck.xml"
     }
 
@@ -221,7 +221,7 @@ Emulator UI differs per Android version — enroll manually once:
 (during enrollment screen, run: adb emu finger touch $FingerId repeatedly)
 Then re-run this script (existing enrollment is reused).
 "@
-        & $adb shell "input keyevent KEYCODE_HOME" 2>$null | Out-Null
+        & $adb -s emulator-5554 shell "input keyevent KEYCODE_HOME" 2>$null | Out-Null
         exit 1
     }
 }
@@ -242,10 +242,10 @@ function Start-FingerprintWatcher {
     $job = Start-Job -ScriptBlock {
         param($adbPath, $tag, $fingerId, $timeoutSec)
         $adb = $adbPath
-        & $adb logcat -c 2>$null | Out-Null
+        & $adb -s emulator-5554 logcat -c 2>$null | Out-Null
         $processedMarkers = @{}
         while ($true) {
-            $lines = (& $adb logcat -d -s "$tag`:I" 2>$null) | Out-String
+            $lines = (& $adb -s emulator-5554 logcat -d -s "$tag`:I" 2>$null) | Out-String
             if ($lines) {
                 # logcat -s 출력은 "TAG: message" 형태로 태그 뒤 콜론이 붙는다 (2026-08-27 실측 버그:
                 # 콜론 미고려 정규식이라 마커가 절대 매칭되지 않아 주입이 안 일어났음)
@@ -258,15 +258,15 @@ function Start-FingerprintWatcher {
                     if ($action -eq "AWAIT_FINGER") {
                         Write-Output "[$marker] injecting finger touch"
                         # 화면이 꺼져 있으면 가상 HAL이 터치를 무시한다 (2026-08-27 실측) → wake 후 주입
-                        & $adb shell "input keyevent KEYCODE_WAKEUP" 2>$null | Out-Null
+                        & $adb -s emulator-5554 shell "input keyevent KEYCODE_WAKEUP" 2>$null | Out-Null
                         Start-Sleep -Milliseconds 500
-                        & $adb emu "finger touch $fingerId" 2>$null | Out-Null
+                        & $adb -s emulator-5554 emu "finger touch $fingerId" 2>$null | Out-Null
                         # 실패 대비 재시도 (프롬프트 렌더링 지연)
                         Start-Sleep -Milliseconds 800
-                        & $adb emu "finger touch $fingerId" 2>$null | Out-Null
+                        & $adb -s emulator-5554 emu "finger touch $fingerId" 2>$null | Out-Null
                     } else {
                         Write-Output "[$marker] cancelling prompt (back key)"
-                        & $adb shell "input keyevent KEYCODE_BACK" 2>$null | Out-Null
+                        & $adb -s emulator-5554 shell "input keyevent KEYCODE_BACK" 2>$null | Out-Null
                     }
                 }
             }
@@ -280,14 +280,14 @@ function Start-FingerprintWatcher {
 
 if (-not $SkipSetup) {
     # 1. 기기 PIN 설정 (지문 등록 전제). 이미 설정돼 있으면 재사용(스킵).
-    $pinCheck = & $adb shell locksettings verify --old $Pin 2>$null | Out-String
+    $pinCheck = & $adb -s emulator-5554 shell locksettings verify --old $Pin 2>$null | Out-String
     if ($pinCheck -match "verified") {
         Write-Log "Device PIN already set to test PIN (reusing)"
     } else {
         Write-Log "Setting device PIN..."
-        & $adb shell "locksettings set-pin $Pin" 2>$null | Out-Null
+        & $adb -s emulator-5554 shell "locksettings set-pin $Pin" 2>$null | Out-Null
         Start-Sleep -Seconds 1
-        $verifyAgain = & $adb shell locksettings verify --old $Pin 2>$null | Out-String
+        $verifyAgain = & $adb -s emulator-5554 shell locksettings verify --old $Pin 2>$null | Out-String
         if ($verifyAgain -notmatch "verified") {
             Write-ErrorLog "Failed to set device PIN (locksettings verify failed)"
             exit 1
@@ -296,7 +296,7 @@ if (-not $SkipSetup) {
     }
 
     # 2. 지문 하드웨어 확인 (가상 fingerprint HAL — modality 2)
-    $bioDump = & $adb shell "dumpsys biometric" 2>$null | Out-String
+    $bioDump = & $adb -s emulator-5554 shell "dumpsys biometric" 2>$null | Out-String
     if ($bioDump -notmatch "modality 2") {
         Write-ErrorLog "No fingerprint sensor on this emulator (modality 2 missing in dumpsys biometric)"
         exit 1
@@ -310,7 +310,7 @@ if (-not $SkipSetup) {
     Invoke-FingerprintEnrollment
 
     Write-Log "Waking up device..."
-    & $adb shell "input keyevent KEYCODE_WAKEUP"
+    & $adb -s emulator-5554 shell "input keyevent KEYCODE_WAKEUP"
     Start-Sleep -Milliseconds 1000
 }
 
@@ -338,7 +338,7 @@ if (-not $SkipBuild) {
 
 try {
     # 앱 상태 초기화: 앱만 재시작 (테스트가 자체 vault/biometric 정리를 수행).
-    & $adb shell am force-stop $AppPackage 2>$null | Out-Null
+    & $adb -s emulator-5554 shell am force-stop $AppPackage 2>$null | Out-Null
 
     # 전체 실행 시 세션이 하나의 vaultName을 공유해야 하므로,
     # 미지정이어도 실행 세션당 하나의 vaultName을 생성해 모든 호출에 동일 전달한다.
@@ -371,7 +371,7 @@ try {
             }
 
             Write-Log "Running E2E: $classArg $($extraArgs -join ' ')"
-            & $adb shell am instrument -w @extraArgs `
+            & $adb -s emulator-5554 shell am instrument -w @extraArgs `
                 -e class $classArg `
                 "$TestPackage/$Runner"
             if ($LASTEXITCODE -ne 0) {
@@ -392,8 +392,8 @@ try {
         # 스크립트 생애주기 종료: clearPin 1회 — 마지막 자격증명 제거 시
         # 등록된 지문도 프레임워크에 의해 함께 소멸된다 (plan 규정).
         Write-Log "Cleanup: clearing device PIN (also removes enrolled fingerprints)..."
-        & $adb shell "locksettings clear --old $Pin 0" 2>$null | Out-Null
-        & $adb shell "locksettings clear --old $Pin" 2>$null | Out-Null
+        & $adb -s emulator-5554 shell "locksettings clear --old $Pin 0" 2>$null | Out-Null
+        & $adb -s emulator-5554 shell "locksettings clear --old $Pin" 2>$null | Out-Null
         Write-Success "PIN cleared"
     }
 }

@@ -49,7 +49,7 @@ if (-not (Test-Path $adb)) { $adb = "${env:LOCALAPPDATA}\Android\Sdk\platform-to
 if (-not (Test-Path $adb)) { $adb = "adb.exe" }
 Write-Log "Using adb: $adb"
 
-$devices = & $adb devices
+$devices = & $adb -s emulator-5554 devices
 $deviceLine = $devices | Where-Object { $_.Trim() -match "emulator-\d+\s+device" }
 if (-not $deviceLine) {
     Write-ErrorLog "No emulator device found. Run emulator first."
@@ -65,9 +65,9 @@ else { $targets += $ScenarioClass }
 
 if (-not $SkipSetup) {
     Write-Log "Waking up device..."
-    & $adb shell "input keyevent KEYCODE_WAKEUP" 2>$null | Out-Null
+    & $adb -s emulator-5554 shell "input keyevent KEYCODE_WAKEUP" 2>$null | Out-Null
     Start-Sleep -Milliseconds 1000
-    & $adb shell "input swipe 300 1000 300 500" 2>$null | Out-Null
+    & $adb -s emulator-5554 shell "input swipe 300 1000 300 500" 2>$null | Out-Null
     Start-Sleep -Milliseconds 500
 }
 
@@ -90,7 +90,7 @@ if (-not $SkipBuild) {
 }
 
 try {
-    & $adb shell am force-stop $AppPackage 2>$null | Out-Null
+    & $adb -s emulator-5554 shell am force-stop $AppPackage 2>$null | Out-Null
 
     if ($VaultName -eq "") {
         $VaultName = "e2e-vault-autosave"
@@ -107,7 +107,7 @@ try {
         Write-Log "Running E2E: $classArg $($extraArgs -join ' ')"
         # Start-Job 없이 직접 실행. 사용자가 picker에서 직접 운전할 수 있도록
         # -eDebug 옵션으로 background instrumentation을 시작하지 않음.
-        & $adb shell am instrument -w @extraArgs `
+        & $adb -s emulator-5554 shell am instrument -w @extraArgs `
             -e class $classArg `
             "$TestPackage/$Runner"
         if ($LASTEXITCODE -ne 0) {

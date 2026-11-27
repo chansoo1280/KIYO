@@ -266,7 +266,9 @@ object E2EEnv {
         }
 
         // 3. 활성 볼트가 있으면(요청과 무관하게) 파일 선택 화면까지 탈출 후 신규 생성.
-        Log.i(TAG, "Not reusing — proceeding to new vault creation path")
+        //    홈 화면에서 기존 파일명이 일치하면 재사용한다 (중복 회피 suffix 등으로
+        //    파일명이 달라진 경우 대비).
+        Log.i(TAG, "Not reusing from current screen — proceeding to file selection to check for existing vault")
         when (state) {
             ScreenState.NONE -> Log.i(TAG, "Already on file selection screen")
             else -> {
@@ -279,6 +281,26 @@ object E2EEnv {
                 if (!reached) {
                     throw AssertionError("Could not reach file selection screen from state=$state")
                 }
+            }
+        }
+
+        // 홈 화면에서 기존 파일 재확인 (중복 회피 suffix 등으로 파일명이 달라진 경우 대비)
+        val homeState = detectScreen(bound.homePage, bound.authPage, bound.accountsPage)
+        if (homeState == ScreenState.NONE) {
+            val existingFound = helper.isTextPresent(targetStem + ".json")
+            Log.i(TAG, "Home screen recheck: targetFile='$targetStem.json' found=$existingFound")
+            if (existingFound) {
+                Log.i(TAG, "Target vault '$vaultName' found on home screen — reusing")
+                val opened = bound.homePage.openExistingVault("$vaultName.json")
+                if (!opened) {
+                    throw AssertionError("Could not open existing vault '$vaultName.json' on home screen")
+                }
+                val stateAfterOpen = detectScreen(bound.homePage, bound.authPage, bound.accountsPage)
+                if (stateAfterOpen == ScreenState.ENCRYPTED_LOCKED && encrypted) {
+                    Log.i(TAG, "Target vault '$vaultName' opened to auth screen — unlocking with PIN")
+                    bound.authPage.unlockWithPin(TestDataFactory.TEST_PIN)
+                }
+                return bind(bound)
             }
         }
 
