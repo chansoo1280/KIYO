@@ -246,7 +246,7 @@ export default PageHeader;
 
 **예외 처리**:
 - **Home.tsx**: `<PageShell maxWidth="lg">`만 도입 (eyebrow/h1 자체는 인라인 유지 — Plan-G2 범위 밖)
-- **CreateVault/index.tsx**: 단일 return (loading 분기 없음) — 마이그레이션 단순
+- **CreateVault/index.tsx**: 단일 return (loading 분기 없음) — 마이그레이션 단순. 추가로 헤더의 `<Button label=\"←\">` → `<BackButton ariaLabel=\"홈으로\">` 교체 (버튼 통일, Plan-B 패턴 일관)
 - **AccountDetail.tsx**: 2 return (not-found 분기 + main render) — 양쪽 모두 PageShell로
 
 ### 16-19. 4개 페이지 헤더 마이그레이션 (Home 제외)
