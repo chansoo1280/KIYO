@@ -41,8 +41,8 @@
 
 | # | 심각도 | 도메인 | 위치 | 현재 구현 | 왜 문제 | 수정 방향 (선택 순서) |
 |---|--------|--------|------|-----------|---------|----------------------|
-| 1 | HIGH | 접근성 | `src/pages/Settings/AutofillSection.tsx:214-233` | `<button role="switch" aria-checked onClick={...}>` 커스텀 토글. 키보드 Enter/Space 핸들러 없음, 포커스 링 없음 | 포인터로만 도달 가능, 키보드로 조작 불가, 포커스 표시 없음. ESC기 트리거 | **Use the platform**: 네이티브 `<input type="checkbox">` 또는 APG 스위치 키맵(Enter/Space) 추가 + `focus-visible` 링 |
-| 2 | HIGH | 접근성 | `src/pages/Settings/UISection.tsx:30-47` | `<button role="switch" aria-checked onClick={...}>` 다크모드 토글. 키보드 핸들러 없음 | 포인터 전용 제어, 키보드 도달 불가 | **Use the platform**: 네이티브 체크박스 또는 키보드 핸들러 + 포커스 링 |
+| 1 | HIGH | 접근성 | `src/pages/Settings/components/AutofillSection.tsx:214-233` | `<button role="switch" aria-checked onClick={...}>` 커스텀 토글. 키보드 Enter/Space 핸들러 없음, 포커스 링 없음 | 포인터로만 도달 가능, 키보드로 조작 불가, 포커스 표시 없음. ESC기 트리거 | **Use the platform**: 네이티브 `<input type="checkbox">` 또는 APG 스위치 키맵(Enter/Space) 추가 + `focus-visible` 링 |
+| 2 | HIGH | 접근성 | `src/pages/Settings/components/UISection.tsx:30-47` | `<button role="switch" aria-checked onClick={...}>` 다크모드 토글. 키보드 핸들러 없음 | 포인터 전용 제어, 키보드 도달 불가 | **Use the platform**: 네이티브 체크박스 또는 키보드 핸들러 + 포커스 링 |
 | 3 | HIGH | 타이포그래피 | `src/pages/Auth.tsx:201` | `<p className="... truncate">{fileName}</p>` — 파일명 줄임, 전체 값 볼 수단 없음 | 줄임된 내용에 도달할 방법 없음 (에스컬레이션 트리거) | **Add**: 툴팁, Details 뷰, 또는 `title` 속성으로 전체 값 노출 |
 | 4 | MEDIUM | 접근성 | `src/pages/Accounts/index.tsx:285-293` | `<article role="button" tabIndex={0} onClick onKeyDown>` — 커스텀 버튼 | 네이티브 `<button>`이 존재함. 커스텀 롤 유지 비용 | **Use the platform**: `<button>`로 교체, `role`/`tabIndex`/`onKeyDown` 제거 |
 | 5 | MEDIUM | 접근성 | `src/pages/Home.tsx:153-159` | `<Link to="/create-vault" className="...button-styles...">` — 링크를 버튼 모양으로 스타일링 | 링크가 버튼처럼 보임. 의미론적 혼동 | **Use the platform**: `<Button asChild>` 또는 네이티브 링크 스타일 유지 |

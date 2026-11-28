@@ -5,6 +5,8 @@ interface DeleteButtonProps {
   disabled?: boolean;
   /** 버튼 라벨 (기본: "삭제") */
   label?: string;
+  /** 접근성 라벨 (기본: label 또는 "삭제") */
+  ariaLabel?: string;
 }
 
 /**
@@ -14,6 +16,7 @@ export function DeleteButton({
   onClick,
   disabled = false,
   label = "삭제",
+  ariaLabel,
 }: DeleteButtonProps) {
   return (
     <Button
@@ -22,6 +25,7 @@ export function DeleteButton({
       onClick={onClick}
       disabled={disabled}
       label={label}
+      aria-label={ariaLabel ?? label}
       className="min-w-[60px]"
     />
   );

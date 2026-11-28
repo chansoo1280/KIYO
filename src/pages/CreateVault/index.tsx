@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createDataFile } from "@/persistence/vaultPersistence";
 import { mapError } from "@/utils/mapError";
 import { BackButton } from "@/components/BackButton";
+import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { Stepper } from "./components/Stepper";
 import { NameStep } from "./steps/NameStep";
@@ -79,17 +80,10 @@ const CreateVaultPage = () => {
 
   return (
     <PageShell maxWidth="md" data-testid="create-vault-page">
-        <header className="flex items-center gap-3">
-          <BackButton onClick={() => navigate("/")} ariaLabel="홈으로" />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
-              New vault
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold text-[var(--color-text-h)]">
-              새 파일 생성
-            </h1>
-          </div>
-        </header>
+    <PageHeader
+      title="새 파일 생성"
+      leftActions={<BackButton onClick={() => navigate("/")} ariaLabel="홈으로" />}
+    />
 
         <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm">
           <Stepper step={step} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Fingerprint } from "lucide-react";
+import { Fingerprint } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/sessionStore";
 import {
@@ -12,7 +12,9 @@ import { SecureKey } from "@/plugins/kiyosecurekey";
 import { MIN_PIN_LENGTH } from "@/crypto/pinStrength";
 import { mapError } from "@/utils/mapError";
 import Button from "@/components/Button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/inputs";
+import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import type { EncryptedKiyoVaultData } from "@/crypto/encryption";
 import { decryptData } from "@/crypto/encryption";
@@ -160,27 +162,7 @@ const Auth = () => {
 
   return (
     <PageShell maxWidth="sm">
-      <header className="flex items-center gap-4">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleBackToHome}
-            className="!h-10 !w-10 !rounded-xl !p-0 !text-[var(--color-text)] hover:!bg-[var(--color-code-bg)] hover:!text-[var(--color-text-h)]"
-            label={<ArrowLeft className="h-5 w-5" />}
-            aria-label="첫 화면으로 돌아가기"
-          />
-          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
-            K
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
-              Security
-            </p>
-            <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
-              KIYO
-            </h1>
-          </div>
-        </header>
+    <PageHeader title="KIYO" leftActions={<BackButton onClick={handleBackToHome} ariaLabel="첫 화면으로 돌아가기" />} />
 
         <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
@@ -198,7 +180,7 @@ const Auth = () => {
             <p className="text-xs font-medium text-[var(--color-text)]">
               파일 정보
             </p>
-            <p className="mt-1 text-sm text-[var(--color-text-h)] truncate">
+            <p className="mt-1 text-sm text-[var(--color-text-h)] truncate" title={fileName ?? ""}>
               {fileName}
             </p>
             <p className="mt-1 text-xs text-[var(--color-text)]">

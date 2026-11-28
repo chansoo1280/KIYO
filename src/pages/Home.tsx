@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { isKiyoFile } from "@/database/fileStorage";
 import { openImportedDataFile } from "@/persistence/vaultPersistence";
 import { fileTable, type FileRecord } from "@/database/fileTable";
@@ -12,8 +12,9 @@ import { setupVaultSession } from "@/persistence/vaultPersistence";
 import FileOpenDialog from "@/components/dialogs/FileOpenDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import Button from "@/components/Button";
+import { DeleteButton } from "@/components/DeleteButton";
 import { PageShell } from "@/components/PageShell";
-import { Lock, LockOpen, Trash2 } from "lucide-react";
+import { Lock, LockOpen } from "lucide-react";
 import { activatePlaintextVault } from "@/persistence/vaultPersistence";
 
 const Home = () => {
@@ -46,7 +47,7 @@ const Home = () => {
       // /auth로 이동하여 unlock
       navigate("/auth", { replace: true });
     } else {
-      // plaintext 
+      // plaintext
       await activatePlaintextVault(fileName);
       navigate("/accounts", { replace: true });
     }
@@ -107,15 +108,18 @@ const Home = () => {
             // INVALID_JSON, INVALID_FORMAT 등이 INVALID_FILE_FORMAT으로 통합됨
             // 에러 메시지로 구분 가능: "JSON 파싱 실패" vs "is not KiyoFile" vs "fileName is empty"
             if (error.message.includes("JSON")) {
-              throw new Error("파일 형식이 올바르지 않습니다. (JSON 파싱 오류)", {
-                cause: error,
-              });
+              throw new Error(
+                "파일 형식이 올바르지 않습니다. (JSON 파싱 오류)",
+                { cause: error },
+              );
             }
             throw new Error("지원하지 않는 파일 형식입니다.", { cause: error });
           case FileStorageErrorCode.INVALID_PIN:
             throw new Error("PIN 번호가 올바르지 않습니다.", { cause: error });
           default:
-            throw new Error(`파일 열기 실패: ${error.message}`, { cause: error });
+            throw new Error(`파일 열기 실패: ${error.message}`, {
+              cause: error,
+            });
         }
       }
       throw error;
@@ -150,13 +154,14 @@ const Home = () => {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              to="/create-vault"
+            <Button
+              type="button"
+              variant="primary"
+              label="파일 생성"
               data-testid="create-vault-link"
-              className="rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80"
-            >
-              파일 생성
-            </Link>
+              onClick={() => navigate("/create-vault")}
+              className="rounded-full px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-accent)]/80"
+            />
             <Button
               type="button"
               variant="secondary"
@@ -208,13 +213,9 @@ const Home = () => {
                       label={file.fileName}
                       aria-label={`${file.fileName} 선택`}
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
+                    <DeleteButton
                       onClick={() => handleDeleteFile(file.fileName)}
-                      className="!grid !h-9 !w-9 !place-items-center !rounded-full !text-[var(--color-text-muted)] hover:!bg-[var(--color-error-bg)] hover:!text-[var(--color-error)]"
-                      label={<Trash2 className="h-4 w-4" />}
-                      aria-label={`${file.fileName} 삭제`}
+                      ariaLabel={`${file.fileName} 삭제`}
                     />
                   </li>
                 );

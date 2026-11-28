@@ -32,6 +32,12 @@ export function UISection() {
           role="switch"
           aria-checked={theme === "dark"}
           onClick={handleThemeToggle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleThemeToggle();
+            }
+          }}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 ${
             theme === "dark"
               ? "bg-[var(--color-accent)]"

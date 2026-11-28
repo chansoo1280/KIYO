@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/inputs";
 import Button from "@/components/Button";
+import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 
 const AutofillTestLogin = () => {
@@ -16,19 +17,7 @@ const AutofillTestLogin = () => {
 
   return (
     <PageShell maxWidth="sm">
-      <header className="flex items-center gap-4">
-        <div className="grid h-14 w-14 place-items-center rounded-3xl bg-[var(--color-accent)] text-3xl font-bold text-white shadow-sm">
-          K
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">
-            Autofill Test
-          </p>
-          <h1 className="mt-1 text-4xl font-semibold text-[var(--color-text-h)]">
-            KIYO Autofill Test
-          </h1>
-        </div>
-      </header>
+    <PageHeader title="KIYO Autofill Test" />
 
       <section className="rounded-4xl border border-[var(--color-border)] bg-[var(--color-bg)] p-7 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-eyebrow text-[var(--color-accent)]">

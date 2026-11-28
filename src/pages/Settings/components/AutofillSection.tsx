@@ -217,6 +217,12 @@ export const AutofillSection: React.FC = () => {
             aria-checked={autofillEnabled}
             aria-label={autofillEnabled ? "자동완성 사용 켜짐" : "자동완성 사용 꺼짐"}
             onClick={handleAutofillToggle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleAutofillToggle();
+              }
+            }}
             className={`relative w-11 h-6 rounded-full transition-colors ${
               autofillEnabled
                 ? "bg-[var(--color-accent)]"
